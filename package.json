@@ -1,0 +1,10 @@
+{
+  "name": "safety-nexo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Safety Nexo: SaaS de Segurança do Trabalho para consultorias SST",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

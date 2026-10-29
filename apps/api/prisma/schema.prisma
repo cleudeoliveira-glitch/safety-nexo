@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Consultoria SST: é o "tenant". Cada consultoria só enxerga os próprios dados.
+model Consultoria {
+  id        String    @id @default(cuid())
+  nome      String
+  plano     String    @default("FREE")
+  limiteEmpresas Int  @default(3)
+  logoPath  String?   // logo da consultoria: vai no rodapé dos documentos
+  createdAt DateTime  @default(now())
+  empresas  Empresa[]
+  usuarios  Usuario[]
+}
+
+model Empresa {
+  id             String        @id @default(cuid())
+  consultoriaId  String
+  consultoria    Consultoria   @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  razaoSocial    String
+  cnpj           String
+  cnae           String?
+  grauRisco      Int?
+  numFuncionarios Int          @default(0)
+  logoPath       String?       // logo da empresa cliente: vai no cabeçalho dos documentos
+  medicoPcmsoNome String?      // médico responsável pelo PCMSO (NR-07)
+  medicoPcmsoCrm  String?
+  createdAt      DateTime      @default(now())
+  colaboradores  Colaborador[]
+  ghes           Ghe[]
+  documentos     Documento[]
+
+  @@unique([consultoriaId, cnpj])
+  @@index([consultoriaId])
+}
+
+model Colaborador {
+  id            String   @id @default(cuid())
+  empresaId     String
+  empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome          String
+  cpf           String?
+  cargo         String
+  cbo           String?
+  dataAdmissao  DateTime?
+  gheId         String?
+  ghe           Ghe?     @relation(fields: [gheId], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+  asos          Aso[]
+  entregasEpi   EntregaEpi[]
+
+  @@index([empresaId])
+}
+
+// GHE = Grupo Homogêneo de Exposição: conjunto de pessoas com exposição parecida.
+model Ghe {
+  id            String        @id @default(cuid())
+  empresaId     String
+  empresa       Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome          String
+  descricao     String?
+  riscos        GheRisco[]
+  exames        ExameGhe[]
+  colaboradores Colaborador[]
+
+  @@index([empresaId])
+}
+
+model GheRisco {
+  id          String  @id @default(cuid())
+  gheId       String
+  ghe         Ghe     @relation(fields: [gheId], references: [id], onDelete: Cascade)
+  tipo        String  // FISICO, QUIMICO, BIOLOGICO, ERGONOMICO, ACIDENTE
+  agente      String
+  fonteGeradora String
+  medidasControle String?
+  severidade  String  @default("MEDIA") // BAIXA, MEDIA, ALTA
+
+  @@index([gheId])
+}
+
+model Documento {
+  id          String   @id @default(cuid())
+  empresaId   String
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tipo        String   // PGR, PCMSO, LTCAT...
+  versao      Int      @default(1)
+  vencimento  DateTime?
+  geradoEm    DateTime @default(now())
+
+  @@index([empresaId])
+}
+
+// NR-04 Anexo I (Quadro I): grau de risco por classe CNAE (XX.XX-X).
+// Preenchida pelo script scripts/importar-nr04, a partir do texto oficial da norma.
+model CnaeGrauRisco {
+  classe      String @id
+  denominacao String
+  grauRisco   Int
+}
+
+// Exame programado no PCMSO para um GHE, com os momentos em que é feito (NR-07).
+model ExameGhe {
+  id                 String  @id @default(cuid())
+  gheId              String
+  ghe                Ghe     @relation(fields: [gheId], references: [id], onDelete: Cascade)
+  nome               String
+  tipo               String  // CLINICO, COMPLEMENTAR
+  admissional        Boolean @default(true)
+  periodico          Boolean @default(true)
+  retornoTrabalho    Boolean @default(false)
+  mudancaRisco       Boolean @default(false)
+  demissional        Boolean @default(false)
+  periodicidadeMeses Int?
+
+  @@index([gheId])
+}
+
+// Pessoa que entra no sistema. Pertence a uma consultoria.
+model Usuario {
+  id            String      @id @default(cuid())
+  consultoriaId String
+  consultoria   Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  nome          String
+  email         String      @unique
+  senhaHash     String
+  createdAt     DateTime    @default(now())
+
+  @@index([consultoriaId])
+}
+
+// Atestado de Saúde Ocupacional (NR-07). Os exames ficam gravados como foram no dia.
+model Aso {
+  id                   String      @id @default(cuid())
+  colaboradorId        String
+  colaborador          Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  tipo                 String      // ADMISSIONAL, PERIODICO, RETORNO_TRABALHO, MUDANCA_RISCO, DEMISSIONAL
+  dataExame            DateTime
+  resultado            String      // APTO, INAPTO
+  medicoExaminadorNome String
+  medicoExaminadorCrm  String
+  exames               String[]
+  riscos               String[]
+  proximoExame         DateTime?
+  observacoes          String?
+  createdAt            DateTime    @default(now())
+
+  @@index([colaboradorId])
+}
+
+// Entrega de EPI registrada na ficha do colaborador (NR-06).
+model EntregaEpi {
+  id            String      @id @default(cuid())
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  epi           String
+  ca            String
+  validadeCa    DateTime?
+  quantidade    Int         @default(1)
+  motivo        String      // ENTREGA_INICIAL, DESGASTE, PERDA, DANO
+  dataEntrega   DateTime
+  createdAt     DateTime    @default(now())
+
+  @@index([colaboradorId])
+}

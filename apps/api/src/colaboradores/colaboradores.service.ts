@@ -1,0 +1,115 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ContextoDocumentoService } from '../documentos/contexto.service';
+import { PdfService } from '../documentos/pdf.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { renderAsoHtml } from './aso.template';
+import { CreateAsoDto, CreateEntregaEpiDto } from './dto';
+import { renderFichaEpiHtml } from './ficha-epi.template';
+import { examesDoTipo, NOME_TIPO_ASO, proximoExame, TipoAso } from './regras';
+
+const AVISO = 'Documento gerado pelo Safety Nexo. Deve ser conferido e assinado pelos responsáveis.';
+
+@Injectable()
+export class ColaboradoresService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly contexto: ContextoDocumentoService,
+    private readonly pdf: PdfService,
+  ) {}
+
+  async detalhar(consultoriaId: string, empresaId: string, colaboradorId: string) {
+    const colaborador = await this.prisma.colaborador.findFirst({
+      where: { id: colaboradorId, empresaId, empresa: { consultoriaId } },
+      include: {
+        ghe: { include: { riscos: true, exames: true } },
+        asos: { orderBy: { dataExame: 'desc' } },
+        entregasEpi: { orderBy: { dataEntrega: 'desc' } },
+      },
+    });
+    if (!colaborador) throw new NotFoundException('Colaborador não encontrado');
+    return colaborador;
+  }
+
+  async registrarAso(consultoriaId: string, empresaId: string, colaboradorId: string, dto: CreateAsoDto) {
+    const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    const programa = colaborador.ghe?.exames ?? [];
+    const tipo = dto.tipo as TipoAso;
+    const dataExame = new Date(dto.dataExame);
+
+    return this.prisma.aso.create({
+      data: {
+        ...dto,
+        colaboradorId,
+        dataExame,
+        exames: examesDoTipo(programa, tipo),
+        riscos: (colaborador.ghe?.riscos ?? []).map((r) => r.agente),
+        proximoExame: proximoExame(programa, tipo, dto.resultado, dataExame),
+      },
+    });
+  }
+
+  async registrarEntregaEpi(consultoriaId: string, empresaId: string, colaboradorId: string, dto: CreateEntregaEpiDto) {
+    await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    return this.prisma.entregaEpi.create({
+      data: {
+        ...dto,
+        colaboradorId,
+        dataEntrega: new Date(dto.dataEntrega),
+        validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null,
+      },
+    });
+  }
+
+  async pdfAso(consultoriaId: string, empresaId: string, colaboradorId: string, asoId: string) {
+    const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    const aso = colaborador.asos.find((a) => a.id === asoId);
+    if (!aso) throw new NotFoundException('ASO não encontrado');
+    const { empresa, logoEmpresa, consultoria } = await this.contexto.carregar(consultoriaId, empresaId, 'ASO');
+
+    const html = renderAsoHtml(
+      {
+        titulo: 'Atestado de Saúde Ocupacional (ASO)',
+        logoEmpresa,
+        consultoria,
+        infos: [
+          ['Empresa', empresa.razaoSocial],
+          ['CNPJ', empresa.cnpj],
+        ],
+        aviso: AVISO,
+      },
+      {
+        colaborador: { nome: colaborador.nome, cpf: colaborador.cpf, cargo: colaborador.cargo, ghe: colaborador.ghe?.nome ?? null },
+        tipo: NOME_TIPO_ASO[aso.tipo as TipoAso] ?? aso.tipo,
+        dataExame: aso.dataExame,
+        resultado: aso.resultado,
+        exames: aso.exames,
+        riscos: aso.riscos,
+        medicoExaminador: { nome: aso.medicoExaminadorNome, crm: aso.medicoExaminadorCrm },
+        medicoPcmso: { nome: empresa.medicoPcmsoNome, crm: empresa.medicoPcmsoCrm },
+        proximoExame: aso.proximoExame,
+        observacoes: aso.observacoes,
+      },
+    );
+    return this.pdf.render(html);
+  }
+
+  async pdfFichaEpi(consultoriaId: string, empresaId: string, colaboradorId: string) {
+    const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    const { empresa, logoEmpresa, consultoria } = await this.contexto.carregar(consultoriaId, empresaId, 'FICHA_EPI');
+    const html = renderFichaEpiHtml(
+      {
+        titulo: 'Ficha de Controle de EPI',
+        logoEmpresa,
+        consultoria,
+        infos: [
+          ['Empresa', empresa.razaoSocial],
+          ['CNPJ', empresa.cnpj],
+        ],
+        aviso: AVISO,
+      },
+      colaborador,
+      [...colaborador.entregasEpi].reverse(),
+    );
+    return this.pdf.render(html);
+  }
+}
