@@ -25,6 +25,12 @@ export type Empresa = {
   responsavelTecnicoNome?: string | null;
   responsavelTecnicoRegistro?: string | null;
   representanteLegalNome?: string | null;
+  medicoPcmsoCpf?: string | null;
+  medicoPcmsoUf?: string | null;
+  responsavelTecnicoCpf?: string | null;
+  responsavelTecnicoConselho?: string | null;
+  responsavelTecnicoUf?: string | null;
+  esocialAmbiente?: string;
 };
 export type AvaliacaoRisco = {
   tipoAvaliacao: 'QUALITATIVA' | 'QUANTITATIVA';
@@ -38,6 +44,11 @@ export type AvaliacaoRisco = {
   aposentadoriaEspecial: boolean;
   anexoNr15?: string | null;
   grauInsalubridade?: 'NAO' | 'MINIMO' | 'MEDIO' | 'MAXIMO' | null;
+  esocial?: RiscoEsocial | null;
+};
+export type RiscoEsocial = {
+  codAgNoc?: string; unMed?: number; utilizEPC?: number; utilizEPI?: number;
+  epiCompl?: { medProtecao: boolean; condFuncto: boolean; usoInint: boolean; przValid: boolean; periodicTroca: boolean; higienizacao: boolean };
 };
 export type Risco = { id: string; tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; severidade: string } & Partial<AvaliacaoRisco>;
 export type Exame = {
@@ -50,9 +61,10 @@ export type Exame = {
   mudancaRisco: boolean;
   demissional: boolean;
   periodicidadeMeses: number | null;
+  codigoEsocial?: string | null;
 };
 export type Ghe = { id: string; nome: string; descricao: string | null; periculosidadeAnexo?: string | null; periculosidadeJustificativa?: string | null; riscos: Risco[]; exames: Exame[]; _count: { colaboradores: number } };
-export type Colaborador = { id: string; nome: string; cpf?: string | null; dataAdmissao?: string | null; cargo: string; cbo: string | null; gheId: string | null };
+export type Colaborador = { id: string; nome: string; cpf?: string | null; matricula?: string | null; codCateg?: string | null; dataAdmissao?: string | null; cargo: string; cbo: string | null; gheId: string | null };
 export type Aso = {
   id: string; tipo: string; dataExame: string; resultado: 'APTO' | 'INAPTO';
   medicoExaminadorNome: string; medicoExaminadorCrm: string; exames: string[]; riscos: string[]; proximoExame: string | null;
@@ -368,3 +380,43 @@ export async function baixarXmlEsocial(empresaId: string, ev: EventoEsocial) {
   if (!res.ok) throw new Error(`Não foi possível baixar o XML (${res.status}).`);
   salvarArquivo(await res.blob(), `${ev.tipo}-${ev.idEvento}.xml`);
 }
+
+export type SituacaoEvento = { tipo: string; referenciaId: string; status: EventoEsocial['status']; recibo: string | null } | null;
+export type CatEsocial = {
+  codSitGeradora?: string; codParteAting?: string; lateralidade?: number; codAgntCausador?: string; codLesao?: string;
+  iniciatCAT?: number; tpLocal?: number; logradouro?: string; numero?: string; bairro?: string; cep?: string; codMunic?: string; uf?: string;
+  cnpjLocal?: string; ultDiaTrab?: string; dtObito?: string; internacao?: boolean; medicoConselho?: number; medicoUf?: string; reciboCatOrigem?: string;
+};
+export type OrigensEsocial = {
+  empresa: {
+    esocialAmbiente: 'PRODUCAO_RESTRITA' | 'PRODUCAO'; medicoPcmsoNome: string | null; medicoPcmsoCrm: string | null; medicoPcmsoCpf: string | null; medicoPcmsoUf: string | null;
+    responsavelTecnicoNome: string | null; responsavelTecnicoRegistro: string | null; responsavelTecnicoCpf: string | null;
+    responsavelTecnicoConselho: string | null; responsavelTecnicoUf: string | null;
+  };
+  colaboradores: {
+    id: string; nome: string; cpf: string | null; matricula: string | null; codCateg: string | null; cargo: string; dataAdmissao: string | null; ghe: string | null;
+    s2240: SituacaoEvento; asos: { id: string; tipo: string; dataExame: string; resultado: string; s2220: SituacaoEvento }[];
+  }[];
+  cats: {
+    id: string; colaborador: string; tipoCat: string; tipoAcidente: string; dataHora: string; local: string; horasTrabalhadas: string | null;
+    atendimentoData: string | null; medicoNome: string | null; medicoCrm: string | null; cid: string | null; diasTratamento: number | null;
+    esocial: CatEsocial | null; s2210: SituacaoEvento;
+  }[];
+};
+export const buscarOrigensEsocial = (empresaId: string) => chamar<OrigensEsocial>('GET', `/empresas/${empresaId}/esocial/origens`);
+export const salvarEsocialColaborador = (empresaId: string, colaboradorId: string, dados: { cpf?: string; matricula?: string; codCateg?: string }) =>
+  chamar<Colaborador>('PUT', `/empresas/${empresaId}/colaboradores/${colaboradorId}/esocial`, dados);
+export const salvarCodigoExame = (empresaId: string, gheId: string, exameId: string, codigoEsocial: string) =>
+  chamar<Exame>('PUT', `/empresas/${empresaId}/ghes/${gheId}/exames/${exameId}/codigo`, { codigoEsocial });
+export const salvarEsocialCat = (empresaId: string, catId: string, dados: CatEsocial & { horasTrabalhadas?: string; atendimentoData?: string; medicoNome?: string; medicoCrm?: string; cid?: string; diasTratamento?: number }) =>
+  chamar<unknown>('PUT', `/empresas/${empresaId}/cats/${catId}/esocial`, dados);
+export const gerarEventoEsocial = (empresaId: string, tipo: 's2210' | 's2220' | 's2240', referenciaId: string, corpo: { inicio?: string; retificar?: boolean } = {}) =>
+  chamar<EventoEsocial>('POST', `/empresas/${empresaId}/esocial/${tipo}/${referenciaId}`, corpo);
+
+// Unidades de medida do S-2240 (campo unMed do XSD S-1.3).
+export const UNIDADES_ESOCIAL: [number, string][] = [
+  [1, 'dose diária de ruído'], [2, 'dB (linear)'], [3, 'dB(C)'], [4, 'dB(A)'], [5, 'm/s²'], [6, 'm/s¹·⁷⁵'], [7, 'ppm'], [8, 'mg/m³'], [9, 'f/cm³'],
+  [10, '°C'], [11, 'm/s'], [12, '%'], [13, 'lux'], [14, 'ufc/m³'], [15, 'dose diária'], [16, 'dose mensal'], [17, 'dose trimestral'], [18, 'dose anual'],
+  [19, 'W/m²'], [20, 'A/m'], [21, 'mT'], [22, 'μT'], [23, 'mA'], [24, 'kV/m'], [25, 'V/m'], [26, 'J/m²'], [27, 'mJ/cm²'], [28, 'mSv'], [29, 'mppdc'], [30, 'UR (%)'],
+];
+export const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];

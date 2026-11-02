@@ -13,10 +13,13 @@ import {
   enviarCertificado,
   EventoEsocial,
   listarEventosEsocial,
+  buscarOrigensEsocial,
+  OrigensEsocial,
   removerCertificado,
   transmitirEsocial,
 } from '@/lib/api';
 import { ehEmpresa } from '@/lib/sessao';
+import { DadosEmpresaEsocial, EventosCat, EventosColaboradores } from './GerarEventos';
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
@@ -37,6 +40,7 @@ export default function EsocialPage({ params }: { params: { id: string } }) {
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [cert, setCert] = useState<CertificadoEsocial | null | undefined>(undefined);
   const [eventos, setEventos] = useState<EventoEsocial[]>([]);
+  const [origens, setOrigens] = useState<OrigensEsocial | null>(null);
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [senha, setSenha] = useState('');
   const [chave, setChave] = useState(0);
@@ -45,8 +49,8 @@ export default function EsocialPage({ params }: { params: { id: string } }) {
 
   const recarregar = useCallback(async () => {
     try {
-      const [e, c, ev] = await Promise.all([buscarEmpresa(empresaId), buscarCertificado(), listarEventosEsocial(empresaId)]);
-      setEmpresa(e); setCert(c); setEventos(ev);
+      const [e, c, ev, o] = await Promise.all([buscarEmpresa(empresaId), buscarCertificado(), listarEventosEsocial(empresaId), buscarOrigensEsocial(empresaId)]);
+      setEmpresa(e); setCert(c); setEventos(ev); setOrigens(o);
     } catch (e) {
       setAviso({ tipo: 'erro', texto: (e as Error).message });
     }
@@ -84,7 +88,7 @@ export default function EsocialPage({ params }: { params: { id: string } }) {
         <p className="text-text/60">{empresa.razaoSocial}</p>
       </div>
 
-      {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
+      {aviso && <div className="sticky top-2 z-10 shadow-sm"><Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso></div>}
 
       <Cartao titulo="Certificado digital da consultoria">
         <p className="mb-4 text-sm text-text/60">
@@ -121,7 +125,13 @@ export default function EsocialPage({ params }: { params: { id: string } }) {
         </form>
       </Cartao>
 
-      <Cartao titulo="Eventos de SST" acao={
+      {origens && <>
+        <DadosEmpresaEsocial key={JSON.stringify(origens.empresa)} empresaId={empresaId} o={origens.empresa} agir={agir} />
+        <EventosColaboradores empresaId={empresaId} o={origens} agir={agir} />
+        <EventosCat empresaId={empresaId} o={origens} agir={agir} />
+      </>}
+
+      <Cartao titulo="Fila de envio" acao={
         <div className="flex flex-wrap gap-2">
           <Botao disabled={ocupado || !pendentes || !cert} onClick={() => agir(async () => {
             const r = await transmitirEsocial(empresaId);

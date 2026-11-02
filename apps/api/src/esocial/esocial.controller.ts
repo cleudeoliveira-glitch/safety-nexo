@@ -37,6 +37,11 @@ export class EsocialController {
     res.end(ev.xml);
   }
 
+  @Get('empresas/:empresaId/esocial/origens')
+  origens(@ConsultoriaId() c: string, @Param('empresaId') e: string) {
+    return this.esocial.origens(c, e);
+  }
+
   @Post('empresas/:empresaId/esocial/s2220/:asoId')
   s2220(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('asoId') id: string, @Body('retificar') r?: boolean) {
     return this.esocial.gerarS2220(c, e, id, r === true);

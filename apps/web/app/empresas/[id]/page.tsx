@@ -34,6 +34,9 @@ import {
   listarGhes,
   salvarArquivo,
   salvarCipa,
+  salvarCodigoExame,
+  UNIDADES_ESOCIAL,
+  RiscoEsocial,
 } from '@/lib/api';
 import { ehEmpresa } from '@/lib/sessao';
 
@@ -269,6 +272,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                     <li key={e.id}>
                       {e.nome} · {MOMENTOS.filter(([campo]) => e[campo]).map(([, nome]) => nome.toLowerCase()).join(', ')}
                       {e.periodicidadeMeses ? ` · a cada ${e.periodicidadeMeses} meses` : ''}
+                      {' · '}
+                      <CodigoExame valor={e.codigoEsocial ?? ''} salvar={(cod) => agir(() => salvarCodigoExame(empresaId, ghe.id, e.id, cod), `Código de ${e.nome} salvo.`)} />
                     </li>
                   ))}
                 </ul>
@@ -286,6 +291,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                       mudancaRisco: d.has('mudancaRisco'),
                       demissional: d.has('demissional'),
                       periodicidadeMeses: texto(d, 'periodicidade') ? Number(texto(d, 'periodicidade')) : null,
+                      codigoEsocial: texto(d, 'codigoEsocial') || undefined,
                     }),
                   'Exame programado.',
                 )}
@@ -296,6 +302,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                   <option value="COMPLEMENTAR">Complementar</option>
                 </Selecao>
                 <Campo id={`exame-per-${ghe.id}`} name="periodicidade" type="number" min={1} max={60} rotulo="Periodicidade (meses)" placeholder="Ex.: 12" />
+                <Campo id={`exame-cod-${ghe.id}`} name="codigoEsocial" rotulo="Código eSocial (Tabela 27)" inputMode="numeric" maxLength={4} placeholder="0000"
+                  ajuda={{ oQueE: 'Código do procedimento na Tabela 27 do eSocial. Vai no evento S-2220 do ASO.', baseLegal: 'eSocial, Tabela 27' }} />
                 <fieldset className="flex flex-wrap gap-4 text-sm md:col-span-2">
                   <legend className="mb-1 font-semibold">Quando é feito</legend>
                   {MOMENTOS.map(([campo, nome]) => (
@@ -324,6 +332,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                 cargo: texto(d, 'cargo'),
                 cbo: texto(d, 'cbo') || null,
                 gheId: texto(d, 'gheId') || null,
+                matricula: texto(d, 'matricula') || null,
               }),
             'Colaborador cadastrado.',
           )}
@@ -336,6 +345,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
             ajuda={{ oQueE: 'Data em que o colaborador foi contratado. Desempata a eleição da CIPA (tempo de casa).', ondeAcho: 'Na carteira de trabalho ou com o RH.' }} />
           <Campo id="colab-cbo" name="cbo" rotulo="CBO" placeholder="Ex.: 8483-05"
             ajuda={{ oQueE: 'Código Brasileiro de Ocupações do cargo.', ondeAcho: 'Na carteira de trabalho ou com o RH.' }} />
+          <Campo id="colab-matricula" name="matricula" rotulo="Matrícula no eSocial" placeholder="Ex.: 000123"
+            ajuda={{ oQueE: 'A matrícula que o RH usou no evento de admissão do eSocial. É obrigatória para enviar ASO, riscos e CAT.', ondeAcho: 'Com o RH ou a contabilidade.' }} />
           <Selecao id="colab-ghe" name="gheId" rotulo="GHE">
             <option value="">Sem GHE</option>
             {ghes.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
@@ -535,6 +546,7 @@ function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosL
     const sugerido = anexos?.nr15.find((a) => a.anexo === valor)?.grau;
     if (sugerido && !grau) setGrau(sugerido);
   }
+  const es = risco.esocial ?? {};
   const simNao = (v: FormDataEntryValue | null) => (v === 'S' ? true : v === 'N' ? false : null);
   const valor = (v: boolean | null | undefined) => (v === true ? 'S' : v === false ? 'N' : '');
   return (
@@ -560,6 +572,13 @@ function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosL
             aposentadoriaEspecial: d.get('especial') === 'S',
             anexoNr15: anexo || null,
             grauInsalubridade: (grau || null) as AvaliacaoRisco['grauInsalubridade'],
+            esocial: {
+              codAgNoc: t('codAgNoc') || undefined,
+              unMed: t('unMed') ? Number(t('unMed')) : undefined,
+              utilizEPC: t('utilizEPC') ? Number(t('utilizEPC')) : undefined,
+              utilizEPI: t('utilizEPI') ? Number(t('utilizEPI')) : undefined,
+              epiCompl: Object.fromEntries(REQUISITOS_EPI.map(([k]) => [k, d.has(k)])) as RiscoEsocial['epiCompl'],
+            },
           });
         }}
       >
@@ -601,11 +620,44 @@ function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosL
           <option value="MEDIO">Grau médio (20%)</option>
           <option value="MAXIMO">Grau máximo (40%)</option>
         </Selecao>
+        <fieldset className="grid gap-3 border-t border-border pt-3 md:col-span-3 md:grid-cols-3">
+          <legend className="text-sm font-semibold">Para o eSocial (S-2240)</legend>
+          <Campo id={`av-t24-${risco.id}`} name="codAgNoc" rotulo="Código da Tabela 24" defaultValue={es.codAgNoc ?? ''} placeholder="00.00.000"
+            ajuda={{ oQueE: 'Código do agente nocivo na Tabela 24 do eSocial. Use 09.01.001 quando não há exposição a agente nocivo.', baseLegal: 'eSocial, Tabela 24' }} />
+          {tipo === 'QUANTITATIVA' && (
+            <Selecao id={`av-un-${risco.id}`} name="unMed" rotulo="Unidade da medição" defaultValue={es.unMed ?? ''}>
+              <option value="">Escolha</option>
+              {UNIDADES_ESOCIAL.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
+            </Selecao>
+          )}
+          <Selecao id={`av-uepc-${risco.id}`} name="utilizEPC" rotulo="Usa EPC?" defaultValue={es.utilizEPC ?? ''}>
+            <option value="">Escolha</option><option value={0}>Não se aplica</option><option value={1}>Não implementa</option><option value={2}>Implementa</option>
+          </Selecao>
+          <Selecao id={`av-uepi-${risco.id}`} name="utilizEPI" rotulo="Usa EPI?" defaultValue={es.utilizEPI ?? ''}>
+            <option value="">Escolha</option><option value={0}>Não se aplica</option><option value={1}>Não utiliza</option><option value={2}>Utiliza</option>
+          </Selecao>
+          <div className="space-y-1 text-sm md:col-span-3">
+            <p className="font-semibold">Quando usa EPI, o que foi observado (NR-06 e NR-09):</p>
+            {REQUISITOS_EPI.map(([k, n]) => (
+              <label key={k} className="flex items-center gap-2"><input type="checkbox" name={k} defaultChecked={es.epiCompl ? es.epiCompl[k] : true} /> {n}</label>
+            ))}
+          </div>
+        </fieldset>
         <div className="flex items-end justify-end md:col-span-3"><Botao type="submit" variante="secundario">Salvar avaliação</Botao></div>
       </form>
     </details>
   );
 }
+
+// Requisitos do EPI para o S-2240 (grupo epiCompl).
+const REQUISITOS_EPI: [keyof NonNullable<RiscoEsocial['epiCompl']>, string][] = [
+  ['medProtecao', 'Tentou primeiro proteção coletiva ou administrativa'],
+  ['condFuncto', 'Condições de funcionamento do EPI conferidas ao longo do tempo'],
+  ['usoInint', 'Uso sem interrupção ao longo do tempo'],
+  ['przValid', 'CA válido na compra'],
+  ['periodicTroca', 'Troca na periodicidade certa, com recibo assinado'],
+  ['higienizacao', 'Higienização conforme o fabricante'],
+];
 
 // Periculosidade do GHE (NR-16): a atividade se enquadra em algum anexo?
 function Periculosidade({ ghe, anexos, salvar }: { ghe: Ghe; anexos: AnexosLaudo; salvar: (dados: { anexo: string; justificativa?: string }) => void }) {
@@ -633,5 +685,17 @@ function Periculosidade({ ghe, anexos, salvar }: { ghe: Ghe; anexos: AnexosLaudo
         <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Salvar periculosidade</Botao></div>
       </form>
     </details>
+  );
+}
+
+// Código da Tabela 27 de um exame já programado, editável na própria linha.
+function CodigoExame({ valor, salvar }: { valor: string; salvar: (codigo: string) => void }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className={valor ? 'text-text/60' : 'text-warning'}>eSocial</span>
+      <input aria-label="Código do eSocial (Tabela 27)" defaultValue={valor} maxLength={4} inputMode="numeric" placeholder="0000"
+        className="w-16 rounded border border-border px-1 py-0.5 text-xs"
+        onBlur={(e) => { if (e.target.value.trim() !== valor) salvar(e.target.value.trim()); }} />
+    </span>
   );
 }

@@ -70,6 +70,34 @@ export class EsocialService {
     return e;
   }
 
+  // Tudo o que pode virar evento nesta empresa, com a situação do último evento de cada origem.
+  async origens(consultoriaId: string, empresaId: string) {
+    const empresa = await this.empresa(consultoriaId, empresaId);
+    const [colaboradores, cats, eventos] = await Promise.all([
+      this.prisma.colaborador.findMany({
+        where: { empresaId }, orderBy: { nome: 'asc' },
+        select: { id: true, nome: true, cpf: true, matricula: true, codCateg: true, cargo: true, dataAdmissao: true, ghe: { select: { nome: true } },
+          asos: { select: { id: true, tipo: true, dataExame: true, resultado: true }, orderBy: { dataExame: 'desc' } } },
+      }),
+      this.prisma.cat.findMany({ where: { empresaId }, orderBy: { dataHora: 'desc' }, include: { colaborador: { select: { nome: true } } } }),
+      this.prisma.eventoEsocial.findMany({ where: { empresaId }, orderBy: { createdAt: 'desc' }, select: { tipo: true, referenciaId: true, status: true, recibo: true } }),
+    ]);
+    const ultimo = (tipo: string, ref: string) => eventos.find((e) => e.tipo === tipo && e.referenciaId === ref) ?? null;
+    return {
+      empresa: {
+        esocialAmbiente: empresa.esocialAmbiente, medicoPcmsoNome: empresa.medicoPcmsoNome, medicoPcmsoCrm: empresa.medicoPcmsoCrm,
+        medicoPcmsoCpf: empresa.medicoPcmsoCpf, medicoPcmsoUf: empresa.medicoPcmsoUf, responsavelTecnicoNome: empresa.responsavelTecnicoNome,
+        responsavelTecnicoRegistro: empresa.responsavelTecnicoRegistro, responsavelTecnicoCpf: empresa.responsavelTecnicoCpf,
+        responsavelTecnicoConselho: empresa.responsavelTecnicoConselho, responsavelTecnicoUf: empresa.responsavelTecnicoUf,
+      },
+      colaboradores: colaboradores.map((c) => ({
+        ...c, ghe: c.ghe?.nome ?? null, s2240: ultimo('S-2240', c.id),
+        asos: c.asos.map((a) => ({ ...a, s2220: ultimo('S-2220', a.id) })),
+      })),
+      cats: cats.map(({ colaborador, ...c }) => ({ ...c, colaborador: colaborador.nome, s2210: ultimo('S-2210', c.id) })),
+    };
+  }
+
   // ---------- geração dos eventos ----------
   // Monta, confere o que falta, assina e põe na fila. Um evento ainda não enviado da mesma origem é substituído.
   private async enfileirar(
@@ -115,7 +143,7 @@ export class EsocialService {
     const empresa = await this.empresa(consultoriaId, empresaId);
     const dia = inicio?.slice(0, 10) ?? col.dataAdmissao?.toISOString().slice(0, 10);
     const data = dia ? new Date(`${dia}T12:00:00-03:00`) : null;
-    if (!data || Number.isNaN(data.getTime())) throw new BadRequestException('Informe a data em que o trabalhador começou nessas condições.');
+    if (!data || Number.isNaN(data.getTime())) throw new BadRequestException('Preencha, ao lado do botão, a data em que o trabalhador começou nessas condições.');
     if (col.dataAdmissao && data < col.dataAdmissao) throw new BadRequestException('A data de início não pode ser antes da admissão.');
     return this.enfileirar(consultoriaId, empresaId, 'S-2240', col.id, `Riscos de ${col.nome}${col.ghe ? ` (${col.ghe.nome})` : ''}`, retificar,
       (id) => montarS2240(id, empresa, col, data));
