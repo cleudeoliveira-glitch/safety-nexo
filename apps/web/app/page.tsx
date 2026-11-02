@@ -13,7 +13,7 @@ const segments: [nome: string, rota: string | null][] = [
   ['Admissão e Base', ''],
   ['Operação Diária', '/operacao'],
   ['Pessoas e Cultura', '/treinamentos'],
-  ['Saúde Ocupacional', '#documentos'],
+  ['Saúde Ocupacional', '/saude'],
   ['Emergência', null],
   ['Governança', null],
 ];
@@ -136,7 +136,7 @@ export default function Home() {
         <nav className="mt-8 space-y-3">
           {segments.map(([nome, rota]) =>
             rota !== null && empresaId ? (
-              <Link key={nome} href={`/empresas/${empresaId}${empresaCliente && rota === '#documentos' ? '' : rota}`} className="block text-sm font-medium hover:text-primary">
+              <Link key={nome} href={`/empresas/${empresaId}${rota}`} className="block text-sm font-medium hover:text-primary">
                 {nome}
               </Link>
             ) : (

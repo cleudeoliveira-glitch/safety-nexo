@@ -22,8 +22,22 @@ export type Empresa = {
   logoPath: string | null;
   medicoPcmsoNome: string | null;
   medicoPcmsoCrm: string | null;
+  responsavelTecnicoNome?: string | null;
+  responsavelTecnicoRegistro?: string | null;
+  representanteLegalNome?: string | null;
 };
-export type Risco = { id: string; tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; severidade: string };
+export type AvaliacaoRisco = {
+  tipoAvaliacao: 'QUALITATIVA' | 'QUANTITATIVA';
+  intensidade?: string | null;
+  limiteTolerancia?: string | null;
+  tecnicaMedicao?: string | null;
+  epcEficaz?: boolean | null;
+  epiEficaz?: boolean | null;
+  epiCa?: string | null;
+  codigoAnexoIv?: string | null;
+  aposentadoriaEspecial: boolean;
+};
+export type Risco = { id: string; tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; severidade: string } & Partial<AvaliacaoRisco>;
 export type Exame = {
   id: string;
   nome: string;
@@ -89,6 +103,8 @@ export const criarGhe = (empresaId: string, dados: { nome: string; descricao?: s
   chamar<Ghe>('POST', `/empresas/${empresaId}/ghes`, dados);
 export const criarRisco = (empresaId: string, gheId: string, dados: Omit<Risco, 'id'>) =>
   chamar<Risco>('POST', `/empresas/${empresaId}/ghes/${gheId}/riscos`, dados);
+export const avaliarRisco = (empresaId: string, gheId: string, riscoId: string, dados: AvaliacaoRisco) =>
+  chamar<Risco>('PUT', `/empresas/${empresaId}/ghes/${gheId}/riscos/${riscoId}/avaliacao`, dados);
 export const criarExame = (empresaId: string, gheId: string, dados: Omit<Exame, 'id'>) =>
   chamar<Exame>('POST', `/empresas/${empresaId}/ghes/${gheId}/exames`, dados);
 
@@ -113,7 +129,7 @@ async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
   return res.blob();
 }
 
-export const gerarDocumento = (empresaId: string, tipo: 'pgr' | 'pcmso') =>
+export const gerarDocumento = (empresaId: string, tipo: 'pgr' | 'pcmso' | 'ltcat') =>
   baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo.toUpperCase());
 
 export const buscarCipa = (empresaId: string) => chamar<Cipa>('GET', `/empresas/${empresaId}/cipa`);
@@ -251,3 +267,32 @@ export type Acesso = { token: string; usuario: { nome: string; papel: 'CONSULTOR
 export const entrar = (dados: { email: string; senha: string }) => chamar<Acesso>('POST', '/auth/entrar', dados);
 export const cadastrar = (dados: { nomeConsultoria: string; nome: string; email: string; senha: string }) =>
   chamar<Acesso>('POST', '/auth/cadastro', dados);
+
+// Saúde ocupacional: PPP, AET e CAT.
+export const gerarPpp = (empresaId: string, colaboradorId: string) =>
+  baixarPdf(`/empresas/${empresaId}/colaboradores/${colaboradorId}/ppp`, 'PPP');
+
+export type RecomendacaoAet = { recomendacao: string; prazo?: string; responsavel?: string };
+export type Aet = {
+  id: string; posto: string; data: string; responsavel: string; demanda: string; funcionamento: string;
+  metodos: string; diagnostico: string; recomendacoes: RecomendacaoAet[]; restituicao: string;
+};
+export const listarAets = (empresaId: string) => chamar<Aet[]>('GET', `/empresas/${empresaId}/aets`);
+export const criarAet = (empresaId: string, dados: Omit<Aet, 'id'>) => chamar<Aet>('POST', `/empresas/${empresaId}/aets`, dados);
+export const gerarAet = (empresaId: string, id: string) => baixarPdf(`/empresas/${empresaId}/aets/${id}/pdf`, 'AET');
+
+export type Cat = {
+  id: string; colaboradorId: string; colaborador?: { nome: string; cargo: string };
+  tipoCat: 'INICIAL' | 'REABERTURA' | 'OBITO'; tipoAcidente: 'TIPICO' | 'TRAJETO' | 'DOENCA';
+  dataHora: string; local: string; parteAtingida: string; agenteCausador: string; naturezaLesao: string; descricao: string;
+  houveAfastamento: boolean; houveObito: boolean; prazo: string; enviadaEm: string | null; recibo: string | null;
+};
+export type NovaCat = Omit<Cat, 'id' | 'colaborador' | 'prazo' | 'enviadaEm' | 'recibo' | 'houveObito'> & {
+  houveObito?: boolean; horasTrabalhadas?: string; registroPolicial?: boolean; testemunhas?: string;
+  atendimentoData?: string; medicoNome?: string; medicoCrm?: string; cid?: string; diasTratamento?: number;
+};
+export const listarCats = (empresaId: string) => chamar<Cat[]>('GET', `/empresas/${empresaId}/cats`);
+export const criarCat = (empresaId: string, dados: NovaCat) => chamar<Cat>('POST', `/empresas/${empresaId}/cats`, dados);
+export const marcarCatEnviada = (empresaId: string, id: string, recibo: string) =>
+  chamar<{ ok: boolean }>('POST', `/empresas/${empresaId}/cats/${id}/enviada`, { recibo });
+export const gerarCat = (empresaId: string, id: string) => baixarPdf(`/empresas/${empresaId}/cats/${id}/pdf`, 'CAT');

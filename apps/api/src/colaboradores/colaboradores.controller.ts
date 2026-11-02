@@ -41,4 +41,9 @@ export class ColaboradoresController {
   async fichaEpi(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Res() res: Response) {
     enviarPdf(res, await this.colaboradores.pdfFichaEpi(c, e, id), 'Ficha-EPI.pdf');
   }
+
+  @Post('ppp')
+  async pdfPpp(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Res() res: Response) {
+    enviarPdf(res, await this.colaboradores.pdfPpp(c, e, id), 'PPP.pdf');
+  }
 }

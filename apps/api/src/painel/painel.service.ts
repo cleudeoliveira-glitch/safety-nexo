@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { situacaoCipa } from '../cipa/cipa.service';
+import { prazoCat } from '../saude/prazo-cat';
 import { PrismaService } from '../prisma/prisma.service';
 import { validadeDaTurma } from '../treinamentos/treinamentos.service';
 
@@ -26,6 +27,7 @@ export class PainelService {
           },
         },
         documentos: { orderBy: { geradoEm: 'desc' } },
+        cats: { where: { enviadaEm: null }, include: { colaborador: { select: { nome: true } } } },
       },
     });
     if (!empresa) throw new NotFoundException('Empresa não encontrada');
@@ -81,6 +83,14 @@ export class PainelService {
     pendencias.push(...this.pendenciasDosColaboradores(empresa.colaboradores, hoje));
     pendencias.push(...this.pendenciasDaCipa(empresa, hoje));
     pendencias.push(...this.pendenciasDeTreinamento(empresa.colaboradores, hoje));
+
+    // CAT sem envio ao eSocial: atrasada vira item vencido, no prazo vira tarefa do dia.
+    for (const cat of empresa.cats) {
+      const prazo = prazoCat(cat.dataHora, cat.houveObito);
+      const quando = prazo.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      if (prazo < hoje) pendencias.unshift({ titulo: `CAT fora do prazo: ${cat.colaborador.nome}`, detalhe: `Devia ser enviada até ${quando}. Envie pelo eSocial e registre o recibo`, nivel: 'vencido' });
+      else pendencias.unshift({ titulo: `Envie a CAT de ${cat.colaborador.nome}`, detalhe: `Prazo: ${quando} (eSocial S-2210)`, nivel: 'pendente' });
+    }
 
     const vencimentos = [...ultimos.values()]
       .filter((doc) => doc.vencimento)

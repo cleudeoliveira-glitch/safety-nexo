@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CnaeService } from '../cnae/cnae.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
+import { AvaliacaoRiscoDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 
 @Injectable()
 export class EmpresasService {
@@ -82,6 +82,24 @@ export class EmpresasService {
     const ghe = await this.prisma.ghe.findFirst({ where: { id: gheId, empresaId } });
     if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
     return this.prisma.gheRisco.create({ data: { ...dto, gheId } });
+  }
+
+  async avaliarRisco(consultoriaId: string, empresaId: string, gheId: string, riscoId: string, dto: AvaliacaoRiscoDto) {
+    await this.buscar(consultoriaId, empresaId);
+    const risco = await this.prisma.gheRisco.findFirst({ where: { id: riscoId, gheId, ghe: { empresaId } } });
+    if (!risco) throw new NotFoundException('Risco não encontrado nesta empresa');
+    const vazioVira = (v?: string) => (v === undefined ? undefined : v.trim() || null);
+    return this.prisma.gheRisco.update({
+      where: { id: riscoId },
+      data: {
+        ...dto,
+        intensidade: vazioVira(dto.intensidade),
+        limiteTolerancia: vazioVira(dto.limiteTolerancia),
+        tecnicaMedicao: vazioVira(dto.tecnicaMedicao),
+        epiCa: vazioVira(dto.epiCa),
+        codigoAnexoIv: vazioVira(dto.codigoAnexoIv),
+      },
+    });
   }
 
   async criarExame(consultoriaId: string, empresaId: string, gheId: string, dto: CreateExameGheDto) {

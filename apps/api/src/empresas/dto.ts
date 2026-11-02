@@ -23,6 +23,35 @@ export class CreateEmpresaDto {
   @IsInt()
   @Min(0)
   numFuncionarios?: number;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  responsavelTecnicoNome?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 60)
+  responsavelTecnicoRegistro?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  representanteLegalNome?: string;
+}
+
+export class AvaliacaoRiscoDto {
+  @IsIn(['QUALITATIVA', 'QUANTITATIVA'])
+  tipoAvaliacao!: string;
+
+  @IsOptional() @IsString() @Length(0, 60) intensidade?: string;
+  @IsOptional() @IsString() @Length(0, 60) limiteTolerancia?: string;
+  @IsOptional() @IsString() @Length(0, 200) tecnicaMedicao?: string;
+  @IsOptional() @IsBoolean() epcEficaz?: boolean;
+  @IsOptional() @IsBoolean() epiEficaz?: boolean;
+  @IsOptional() @IsString() @Length(0, 60) epiCa?: string;
+  @IsOptional() @IsString() @Length(0, 20) codigoAnexoIv?: string;
+  @IsBoolean() aposentadoriaEspecial!: boolean;
 }
 
 export class CreateColaboradorDto {
@@ -133,4 +162,19 @@ export class UpdateEmpresaDto {
   @IsInt()
   @Min(0)
   numFuncionarios?: number;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  responsavelTecnicoNome?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 60)
+  responsavelTecnicoRegistro?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  representanteLegalNome?: string;
 }

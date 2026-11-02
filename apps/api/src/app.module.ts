@@ -3,6 +3,7 @@ import { AuthModule } from './auth/auth.module';
 import { CnaeModule } from './cnae/cnae.module';
 import { AcessosModule } from './acessos/acessos';
 import { CipaModule } from './cipa/cipa.module';
+import { SaudeModule } from './saude/saude.module';
 import { OperacaoModule } from './operacao/operacao.module';
 import { TreinamentosModule } from './treinamentos/treinamentos.module';
 import { ColaboradoresModule } from './colaboradores/colaboradores.module';
@@ -14,7 +15,7 @@ import { PainelModule } from './painel/painel.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule],
+  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule],
   controllers: [HealthController],
 })
 export class AppModule {}

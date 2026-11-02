@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { renderAsoHtml } from './aso.template';
 import { CreateAsoDto, CreateEntregaEpiDto } from './dto';
 import { renderFichaEpiHtml } from './ficha-epi.template';
+import { renderPppHtml } from './ppp.template';
 import { examesDoTipo, NOME_TIPO_ASO, proximoExame, TipoAso } from './regras';
 
 const AVISO = 'Documento gerado pelo Safety Nexo. Deve ser conferido e assinado pelos responsáveis.';
@@ -109,6 +110,35 @@ export class ColaboradoresService {
       },
       colaborador,
       [...colaborador.entregasEpi].reverse(),
+    );
+    return this.pdf.render(html);
+  }
+
+  async pdfPpp(consultoriaId: string, empresaId: string, colaboradorId: string) {
+    const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    const { empresa, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, 'PPP');
+    const html = renderPppHtml(
+      {
+        titulo: 'Perfil Profissiográfico Previdenciário (PPP)',
+        logoEmpresa,
+        consultoria,
+        infos: [
+          ['Empresa', empresa.razaoSocial],
+          ['Trabalhador', colaborador.nome],
+        ],
+        aviso: AVISO,
+      },
+      {
+        empresa,
+        trabalhador: { ...colaborador, ghe: colaborador.ghe?.nome ?? null },
+        // Ergonômico e acidente não são agentes nocivos para o PPP.
+        agentes: (colaborador.ghe?.riscos ?? []).filter((r) => ['FISICO', 'QUIMICO', 'BIOLOGICO'].includes(r.tipo)),
+        asos: [...colaborador.asos].reverse().map((a) => ({ ...a, tipo: NOME_TIPO_ASO[a.tipo as TipoAso] ?? a.tipo })),
+        responsavelAmbiental: { nome: empresa.responsavelTecnicoNome, registro: empresa.responsavelTecnicoRegistro },
+        medicoPcmso: { nome: empresa.medicoPcmsoNome, crm: empresa.medicoPcmsoCrm },
+        representanteLegal: empresa.representanteLegalNome,
+        emitidoEm: geradoEm,
+      },
     );
     return this.pdf.render(html);
   }

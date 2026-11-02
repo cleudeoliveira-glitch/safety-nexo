@@ -31,6 +31,9 @@ model Empresa {
   logoPath       String?       // logo da empresa cliente: vai no cabeçalho dos documentos
   medicoPcmsoNome String?      // médico responsável pelo PCMSO (NR-07)
   medicoPcmsoCrm  String?
+  responsavelTecnicoNome     String? // assina LTCAT e registros ambientais do PPP
+  responsavelTecnicoRegistro String? // CREA ou CRM
+  representanteLegalNome     String? // assina o PPP pela empresa
   atendidaSesmt   Boolean      @default(false) // com SESMT, ele cumpre o papel da CIPA (NR-05, 5.4.13.1)
   cipaInicioMandato DateTime?  // início do mandato atual da CIPA (ou do representante nomeado)
   cipaRepresentante String?    // representante nomeado quando a empresa fica abaixo do Quadro I
@@ -44,6 +47,8 @@ model Empresa {
   ddss           Dds[]
   turmas         Turma[]
   usuarios       Usuario[]
+  aets           Aet[]
+  cats           Cat[]
 
   @@unique([consultoriaId, cnpj])
   @@index([consultoriaId])
@@ -65,6 +70,7 @@ model Colaborador {
   entregasEpi   EntregaEpi[]
   cipa          CipaMembro[]
   treinamentos  Participacao[]
+  cats          Cat[]
 
   @@index([empresaId])
 }
@@ -92,6 +98,16 @@ model GheRisco {
   fonteGeradora String
   medidasControle String?
   severidade  String  @default("MEDIA") // BAIXA, MEDIA, ALTA
+  // Avaliação do agente: base do LTCAT e do PPP (registros ambientais / S-2240).
+  tipoAvaliacao       String?  // QUALITATIVA | QUANTITATIVA
+  intensidade         String?  // resultado medido, com unidade. Ex.: 88 dB(A)
+  limiteTolerancia    String?  // Ex.: 85 dB(A)
+  tecnicaMedicao      String?  // Ex.: NHO-01 Fundacentro
+  epcEficaz           Boolean?
+  epiEficaz           Boolean?
+  epiCa               String?
+  codigoAnexoIv       String?  // código do Anexo IV do Decreto 3.048/99, quando enquadra
+  aposentadoriaEspecial Boolean @default(false) // conclusão do responsável técnico
 
   @@index([gheId])
 }
@@ -312,4 +328,55 @@ model Participacao {
   createdAt     DateTime    @default(now())
 
   @@unique([turmaId, colaboradorId])
+}
+
+// Análise Ergonômica do Trabalho (NR-17, item 17.3).
+model Aet {
+  id             String   @id @default(cuid())
+  empresaId      String
+  empresa        Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  posto          String   // posto, setor ou atividade analisada
+  data           DateTime
+  responsavel    String
+  demanda        String   // análise da demanda
+  funcionamento  String   // organização, processos, situações de trabalho e atividade
+  metodos        String   // métodos, técnicas e ferramentas usados e por quê
+  diagnostico    String
+  recomendacoes  Json     // [{ recomendacao, prazo, responsavel }]
+  restituicao    String   // restituição e validação com os trabalhadores
+  createdAt      DateTime @default(now())
+
+  @@index([empresaId])
+}
+
+// Comunicação de Acidente de Trabalho (dados do S-2210).
+model Cat {
+  id               String      @id @default(cuid())
+  empresaId        String
+  empresa          Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  colaboradorId    String
+  colaborador      Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  tipoCat          String      // INICIAL | REABERTURA | OBITO
+  tipoAcidente     String      // TIPICO | TRAJETO | DOENCA
+  dataHora         DateTime
+  horasTrabalhadas String?     // horas trabalhadas antes do acidente. Ex.: 03:30
+  local            String
+  parteAtingida    String
+  agenteCausador   String
+  naturezaLesao    String
+  descricao        String
+  houveAfastamento Boolean
+  houveObito       Boolean     @default(false)
+  registroPolicial Boolean     @default(false)
+  testemunhas      String?
+  atendimentoData  DateTime?
+  medicoNome       String?
+  medicoCrm        String?
+  cid              String?
+  diasTratamento   Int?
+  enviadaEm        DateTime?   // quando foi transmitida ao eSocial
+  recibo           String?     // número do recibo do eSocial
+  createdAt        DateTime    @default(now())
+
+  @@index([empresaId])
 }

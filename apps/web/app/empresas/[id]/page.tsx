@@ -17,6 +17,9 @@ import {
   criarExame,
   criarGhe,
   criarRisco,
+  avaliarRisco,
+  Risco,
+  AvaliacaoRisco,
   definirMedico,
   Empresa,
   enviarLogoEmpresa,
@@ -96,11 +99,21 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     };
   }
 
-  async function baixar(tipo: 'pgr' | 'pcmso' | 'cipa') {
+  async function baixar(tipo: 'pgr' | 'pcmso' | 'ltcat' | 'cipa') {
     try {
       const pdf = tipo === 'cipa' ? await gerarCipa(empresaId) : await gerarDocumento(empresaId, tipo);
       salvarArquivo(pdf, `${tipo.toUpperCase()}-${empresa?.razaoSocial ?? 'empresa'}.pdf`);
       setAviso({ tipo: 'ok', texto: tipo === 'cipa' ? 'Dimensionamento da CIPA gerado.' : `${tipo.toUpperCase()} gerado.` });
+    } catch (e) {
+      setAviso({ tipo: 'erro', texto: (e as Error).message });
+    }
+  }
+
+  async function agir(acao: () => Promise<unknown>, sucesso: string) {
+    try {
+      await acao();
+      setAviso({ tipo: 'ok', texto: sucesso });
+      await recarregar();
     } catch (e) {
       setAviso({ tipo: 'erro', texto: (e as Error).message });
     }
@@ -133,6 +146,9 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
               cnae: texto(d, 'cnae') || undefined,
               grauRisco: texto(d, 'grauRisco') ? Number(texto(d, 'grauRisco')) : undefined,
               numFuncionarios: Number(texto(d, 'numFuncionarios') || 0),
+              responsavelTecnicoNome: texto(d, 'rtNome') || undefined,
+              responsavelTecnicoRegistro: texto(d, 'rtRegistro') || undefined,
+              representanteLegalNome: texto(d, 'representante') || undefined,
             });
             const logo = d.get('logo');
             if (logo instanceof File && logo.size > 0) await enviarLogoEmpresa(empresaId, logo);
@@ -148,7 +164,12 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Campo id="numFuncionarios" name="numFuncionarios" type="number" min={0} rotulo="Funcionários" defaultValue={empresa.numFuncionarios} />
           <Campo id="logo" name="logo" type="file" accept="image/png,image/jpeg" rotulo="Logo da empresa" className="md:col-span-2"
             dica={empresa.logoPath ? 'Logo já enviada. Envie outra para trocar.' : 'PNG ou JPG, até 2 MB. Sai no cabeçalho dos documentos.'} />
-          <div className="flex items-end justify-end"><Botao type="submit">Salvar dados</Botao></div>
+          <Campo id="rtNome" name="rtNome" rotulo="Responsável técnico" defaultValue={empresa.responsavelTecnicoNome ?? ''} placeholder="Ex.: Cleude Oliveira"
+            ajuda={{ oQueE: 'Engenheiro(a) de segurança ou médico(a) do trabalho que assina o LTCAT e os registros ambientais do PPP.', baseLegal: 'Lei 8.213/91, art. 58' }} />
+          <Campo id="rtRegistro" name="rtRegistro" rotulo="Registro profissional" defaultValue={empresa.responsavelTecnicoRegistro ?? ''} placeholder="Ex.: CREA-SP 123456" />
+          <Campo id="representante" name="representante" rotulo="Representante legal" defaultValue={empresa.representanteLegalNome ?? ''} placeholder="Quem assina o PPP pela empresa"
+            ajuda={{ oQueE: 'Sócio, diretor ou procurador que assina o PPP em nome da empresa.' }} />
+          <div className="flex items-end justify-end md:col-span-3"><Botao type="submit">Salvar dados</Botao></div>
         </form>
       </Cartao>
 
@@ -177,7 +198,12 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
               ) : (
                 <ul className="mt-1 space-y-1 text-sm">
                   {ghe.riscos.map((r) => (
-                    <li key={r.id}>{r.agente} · {r.fonteGeradora} · severidade {r.severidade.toLowerCase()}</li>
+                    <li key={r.id}>
+                      {r.agente} · {r.fonteGeradora} · severidade {r.severidade.toLowerCase()}
+                      {AGENTES_LTCAT.includes(r.tipo) && (
+                        <AvaliarRisco risco={r} salvar={(dados) => agir(() => avaliarRisco(empresaId, ghe.id, r.id, dados), `Avaliação de ${r.agente} salva.`)} />
+                      )}
+                    </li>
                   ))}
                 </ul>
               )}
@@ -372,10 +398,13 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
 
       {!cliente && (<>
       <Cartao titulo="6. Documentos" id="documentos">
-        <p className="mb-4 text-sm text-text/60">Cada documento sai em PDF com a logo da empresa no cabeçalho e a da sua consultoria no rodapé.</p>
+        <p className="mb-4 text-sm text-text/60">Cada documento sai em PDF com a logo da empresa no cabeçalho e a da sua consultoria no rodapé.
+          O LTCAT usa as avaliações dos riscos físicos, químicos e biológicos de cada GHE. O PPP de cada pessoa fica na página do colaborador.</p>
         <div className="flex flex-wrap gap-3">
           <Botao onClick={() => baixar('pgr')}>Gerar PGR</Botao>
           <Botao onClick={() => baixar('pcmso')}>Gerar PCMSO</Botao>
+          <Botao onClick={() => baixar('ltcat')}>Gerar LTCAT</Botao>
+          <Link href={`/empresas/${empresaId}/saude`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">AET e CAT →</Link>
         </div>
       </Cartao>
 
@@ -458,5 +487,68 @@ function ResumoCipa({ cipa }: { cipa: Cipa }) {
         </ul>
       )}
     </div>
+  );
+}
+
+const AGENTES_LTCAT: string[] = ['FISICO', 'QUIMICO', 'BIOLOGICO'];
+
+// Avaliação do agente para o LTCAT e o PPP. Fica fechada até a consultoria abrir.
+function AvaliarRisco({ risco, salvar }: { risco: Risco; salvar: (dados: AvaliacaoRisco) => void }) {
+  const avaliado = Boolean(risco.tipoAvaliacao);
+  const [tipo, setTipo] = useState(risco.tipoAvaliacao ?? 'QUANTITATIVA');
+  const simNao = (v: FormDataEntryValue | null) => (v === 'S' ? true : v === 'N' ? false : null);
+  const valor = (v: boolean | null | undefined) => (v === true ? 'S' : v === false ? 'N' : '');
+  return (
+    <details className="ml-1 inline">
+      <summary className={`inline cursor-pointer text-xs font-semibold hover:underline ${avaliado ? 'text-success' : 'text-warning'}`}>
+        {' '}· {avaliado ? `avaliado${risco.intensidade ? `: ${risco.intensidade}` : ''} (editar)` : 'falta avaliar para LTCAT/PPP'}
+      </summary>
+      <form
+        className="mt-2 grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3"
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          const d = new FormData(ev.currentTarget);
+          const t = (c: string) => String(d.get(c) ?? '').trim();
+          salvar({
+            tipoAvaliacao: tipo as AvaliacaoRisco['tipoAvaliacao'],
+            intensidade: t('intensidade'),
+            limiteTolerancia: t('limite'),
+            tecnicaMedicao: t('tecnica'),
+            epcEficaz: simNao(d.get('epc')),
+            epiEficaz: simNao(d.get('epi')),
+            epiCa: t('ca'),
+            codigoAnexoIv: t('anexo'),
+            aposentadoriaEspecial: d.get('especial') === 'S',
+          });
+        }}
+      >
+        <Selecao id={`av-tipo-${risco.id}`} rotulo="Avaliação" value={tipo} onChange={(e) => setTipo(e.target.value as AvaliacaoRisco['tipoAvaliacao'])}
+          ajuda={{ oQueE: 'Quantitativa quando o agente foi medido com equipamento. Qualitativa quando a exposição foi caracterizada só por inspeção.', baseLegal: 'NR-09 e NR-15' }}>
+          <option value="QUANTITATIVA">Quantitativa (medida)</option>
+          <option value="QUALITATIVA">Qualitativa</option>
+        </Selecao>
+        {tipo === 'QUANTITATIVA' && (<>
+          <Campo id={`av-int-${risco.id}`} name="intensidade" rotulo="Resultado da medição" defaultValue={risco.intensidade ?? ''} placeholder="Ex.: 88 dB(A)" />
+          <Campo id={`av-lim-${risco.id}`} name="limite" rotulo="Limite de tolerância" defaultValue={risco.limiteTolerancia ?? ''} placeholder="Ex.: 85 dB(A)" />
+        </>)}
+        <Campo id={`av-tec-${risco.id}`} name="tecnica" rotulo="Técnica utilizada" defaultValue={risco.tecnicaMedicao ?? ''} className="md:col-span-3"
+          placeholder={tipo === 'QUANTITATIVA' ? 'Ex.: Dosimetria, NHO 01 da Fundacentro' : 'Ex.: Inspeção do ambiente e entrevista'} />
+        <Selecao id={`av-epc-${risco.id}`} name="epc" rotulo="EPC eficaz?" defaultValue={valor(risco.epcEficaz)}>
+          <option value="">Não se aplica</option><option value="S">Sim</option><option value="N">Não</option>
+        </Selecao>
+        <Selecao id={`av-epi-${risco.id}`} name="epi" rotulo="EPI eficaz?" defaultValue={valor(risco.epiEficaz)}
+          ajuda={{ oQueE: 'Se o EPI neutraliza a exposição. Vai para o PPP e pesa na aposentadoria especial.' }}>
+          <option value="">Não se aplica</option><option value="S">Sim</option><option value="N">Não</option>
+        </Selecao>
+        <Campo id={`av-ca-${risco.id}`} name="ca" rotulo="CA do EPI" defaultValue={risco.epiCa ?? ''} placeholder="Ex.: 12345" />
+        <Campo id={`av-anexo-${risco.id}`} name="anexo" rotulo="Código do Anexo IV" defaultValue={risco.codigoAnexoIv ?? ''} placeholder="Ex.: 2.0.1"
+          ajuda={{ oQueE: 'Código do agente na lista de agentes nocivos da Previdência.', baseLegal: 'Decreto 3.048/99, Anexo IV' }} />
+        <Selecao id={`av-esp-${risco.id}`} name="especial" rotulo="Enseja aposentadoria especial?" defaultValue={risco.aposentadoriaEspecial ? 'S' : 'N'}
+          ajuda={{ oQueE: 'Sua conclusão técnica: a exposição dá direito à aposentadoria especial? Sai na conclusão do LTCAT.' }}>
+          <option value="N">Não</option><option value="S">Sim</option>
+        </Selecao>
+        <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Salvar avaliação</Botao></div>
+      </form>
+    </details>
   );
 }
