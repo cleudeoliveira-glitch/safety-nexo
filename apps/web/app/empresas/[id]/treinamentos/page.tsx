@@ -127,10 +127,17 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
 
       <Cartao titulo="Nova turma de treinamento">
         <Selecao id="tr-modelo" rotulo="Começar de um modelo" value={modelo.nome} onChange={(e) => escolherModelo(e.target.value)} className="mb-4"
-          ajuda={{ oQueE: 'Preenche nome, norma, carga horária, validade e conteúdo. Você pode ajustar tudo antes de salvar.' }}>
+          ajuda={{ oQueE: `${catalogo.length} modelos de ${new Set(catalogo.map((m) => m.norma).filter(Boolean)).size} NRs. Preenche nome, norma, carga horária, validade e conteúdo. Você pode ajustar tudo antes de salvar.` }}>
           <option value="">Treinamento livre (preencher do zero)</option>
-          {catalogo.map((m) => <option key={m.nome} value={m.nome}>{m.norma ? `${m.norma} · ` : ''}{m.nome}</option>)}
+          {[...new Set(catalogo.map((m) => m.norma ?? 'Outros'))].sort().map((norma) => (
+            <optgroup key={norma} label={norma}>
+              {catalogo.filter((m) => (m.norma ?? 'Outros') === norma).map((m) => <option key={m.nome} value={m.nome}>{m.nome}</option>)}
+            </optgroup>
+          ))}
         </Selecao>
+        {modelo.nome && modelo.cargaHoraria === null && (
+          <p className="-mt-2 mb-4 text-sm text-warning">Esta norma não fixa carga horária nem reciclagem: defina conforme o seu programa de capacitação (NR-01, item 1.7).</p>
+        )}
 
         <form key={chaveForm} className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-3">
