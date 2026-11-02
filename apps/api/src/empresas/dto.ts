@@ -52,6 +52,14 @@ export class AvaliacaoRiscoDto {
   @IsOptional() @IsString() @Length(0, 60) epiCa?: string;
   @IsOptional() @IsString() @Length(0, 20) codigoAnexoIv?: string;
   @IsBoolean() aposentadoriaEspecial!: boolean;
+  @IsOptional() @IsString() @Length(0, 10) anexoNr15?: string | null;
+  @IsOptional() @IsIn(['NAO', 'MINIMO', 'MEDIO', 'MAXIMO']) grauInsalubridade?: string | null;
+}
+
+export class PericulosidadeDto {
+  @IsIn(['NENHUM', 'EXPLOSIVOS', 'INFLAMAVEIS', 'SEGURANCA', 'ELETRICIDADE', 'MOTOCICLETA', 'RADIACOES'], { message: 'Escolha o anexo da NR-16 ou "não perigoso".' })
+  anexo!: string;
+  @IsOptional() @IsString() @Length(0, 2000) justificativa?: string;
 }
 
 export class CreateColaboradorDto {

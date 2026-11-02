@@ -49,6 +49,7 @@ model Empresa {
   usuarios       Usuario[]
   aets           Aet[]
   cats           Cat[]
+  inspecoes      Inspecao[]
 
   @@unique([consultoriaId, cnpj])
   @@index([consultoriaId])
@@ -82,6 +83,9 @@ model Ghe {
   empresa       Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   nome          String
   descricao     String?
+  // Periculosidade (NR-16): anexo que enquadra a atividade do GHE, ou NENHUM quando avaliado e não perigoso.
+  periculosidadeAnexo         String?
+  periculosidadeJustificativa String?
   riscos        GheRisco[]
   exames        ExameGhe[]
   colaboradores Colaborador[]
@@ -102,6 +106,9 @@ model GheRisco {
   tipoAvaliacao       String?  // QUALITATIVA | QUANTITATIVA
   intensidade         String?  // resultado medido, com unidade. Ex.: 88 dB(A)
   limiteTolerancia    String?  // Ex.: 85 dB(A)
+  // Insalubridade (NR-15): anexo e grau (NAO, MINIMO, MEDIO, MAXIMO).
+  anexoNr15           String?
+  grauInsalubridade   String?
   tecnicaMedicao      String?  // Ex.: NHO-01 Fundacentro
   epcEficaz           Boolean?
   epiEficaz           Boolean?
@@ -377,6 +384,22 @@ model Cat {
   enviadaEm        DateTime?   // quando foi transmitida ao eSocial
   recibo           String?     // número do recibo do eSocial
   createdAt        DateTime    @default(now())
+
+  @@index([empresaId])
+}
+
+// Inspeção por checklist de NR (feita pela consultoria ou pela própria empresa).
+model Inspecao {
+  id        String   @id @default(cuid())
+  empresaId String
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  modelo    String   // NR-06, NR-10, NR-12, NR-23, NR-24 ou LIVRE
+  titulo    String
+  local     String
+  data      DateTime
+  inspetor  String
+  itens     Json     // [{ texto, resposta: C | NC | NA, observacao }]
+  createdAt DateTime @default(now())
 
   @@index([empresaId])
 }

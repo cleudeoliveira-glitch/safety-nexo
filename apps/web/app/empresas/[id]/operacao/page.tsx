@@ -25,13 +25,21 @@ import {
   Permissao,
   salvarArquivo,
   TipoPt,
+  buscarModelosChecklist,
+  criarInspecao,
+  gerarInspecao,
+  Inspecao,
+  ItemInspecao,
+  listarInspecoes,
+  ModeloChecklist,
 } from '@/lib/api';
 
-type Aba = 'apr' | 'pt' | 'dds';
+type Aba = 'apr' | 'pt' | 'dds' | 'checklist';
 const ABAS: [Aba, string][] = [
   ['apr', 'Análise de risco (APR)'],
   ['pt', 'Permissão de trabalho'],
   ['dds', 'DDS'],
+  ['checklist', 'Checklist de NRs'],
 ];
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
@@ -312,6 +320,118 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
   );
 }
 
+const RESPOSTAS: [ItemInspecao['resposta'], string, string][] = [
+  ['C', 'Conforme', 'bg-success text-white'],
+  ['NC', 'Não conforme', 'bg-danger text-white'],
+  ['NA', 'Não se aplica', 'bg-text/60 text-white'],
+];
+
+function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: {
+  empresaId: string; lista: Inspecao[]; modelos: ModeloChecklist[]; recarregar: () => Promise<void>; avisar: Avisar;
+}) {
+  const [modelo, setModelo] = useState('');
+  const [itens, setItens] = useState<(Omit<ItemInspecao, 'resposta'> & { resposta: ItemInspecao['resposta'] | '' })[]>([]);
+  const [novoItem, setNovoItem] = useState('');
+  const [chave, setChave] = useState(0);
+
+  function escolher(valor: string) {
+    setModelo(valor);
+    const m = modelos.find((x) => x.modelo === valor);
+    setItens((m?.itens ?? []).map((texto) => ({ texto, resposta: '' })));
+  }
+  const mudar = (i: number, campos: Partial<ItemInspecao>) => setItens((x) => x.map((it, j) => (j === i ? { ...it, ...campos } : it)));
+
+  async function salvar(ev: React.FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    const d = new FormData(ev.currentTarget);
+    const t = (c: string) => String(d.get(c) ?? '').trim();
+    const faltam = itens.filter((i) => !i.resposta).length;
+    if (faltam) return avisar('erro', `Responda todos os itens: faltam ${faltam}.`);
+    try {
+      await criarInspecao(empresaId, {
+        modelo: modelo || 'LIVRE',
+        titulo: modelos.find((m) => m.modelo === modelo)?.titulo ?? t('titulo'),
+        local: t('local'), data: t('data'), inspetor: t('inspetor'),
+        itens: itens.map((i) => ({ texto: i.texto, resposta: i.resposta as ItemInspecao['resposta'], ...(i.observacao?.trim() ? { observacao: i.observacao.trim() } : {}) })),
+      });
+      setModelo(''); setItens([]); setChave((k) => k + 1);
+      avisar('ok', 'Inspeção salva. Baixe o relatório: as não conformidades já saem no plano de ação.');
+      await recarregar();
+    } catch (e) {
+      avisar('erro', (e as Error).message);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <Cartao titulo="Nova inspeção">
+        <form key={chave} className="space-y-4" onSubmit={salvar}>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Selecao id="ck-modelo" rotulo="Checklist" value={modelo} onChange={(e) => escolher(e.target.value)} className="md:col-span-3"
+              ajuda={{ oQueE: 'Escolha a norma para carregar os itens prontos. Você pode reescrever, tirar ou incluir itens antes de salvar.' }}>
+              <option value="">Checklist livre (montar do zero)</option>
+              {modelos.map((m) => <option key={m.modelo} value={m.modelo}>{m.titulo}</option>)}
+            </Selecao>
+            {!modelo && <Campo id="ck-titulo" name="titulo" rotulo="Nome do checklist" required placeholder="Ex.: Inspeção do almoxarifado" className="md:col-span-3" />}
+            <Campo id="ck-local" name="local" rotulo="Local inspecionado" required placeholder="Ex.: Produção" />
+            <Campo id="ck-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
+            <Campo id="ck-inspetor" name="inspetor" rotulo="Inspetor(a)" required placeholder="Quem fez a inspeção" />
+          </div>
+
+          {itens.length > 0 && (
+            <ol className="divide-y divide-border rounded-card border border-border">
+              {itens.map((it, i) => (
+                <li key={i} className="space-y-2 p-3 text-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <input aria-label={`Item ${i + 1}`} value={it.texto} onChange={(e) => mudar(i, { texto: e.target.value })}
+                      className="min-w-64 flex-1 rounded-card border border-transparent bg-transparent px-1 py-1 hover:border-border" />
+                    <div className="flex flex-wrap gap-1">
+                      {RESPOSTAS.map(([valor, nome, cor]) => (
+                        <button key={valor} type="button" aria-pressed={it.resposta === valor} onClick={() => mudar(i, { resposta: valor })}
+                          className={`rounded-card px-3 py-1 text-xs font-semibold ${it.resposta === valor ? cor : 'border border-border bg-white'}`}>{nome}</button>
+                      ))}
+                      <button type="button" className="px-2 text-xs text-danger hover:underline" onClick={() => setItens((x) => x.filter((_, j) => j !== i))}>Tirar</button>
+                    </div>
+                  </div>
+                  {it.resposta === 'NC' && (
+                    <input aria-label={`Observação ${i + 1}`} value={it.observacao ?? ''} onChange={(e) => mudar(i, { observacao: e.target.value })}
+                      placeholder="O que está errado? Ex.: caixas bloqueando a saída dos fundos" className={caixaTexto} />
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+          <div className="flex flex-wrap items-end gap-2">
+            <Campo id="ck-novo" rotulo="Incluir item" value={novoItem} onChange={(e) => setNovoItem(e.target.value)} className="min-w-64 flex-1" placeholder="Ex.: Escada de acesso ao mezanino com corrimão" />
+            <Botao type="button" variante="secundario" onClick={() => { if (novoItem.trim()) { setItens((x) => [...x, { texto: novoItem.trim(), resposta: '' }]); setNovoItem(''); } }}>Incluir</Botao>
+          </div>
+          <div className="flex justify-end"><Botao type="submit" disabled={!itens.length}>Salvar inspeção</Botao></div>
+        </form>
+      </Cartao>
+
+      <Cartao titulo="Inspeções feitas">
+        {lista.length === 0 ? <p className="text-sm text-text/60">Nenhuma inspeção ainda.</p> : (
+          <ul className="divide-y divide-border text-sm">
+            {lista.map((i) => (
+              <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                <span>
+                  <strong>{i.titulo}</strong> · {i.local} · {data(i.data)} ·{' '}
+                  <span className={`font-semibold ${i.resumo.percentual >= 80 ? 'text-success' : 'text-danger'}`}>{i.resumo.percentual}% conforme</span>
+                  {i.resumo.naoConformes > 0 && <span className="text-text/60"> · {i.resumo.naoConformes} não conformidade(s)</span>}
+                </span>
+                <Botao variante="secundario" onClick={async () => {
+                  try { salvarArquivo(await gerarInspecao(empresaId, i.id), `Inspecao-${i.modelo}-${i.data.slice(0, 10)}.pdf`); }
+                  catch (e) { avisar('erro', (e as Error).message); }
+                }}>Baixar relatório</Botao>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Cartao>
+    </div>
+  );
+}
+
 export default function OperacaoPage({ params }: { params: { id: string } }) {
   const empresaId = params.id;
   const [aba, setAba] = useState<Aba>('apr');
@@ -321,6 +441,8 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
   const [aprs, setAprs] = useState<Apr[]>([]);
   const [permissoes, setPermissoes] = useState<Permissao[]>([]);
   const [dds, setDds] = useState<Dds[]>([]);
+  const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
+  const [modelos, setModelos] = useState<ModeloChecklist[]>([]);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
 
   const recarregar = useCallback(async () => {
@@ -329,7 +451,8 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
         buscarEmpresa(empresaId), buscarConteudoOperacao(), listarColaboradores(empresaId),
         listarAprs(empresaId), listarPermissoes(empresaId), listarDds(empresaId),
       ]);
-      setEmpresa(e); setConteudo(ct); setColaboradores(c); setAprs(a); setPermissoes(p); setDds(d);
+      const [ins, mod] = await Promise.all([listarInspecoes(empresaId), buscarModelosChecklist()]);
+      setEmpresa(e); setConteudo(ct); setColaboradores(c); setAprs(a); setPermissoes(p); setDds(d); setInspecoes(ins); setModelos(mod);
     } catch (e) {
       setAviso({ tipo: 'erro', texto: (e as Error).message });
     }
@@ -375,6 +498,7 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
       {aba === 'apr' && <AbaApr {...comum} aprs={aprs} baixar={baixador('aprs')} />}
       {aba === 'pt' && <AbaPt {...comum} aprs={aprs} permissoes={permissoes} conteudo={conteudo} baixar={baixador('permissoes')} />}
       {aba === 'dds' && <AbaDds {...comum} lista={dds} conteudo={conteudo} baixar={baixador('dds')} />}
+      {aba === 'checklist' && <AbaChecklist empresaId={empresaId} lista={inspecoes} modelos={modelos} recarregar={recarregar} avisar={avisar} />}
     </main>
   );
 }

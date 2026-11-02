@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ConsultoriaId } from '../common/consultoria.decorator';
-import { AvaliacaoRiscoDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
+import { AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 import { EmpresasService } from './empresas.service';
 import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
@@ -78,6 +78,16 @@ export class EmpresasController {
     @Body() dto: CreateExameGheDto,
   ) {
     return this.empresas.criarExame(consultoriaId, empresaId, gheId, dto);
+  }
+
+  @Put(':empresaId/ghes/:gheId/periculosidade')
+  definirPericulosidade(
+    @ConsultoriaId() consultoriaId: string,
+    @Param('empresaId') empresaId: string,
+    @Param('gheId') gheId: string,
+    @Body() dto: PericulosidadeDto,
+  ) {
+    return this.empresas.definirPericulosidade(consultoriaId, empresaId, gheId, dto);
   }
 
   @Put(':empresaId/ghes/:gheId/riscos/:riscoId/avaliacao')

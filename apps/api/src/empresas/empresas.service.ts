@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CnaeService } from '../cnae/cnae.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { AvaliacaoRiscoDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
+import { AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 
 @Injectable()
 export class EmpresasService {
@@ -98,7 +98,18 @@ export class EmpresasService {
         tecnicaMedicao: vazioVira(dto.tecnicaMedicao),
         epiCa: vazioVira(dto.epiCa),
         codigoAnexoIv: vazioVira(dto.codigoAnexoIv),
+        anexoNr15: dto.anexoNr15 === null ? null : vazioVira(dto.anexoNr15),
       },
+    });
+  }
+
+  async definirPericulosidade(consultoriaId: string, empresaId: string, gheId: string, dto: PericulosidadeDto) {
+    await this.buscar(consultoriaId, empresaId);
+    const ghe = await this.prisma.ghe.findFirst({ where: { id: gheId, empresaId } });
+    if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
+    return this.prisma.ghe.update({
+      where: { id: gheId },
+      data: { periculosidadeAnexo: dto.anexo, periculosidadeJustificativa: dto.justificativa?.trim() || null },
     });
   }
 

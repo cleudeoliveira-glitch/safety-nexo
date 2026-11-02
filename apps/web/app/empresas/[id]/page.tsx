@@ -20,6 +20,10 @@ import {
   avaliarRisco,
   Risco,
   AvaliacaoRisco,
+  AnexosLaudo,
+  buscarAnexosLaudo,
+  definirPericulosidade,
+  TipoDocumento,
   definirMedico,
   Empresa,
   enviarLogoEmpresa,
@@ -57,6 +61,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   const [cipa, setCipa] = useState<Cipa | null>(null);
   const [cliente, setCliente] = useState(false);
   const [acessos, setAcessos] = useState<AcessoEmpresa[]>([]);
+  const [anexos, setAnexos] = useState<AnexosLaudo | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
 
   const recarregar = useCallback(async () => {
@@ -70,7 +75,11 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       setEmpresa(e);
       setCipa(ci);
       // Logins da empresa cliente: só a consultoria vê e cria.
-      if (!ehEmpresa()) setAcessos(await listarAcessos(empresaId));
+      if (!ehEmpresa()) {
+        const [a, an] = await Promise.all([listarAcessos(empresaId), buscarAnexosLaudo()]);
+        setAcessos(a);
+        setAnexos(an);
+      }
       setGhes(g);
       setColaboradores(c);
     } catch (e) {
@@ -99,11 +108,22 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     };
   }
 
-  async function baixar(tipo: 'pgr' | 'pcmso' | 'ltcat' | 'cipa') {
+  const NOMES: Record<TipoDocumento | 'cipa', [arquivo: string, aviso: string]> = {
+    pgr: ['PGR', 'PGR gerado.'],
+    pcmso: ['PCMSO', 'PCMSO gerado.'],
+    ltcat: ['LTCAT', 'LTCAT gerado.'],
+    lip: ['LIP', 'Laudo de insalubridade e periculosidade gerado.'],
+    lpp: ['LPP', 'Laudo de periculosidade gerado.'],
+    pgrtr: ['PGRTR', 'PGRTR gerado.'],
+    os: ['Ordens-de-servico', 'Ordens de serviço geradas, uma página por colaborador.'],
+    cipa: ['CIPA', 'Dimensionamento da CIPA gerado.'],
+  };
+  async function baixar(tipo: TipoDocumento | 'cipa') {
     try {
       const pdf = tipo === 'cipa' ? await gerarCipa(empresaId) : await gerarDocumento(empresaId, tipo);
-      salvarArquivo(pdf, `${tipo.toUpperCase()}-${empresa?.razaoSocial ?? 'empresa'}.pdf`);
-      setAviso({ tipo: 'ok', texto: tipo === 'cipa' ? 'Dimensionamento da CIPA gerado.' : `${tipo.toUpperCase()} gerado.` });
+      const [arquivo, texto] = NOMES[tipo];
+      salvarArquivo(pdf, `${arquivo}-${empresa?.razaoSocial ?? 'empresa'}.pdf`);
+      setAviso({ tipo: 'ok', texto });
     } catch (e) {
       setAviso({ tipo: 'erro', texto: (e as Error).message });
     }
@@ -201,7 +221,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                     <li key={r.id}>
                       {r.agente} · {r.fonteGeradora} · severidade {r.severidade.toLowerCase()}
                       {AGENTES_LTCAT.includes(r.tipo) && (
-                        <AvaliarRisco risco={r} salvar={(dados) => agir(() => avaliarRisco(empresaId, ghe.id, r.id, dados), `Avaliação de ${r.agente} salva.`)} />
+                        <AvaliarRisco risco={r} anexos={anexos} salvar={(dados) => agir(() => avaliarRisco(empresaId, ghe.id, r.id, dados), `Avaliação de ${r.agente} salva.`)} />
                       )}
                     </li>
                   ))}
@@ -234,6 +254,11 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                 <Campo id={`medidas-${ghe.id}`} name="medidas" rotulo="Medidas de controle" className="md:col-span-3" placeholder="Ex.: Protetor auricular tipo plug" />
                 <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Adicionar risco</Botao></div>
               </form>
+
+              {anexos && (
+                <Periculosidade ghe={ghe} anexos={anexos}
+                  salvar={(dados) => agir(() => definirPericulosidade(empresaId, ghe.id, dados), `Periculosidade de ${ghe.nome} salva.`)} />
+              )}
 
               <h4 className="mt-5 text-sm font-semibold">Exames do PCMSO</h4>
               {ghe.exames.length === 0 ? (
@@ -399,11 +424,16 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       {!cliente && (<>
       <Cartao titulo="6. Documentos" id="documentos">
         <p className="mb-4 text-sm text-text/60">Cada documento sai em PDF com a logo da empresa no cabeçalho e a da sua consultoria no rodapé.
-          O LTCAT usa as avaliações dos riscos físicos, químicos e biológicos de cada GHE. O PPP de cada pessoa fica na página do colaborador.</p>
+          O LTCAT e o LIP usam as avaliações dos riscos físicos, químicos e biológicos de cada GHE; o LPP usa a periculosidade de cada GHE.
+          O PGRTR é a versão do PGR para atividade rural (NR-31). O PPP e a ordem de serviço de cada pessoa também ficam na página do colaborador.</p>
         <div className="flex flex-wrap gap-3">
           <Botao onClick={() => baixar('pgr')}>Gerar PGR</Botao>
           <Botao onClick={() => baixar('pcmso')}>Gerar PCMSO</Botao>
           <Botao onClick={() => baixar('ltcat')}>Gerar LTCAT</Botao>
+          <Botao onClick={() => baixar('lip')}>Gerar LIP</Botao>
+          <Botao onClick={() => baixar('lpp')}>Gerar LPP</Botao>
+          <Botao onClick={() => baixar('pgrtr')} title="Para empresas com atividade rural (NR-31)">Gerar PGRTR</Botao>
+          <Botao variante="secundario" onClick={() => baixar('os')}>Ordens de serviço (todos)</Botao>
           <Link href={`/empresas/${empresaId}/saude`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">AET e CAT →</Link>
         </div>
       </Cartao>
@@ -493,9 +523,17 @@ function ResumoCipa({ cipa }: { cipa: Cipa }) {
 const AGENTES_LTCAT: string[] = ['FISICO', 'QUIMICO', 'BIOLOGICO'];
 
 // Avaliação do agente para o LTCAT e o PPP. Fica fechada até a consultoria abrir.
-function AvaliarRisco({ risco, salvar }: { risco: Risco; salvar: (dados: AvaliacaoRisco) => void }) {
+function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosLaudo | null; salvar: (dados: AvaliacaoRisco) => void }) {
   const avaliado = Boolean(risco.tipoAvaliacao);
   const [tipo, setTipo] = useState(risco.tipoAvaliacao ?? 'QUANTITATIVA');
+  const [anexo, setAnexo] = useState(risco.anexoNr15 ?? '');
+  const [grau, setGrau] = useState<string>(risco.grauInsalubridade ?? '');
+  // Ao escolher o anexo, sugere o grau que a própria NR-15 define (quando define).
+  function escolherAnexo(valor: string) {
+    setAnexo(valor);
+    const sugerido = anexos?.nr15.find((a) => a.anexo === valor)?.grau;
+    if (sugerido && !grau) setGrau(sugerido);
+  }
   const simNao = (v: FormDataEntryValue | null) => (v === 'S' ? true : v === 'N' ? false : null);
   const valor = (v: boolean | null | undefined) => (v === true ? 'S' : v === false ? 'N' : '');
   return (
@@ -519,6 +557,8 @@ function AvaliarRisco({ risco, salvar }: { risco: Risco; salvar: (dados: Avaliac
             epiCa: t('ca'),
             codigoAnexoIv: t('anexo'),
             aposentadoriaEspecial: d.get('especial') === 'S',
+            anexoNr15: anexo || null,
+            grauInsalubridade: (grau || null) as AvaliacaoRisco['grauInsalubridade'],
           });
         }}
       >
@@ -547,7 +587,49 @@ function AvaliarRisco({ risco, salvar }: { risco: Risco; salvar: (dados: Avaliac
           ajuda={{ oQueE: 'Sua conclusão técnica: a exposição dá direito à aposentadoria especial? Sai na conclusão do LTCAT.' }}>
           <option value="N">Não</option><option value="S">Sim</option>
         </Selecao>
-        <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Salvar avaliação</Botao></div>
+        <Selecao id={`av-anexo15-${risco.id}`} rotulo="Anexo da NR-15" value={anexo} onChange={(e) => escolherAnexo(e.target.value)} className="md:col-span-2"
+          ajuda={{ oQueE: 'O anexo da NR-15 que trata deste agente. Usado no laudo de insalubridade (LIP).', baseLegal: 'NR-15' }}>
+          <option value="">Não se enquadra / não avaliado</option>
+          {anexos?.nr15.map((a) => <option key={a.anexo} value={a.anexo}>Anexo {a.anexo} · {a.nome}</option>)}
+        </Selecao>
+        <Selecao id={`av-grau-${risco.id}`} rotulo="Insalubridade" value={grau} onChange={(e) => setGrau(e.target.value)}
+          ajuda={{ oQueE: 'Sua conclusão para este agente, já considerando EPC e EPI. Quando o EPI neutraliza a exposição, marque "Não insalubre".', baseLegal: 'NR-15, itens 15.2 e 15.4' }}>
+          <option value="">Não avaliado</option>
+          <option value="NAO">Não insalubre</option>
+          <option value="MINIMO">Grau mínimo (10%)</option>
+          <option value="MEDIO">Grau médio (20%)</option>
+          <option value="MAXIMO">Grau máximo (40%)</option>
+        </Selecao>
+        <div className="flex items-end justify-end md:col-span-3"><Botao type="submit" variante="secundario">Salvar avaliação</Botao></div>
+      </form>
+    </details>
+  );
+}
+
+// Periculosidade do GHE (NR-16): a atividade se enquadra em algum anexo?
+function Periculosidade({ ghe, anexos, salvar }: { ghe: Ghe; anexos: AnexosLaudo; salvar: (dados: { anexo: string; justificativa?: string }) => void }) {
+  const atual = anexos.nr16.find((a) => a.codigo === ghe.periculosidadeAnexo);
+  const resumo = atual ? `perigoso · ${atual.anexo}` : ghe.periculosidadeAnexo === 'NENHUM' ? 'não perigoso' : 'falta avaliar';
+  return (
+    <details className="mt-3 text-sm">
+      <summary className={`cursor-pointer font-semibold hover:underline ${ghe.periculosidadeAnexo ? 'text-success' : 'text-warning'}`}>
+        Periculosidade (NR-16): {resumo}
+      </summary>
+      <form className="mt-2 grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3"
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          const d = new FormData(ev.currentTarget);
+          salvar({ anexo: String(d.get('anexo') ?? ''), justificativa: String(d.get('justificativa') ?? '').trim() });
+        }}>
+        <Selecao id={`per-${ghe.id}`} name="anexo" rotulo="Enquadramento" defaultValue={ghe.periculosidadeAnexo ?? ''} required className="md:col-span-3"
+          ajuda={{ oQueE: 'Se as atividades deste grupo se enquadram em algum anexo da NR-16. Quando sim, o adicional é de 30% sobre o salário.', baseLegal: 'CLT, art. 193, e NR-16' }}>
+          <option value="">Escolha</option>
+          <option value="NENHUM">Não perigoso (não se enquadra na NR-16)</option>
+          {anexos.nr16.map((a) => <option key={a.codigo} value={a.codigo}>{a.anexo} · {a.nome}</option>)}
+        </Selecao>
+        <Campo id={`per-just-${ghe.id}`} name="justificativa" rotulo="Fundamentação" defaultValue={ghe.periculosidadeJustificativa ?? ''} className="md:col-span-2"
+          placeholder="Ex.: abastece o forno a gás e trabalha ao lado da central de GLP" />
+        <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Salvar periculosidade</Botao></div>
       </form>
     </details>
   );

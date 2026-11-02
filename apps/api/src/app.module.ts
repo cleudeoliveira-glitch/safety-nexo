@@ -4,6 +4,8 @@ import { CnaeModule } from './cnae/cnae.module';
 import { AcessosModule } from './acessos/acessos';
 import { CipaModule } from './cipa/cipa.module';
 import { SaudeModule } from './saude/saude.module';
+import { LaudosModule } from './laudos/laudos.module';
+import { InspecoesModule } from './inspecoes/inspecoes.module';
 import { OperacaoModule } from './operacao/operacao.module';
 import { TreinamentosModule } from './treinamentos/treinamentos.module';
 import { ColaboradoresModule } from './colaboradores/colaboradores.module';
@@ -15,7 +17,7 @@ import { PainelModule } from './painel/painel.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule],
+  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule],
   controllers: [HealthController],
 })
 export class AppModule {}

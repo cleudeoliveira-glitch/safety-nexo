@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarPpp, registrarAso, registrarEpi, salvarArquivo } from '@/lib/api';
+import { buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarEpi, salvarArquivo } from '@/lib/api';
 
 const TIPOS_ASO = [
   ['ADMISSIONAL', 'Admissional'],
@@ -78,7 +78,10 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
         <Link href={`/empresas/${empresaId}`} className="text-sm text-primary">← Voltar à empresa</Link>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-3xl font-semibold text-primary">{colaborador.nome}</h1>
-          <Botao variante="secundario" onClick={() => baixar(() => gerarPpp(empresaId, colaboradorId), `PPP-${colaborador.nome}.pdf`)}>Baixar PPP</Botao>
+          <div className="flex flex-wrap gap-2">
+            <Botao variante="secundario" onClick={() => baixar(() => gerarOs(empresaId, colaboradorId), `Ordem-de-servico-${colaborador.nome}.pdf`)}>Ordem de serviço</Botao>
+            <Botao variante="secundario" onClick={() => baixar(() => gerarPpp(empresaId, colaboradorId), `PPP-${colaborador.nome}.pdf`)}>Baixar PPP</Botao>
+          </div>
         </div>
         <p className="text-text/60">
           {colaborador.cargo} · {colaborador.ghe?.nome ?? 'Sem GHE'}

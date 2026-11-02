@@ -36,6 +36,8 @@ export type AvaliacaoRisco = {
   epiCa?: string | null;
   codigoAnexoIv?: string | null;
   aposentadoriaEspecial: boolean;
+  anexoNr15?: string | null;
+  grauInsalubridade?: 'NAO' | 'MINIMO' | 'MEDIO' | 'MAXIMO' | null;
 };
 export type Risco = { id: string; tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; severidade: string } & Partial<AvaliacaoRisco>;
 export type Exame = {
@@ -49,7 +51,7 @@ export type Exame = {
   demissional: boolean;
   periodicidadeMeses: number | null;
 };
-export type Ghe = { id: string; nome: string; descricao: string | null; riscos: Risco[]; exames: Exame[]; _count: { colaboradores: number } };
+export type Ghe = { id: string; nome: string; descricao: string | null; periculosidadeAnexo?: string | null; periculosidadeJustificativa?: string | null; riscos: Risco[]; exames: Exame[]; _count: { colaboradores: number } };
 export type Colaborador = { id: string; nome: string; cpf?: string | null; dataAdmissao?: string | null; cargo: string; cbo: string | null; gheId: string | null };
 export type Aso = {
   id: string; tipo: string; dataExame: string; resultado: 'APTO' | 'INAPTO';
@@ -129,8 +131,9 @@ async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
   return res.blob();
 }
 
-export const gerarDocumento = (empresaId: string, tipo: 'pgr' | 'pcmso' | 'ltcat') =>
-  baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo.toUpperCase());
+export type TipoDocumento = 'pgr' | 'pcmso' | 'ltcat' | 'lip' | 'lpp' | 'pgrtr' | 'os';
+export const gerarDocumento = (empresaId: string, tipo: TipoDocumento) =>
+  baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo === 'os' ? 'as ordens de serviço' : tipo.toUpperCase());
 
 export const buscarCipa = (empresaId: string) => chamar<Cipa>('GET', `/empresas/${empresaId}/cipa`);
 export const salvarCipa = (empresaId: string, dados: { atendidaSesmt?: boolean; inicioMandato?: string; representante?: string }) =>
@@ -296,3 +299,25 @@ export const criarCat = (empresaId: string, dados: NovaCat) => chamar<Cat>('POST
 export const marcarCatEnviada = (empresaId: string, id: string, recibo: string) =>
   chamar<{ ok: boolean }>('POST', `/empresas/${empresaId}/cats/${id}/enviada`, { recibo });
 export const gerarCat = (empresaId: string, id: string) => baixarPdf(`/empresas/${empresaId}/cats/${id}/pdf`, 'CAT');
+
+// Laudos (NR-15 e NR-16), ordem de serviço e checklists.
+export type AnexosLaudo = {
+  nr15: { anexo: string; nome: string; grau: 'MINIMO' | 'MEDIO' | 'MAXIMO' | null }[];
+  nr16: { codigo: string; anexo: string; nome: string }[];
+};
+export const buscarAnexosLaudo = () => chamar<AnexosLaudo>('GET', '/laudos/anexos');
+export const definirPericulosidade = (empresaId: string, gheId: string, dados: { anexo: string; justificativa?: string }) =>
+  chamar<Ghe>('PUT', `/empresas/${empresaId}/ghes/${gheId}/periculosidade`, dados);
+export const gerarOs = (empresaId: string, colaboradorId: string) =>
+  baixarPdf(`/empresas/${empresaId}/colaboradores/${colaboradorId}/os`, 'ordem de serviço');
+
+export type ModeloChecklist = { modelo: string; titulo: string; itens: string[] };
+export type ItemInspecao = { texto: string; resposta: 'C' | 'NC' | 'NA'; observacao?: string };
+export type Inspecao = {
+  id: string; modelo: string; titulo: string; local: string; data: string; inspetor: string; itens: ItemInspecao[];
+  resumo: { aplicaveis: number; conformes: number; naoConformes: number; percentual: number };
+};
+export const buscarModelosChecklist = () => chamar<ModeloChecklist[]>('GET', '/inspecoes/modelos');
+export const listarInspecoes = (empresaId: string) => chamar<Inspecao[]>('GET', `/empresas/${empresaId}/inspecoes`);
+export const criarInspecao = (empresaId: string, dados: Omit<Inspecao, 'id' | 'resumo'>) => chamar<Inspecao>('POST', `/empresas/${empresaId}/inspecoes`, dados);
+export const gerarInspecao = (empresaId: string, id: string) => baixarPdf(`/empresas/${empresaId}/inspecoes/${id}/pdf`, 'relatório da inspeção');

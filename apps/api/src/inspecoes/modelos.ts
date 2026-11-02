@@ -1,0 +1,75 @@
+// Checklists de inspeção. São pontos de partida: a pessoa pode tirar, incluir e reescrever itens.
+export const MODELOS_CHECKLIST: Record<string, { titulo: string; itens: string[] }> = {
+  'NR-06': {
+    titulo: 'Equipamentos de Proteção Individual (NR-06)',
+    itens: [
+      'EPIs adequados aos riscos de cada atividade, conforme o PGR',
+      'Todos os EPIs em uso com CA válido',
+      'Fichas de entrega assinadas e atualizadas',
+      'Trabalhadores orientados sobre uso, guarda e conservação dos EPIs',
+      'EPIs sendo usados durante a atividade',
+      'EPIs em bom estado de conservação e higiene',
+      'Troca imediata quando o EPI está danificado ou é extraviado',
+      'Local adequado para guardar os EPIs',
+    ],
+  },
+  'NR-10': {
+    titulo: 'Instalações e serviços em eletricidade (NR-10)',
+    itens: [
+      'Quadros e painéis fechados, identificados e sinalizados',
+      'Frente dos quadros elétricos desobstruída',
+      'Sem fios expostos, emendas improvisadas ou extensões precárias',
+      'Tomadas e plugues em bom estado e no padrão',
+      'Instalações e equipamentos aterrados',
+      'Disjuntores e dispositivos DR adequados e identificados',
+      'Diagrama elétrico atualizado e disponível',
+      'Quem intervém nas instalações é autorizado e tem treinamento NR-10 válido',
+      'Procedimento de bloqueio e etiquetagem disponível e aplicado',
+    ],
+  },
+  'NR-12': {
+    titulo: 'Segurança em máquinas e equipamentos (NR-12)',
+    itens: [
+      'Proteções fixas ou móveis nas zonas de perigo (transmissões e partes móveis)',
+      'Proteções móveis com intertravamento funcionando',
+      'Botão de parada de emergência acessível e funcionando',
+      'Comandos de partida protegidos contra acionamento acidental',
+      'Máquina aterrada e com instalação elétrica protegida',
+      'Sinalização de segurança e identificação da máquina',
+      'Manual de instruções disponível em português',
+      'Operadores capacitados e autorizados',
+      'Manutenções registradas',
+      'Área ao redor da máquina livre e demarcada',
+      'Inventário de máquinas atualizado',
+    ],
+  },
+  'NR-23': {
+    titulo: 'Proteção contra incêndios (NR-23)',
+    itens: [
+      'Extintores no local indicado, sinalizados e desobstruídos',
+      'Extintores com carga e teste hidrostático dentro da validade',
+      'Saídas de emergência sinalizadas e desobstruídas',
+      'Rotas de fuga sinalizadas',
+      'Iluminação de emergência funcionando',
+      'Hidrantes e mangueiras em condições de uso (quando houver)',
+      'Alarme de incêndio funcionando (quando houver)',
+      'Trabalhadores orientados sobre uso de extintores e abandono do local',
+      'Inflamáveis armazenados em local adequado e identificado',
+      'AVCB ou CLCB dentro da validade',
+    ],
+  },
+  'NR-24': {
+    titulo: 'Condições sanitárias e de conforto (NR-24)',
+    itens: [
+      'Instalações sanitárias separadas por sexo, limpas e em número suficiente',
+      'Lavatórios com material para lavar e secar as mãos',
+      'Chuveiros onde a atividade exige (sujeira, calor ou produtos)',
+      'Vestiários com armários individuais quando há troca de roupa',
+      'Local de refeições limpo, com mesas, assentos e meio de aquecer a comida',
+      'Água potável e fresca, com bebedouro ou copos individuais',
+      'Lixeiras com tampa',
+      'Limpeza e manutenção periódicas',
+    ],
+  },
+};
+export const ehModelo = (m: string) => m === 'LIVRE' || m in MODELOS_CHECKLIST;
