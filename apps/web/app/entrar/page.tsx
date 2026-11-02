@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Aviso, Botao, Campo } from '@/components/ui';
 import { entrar } from '@/lib/api';
-import { salvarToken } from '@/lib/sessao';
+import { salvarToken, salvarUsuario } from '@/lib/sessao';
 
 export default function Entrar() {
   const [erro, setErro] = useState<string | null>(null);
@@ -18,6 +18,7 @@ export default function Entrar() {
     try {
       const acesso = await entrar({ email: String(dados.get('email')), senha: String(dados.get('senha')) });
       salvarToken(acesso.token);
+      salvarUsuario(acesso.usuario);
       window.location.href = '/';
     } catch (e) {
       setErro((e as Error).message);

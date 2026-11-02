@@ -203,6 +203,24 @@ export async function validarCertificado(codigo: string): Promise<CertificadoVal
   return res.json();
 }
 
+export type AcessoEmpresa = { id: string; nome: string; email: string; createdAt: string };
+export const listarAcessos = (empresaId: string) => chamar<AcessoEmpresa[]>('GET', `/empresas/${empresaId}/acessos`);
+export const criarAcesso = (empresaId: string, dados: { nome: string; email: string; senha: string }) =>
+  chamar<AcessoEmpresa>('POST', `/empresas/${empresaId}/acessos`, dados);
+export const removerAcesso = (empresaId: string, id: string) => chamar<{ ok: true }>('DELETE', `/empresas/${empresaId}/acessos/${id}`);
+
+export type LinhaPainelGeral = {
+  empresa: { id: string; razaoSocial: string; cnpj: string };
+  percentual: number; vencidos: number; pendentes: number;
+  principal: Pendencia | null;
+  proximoVencimento: Vencimento | null;
+};
+export type PainelGeral = {
+  totais: { empresas: number; saudeMedia: number; comVencidos: number; vencidos: number; pendentes: number };
+  empresas: LinhaPainelGeral[];
+};
+export const carregarPainelGeral = () => chamar<PainelGeral>('GET', '/painel-geral');
+
 const rotaColaborador = (empresaId: string, colaboradorId: string) => `/empresas/${empresaId}/colaboradores/${colaboradorId}`;
 export const buscarColaborador = (empresaId: string, colaboradorId: string) =>
   chamar<ColaboradorDetalhe>('GET', rotaColaborador(empresaId, colaboradorId));
@@ -229,7 +247,7 @@ export function salvarArquivo(pdf: Blob, nome: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export type Acesso = { token: string; usuario: { nome: string } };
+export type Acesso = { token: string; usuario: { nome: string; papel: 'CONSULTORIA' | 'EMPRESA'; empresaId: string | null } };
 export const entrar = (dados: { email: string; senha: string }) => chamar<Acesso>('POST', '/auth/entrar', dados);
 export const cadastrar = (dados: { nomeConsultoria: string; nome: string; email: string; senha: string }) =>
   chamar<Acesso>('POST', '/auth/cadastro', dados);

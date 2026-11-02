@@ -4,11 +4,13 @@ import { ConsultoriaId } from '../common/consultoria.decorator';
 import { enviarPdf } from '../documentos/documentos.controller';
 import { AtualizarEleicaoDto, AtualizarMembroDto, CriarEleicaoDto, CriarMembroDto } from './dto';
 import { ehDocumentoEleicao, EleicaoCipaService } from './eleicao.service';
+import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 
 @Controller('empresas/:empresaId/cipa/eleicoes')
 export class EleicaoCipaController {
   constructor(private readonly eleicoes: EleicaoCipaService) {}
 
+  @PermiteEmpresa()
   @Get()
   listar(@ConsultoriaId() c: string, @Param('empresaId') e: string) {
     return this.eleicoes.listar(c, e);
@@ -45,6 +47,7 @@ export class EleicaoCipaController {
     return this.eleicoes.removerMembro(c, e, id, membroId);
   }
 
+  @PermiteEmpresa()
   @Post(':eleicaoId/pdf/:documento')
   async pdf(
     @ConsultoriaId() c: string,

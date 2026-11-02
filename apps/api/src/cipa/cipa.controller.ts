@@ -4,11 +4,13 @@ import { ConsultoriaId } from '../common/consultoria.decorator';
 import { enviarPdf } from '../documentos/documentos.controller';
 import { CipaService } from './cipa.service';
 import { CipaDto } from './dto';
+import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 
 @Controller('empresas/:empresaId/cipa')
 export class CipaController {
   constructor(private readonly cipa: CipaService) {}
 
+  @PermiteEmpresa()
   @Get()
   situacao(@ConsultoriaId() c: string, @Param('empresaId') e: string) {
     return this.cipa.situacao(c, e);
@@ -19,6 +21,7 @@ export class CipaController {
     return this.cipa.salvar(c, e, dto);
   }
 
+  @PermiteEmpresa()
   @Post('pdf')
   async pdf(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Res() res: Response) {
     enviarPdf(res, await this.cipa.gerarPdf(c, e), 'Dimensionamento-CIPA.pdf');

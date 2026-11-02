@@ -6,7 +6,7 @@ import { CampoAjuda } from '@/components/CampoAjuda';
 import { Dicionario, Painel as PainelLateral } from '@/components/Dicionario';
 import { PassoTour, Tour, useTourPrimeiraVez } from '@/components/Tour';
 import { carregarPainel, Empresa, listarEmpresas, Painel } from '@/lib/api';
-import { lerToken, sair } from '@/lib/sessao';
+import { ehEmpresa, lerToken, sair } from '@/lib/sessao';
 
 // Cada segmento abre a parte do cadastro da empresa em foco; sem rota, ainda está em construção.
 const segments: [nome: string, rota: string | null][] = [
@@ -47,16 +47,21 @@ export default function Home() {
   const [erro, setErro] = useState<string | null>(null);
   const [painelAjuda, setPainelAjuda] = useState<'como-usar' | 'dicionario' | null>(null);
   const tour = useTourPrimeiraVez();
+  const [empresaCliente, setEmpresaCliente] = useState(false);
 
   useEffect(() => {
     if (!lerToken()) {
       window.location.href = '/entrar';
       return;
     }
+    setEmpresaCliente(ehEmpresa());
+    // A visão geral abre uma empresa específica pelo endereço (?empresa=...).
+    const pedida = new URLSearchParams(window.location.search).get('empresa');
     listarEmpresas()
       .then((lista) => {
         setEmpresas(lista);
-        if (lista[0]) setEmpresaId(lista[0].id);
+        const escolhida = lista.find((e) => e.id === pedida) ?? lista[0];
+        if (escolhida) setEmpresaId(escolhida.id);
       })
       .catch((e: Error) => setErro(e.message));
   }, []);
@@ -98,9 +103,16 @@ export default function Home() {
           ))}
         </select>
         <div className="mt-3 grid gap-2">
-          <Link href="/empresas/nova" className="rounded-card bg-primary px-3 py-2 text-center text-sm font-semibold text-white">
-            + Nova empresa
-          </Link>
+          {!empresaCliente && (
+            <>
+              <Link href="/geral" className="rounded-card border border-primary px-3 py-2 text-center text-sm font-semibold text-primary">
+                Visão geral das empresas
+              </Link>
+              <Link href="/empresas/nova" className="rounded-card bg-primary px-3 py-2 text-center text-sm font-semibold text-white">
+                + Nova empresa
+              </Link>
+            </>
+          )}
           {empresaId && (
             <Link href={`/empresas/${empresaId}`} className="rounded-card border border-border px-3 py-2 text-center text-sm font-medium">
               Abrir cadastro da empresa
@@ -124,7 +136,7 @@ export default function Home() {
         <nav className="mt-8 space-y-3">
           {segments.map(([nome, rota]) =>
             rota !== null && empresaId ? (
-              <Link key={nome} href={`/empresas/${empresaId}${rota}`} className="block text-sm font-medium hover:text-primary">
+              <Link key={nome} href={`/empresas/${empresaId}${empresaCliente && rota === '#documentos' ? '' : rota}`} className="block text-sm font-medium hover:text-primary">
                 {nome}
               </Link>
             ) : (
@@ -146,13 +158,15 @@ export default function Home() {
               Você completou {painel ? `${painel.percentual}%` : '…'} da empresa
             </h1>
           </div>
-          <Link
-            href={empresaId ? `/empresas/${empresaId}#documentos` : '/empresas/nova'}
-            data-tour="gerar"
-            className="rounded-card bg-primary px-6 py-4 text-lg font-semibold text-white shadow-sm transition hover:opacity-90"
-          >
-            Gerar PGR em 3 minutos
-          </Link>
+          {!empresaCliente && (
+            <Link
+              href={empresaId ? `/empresas/${empresaId}#documentos` : '/empresas/nova'}
+              data-tour="gerar"
+              className="rounded-card bg-primary px-6 py-4 text-lg font-semibold text-white shadow-sm transition hover:opacity-90"
+            >
+              Gerar PGR em 3 minutos
+            </Link>
+          )}
         </header>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-3">

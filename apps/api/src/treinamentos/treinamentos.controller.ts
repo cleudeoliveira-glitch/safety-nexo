@@ -5,7 +5,9 @@ import { ConsultoriaId } from '../common/consultoria.decorator';
 import { enviarPdf } from '../documentos/documentos.controller';
 import { CriarTurmaDto, ParticipantesDto } from './dto';
 import { TreinamentosService } from './treinamentos.service';
+import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 
+@PermiteEmpresa()
 @Controller()
 export class TreinamentosController {
   constructor(private readonly treinamentos: TreinamentosService) {}

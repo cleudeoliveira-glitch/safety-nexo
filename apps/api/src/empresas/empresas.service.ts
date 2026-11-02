@@ -10,9 +10,9 @@ export class EmpresasService {
     private readonly cnae: CnaeService,
   ) {}
 
-  async listar(consultoriaId: string) {
+  async listar(consultoriaId: string, somenteEmpresaId?: string | null) {
     return this.prisma.empresa.findMany({
-      where: { consultoriaId },
+      where: { consultoriaId, ...(somenteEmpresaId !== undefined ? { id: somenteEmpresaId ?? '' } : {}) },
       orderBy: { razaoSocial: 'asc' },
     });
   }

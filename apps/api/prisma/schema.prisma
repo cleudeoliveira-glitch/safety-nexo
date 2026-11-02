@@ -43,6 +43,7 @@ model Empresa {
   permissoes     PermissaoTrabalho[]
   ddss           Dds[]
   turmas         Turma[]
+  usuarios       Usuario[]
 
   @@unique([consultoriaId, cnpj])
   @@index([consultoriaId])
@@ -140,6 +141,9 @@ model Usuario {
   nome          String
   email         String      @unique
   senhaHash     String
+  papel         String      @default("CONSULTORIA") // CONSULTORIA (todas as empresas) | EMPRESA (só a dela)
+  empresaId     String?
+  empresa       Empresa?    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   createdAt     DateTime    @default(now())
 
   @@index([consultoriaId])

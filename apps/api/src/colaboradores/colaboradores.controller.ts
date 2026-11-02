@@ -4,7 +4,9 @@ import { ConsultoriaId } from '../common/consultoria.decorator';
 import { enviarPdf } from '../documentos/documentos.controller';
 import { ColaboradoresService } from './colaboradores.service';
 import { CreateAsoDto, CreateEntregaEpiDto } from './dto';
+import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 
+@PermiteEmpresa()
 @Controller('empresas/:empresaId/colaboradores/:colaboradorId')
 export class ColaboradoresController {
   constructor(private readonly colaboradores: ColaboradoresService) {}

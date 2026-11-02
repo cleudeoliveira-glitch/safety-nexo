@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CadastroDto, EntrarDto } from './dto';
 
 export type Sessao = { sub: string; consultoriaId: string };
+type UsuarioEmitido = { id: string; nome: string; consultoriaId: string; papel: string; empresaId: string | null };
 
 @Injectable()
 export class AuthService {
@@ -43,8 +44,8 @@ export class AuthService {
     return this.jwt.verify<Sessao>(token);
   }
 
-  private emitir(usuario: { id: string; nome: string; consultoriaId: string }) {
+  private emitir(usuario: UsuarioEmitido) {
     const sessao: Sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId };
-    return { token: this.jwt.sign(sessao), usuario: { nome: usuario.nome } };
+    return { token: this.jwt.sign(sessao), usuario: { nome: usuario.nome, papel: usuario.papel, empresaId: usuario.empresaId } };
   }
 }

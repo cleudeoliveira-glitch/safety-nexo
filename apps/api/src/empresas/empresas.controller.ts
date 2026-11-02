@@ -2,14 +2,19 @@ import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 import { EmpresasService } from './empresas.service';
+import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
+import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 
 @Controller('empresas')
 export class EmpresasController {
   constructor(private readonly empresas: EmpresasService) {}
 
+  @PermiteEmpresa()
   @Get()
-  listar(@ConsultoriaId() consultoriaId: string) {
-    return this.empresas.listar(consultoriaId);
+  listar(@Sessao() sessao: SessaoUsuario) {
+    // A empresa cliente só enxerga a si mesma.
+    if (sessao.papel === 'EMPRESA') return this.empresas.listar(sessao.consultoriaId, sessao.empresaId);
+    return this.empresas.listar(sessao.consultoriaId);
   }
 
   @Post()
@@ -17,6 +22,7 @@ export class EmpresasController {
     return this.empresas.criar(consultoriaId, dto);
   }
 
+  @PermiteEmpresa()
   @Get(':empresaId')
   buscar(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string) {
     return this.empresas.buscar(consultoriaId, empresaId);
@@ -27,11 +33,13 @@ export class EmpresasController {
     return this.empresas.atualizar(consultoriaId, empresaId, dto);
   }
 
+  @PermiteEmpresa()
   @Get(':empresaId/colaboradores')
   listarColaboradores(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string) {
     return this.empresas.listarColaboradores(consultoriaId, empresaId);
   }
 
+  @PermiteEmpresa()
   @Post(':empresaId/colaboradores')
   criarColaborador(
     @ConsultoriaId() consultoriaId: string,
@@ -41,6 +49,7 @@ export class EmpresasController {
     return this.empresas.criarColaborador(consultoriaId, empresaId, dto);
   }
 
+  @PermiteEmpresa()
   @Get(':empresaId/ghes')
   listarGhes(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string) {
     return this.empresas.listarGhes(consultoriaId, empresaId);

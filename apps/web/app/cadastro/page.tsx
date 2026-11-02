@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Aviso, Botao, Campo } from '@/components/ui';
 import { cadastrar } from '@/lib/api';
-import { salvarToken } from '@/lib/sessao';
+import { salvarToken, salvarUsuario } from '@/lib/sessao';
 
 export default function Cadastro() {
   const [erro, setErro] = useState<string | null>(null);
@@ -23,6 +23,7 @@ export default function Cadastro() {
         senha: String(dados.get('senha')),
       });
       salvarToken(acesso.token);
+      salvarUsuario(acesso.usuario);
       window.location.href = '/empresas/nova';
     } catch (e) {
       setErro((e as Error).message);

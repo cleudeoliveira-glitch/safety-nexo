@@ -4,7 +4,9 @@ import { ConsultoriaId } from '../common/consultoria.decorator';
 import { enviarPdf } from '../documentos/documentos.controller';
 import { CriarAprDto, CriarDdsDto, CriarPermissaoDto } from './dto';
 import { OperacaoService } from './operacao.service';
+import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 
+@PermiteEmpresa()
 @Controller()
 export class OperacaoController {
   constructor(private readonly operacao: OperacaoService) {}

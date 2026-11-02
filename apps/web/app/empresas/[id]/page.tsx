@@ -5,7 +5,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   atualizarEmpresa,
+  AcessoEmpresa,
   buscarCipa,
+  criarAcesso,
+  listarAcessos,
+  removerAcesso,
   buscarEmpresa,
   Cipa,
   Colaborador,
@@ -24,6 +28,7 @@ import {
   salvarArquivo,
   salvarCipa,
 } from '@/lib/api';
+import { ehEmpresa } from '@/lib/sessao';
 
 const TIPOS_RISCO = [
   ['FISICO', 'Físico'],
@@ -47,6 +52,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   const [ghes, setGhes] = useState<Ghe[]>([]);
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
   const [cipa, setCipa] = useState<Cipa | null>(null);
+  const [cliente, setCliente] = useState(false);
+  const [acessos, setAcessos] = useState<AcessoEmpresa[]>([]);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
 
   const recarregar = useCallback(async () => {
@@ -59,6 +66,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       ]);
       setEmpresa(e);
       setCipa(ci);
+      // Logins da empresa cliente: só a consultoria vê e cria.
+      if (!ehEmpresa()) setAcessos(await listarAcessos(empresaId));
       setGhes(g);
       setColaboradores(c);
     } catch (e) {
@@ -67,6 +76,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   }, [empresaId]);
 
   useEffect(() => {
+    setCliente(ehEmpresa());
     recarregar();
   }, [recarregar]);
 
@@ -105,13 +115,16 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-6 md:p-10">
       <div>
-        <Link href="/" className="text-sm text-primary">← Voltar ao painel</Link>
+        <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">{empresa.razaoSocial}</h1>
         <p className="text-text/60">CNPJ {empresa.cnpj}</p>
       </div>
 
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 
+      {cliente && <Aviso tipo="info">Aqui você cadastra os colaboradores e abre o ASO e o EPI de cada um. Os programas e documentos são feitos pela sua consultoria.</Aviso>}
+
+      {!cliente && (<>
       <Cartao titulo="1. Dados da empresa">
         <form
           className="grid gap-4 md:grid-cols-3"
@@ -246,6 +259,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           ))}
         </div>
       </Cartao>
+      </>)}
 
       <Cartao titulo="3. Colaboradores">
         <form
@@ -292,6 +306,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
         </ul>
       </Cartao>
 
+      {!cliente && (
       <Cartao titulo="4. Médico responsável pelo PCMSO">
         <form
           className="grid gap-4 md:grid-cols-3"
@@ -302,6 +317,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <div className="flex items-end justify-end"><Botao type="submit">Salvar médico</Botao></div>
         </form>
       </Cartao>
+      )}
 
       {cipa && (
         <Cartao
@@ -310,7 +326,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           acao={cipa.dimensionamento.situacao !== 'SEM_GRAU' && (
             <div className="flex flex-wrap gap-2">
               <Botao variante="secundario" onClick={() => baixar('cipa')}>Baixar dimensionamento</Botao>
-              {cipa.dimensionamento.situacao === 'CIPA' && (
+              {cipa.dimensionamento.situacao === 'CIPA' && !cliente && (
                 <Link href={`/empresas/${empresaId}/cipa`} className="rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">
                   Organizar eleição →
                 </Link>
@@ -319,7 +335,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           )}
         >
           <ResumoCipa cipa={cipa} />
-          {cipa.dimensionamento.situacao !== 'SEM_GRAU' && (
+          {cipa.dimensionamento.situacao !== 'SEM_GRAU' && !cliente && (
             <form
               className="mt-4 grid gap-4 md:grid-cols-3"
               onSubmit={enviar(
@@ -354,6 +370,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
         </Cartao>
       )}
 
+      {!cliente && (<>
       <Cartao titulo="6. Documentos" id="documentos">
         <p className="mb-4 text-sm text-text/60">Cada documento sai em PDF com a logo da empresa no cabeçalho e a da sua consultoria no rodapé.</p>
         <div className="flex flex-wrap gap-3">
@@ -361,6 +378,40 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Botao onClick={() => baixar('pcmso')}>Gerar PCMSO</Botao>
         </div>
       </Cartao>
+
+      <Cartao titulo="7. Acesso da empresa ao sistema" id="acessos">
+        <p className="mb-4 text-sm text-text/60">
+          Crie um login para a empresa cliente. Ela entra no Safety Nexo e vê só os dados dela: colaboradores, EPI, DDS, permissões de trabalho,
+          treinamentos e vencimentos. Programas e documentos continuam com você.
+        </p>
+        <form
+          className="grid gap-4 md:grid-cols-3"
+          onSubmit={enviar(
+            (d) => criarAcesso(empresaId, { nome: texto(d, 'nome'), email: texto(d, 'email'), senha: texto(d, 'senha') }),
+            'Login criado. Envie o e-mail e a senha para a empresa.',
+          )}
+        >
+          <Campo id="acesso-nome" name="nome" rotulo="Nome de quem vai usar" required placeholder="Ex.: RH da Padaria" />
+          <Campo id="acesso-email" name="email" type="email" rotulo="E-mail" required placeholder="rh@empresa.com.br" />
+          <Campo id="acesso-senha" name="senha" type="text" rotulo="Senha inicial" required minLength={8} placeholder="Mínimo 8 caracteres"
+            ajuda={{ oQueE: 'Senha que você envia para a empresa. Use pelo menos 8 caracteres.' }} />
+          <div className="flex justify-end md:col-span-3"><Botao type="submit">Criar login</Botao></div>
+        </form>
+        {acessos.length > 0 && (
+          <ul className="mt-4 divide-y divide-border text-sm">
+            {acessos.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span>{a.nome} · <span className="text-text/60">{a.email}</span></span>
+                <button className="text-xs text-danger hover:underline" onClick={async () => {
+                  try { await removerAcesso(empresaId, a.id); setAviso({ tipo: 'ok', texto: 'Acesso removido. Esse login para de funcionar na hora.' }); await recarregar(); }
+                  catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+                }}>Remover acesso</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Cartao>
+      </>)}
     </main>
   );
 }
