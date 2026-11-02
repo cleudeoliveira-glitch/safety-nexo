@@ -400,4 +400,19 @@ export const CATALOGO: ModeloTreinamento[] = [
     validadeMeses: null,
     conteudo: ['Riscos da coleta e varrição', 'Trânsito e circulação junto ao veículo coletor', 'Ergonomia e manuseio de resíduos', 'Riscos biológicos e perfurocortantes', 'Uso de EPIs e uniformes', 'Hidratação e exposição ao sol'],
   },
+  // Brigada de incêndio (IT 17/2025 do CBPMESP, Tabela B.2): atualização a cada 12 meses.
+  ...(['Básico', 'Intermediário', 'Avançado'] as const).map((nivel, i) => ({
+    nome: `Brigada de incêndio: nível ${nivel.toLowerCase()}`,
+    norma: 'IT-17',
+    cargaHoraria: [4, 8, 24][i],
+    validadeMeses: 12,
+    conteudo: [
+      'Teoria do fogo, propagação e classes de incêndio',
+      'Prevenção de incêndio e equipamentos de combate',
+      'Prática de combate a princípio de incêndio com extintores',
+      ...(i > 0 ? ['Hidrantes e mangotinhos'] : []),
+      'Abandono de área e procedimentos do plano de emergência',
+      'Primeiros socorros: avaliação da vítima, RCP, hemorragias e queimaduras',
+    ],
+  })),
 ];

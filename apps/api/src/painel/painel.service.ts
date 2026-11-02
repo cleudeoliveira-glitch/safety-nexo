@@ -1,3 +1,4 @@
+import { dimensionarBrigada } from '../emergencia/it17';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { situacaoCipa } from '../cipa/cipa.service';
 import { prazoCat } from '../saude/prazo-cat';
@@ -28,6 +29,8 @@ export class PainelService {
         },
         documentos: { orderBy: { geradoEm: 'desc' } },
         cats: { where: { enviadaEm: null }, include: { colaborador: { select: { nome: true } } } },
+        controlesEmergencia: { where: { validade: { not: null } } },
+        turmas: { where: { norma: 'IT-17' }, select: { fim: true, validadeMeses: true, participantes: { select: { colaboradorId: true } } } },
       },
     });
     if (!empresa) throw new NotFoundException('Empresa não encontrada');
@@ -92,6 +95,8 @@ export class PainelService {
       else pendencias.unshift({ titulo: `Envie a CAT de ${cat.colaborador.nome}`, detalhe: `Prazo: ${quando} (eSocial S-2210)`, nivel: 'pendente' });
     }
 
+    pendencias.push(...this.pendenciasDeEmergencia(empresa, hoje));
+
     const vencimentos = [...ultimos.values()]
       .filter((doc) => doc.vencimento)
       .map((doc) => {
@@ -117,6 +122,35 @@ export class PainelService {
   }
 
   // Vale o treinamento mais recente de cada tipo: uma reciclagem resolve o vencido.
+  // Brigada abaixo do mínimo da IT 17 e AVCB, extintores e outros itens vencidos ou vencendo.
+  private pendenciasDeEmergencia(
+    empresa: {
+      emergencia: unknown;
+      controlesEmergencia: { tipo: string; descricao: string; validade: Date | null }[];
+      turmas: { fim: Date; validadeMeses: number | null; participantes: { colaboradorId: string }[] }[];
+    },
+    hoje: Date,
+  ): Pendencia[] {
+    const pendencias: Pendencia[] = [];
+    const config = empresa.emergencia as { divisao: string; risco: string; populacaoPorPavimento: number[] } | null;
+    if (config) {
+      const calculo = dimensionarBrigada(config.divisao, config.risco, config.populacaoPorPavimento);
+      const treinados = new Set(
+        empresa.turmas.filter((t) => { const v = validadeDaTurma(t); return !v || v >= hoje; }).flatMap((t) => t.participantes.map((p) => p.colaboradorId)),
+      ).size;
+      if (calculo?.total && treinados < calculo.total) {
+        pendencias.push({ titulo: `Brigada incompleta: ${treinados} de ${calculo.total}`, detalhe: 'Treine mais brigadistas (IT 17) em Pessoas e Cultura', nivel: treinados === 0 ? 'vencido' : 'pendente' });
+      }
+    }
+    for (const c of empresa.controlesEmergencia) {
+      const dias = Math.ceil((c.validade!.getTime() - hoje.getTime()) / DIA_MS);
+      const nome = `${c.tipo === 'AVCB' || c.tipo === 'CLCB' ? c.tipo : c.descricao}`;
+      if (dias < 0) pendencias.unshift({ titulo: `${nome} vencido`, detalhe: `Venceu há ${-dias} dia(s)`, nivel: 'vencido' });
+      else if (dias <= (c.tipo === 'AVCB' || c.tipo === 'CLCB' ? 90 : 30)) pendencias.push({ titulo: `${nome} vence em ${dias} dia(s)`, detalhe: c.tipo === 'AVCB' || c.tipo === 'CLCB' ? 'Comece a renovação junto ao Corpo de Bombeiros' : 'Programe a recarga ou manutenção', nivel: 'pendente' });
+    }
+    return pendencias;
+  }
+
   private pendenciasDeTreinamento(
     colaboradores: { nome: string; treinamentos: { turma: { nome: string; fim: Date; validadeMeses: number | null } }[] }[],
     hoje: Date,

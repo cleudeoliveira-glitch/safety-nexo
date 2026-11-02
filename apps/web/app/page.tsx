@@ -14,7 +14,7 @@ const segments: [nome: string, rota: string | null][] = [
   ['Operação Diária', '/operacao'],
   ['Pessoas e Cultura', '/treinamentos'],
   ['Saúde Ocupacional', '/saude'],
-  ['Emergência', null],
+  ['Emergência', '/emergencia'],
   ['Governança', null],
 ];
 

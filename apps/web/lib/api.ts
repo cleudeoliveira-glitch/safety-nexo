@@ -321,3 +321,24 @@ export const buscarModelosChecklist = () => chamar<ModeloChecklist[]>('GET', '/i
 export const listarInspecoes = (empresaId: string) => chamar<Inspecao[]>('GET', `/empresas/${empresaId}/inspecoes`);
 export const criarInspecao = (empresaId: string, dados: Omit<Inspecao, 'id' | 'resumo'>) => chamar<Inspecao>('POST', `/empresas/${empresaId}/inspecoes`, dados);
 export const gerarInspecao = (empresaId: string, id: string) => baixarPdf(`/empresas/${empresaId}/inspecoes/${id}/pdf`, 'relatório da inspeção');
+
+// Emergência: brigada (IT 17 SP), AVCB, extintores e plano de emergência.
+export type DivisaoIt17 = { divisao: string; descricao: string; risco: 'BAIXO' | 'MEDIO' | 'ALTO' };
+export type ConfigEmergencia = {
+  divisao: string; risco: 'BAIXO' | 'MEDIO' | 'ALTO'; populacaoPorPavimento: number[];
+  pontoEncontro?: string; rotasFuga?: string; contatos?: string; coordenador?: string;
+};
+export type ControleEmergencia = { id: string; tipo: string; descricao: string; local: string | null; numero: string | null; validade: string | null };
+export type SituacaoEmergencia = {
+  config: ConfigEmergencia | null;
+  calculo: { porPavimento: number[]; total: number | null; nivelTexto: string; observacao: string | null } | null;
+  brigadistas: { nome: string; cargo: string; nivel: string; validade: string | null }[];
+  controles: ControleEmergencia[];
+};
+export const buscarTabelaIt17 = () => chamar<{ divisoes: DivisaoIt17[]; cargaHoraria: Record<string, number> }>('GET', '/emergencia/tabela');
+export const buscarEmergencia = (empresaId: string) => chamar<SituacaoEmergencia>('GET', `/empresas/${empresaId}/emergencia`);
+export const salvarEmergencia = (empresaId: string, dados: ConfigEmergencia) => chamar<SituacaoEmergencia>('PUT', `/empresas/${empresaId}/emergencia`, dados);
+export const criarControleEmergencia = (empresaId: string, dados: Omit<ControleEmergencia, 'id' | 'local' | 'numero' | 'validade'> & { local?: string; numero?: string; validade?: string }) =>
+  chamar<ControleEmergencia>('POST', `/empresas/${empresaId}/emergencia/controles`, dados);
+export const removerControleEmergencia = (empresaId: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${empresaId}/emergencia/controles/${id}`);
+export const gerarPlanoEmergencia = (empresaId: string) => baixarPdf(`/empresas/${empresaId}/emergencia/plano`, 'plano de emergência');

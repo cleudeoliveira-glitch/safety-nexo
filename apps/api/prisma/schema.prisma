@@ -50,6 +50,9 @@ model Empresa {
   aets           Aet[]
   cats           Cat[]
   inspecoes      Inspecao[]
+  controlesEmergencia ControleEmergencia[]
+  // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
+  emergencia     Json?
 
   @@unique([consultoriaId, cnpj])
   @@index([consultoriaId])
@@ -400,6 +403,21 @@ model Inspecao {
   inspetor  String
   itens     Json     // [{ texto, resposta: C | NC | NA, observacao }]
   createdAt DateTime @default(now())
+
+  @@index([empresaId])
+}
+
+// AVCB, CLCB, extintores, hidrantes e outros itens de emergência com validade.
+model ControleEmergencia {
+  id        String    @id @default(cuid())
+  empresaId String
+  empresa   Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tipo      String    // AVCB, CLCB, EXTINTOR, HIDRANTE, ILUMINACAO, ALARME, SPDA, OUTRO
+  descricao String
+  local     String?
+  numero    String?
+  validade  DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([empresaId])
 }
