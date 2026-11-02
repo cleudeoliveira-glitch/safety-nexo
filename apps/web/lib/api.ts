@@ -121,6 +121,33 @@ export const salvarCipa = (empresaId: string, dados: { atendidaSesmt?: boolean; 
   chamar<Cipa>('PUT', `/empresas/${empresaId}/cipa`, dados);
 export const gerarCipa = (empresaId: string) => baixarPdf(`/empresas/${empresaId}/cipa/pdf`, 'dimensionamento da CIPA');
 
+export type MembroCipa = { membroId: string; colaboradorId: string; nome: string; cpf: string | null; cargo: string };
+export type CandidatoCipa = MembroCipa & { votos: number | null; posicao: number; situacao: 'TITULAR' | 'SUPLENTE' | 'NAO_ELEITO'; vice: boolean };
+export type IndicadoCipa = MembroCipa & { titular: boolean; presidente: boolean };
+export type EleicaoCipa = {
+  id: string; editalEm: string; inscricaoInicio: string; inscricaoFim: string; eleicaoEm: string;
+  localVotacao: string; horarioVotacao: string; votantes: number | null; posseEm: string | null;
+  treinamentoInicio: string | null; treinamentoFim: string | null; instrutor: string | null;
+  vagas: { efetivos: number; suplentes: number }; candidatos: CandidatoCipa[]; indicados: IndicadoCipa[];
+  participacao: { votantes: number; empregados: number; percentual: number; valida: boolean } | null;
+  cargaHoraria: number | null; fimMandato: string | null; avisos: string[];
+};
+export type DocumentoEleicao = 'edital' | 'inscricao' | 'inscritos' | 'cedulas' | 'ata-eleicao' | 'ata-posse' | 'certificados';
+
+const rotaEleicoes = (empresaId: string) => `/empresas/${empresaId}/cipa/eleicoes`;
+export const listarEleicoes = (empresaId: string) => chamar<EleicaoCipa[]>('GET', rotaEleicoes(empresaId));
+export const criarEleicao = (empresaId: string, dados: Record<string, string>) => chamar<EleicaoCipa>('POST', rotaEleicoes(empresaId), dados);
+export const atualizarEleicao = (empresaId: string, eleicaoId: string, dados: Record<string, string | number>) =>
+  chamar<EleicaoCipa>('PATCH', `${rotaEleicoes(empresaId)}/${eleicaoId}`, dados);
+export const adicionarMembroCipa = (empresaId: string, eleicaoId: string, dados: { colaboradorId: string; representacao: 'EMPREGADOS' | 'ORGANIZACAO'; titular?: boolean }) =>
+  chamar<EleicaoCipa>('POST', `${rotaEleicoes(empresaId)}/${eleicaoId}/membros`, dados);
+export const atualizarMembroCipa = (empresaId: string, eleicaoId: string, membroId: string, dados: { votos?: number; titular?: boolean; presidente?: boolean; vice?: boolean }) =>
+  chamar<EleicaoCipa>('PATCH', `${rotaEleicoes(empresaId)}/${eleicaoId}/membros/${membroId}`, dados);
+export const removerMembroCipa = (empresaId: string, eleicaoId: string, membroId: string) =>
+  chamar<EleicaoCipa>('DELETE', `${rotaEleicoes(empresaId)}/${eleicaoId}/membros/${membroId}`);
+export const gerarDocumentoEleicao = (empresaId: string, eleicaoId: string, documento: DocumentoEleicao) =>
+  baixarPdf(`${rotaEleicoes(empresaId)}/${eleicaoId}/pdf/${documento}`, 'documento da CIPA');
+
 const rotaColaborador = (empresaId: string, colaboradorId: string) => `/empresas/${empresaId}/colaboradores/${colaboradorId}`;
 export const buscarColaborador = (empresaId: string, colaboradorId: string) =>
   chamar<ColaboradorDetalhe>('GET', rotaColaborador(empresaId, colaboradorId));

@@ -18,7 +18,9 @@ export const escape = (valor: string | number | null | undefined) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-export function documentoHtml(moldura: Moldura, corpo: string, cssExtra = ''): string {
+// Folha em branco com os estilos comuns. Serve para documentos com várias páginas iguais
+// (certificados, cédulas), em que cada página traz as próprias logos.
+export function folhaHtml(corpo: string, cssExtra = ''): string {
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -40,10 +42,21 @@ export function documentoHtml(moldura: Moldura, corpo: string, cssExtra = ''): s
     .elaborado { display: flex; align-items: center; gap: 8px; font-size: 11px; color: ${tokens.colors.text}; }
     .elaborado img { height: 28px; }
     footer p { margin: 6px 0 0; }
+    .assinaturas { display: grid; grid-template-columns: 1fr 1fr; gap: 36px 32px; margin-top: 44px; }
+    .assinatura { border-top: 1px solid ${tokens.colors.text}; padding-top: 4px; text-align: center; font-size: 11px; }
+    .assinatura span { display: block; color: #6b7280; font-size: 10px; }
+    .quebra { page-break-after: always; }
     ${cssExtra}
   </style>
 </head>
 <body>
+  ${corpo}
+</body>
+</html>`;
+}
+
+export function cabecalhoHtml(moldura: Pick<Moldura, 'titulo' | 'logoEmpresa' | 'infos'>): string {
+  return `
   <header>
     <div class="topo">
       ${moldura.logoEmpresa ? `<img src="${moldura.logoEmpresa}" alt="Logo da empresa" />` : ''}
@@ -52,15 +65,20 @@ export function documentoHtml(moldura: Moldura, corpo: string, cssExtra = ''): s
     <div class="info">
       ${moldura.infos.map(([rotulo, valor]) => `<div><strong>${escape(rotulo)}:</strong> ${escape(valor)}</div>`).join('')}
     </div>
-  </header>
-  ${corpo}
+  </header>`;
+}
+
+export function rodapeHtml(moldura: Pick<Moldura, 'consultoria' | 'aviso'>): string {
+  return `
   <footer>
     <div class="elaborado">
       ${moldura.consultoria.logo ? `<img src="${moldura.consultoria.logo}" alt="Logo da consultoria" />` : ''}
       <span>Elaborado por <strong>${escape(moldura.consultoria.nome)}</strong></span>
     </div>
     <p>${escape(moldura.aviso)}</p>
-  </footer>
-</body>
-</html>`;
+  </footer>`;
+}
+
+export function documentoHtml(moldura: Moldura, corpo: string, cssExtra = ''): string {
+  return folhaHtml(cabecalhoHtml(moldura) + corpo + rodapeHtml(moldura), cssExtra);
 }

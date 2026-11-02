@@ -38,6 +38,7 @@ model Empresa {
   colaboradores  Colaborador[]
   ghes           Ghe[]
   documentos     Documento[]
+  eleicoesCipa   CipaEleicao[]
 
   @@unique([consultoriaId, cnpj])
   @@index([consultoriaId])
@@ -57,6 +58,7 @@ model Colaborador {
   createdAt     DateTime @default(now())
   asos          Aso[]
   entregasEpi   EntregaEpi[]
+  cipa          CipaMembro[]
 
   @@index([empresaId])
 }
@@ -171,4 +173,43 @@ model EntregaEpi {
   createdAt     DateTime    @default(now())
 
   @@index([colaboradorId])
+}
+
+// Um processo eleitoral da CIPA (NR-05, 5.5): do edital ao treinamento dos eleitos.
+model CipaEleicao {
+  id                String       @id @default(cuid())
+  empresaId         String
+  empresa           Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  editalEm          DateTime
+  inscricaoInicio   DateTime
+  inscricaoFim      DateTime
+  eleicaoEm         DateTime
+  localVotacao      String
+  horarioVotacao    String
+  votantes          Int?         // quem votou: define a participação mínima (5.5.4)
+  posseEm           DateTime?
+  treinamentoInicio DateTime?
+  treinamentoFim    DateTime?
+  instrutor         String?
+  createdAt         DateTime     @default(now())
+  membros           CipaMembro[]
+
+  @@index([empresaId])
+}
+
+// Candidato dos empregados (com votos) ou indicado da organização.
+model CipaMembro {
+  id            String      @id @default(cuid())
+  eleicaoId     String
+  eleicao       CipaEleicao @relation(fields: [eleicaoId], references: [id], onDelete: Cascade)
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  representacao String      // EMPREGADOS | ORGANIZACAO
+  votos         Int?        // só para candidatos dos empregados
+  titular       Boolean     @default(true) // só para indicados da organização
+  presidente    Boolean     @default(false) // indicado pela organização (5.4.5)
+  vice          Boolean     @default(false) // escolhido entre os titulares eleitos (5.4.5)
+  createdAt     DateTime    @default(now())
+
+  @@unique([eleicaoId, colaboradorId])
 }

@@ -305,7 +305,14 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           titulo="5. CIPA"
           id="cipa"
           acao={cipa.dimensionamento.situacao !== 'SEM_GRAU' && (
-            <Botao variante="secundario" onClick={() => baixar('cipa')}>Baixar dimensionamento</Botao>
+            <div className="flex flex-wrap gap-2">
+              <Botao variante="secundario" onClick={() => baixar('cipa')}>Baixar dimensionamento</Botao>
+              {cipa.dimensionamento.situacao === 'CIPA' && (
+                <Link href={`/empresas/${empresaId}/cipa`} className="rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">
+                  Organizar eleição →
+                </Link>
+              )}
+            </div>
           )}
         >
           <ResumoCipa cipa={cipa} />
