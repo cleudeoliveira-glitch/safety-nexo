@@ -50,6 +50,7 @@ model Empresa {
   aets           Aet[]
   cats           Cat[]
   inspecoes      Inspecao[]
+  eventosEsocial EventoEsocial[]
   controlesEmergencia ControleEmergencia[]
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
   emergencia     Json?
@@ -418,6 +419,42 @@ model ControleEmergencia {
   numero    String?
   validade  DateTime?
   createdAt DateTime  @default(now())
+
+  @@index([empresaId])
+}
+
+// Certificado digital A1 (e-CNPJ ou e-CPF) da consultoria, usado para transmitir ao eSocial.
+// O arquivo e a senha ficam cifrados (AES-256-GCM) com a chave CERT_SECRET do servidor.
+model CertificadoDigital {
+  id            String   @id @default(cuid())
+  consultoriaId String   @unique
+  titular       String
+  documento     String   // CNPJ ou CPF do certificado (é o transmissor)
+  tipoDocumento String   // CNPJ | CPF
+  validoDe      DateTime
+  validoAte     DateTime
+  pfxCifrado    String   // base64(iv | tag | dados)
+  senhaCifrada  String
+  createdAt     DateTime @default(now())
+}
+
+// Fila de eventos de SST do eSocial.
+model EventoEsocial {
+  id           String   @id @default(cuid())
+  empresaId    String
+  empresa      Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tipo         String   // S-2210, S-2220, S-2240
+  referenciaId String   // CAT, ASO ou colaborador de origem
+  descricao    String
+  idEvento     String   @unique
+  xml          String   // XML do evento já assinado
+  ambiente     String   // PRODUCAO_RESTRITA | PRODUCAO
+  status       String   @default("PENDENTE") // PENDENTE, ENVIADO, PROCESSADO, ERRO
+  protocolo    String?
+  recibo       String?
+  mensagens    Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([empresaId])
 }

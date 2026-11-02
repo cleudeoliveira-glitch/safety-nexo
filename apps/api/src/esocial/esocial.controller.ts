@@ -1,0 +1,49 @@
+import { Body, Controller, Delete, Get, Param, Post, Put, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
+import { ConsultoriaId } from '../common/consultoria.decorator';
+import { EsocialService } from './esocial.service';
+
+// eSocial: só a consultoria (dona do certificado) transmite.
+@Controller()
+export class EsocialController {
+  constructor(private readonly esocial: EsocialService) {}
+
+  @Get('esocial/certificado')
+  certificado(@ConsultoriaId() c: string) {
+    return this.esocial.certificado(c);
+  }
+
+  @Put('esocial/certificado')
+  @UseInterceptors(FileInterceptor('arquivo', { limits: { fileSize: 50_000 } }))
+  salvar(@ConsultoriaId() c: string, @UploadedFile() arquivo: Express.Multer.File | undefined, @Body('senha') senha?: string) {
+    return this.esocial.salvarCertificado(c, arquivo, senha);
+  }
+
+  @Delete('esocial/certificado')
+  remover(@ConsultoriaId() c: string) {
+    return this.esocial.removerCertificado(c);
+  }
+
+  @Get('empresas/:empresaId/esocial/eventos')
+  listar(@ConsultoriaId() c: string, @Param('empresaId') e: string) {
+    return this.esocial.listar(c, e);
+  }
+
+  @Get('empresas/:empresaId/esocial/eventos/:id/xml')
+  async xml(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Res() res: Response) {
+    const ev = await this.esocial.xml(c, e, id);
+    res.set({ 'Content-Type': 'application/xml', 'Content-Disposition': `attachment; filename="${ev.tipo}-${ev.idEvento}.xml"` });
+    res.end(ev.xml);
+  }
+
+  @Post('empresas/:empresaId/esocial/enviar')
+  enviar(@ConsultoriaId() c: string, @Param('empresaId') e: string) {
+    return this.esocial.enviarPendentes(c, e);
+  }
+
+  @Post('empresas/:empresaId/esocial/consultar')
+  consultar(@ConsultoriaId() c: string, @Param('empresaId') e: string) {
+    return this.esocial.consultarEnviados(c, e);
+  }
+}
