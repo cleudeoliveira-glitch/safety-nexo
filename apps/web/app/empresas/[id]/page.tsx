@@ -435,6 +435,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Botao onClick={() => baixar('pgrtr')} title="Para empresas com atividade rural (NR-31)">Gerar PGRTR</Botao>
           <Botao variante="secundario" onClick={() => baixar('os')}>Ordens de serviço (todos)</Botao>
           <Link href={`/empresas/${empresaId}/saude`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">AET e CAT →</Link>
+          <Link href={`/empresas/${empresaId}/esocial`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">eSocial →</Link>
         </div>
       </Cartao>
 

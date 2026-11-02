@@ -342,3 +342,29 @@ export const criarControleEmergencia = (empresaId: string, dados: Omit<ControleE
   chamar<ControleEmergencia>('POST', `/empresas/${empresaId}/emergencia/controles`, dados);
 export const removerControleEmergencia = (empresaId: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${empresaId}/emergencia/controles/${id}`);
 export const gerarPlanoEmergencia = (empresaId: string) => baixarPdf(`/empresas/${empresaId}/emergencia/plano`, 'plano de emergência');
+
+// eSocial: certificado da consultoria e fila de eventos de SST.
+export type CertificadoEsocial = { titular: string; documento: string; tipoDocumento: 'CNPJ' | 'CPF'; validoDe: string; validoAte: string };
+export type EventoEsocial = {
+  id: string; tipo: string; descricao: string; idEvento: string; ambiente: 'PRODUCAO_RESTRITA' | 'PRODUCAO';
+  status: 'PENDENTE' | 'ENVIADO' | 'PROCESSADO' | 'ERRO'; protocolo: string | null; recibo: string | null;
+  mensagens: { codigo?: string; descricao?: string; localizacao?: string }[] | null; createdAt: string; updatedAt: string;
+};
+export const buscarCertificado = () => chamar<CertificadoEsocial | null>('GET', '/esocial/certificado');
+export function enviarCertificado(arquivo: File, senha: string) {
+  const form = new FormData();
+  form.append('arquivo', arquivo);
+  form.append('senha', senha);
+  return chamar<CertificadoEsocial>('PUT', '/esocial/certificado', form);
+}
+export const removerCertificado = () => chamar<{ ok: boolean }>('DELETE', '/esocial/certificado');
+export const listarEventosEsocial = (empresaId: string) => chamar<EventoEsocial[]>('GET', `/empresas/${empresaId}/esocial/eventos`);
+export const transmitirEsocial = (empresaId: string) =>
+  chamar<{ eventos: number; cdResposta: string; descResposta: string; protocolo: string | null }[]>('POST', `/empresas/${empresaId}/esocial/enviar`);
+export const consultarEsocial = (empresaId: string) => chamar<{ atualizados: number }>('POST', `/empresas/${empresaId}/esocial/consultar`);
+export async function baixarXmlEsocial(empresaId: string, ev: EventoEsocial) {
+  const res = await fetch(`${API_URL}/empresas/${empresaId}/esocial/eventos/${ev.id}/xml`, { headers: cabecalhos() });
+  verificarSessao(res);
+  if (!res.ok) throw new Error(`Não foi possível baixar o XML (${res.status}).`);
+  salvarArquivo(await res.blob(), `${ev.tipo}-${ev.idEvento}.xml`);
+}

@@ -33,7 +33,7 @@ function postar(url: string, acao: string, corpo: string, credencial: Credencial
       });
     });
     req.on('timeout', () => req.destroy(new Error('O eSocial não respondeu a tempo. Tente de novo em alguns minutos.')));
-    req.on('error', (e) => reject(new Error(`Não foi possível falar com o eSocial: ${e.message}`)));
+    req.on('error', (e) => reject(new Error(`O site do eSocial não respondeu agora. Os eventos continuam na fila; tente de novo mais tarde. (detalhe: ${e.message})`)));
     req.end(corpo);
   });
 }
