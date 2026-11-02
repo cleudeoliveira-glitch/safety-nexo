@@ -249,12 +249,13 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
 
       <Cartao titulo="3. Colaboradores">
         <form
-          className="grid gap-4 md:grid-cols-5"
+          className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar(
             (d) =>
               criarColaborador(empresaId, {
                 nome: texto(d, 'nome'),
                 cpf: texto(d, 'cpf') || null,
+                dataAdmissao: texto(d, 'dataAdmissao') || null,
                 cargo: texto(d, 'cargo'),
                 cbo: texto(d, 'cbo') || null,
                 gheId: texto(d, 'gheId') || null,
@@ -266,13 +267,15 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Campo id="colab-cpf" name="cpf" rotulo="CPF" placeholder="Ex.: 123.456.789-00"
             ajuda={{ oQueE: 'CPF do trabalhador. Sai no ASO e na ficha de EPI.', ondeAcho: 'No documento do trabalhador ou com o RH.' }} />
           <Campo id="colab-cargo" name="cargo" rotulo="Cargo" required placeholder="Ex.: Padeira" />
+          <Campo id="colab-admissao" name="dataAdmissao" type="date" rotulo="Admissão"
+            ajuda={{ oQueE: 'Data em que o colaborador foi contratado. Desempata a eleição da CIPA (tempo de casa).', ondeAcho: 'Na carteira de trabalho ou com o RH.' }} />
           <Campo id="colab-cbo" name="cbo" rotulo="CBO" placeholder="Ex.: 8483-05"
             ajuda={{ oQueE: 'Código Brasileiro de Ocupações do cargo.', ondeAcho: 'Na carteira de trabalho ou com o RH.' }} />
           <Selecao id="colab-ghe" name="gheId" rotulo="GHE">
             <option value="">Sem GHE</option>
             {ghes.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
           </Selecao>
-          <div className="flex justify-end md:col-span-5"><Botao type="submit">Adicionar colaborador</Botao></div>
+          <div className="flex justify-end md:col-span-3"><Botao type="submit">Adicionar colaborador</Botao></div>
         </form>
         <ul className="mt-4 divide-y divide-border text-sm">
           {colaboradores.map((c) => (

@@ -1,4 +1,4 @@
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import { IsDateString, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 
 export class CreateEmpresaDto {
   @IsString()
@@ -41,6 +41,10 @@ export class CreateColaboradorDto {
   @IsOptional()
   @IsString()
   cbo?: string;
+
+  @IsOptional()
+  @IsDateString({}, { message: 'Data de admissão inválida.' })
+  dataAdmissao?: string;
 
   @IsOptional()
   @IsString()

@@ -8,7 +8,15 @@ import { PassoTour, Tour, useTourPrimeiraVez } from '@/components/Tour';
 import { carregarPainel, Empresa, listarEmpresas, Painel } from '@/lib/api';
 import { lerToken, sair } from '@/lib/sessao';
 
-const segments = ['Admissão e Base', 'Operação Diária', 'Pessoas e Cultura', 'Saúde Ocupacional', 'Emergência', 'Governança'];
+// Cada segmento abre a parte do cadastro da empresa em foco; sem rota, ainda está em construção.
+const segments: [nome: string, rota: string | null][] = [
+  ['Admissão e Base', ''],
+  ['Operação Diária', '/operacao'],
+  ['Pessoas e Cultura', '#cipa'],
+  ['Saúde Ocupacional', '#documentos'],
+  ['Emergência', null],
+  ['Governança', null],
+];
 
 const passosTour: PassoTour[] = [
   { alvo: 'empresa', titulo: 'Escolha a empresa', texto: 'Cada empresa cliente tem seus dados e documentos. Troque aqui para ver outra.' },
@@ -114,11 +122,17 @@ export default function Home() {
           </button>
         </div>
         <nav className="mt-8 space-y-3">
-          {segments.map((segment) => (
-            <p key={segment} className="text-sm font-medium">
-              {segment}
-            </p>
-          ))}
+          {segments.map(([nome, rota]) =>
+            rota !== null && empresaId ? (
+              <Link key={nome} href={`/empresas/${empresaId}${rota}`} className="block text-sm font-medium hover:text-primary">
+                {nome}
+              </Link>
+            ) : (
+              <p key={nome} className="text-sm font-medium text-text/40">
+                {nome} <span className="text-xs">· em breve</span>
+              </p>
+            ),
+          )}
         </nav>
       </aside>
 

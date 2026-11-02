@@ -39,6 +39,9 @@ model Empresa {
   ghes           Ghe[]
   documentos     Documento[]
   eleicoesCipa   CipaEleicao[]
+  aprs           Apr[]
+  permissoes     PermissaoTrabalho[]
+  ddss           Dds[]
 
   @@unique([consultoriaId, cnpj])
   @@index([consultoriaId])
@@ -212,4 +215,60 @@ model CipaMembro {
   createdAt     DateTime    @default(now())
 
   @@unique([eleicaoId, colaboradorId])
+}
+
+// Análise Preliminar de Risco de uma atividade.
+model Apr {
+  id           String              @id @default(cuid())
+  empresaId    String
+  empresa      Empresa             @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  numero       Int                 // sequencial por empresa
+  atividade    String
+  local        String
+  data         DateTime
+  responsavel  String
+  equipe       String[]            // ids de colaboradores
+  etapas       Json                // [{ etapa, riscos, medidas, epis }]
+  createdAt    DateTime            @default(now())
+  permissoes   PermissaoTrabalho[]
+
+  @@unique([empresaId, numero])
+}
+
+// Permissão de Trabalho para atividade de risco (altura, espaço confinado, quente, elétrica).
+model PermissaoTrabalho {
+  id          String    @id @default(cuid())
+  empresaId   String
+  empresa     Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  numero      Int
+  tipo        String    // ALTURA | ESPACO_CONFINADO | QUENTE | ELETRICIDADE
+  aprId       String?
+  apr         Apr?      @relation(fields: [aprId], references: [id], onDelete: SetNull)
+  atividade   String
+  local       String
+  inicio      DateTime
+  fim         DateTime
+  executantes String[]  // ids de colaboradores
+  emitente    String
+  checklist   Json      // [{ item, ok }]
+  encerradaEm DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([empresaId, numero])
+}
+
+// Diálogo Diário de Segurança com lista de presença.
+model Dds {
+  id            String   @id @default(cuid())
+  empresaId     String
+  empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tema          String
+  conteudo      String
+  data          DateTime
+  duracaoMin    Int
+  ministrante   String
+  participantes String[] // ids de colaboradores
+  createdAt     DateTime @default(now())
+
+  @@index([empresaId])
 }

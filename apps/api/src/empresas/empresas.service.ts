@@ -58,7 +58,9 @@ export class EmpresasService {
       const ghe = await this.prisma.ghe.findFirst({ where: { id: dto.gheId, empresaId } });
       if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
     }
-    return this.prisma.colaborador.create({ data: { ...dto, empresaId } });
+    return this.prisma.colaborador.create({
+      data: { ...dto, empresaId, dataAdmissao: dto.dataAdmissao ? new Date(dto.dataAdmissao) : undefined },
+    });
   }
 
   async listarGhes(consultoriaId: string, empresaId: string) {

@@ -36,7 +36,7 @@ export type Exame = {
   periodicidadeMeses: number | null;
 };
 export type Ghe = { id: string; nome: string; descricao: string | null; riscos: Risco[]; exames: Exame[]; _count: { colaboradores: number } };
-export type Colaborador = { id: string; nome: string; cpf?: string | null; cargo: string; cbo: string | null; gheId: string | null };
+export type Colaborador = { id: string; nome: string; cpf?: string | null; dataAdmissao?: string | null; cargo: string; cbo: string | null; gheId: string | null };
 export type Aso = {
   id: string; tipo: string; dataExame: string; resultado: 'APTO' | 'INAPTO';
   medicoExaminadorNome: string; medicoExaminadorCrm: string; exames: string[]; riscos: string[]; proximoExame: string | null;
@@ -147,6 +147,31 @@ export const removerMembroCipa = (empresaId: string, eleicaoId: string, membroId
   chamar<EleicaoCipa>('DELETE', `${rotaEleicoes(empresaId)}/${eleicaoId}/membros/${membroId}`);
 export const gerarDocumentoEleicao = (empresaId: string, eleicaoId: string, documento: DocumentoEleicao) =>
   baixarPdf(`${rotaEleicoes(empresaId)}/${eleicaoId}/pdf/${documento}`, 'documento da CIPA');
+
+export type EtapaApr = { etapa: string; riscos: string; medidas: string; epis: string };
+export type Apr = { id: string; numero: number; atividade: string; local: string; data: string; responsavel: string; equipe: string[]; etapas: EtapaApr[] };
+export type TipoPt = 'ALTURA' | 'ESPACO_CONFINADO' | 'QUENTE' | 'ELETRICIDADE';
+export type Permissao = {
+  id: string; numero: number; tipo: TipoPt; atividade: string; local: string; inicio: string; fim: string;
+  executantes: string[]; emitente: string; checklist: { item: string; ok: boolean }[]; encerradaEm: string | null; apr: { numero: number } | null;
+};
+export type Dds = { id: string; tema: string; conteudo: string; data: string; duracaoMin: number; ministrante: string; participantes: string[] };
+export type ConteudoOperacao = {
+  tiposPt: Record<TipoPt, { nome: string; norma: string; checklist: string[] }>;
+  temasDds: { tema: string; conteudo: string }[];
+};
+
+export const buscarConteudoOperacao = () => chamar<ConteudoOperacao>('GET', '/operacao/conteudo');
+export const listarAprs = (empresaId: string) => chamar<Apr[]>('GET', `/empresas/${empresaId}/aprs`);
+export const criarApr = (empresaId: string, dados: Omit<Apr, 'id' | 'numero'>) => chamar<Apr>('POST', `/empresas/${empresaId}/aprs`, dados);
+export const listarPermissoes = (empresaId: string) => chamar<Permissao[]>('GET', `/empresas/${empresaId}/permissoes`);
+export const criarPermissao = (empresaId: string, dados: Omit<Permissao, 'id' | 'numero' | 'encerradaEm' | 'apr'> & { aprId?: string }) =>
+  chamar<Permissao>('POST', `/empresas/${empresaId}/permissoes`, dados);
+export const encerrarPermissao = (empresaId: string, id: string) => chamar<Permissao>('POST', `/empresas/${empresaId}/permissoes/${id}/encerrar`);
+export const listarDds = (empresaId: string) => chamar<Dds[]>('GET', `/empresas/${empresaId}/dds`);
+export const criarDds = (empresaId: string, dados: Omit<Dds, 'id'>) => chamar<Dds>('POST', `/empresas/${empresaId}/dds`, dados);
+export const gerarPdfOperacao = (empresaId: string, tipo: 'aprs' | 'permissoes' | 'dds', id: string) =>
+  baixarPdf(`/empresas/${empresaId}/${tipo}/${id}/pdf`, 'documento');
 
 const rotaColaborador = (empresaId: string, colaboradorId: string) => `/empresas/${empresaId}/colaboradores/${colaboradorId}`;
 export const buscarColaborador = (empresaId: string, colaboradorId: string) =>

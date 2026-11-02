@@ -22,7 +22,8 @@ const MOTIVOS_EPI = [
 
 const nomeDe = (lista: readonly (readonly [string, string])[], valor: string) => lista.find(([v]) => v === valor)?.[1] ?? valor;
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—');
-const hoje = () => new Date().toISOString().slice(0, 10);
+// Data local (não UTC): à noite o UTC já está no dia seguinte.
+const hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export default function ColaboradorPage({ params }: { params: { id: string; colaboradorId: string } }) {
   const { id: empresaId, colaboradorId } = params;
