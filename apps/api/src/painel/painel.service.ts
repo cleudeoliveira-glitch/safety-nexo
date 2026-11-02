@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { situacaoCipa } from '../cipa/cipa.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { validadeDaTurma } from '../treinamentos/treinamentos.service';
 
 export type Pendencia = { titulo: string; detalhe: string; nivel: 'vencido' | 'pendente' | 'em-dia' };
 
@@ -21,6 +22,7 @@ export class PainelService {
             gheId: true,
             asos: { orderBy: { dataExame: 'desc' }, take: 1, select: { proximoExame: true } },
             entregasEpi: { orderBy: { dataEntrega: 'desc' }, select: { epi: true, validadeCa: true } },
+            treinamentos: { select: { turma: { select: { nome: true, fim: true, validadeMeses: true } } } },
           },
         },
         documentos: { orderBy: { geradoEm: 'desc' } },
@@ -78,6 +80,7 @@ export class PainelService {
 
     pendencias.push(...this.pendenciasDosColaboradores(empresa.colaboradores, hoje));
     pendencias.push(...this.pendenciasDaCipa(empresa, hoje));
+    pendencias.push(...this.pendenciasDeTreinamento(empresa.colaboradores, hoje));
 
     const vencimentos = [...ultimos.values()]
       .filter((doc) => doc.vencimento)
@@ -101,6 +104,32 @@ export class PainelService {
       pendencias,
       vencimentos,
     };
+  }
+
+  // Vale o treinamento mais recente de cada tipo: uma reciclagem resolve o vencido.
+  private pendenciasDeTreinamento(
+    colaboradores: { nome: string; treinamentos: { turma: { nome: string; fim: Date; validadeMeses: number | null } }[] }[],
+    hoje: Date,
+  ): Pendencia[] {
+    const vencidos: string[] = [];
+    const aVencer: string[] = [];
+    for (const c of colaboradores) {
+      const ultimo = new Map<string, Date | null>();
+      for (const { turma } of [...c.treinamentos].sort((a, b) => b.turma.fim.getTime() - a.turma.fim.getTime())) {
+        if (!ultimo.has(turma.nome)) ultimo.set(turma.nome, validadeDaTurma(turma));
+      }
+      for (const [nome, validade] of ultimo) {
+        if (!validade) continue;
+        const dias = Math.ceil((validade.getTime() - hoje.getTime()) / DIA_MS);
+        if (dias < 0) vencidos.push(`${nome} (${c.nome})`);
+        else if (dias <= 30) aVencer.push(`${nome} (${c.nome})`);
+      }
+    }
+    const lista = (itens: string[]) => (itens.length > 3 ? `${itens.slice(0, 3).join(', ')} e mais ${itens.length - 3}` : itens.join(', '));
+    const pendencias: Pendencia[] = [];
+    if (vencidos.length) pendencias.push({ titulo: `Treinamento vencido: ${vencidos.length}`, detalhe: lista(vencidos), nivel: 'vencido' });
+    if (aVencer.length) pendencias.push({ titulo: `Treinamento vence em até 30 dias: ${aVencer.length}`, detalhe: lista(aVencer), nivel: 'pendente' });
+    return pendencias;
   }
 
   private pendenciasDaCipa(empresa: Parameters<typeof situacaoCipa>[0], hoje: Date): Pendencia[] {

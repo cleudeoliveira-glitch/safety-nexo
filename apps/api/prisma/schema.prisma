@@ -42,6 +42,7 @@ model Empresa {
   aprs           Apr[]
   permissoes     PermissaoTrabalho[]
   ddss           Dds[]
+  turmas         Turma[]
 
   @@unique([consultoriaId, cnpj])
   @@index([consultoriaId])
@@ -62,6 +63,7 @@ model Colaborador {
   asos          Aso[]
   entregasEpi   EntregaEpi[]
   cipa          CipaMembro[]
+  treinamentos  Participacao[]
 
   @@index([empresaId])
 }
@@ -271,4 +273,39 @@ model Dds {
   createdAt     DateTime @default(now())
 
   @@index([empresaId])
+}
+
+// Turma de um treinamento (NR-35, NR-10, integração...). Vale para todos os participantes.
+model Turma {
+  id                 String         @id @default(cuid())
+  empresaId          String
+  empresa            Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome               String
+  norma              String?
+  cargaHoraria       Int
+  validadeMeses      Int?           // sem validade fixa = null
+  conteudo           String[]       // conteúdo programático
+  inicio             DateTime
+  fim                DateTime
+  local              String
+  instrutor          String
+  qualificacao       String         // qualificação do instrutor
+  responsavelTecnico String
+  createdAt          DateTime       @default(now())
+  participantes      Participacao[]
+
+  @@index([empresaId])
+}
+
+// Participante de uma turma. O código vai no QR Code do certificado.
+model Participacao {
+  id            String      @id @default(cuid())
+  turmaId       String
+  turma         Turma       @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  codigo        String      @unique
+  createdAt     DateTime    @default(now())
+
+  @@unique([turmaId, colaboradorId])
 }

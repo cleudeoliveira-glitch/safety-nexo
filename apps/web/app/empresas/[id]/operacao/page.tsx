@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { EscolherPessoas } from '@/components/EscolherPessoas';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   Apr,
@@ -40,34 +41,6 @@ const etapaVazia = (): EtapaApr => ({ etapa: '', riscos: '', medidas: '', epis: 
 const caixaTexto = 'w-full rounded-card border border-border bg-background px-3 py-2 text-sm';
 
 type Avisar = (tipo: 'erro' | 'ok', texto: string) => void;
-
-// Lista de colaboradores com caixas de seleção e atalho para marcar todos.
-function EscolherPessoas({ titulo, colaboradores, marcados, mudar }: { titulo: string; colaboradores: Colaborador[]; marcados: string[]; mudar: (ids: string[]) => void }) {
-  const todos = colaboradores.length > 0 && marcados.length === colaboradores.length;
-  return (
-    <fieldset className="rounded-card border border-border p-3">
-      <legend className="px-1 text-sm font-semibold">{titulo}</legend>
-      {colaboradores.length === 0 ? (
-        <p className="text-sm text-text/60">Cadastre colaboradores na empresa primeiro.</p>
-      ) : (
-        <>
-          <button type="button" className="mb-2 text-xs font-semibold text-primary" onClick={() => mudar(todos ? [] : colaboradores.map((c) => c.id))}>
-            {todos ? 'Desmarcar todos' : 'Marcar todos'}
-          </button>
-          <div className="grid gap-1.5 md:grid-cols-2">
-            {colaboradores.map((c) => (
-              <label key={c.id} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" className="h-4 w-4 accent-primary" checked={marcados.includes(c.id)}
-                  onChange={(e) => mudar(e.target.checked ? [...marcados, c.id] : marcados.filter((id) => id !== c.id))} />
-                {c.nome} <span className="text-text/50">· {c.cargo}</span>
-              </label>
-            ))}
-          </div>
-        </>
-      )}
-    </fieldset>
-  );
-}
 
 function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar }: {
   empresaId: string; colaboradores: Colaborador[]; aprs: Apr[]; recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;

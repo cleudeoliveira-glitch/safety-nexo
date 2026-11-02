@@ -2,10 +2,11 @@ import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { errosEmPortugues } from './common/validacao';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, exceptionFactory: errosEmPortugues }));
   app.enableCors({ origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000' });
   await app.listen(process.env.PORT ?? 3001);
 }

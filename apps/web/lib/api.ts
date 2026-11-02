@@ -173,6 +173,36 @@ export const criarDds = (empresaId: string, dados: Omit<Dds, 'id'>) => chamar<Dd
 export const gerarPdfOperacao = (empresaId: string, tipo: 'aprs' | 'permissoes' | 'dds', id: string) =>
   baixarPdf(`/empresas/${empresaId}/${tipo}/${id}/pdf`, 'documento');
 
+export type ModeloTreinamento = { nome: string; norma: string | null; cargaHoraria: number | null; validadeMeses: number | null; conteudo: string[] };
+export type Turma = {
+  id: string; nome: string; norma: string | null; cargaHoraria: number; validadeMeses: number | null; conteudo: string[];
+  inicio: string; fim: string; local: string; instrutor: string; qualificacao: string; responsavelTecnico: string; validade: string | null;
+  participantes: { id: string; codigo: string; colaboradorId: string; nome: string; cargo: string }[];
+};
+export type CertificadoValidado = {
+  codigo: string; participante: string; cpf: string | null; treinamento: string; norma: string | null; cargaHoraria: number;
+  inicio: string; fim: string; instrutor: string; empresa: string; consultoria: string; validade: string | null; situacao: 'VALIDO' | 'VENCIDO';
+};
+
+export const buscarCatalogoTreinamentos = () => chamar<ModeloTreinamento[]>('GET', '/treinamentos/catalogo');
+export const listarTurmas = (empresaId: string) => chamar<Turma[]>('GET', `/empresas/${empresaId}/turmas`);
+export const criarTurma = (empresaId: string, dados: Omit<Turma, 'id' | 'validade' | 'participantes' | 'validadeMeses'> & { validadeMeses?: number }) =>
+  chamar<Turma>('POST', `/empresas/${empresaId}/turmas`, dados);
+export const adicionarParticipantes = (empresaId: string, turmaId: string, colaboradorIds: string[]) =>
+  chamar<Turma>('POST', `/empresas/${empresaId}/turmas/${turmaId}/participantes`, { colaboradorIds });
+export const removerParticipante = (empresaId: string, turmaId: string, id: string) =>
+  chamar<Turma>('DELETE', `/empresas/${empresaId}/turmas/${turmaId}/participantes/${id}`);
+export const gerarPdfTurma = (empresaId: string, turmaId: string, documento: 'lista' | 'certificados') =>
+  baixarPdf(`/empresas/${empresaId}/turmas/${turmaId}/${documento}`, documento === 'lista' ? 'lista de presença' : 'certificados');
+
+// Consulta pública do QR Code: não usa a sessão.
+export async function validarCertificado(codigo: string): Promise<CertificadoValidado | null> {
+  const res = await fetch(`${API_URL}/validar/${encodeURIComponent(codigo)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('Não foi possível consultar o certificado agora. Tente de novo em instantes.');
+  return res.json();
+}
+
 const rotaColaborador = (empresaId: string, colaboradorId: string) => `/empresas/${empresaId}/colaboradores/${colaboradorId}`;
 export const buscarColaborador = (empresaId: string, colaboradorId: string) =>
   chamar<ColaboradorDetalhe>('GET', rotaColaborador(empresaId, colaboradorId));

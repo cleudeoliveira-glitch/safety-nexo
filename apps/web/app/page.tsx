@@ -12,7 +12,7 @@ import { lerToken, sair } from '@/lib/sessao';
 const segments: [nome: string, rota: string | null][] = [
   ['Admissão e Base', ''],
   ['Operação Diária', '/operacao'],
-  ['Pessoas e Cultura', '#cipa'],
+  ['Pessoas e Cultura', '/treinamentos'],
   ['Saúde Ocupacional', '#documentos'],
   ['Emergência', null],
   ['Governança', null],
