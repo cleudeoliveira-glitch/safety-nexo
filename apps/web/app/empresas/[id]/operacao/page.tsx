@@ -247,11 +247,20 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
   const [tema, setTema] = useState('');
   const [texto, setTexto] = useState('');
   const [participantes, setParticipantes] = useState<string[]>([]);
+  const [categoria, setCategoria] = useState('');
+  const [busca, setBusca] = useState('');
+  const categorias = [...new Set(conteudo.temasDds.map((t) => t.categoria))].sort();
+  const feitos = new Set(lista.map((d) => d.tema));
+  const semAcento = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const filtrados = conteudo.temasDds.filter(
+    (t) => (!categoria || t.categoria === categoria) && (!busca.trim() || semAcento(`${t.tema} ${t.conteudo}`).includes(semAcento(busca.trim()))),
+  );
 
+  // O texto pronto vem com a pergunta para abrir a conversa (DDS vivencial).
   function escolherTema(nome: string) {
     setTema(nome);
     const pronto = conteudo.temasDds.find((t) => t.tema === nome);
-    if (pronto) setTexto(pronto.conteudo);
+    if (pronto) setTexto(`${pronto.conteudo}\n\nPara conversar com a equipe: ${pronto.pergunta}`);
   }
 
   async function salvar(ev: React.FormEvent<HTMLFormElement>) {
@@ -283,10 +292,19 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
       <Cartao titulo="Novo DDS">
         <form className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-2">
+            <Selecao id="dds-categoria" rotulo="Assunto" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+              <option value="">Todos os assuntos</option>
+              {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Selecao>
+            <Campo id="dds-busca" rotulo="Procurar tema" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Ex.: forno, escada, extintor" />
             <Selecao id="dds-pronto" rotulo="Tema pronto" value={conteudo.temasDds.some((t) => t.tema === tema) ? tema : ''} onChange={(e) => escolherTema(e.target.value)}
-              ajuda={{ oQueE: 'Conversa curta de segurança no início do turno. Escolha um tema pronto e ajuste o texto, ou escreva o seu.' }}>
-              <option value="">Escolher da biblioteca ({conteudo.temasDds.length} temas)</option>
-              {conteudo.temasDds.map((t) => <option key={t.tema} value={t.tema}>{t.tema}</option>)}
+              ajuda={{ oQueE: 'Conversa curta de segurança no início do turno. Cada tema traz o texto e uma pergunta para a equipe participar. Os marcados com ✓ já foram feitos nesta empresa.' }}>
+              <option value="">Escolher da biblioteca ({filtrados.length} de {conteudo.temasDds.length} temas)</option>
+              {categorias.filter((c) => filtrados.some((t) => t.categoria === c)).map((c) => (
+                <optgroup key={c} label={c}>
+                  {filtrados.filter((t) => t.categoria === c).map((t) => <option key={t.tema} value={t.tema}>{feitos.has(t.tema) ? '✓ ' : ''}{t.tema}</option>)}
+                </optgroup>
+              ))}
             </Selecao>
             <Campo id="dds-tema" rotulo="Tema" required value={tema} onChange={(e) => setTema(e.target.value)} placeholder="Ou escreva um tema" />
           </div>

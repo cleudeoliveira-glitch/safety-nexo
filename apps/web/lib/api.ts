@@ -177,7 +177,7 @@ export type Permissao = {
 export type Dds = { id: string; tema: string; conteudo: string; data: string; duracaoMin: number; ministrante: string; participantes: string[] };
 export type ConteudoOperacao = {
   tiposPt: Record<TipoPt, { nome: string; norma: string; checklist: string[] }>;
-  temasDds: { tema: string; conteudo: string }[];
+  temasDds: { categoria: string; tema: string; conteudo: string; pergunta: string }[];
 };
 
 export const buscarConteudoOperacao = () => chamar<ConteudoOperacao>('GET', '/operacao/conteudo');
