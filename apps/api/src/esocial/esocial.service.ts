@@ -2,7 +2,9 @@ import { BadGatewayException, BadRequestException, Injectable, NotFoundException
 import { PrismaService } from '../prisma/prisma.service';
 import { abrirCertificado } from './certificado';
 import { cifrar, decifrar } from './cifra';
-import { MAX_EVENTOS_POR_LOTE } from './configuracao';
+import { assinarEvento } from './assinatura';
+import { Ambiente, AMBIENTES, gerarIdEvento, MAX_EVENTOS_POR_LOTE } from './configuracao';
+import { Identificacao, montarS2210, montarS2220, montarS2240, soDocumento } from './eventos';
 import { consultarLote, enviarLote, montarLote } from './transmissao';
 
 @Injectable()
@@ -68,6 +70,66 @@ export class EsocialService {
     return e;
   }
 
+  // ---------- geração dos eventos ----------
+  // Monta, confere o que falta, assina e põe na fila. Um evento ainda não enviado da mesma origem é substituído.
+  private async enfileirar(
+    consultoriaId: string, empresaId: string, tipo: 'S-2210' | 'S-2220' | 'S-2240', referenciaId: string, descricao: string, retificar: boolean,
+    montar: (id: Identificacao) => { xml: string; pendencias: string[] },
+  ) {
+    const empresa = await this.empresa(consultoriaId, empresaId);
+    const ambiente = (empresa.esocialAmbiente in AMBIENTES ? empresa.esocialAmbiente : 'PRODUCAO_RESTRITA') as Ambiente;
+    const anteriores = await this.prisma.eventoEsocial.findMany({ where: { empresaId, tipo, referenciaId, ambiente }, orderBy: { createdAt: 'desc' } });
+    if (anteriores.some((a) => a.status === 'ENVIADO')) throw new BadRequestException('Já existe um envio deste evento aguardando a resposta do governo. Veja a resposta antes de gerar outro.');
+    const aceito = anteriores.find((a) => a.status === 'PROCESSADO' && a.recibo);
+    if (retificar && !aceito) throw new BadRequestException('Não há evento aceito pelo governo para corrigir. Gere o evento normal.');
+    const total = await this.prisma.eventoEsocial.count({ where: { empresaId } });
+    const id: Identificacao = {
+      idEvento: gerarIdEvento(1, soDocumento(empresa.cnpj).slice(0, 8), new Date(), (total % 99_999) + 1),
+      tpAmb: AMBIENTES[ambiente].tpAmb as 1 | 2,
+      retificaRecibo: retificar ? aceito!.recibo : null,
+    };
+    const { xml, pendencias } = montar(id);
+    if (pendencias.length) throw new BadRequestException(`Para gerar o ${tipo} falta preencher: ${pendencias.join('; ')}.`);
+    const cred = await this.credencial(consultoriaId);
+    const assinado = assinarEvento(xml, cred.aberto.chavePem, cred.aberto.certificadoBase64);
+    await this.prisma.eventoEsocial.deleteMany({ where: { id: { in: anteriores.filter((a) => a.status === 'PENDENTE' || a.status === 'ERRO').map((a) => a.id) } } });
+    const ev = await this.prisma.eventoEsocial.create({
+      data: { empresaId, tipo, referenciaId, descricao: retificar ? `${descricao} (correção)` : descricao, idEvento: id.idEvento, xml: assinado, ambiente },
+    });
+    const { xml: _x, ...semXml } = ev;
+    return semXml;
+  }
+
+  async gerarS2220(consultoriaId: string, empresaId: string, asoId: string, retificar = false) {
+    const aso = await this.prisma.aso.findFirst({ where: { id: asoId, colaborador: { empresaId, empresa: { consultoriaId } } }, include: { colaborador: { include: { ghe: { include: { exames: true } } } } } });
+    if (!aso) throw new NotFoundException('ASO não encontrado');
+    const empresa = await this.empresa(consultoriaId, empresaId);
+    const quando = aso.dataExame.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    return this.enfileirar(consultoriaId, empresaId, 'S-2220', aso.id, `ASO de ${aso.colaborador.nome} (${quando})`, retificar,
+      (id) => montarS2220(id, empresa, aso.colaborador, aso, aso.colaborador.ghe?.exames ?? []));
+  }
+
+  async gerarS2240(consultoriaId: string, empresaId: string, colaboradorId: string, inicio: string | undefined, retificar = false) {
+    const col = await this.prisma.colaborador.findFirst({ where: { id: colaboradorId, empresaId, empresa: { consultoriaId } }, include: { ghe: { include: { riscos: true } } } });
+    if (!col) throw new NotFoundException('Colaborador não encontrado');
+    const empresa = await this.empresa(consultoriaId, empresaId);
+    const dia = inicio?.slice(0, 10) ?? col.dataAdmissao?.toISOString().slice(0, 10);
+    const data = dia ? new Date(`${dia}T12:00:00-03:00`) : null;
+    if (!data || Number.isNaN(data.getTime())) throw new BadRequestException('Informe a data em que o trabalhador começou nessas condições.');
+    if (col.dataAdmissao && data < col.dataAdmissao) throw new BadRequestException('A data de início não pode ser antes da admissão.');
+    return this.enfileirar(consultoriaId, empresaId, 'S-2240', col.id, `Riscos de ${col.nome}${col.ghe ? ` (${col.ghe.nome})` : ''}`, retificar,
+      (id) => montarS2240(id, empresa, col, data));
+  }
+
+  async gerarS2210(consultoriaId: string, empresaId: string, catId: string, retificar = false) {
+    const cat = await this.prisma.cat.findFirst({ where: { id: catId, empresaId, empresa: { consultoriaId } }, include: { colaborador: true } });
+    if (!cat) throw new NotFoundException('CAT não encontrada');
+    const empresa = await this.empresa(consultoriaId, empresaId);
+    const quando = cat.dataHora.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    return this.enfileirar(consultoriaId, empresaId, 'S-2210', cat.id, `CAT de ${cat.colaborador.nome} (${quando})`, retificar,
+      (id) => montarS2210(id, empresa, cat.colaborador, cat));
+  }
+
   // Envia os eventos pendentes da empresa em lotes de até 50 e guarda o protocolo.
   async enviarPendentes(consultoriaId: string, empresaId: string) {
     const empresa = await this.empresa(consultoriaId, empresaId);
@@ -113,6 +175,7 @@ export class EsocialService {
           where: { id: alvo.id },
           data: ok ? { status: 'PROCESSADO', recibo: ev.recibo, mensagens: ev.ocorrencias } : { status: 'ERRO', protocolo: null, mensagens: [{ codigo: ev.cdResposta, descricao: ev.descResposta }, ...ev.ocorrencias] },
         });
+        if (ok && alvo.tipo === 'S-2210') await this.prisma.cat.updateMany({ where: { id: alvo.referenciaId }, data: { recibo: ev.recibo, enviadaEm: new Date() } });
         atualizados++;
       }
     }

@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CriarAetDto, CriarCatDto } from './dto';
+import { AtualizarCatEsocialDto, CriarAetDto, CriarCatDto } from './dto';
 import { prazoCat } from './prazo-cat';
 import { AetPdf, aetHtml, catHtml } from './templates';
 
@@ -73,9 +73,26 @@ export class SaudeService {
         dataHora,
         houveObito: dto.houveObito ?? dto.tipoCat === 'OBITO',
         atendimentoData: dto.atendimentoData ? new Date(dto.atendimentoData) : null,
+        esocial: dto.esocial ? JSON.parse(JSON.stringify(dto.esocial)) : undefined,
       },
     });
     return { ...cat, prazo: prazoCat(cat.dataHora, cat.houveObito) };
+  }
+
+  // Completa os dados da CAT exigidos pelo S-2210 (códigos das tabelas, endereço, atestado).
+  async atualizarEsocialCat(consultoriaId: string, empresaId: string, id: string, dto: AtualizarCatEsocialDto) {
+    await this.empresa(consultoriaId, empresaId);
+    const cat = await this.prisma.cat.findFirst({ where: { id, empresaId } });
+    if (!cat) throw new NotFoundException('CAT não encontrada');
+    const { horasTrabalhadas, atendimentoData, medicoNome, medicoCrm, cid, diasTratamento, ...codigos } = dto;
+    const esocial = { ...((cat.esocial as object | null) ?? {}), ...JSON.parse(JSON.stringify(codigos)) };
+    return this.prisma.cat.update({
+      where: { id },
+      data: {
+        esocial, horasTrabalhadas, medicoNome, medicoCrm, cid, diasTratamento,
+        atendimentoData: atendimentoData ? new Date(atendimentoData) : undefined,
+      },
+    });
   }
 
   async marcarEnviada(consultoriaId: string, empresaId: string, id: string, recibo: string) {

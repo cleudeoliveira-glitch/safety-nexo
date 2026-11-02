@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Param, Post, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { enviarPdf } from '../documentos/documentos.controller';
-import { CriarAetDto, CriarCatDto, EnvioCatDto } from './dto';
+import { AtualizarCatEsocialDto, CriarAetDto, CriarCatDto, EnvioCatDto } from './dto';
 import { SaudeService } from './saude.service';
 
 @Controller('empresas/:empresaId')
@@ -41,6 +41,11 @@ export class SaudeController {
   }
 
   @PermiteEmpresa()
+  @Put('cats/:id/esocial')
+  atualizarEsocialCat(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() dto: AtualizarCatEsocialDto) {
+    return this.saude.atualizarEsocialCat(c, e, id, dto);
+  }
+
   @Post('cats/:id/enviada')
   marcarEnviada(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() dto: EnvioCatDto) {
     return this.saude.marcarEnviada(c, e, id, dto.recibo);

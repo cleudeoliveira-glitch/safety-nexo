@@ -34,6 +34,13 @@ model Empresa {
   responsavelTecnicoNome     String? // assina LTCAT e registros ambientais do PPP
   responsavelTecnicoRegistro String? // CREA ou CRM
   representanteLegalNome     String? // assina o PPP pela empresa
+  // eSocial: dados extras dos responsáveis (S-2220 respMonit, S-2240 respReg) e ambiente de envio.
+  medicoPcmsoCpf             String?
+  medicoPcmsoUf              String?
+  responsavelTecnicoCpf      String?
+  responsavelTecnicoConselho String? // CRM, CREA ou OUTRO
+  responsavelTecnicoUf       String?
+  esocialAmbiente            String  @default("PRODUCAO_RESTRITA") // PRODUCAO_RESTRITA (testes) ou PRODUCAO
   atendidaSesmt   Boolean      @default(false) // com SESMT, ele cumpre o papel da CIPA (NR-05, 5.4.13.1)
   cipaInicioMandato DateTime?  // início do mandato atual da CIPA (ou do representante nomeado)
   cipaRepresentante String?    // representante nomeado quando a empresa fica abaixo do Quadro I
@@ -67,6 +74,8 @@ model Colaborador {
   cpf           String?
   cargo         String
   cbo           String?
+  matricula     String?  // matrícula do vínculo no eSocial (S-2200)
+  codCateg      String?  // categoria eSocial, só para quem não tem matrícula (ex.: estagiário)
   dataAdmissao  DateTime?
   gheId         String?
   ghe           Ghe?     @relation(fields: [gheId], references: [id], onDelete: SetNull)
@@ -119,6 +128,8 @@ model GheRisco {
   epiCa               String?
   codigoAnexoIv       String?  // código do Anexo IV do Decreto 3.048/99, quando enquadra
   aposentadoriaEspecial Boolean @default(false) // conclusão do responsável técnico
+  // eSocial S-2240: código da Tabela 24, unidade de medida, uso de EPC/EPI e requisitos da NR-06.
+  esocial             Json?
 
   @@index([gheId])
 }
@@ -156,6 +167,7 @@ model ExameGhe {
   mudancaRisco       Boolean @default(false)
   demissional        Boolean @default(false)
   periodicidadeMeses Int?
+  codigoEsocial      String? // procedimento da Tabela 27 do eSocial (4 dígitos)
 
   @@index([gheId])
 }
@@ -186,6 +198,7 @@ model Aso {
   resultado            String      // APTO, INAPTO
   medicoExaminadorNome String
   medicoExaminadorCrm  String
+  medicoExaminadorUf   String?
   exames               String[]
   riscos               String[]
   proximoExame         DateTime?
@@ -387,6 +400,8 @@ model Cat {
   diasTratamento   Int?
   enviadaEm        DateTime?   // quando foi transmitida ao eSocial
   recibo           String?     // número do recibo do eSocial
+  // eSocial S-2210: códigos das tabelas 13, 14/15 e 17, local e atestado.
+  esocial          Json?
   createdAt        DateTime    @default(now())
 
   @@index([empresaId])

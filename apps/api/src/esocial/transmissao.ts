@@ -7,7 +7,7 @@ const semDeclaracao = (xml: string) => xml.replace(/^<\?xml[^>]*\?>\s*/, '');
 
 export function montarLote(empregadorCnpj: string, transmissor: { tipo: 'CNPJ' | 'CPF'; documento: string }, eventos: { idEvento: string; xml: string }[]) {
   return `<eSocial xmlns="${NAMESPACES.loteEnvio}"><envioLoteEventos grupo="${GRUPO_NAO_PERIODICOS}">`
-    + `<ideEmpregador><tpInsc>1</tpInsc><nrInsc>${empregadorCnpj.replace(/\D/g, '').slice(0, 8)}</nrInsc></ideEmpregador>`
+    + `<ideEmpregador><tpInsc>1</tpInsc><nrInsc>${empregadorCnpj.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)}</nrInsc></ideEmpregador>`
     + `<ideTransmissor><tpInsc>${transmissor.tipo === 'CNPJ' ? 1 : 2}</tpInsc><nrInsc>${transmissor.documento}</nrInsc></ideTransmissor>`
     + `<eventos>${eventos.map((e) => `<evento Id="${e.idEvento}">${semDeclaracao(e.xml)}</evento>`).join('')}</eventos>`
     + `</envioLoteEventos></eSocial>`;

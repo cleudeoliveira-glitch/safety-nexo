@@ -1,4 +1,5 @@
-import { IsDateString, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsDateString, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
 
 export class CreateEmpresaDto {
   @IsString()
@@ -40,6 +41,24 @@ export class CreateEmpresaDto {
   representanteLegalNome?: string;
 }
 
+export class EpiComplDto {
+  @IsBoolean() medProtecao!: boolean;
+  @IsBoolean() condFuncto!: boolean;
+  @IsBoolean() usoInint!: boolean;
+  @IsBoolean() przValid!: boolean;
+  @IsBoolean() periodicTroca!: boolean;
+  @IsBoolean() higienizacao!: boolean;
+}
+
+// Dados do agente para o S-2240 (Tabela 24, unidade de medida, EPC/EPI).
+export class EsocialRiscoDto {
+  @IsOptional() @Matches(/^\d{2}\.\d{2}\.\d{3}$/, { message: 'O código da Tabela 24 tem o formato 00.00.000.' }) codAgNoc?: string;
+  @IsOptional() @IsInt() @Min(1) @Max(30) unMed?: number;
+  @IsOptional() @IsIn([0, 1, 2]) utilizEPC?: number;
+  @IsOptional() @IsIn([0, 1, 2]) utilizEPI?: number;
+  @IsOptional() @ValidateNested() @Type(() => EpiComplDto) epiCompl?: EpiComplDto;
+}
+
 export class AvaliacaoRiscoDto {
   @IsIn(['QUALITATIVA', 'QUANTITATIVA'])
   tipoAvaliacao!: string;
@@ -54,6 +73,7 @@ export class AvaliacaoRiscoDto {
   @IsBoolean() aposentadoriaEspecial!: boolean;
   @IsOptional() @IsString() @Length(0, 10) anexoNr15?: string | null;
   @IsOptional() @IsIn(['NAO', 'MINIMO', 'MEDIO', 'MAXIMO']) grauInsalubridade?: string | null;
+  @IsOptional() @ValidateNested() @Type(() => EsocialRiscoDto) esocial?: EsocialRiscoDto;
 }
 
 export class PericulosidadeDto {
@@ -86,6 +106,19 @@ export class CreateColaboradorDto {
   @IsOptional()
   @IsString()
   gheId?: string;
+
+  @IsOptional() @IsString() @Length(1, 30) matricula?: string;
+  @IsOptional() @Matches(/^\d{3}$/, { message: 'A categoria do eSocial tem 3 dígitos (ex.: 901 para estagiário).' }) codCateg?: string;
+}
+
+export class EsocialColaboradorDto {
+  @IsOptional() @IsString() @Length(0, 30) matricula?: string;
+  @IsOptional() @Matches(/^(\d{3})?$/, { message: 'A categoria do eSocial tem 3 dígitos (ex.: 901 para estagiário).' }) codCateg?: string;
+  @IsOptional() @Matches(/^(\d{3}\.?\d{3}\.?\d{3}-?\d{2})?$/, { message: 'CPF inválido.' }) cpf?: string;
+}
+
+export class CodigoExameDto {
+  @Matches(/^(\d{4})?$/, { message: 'O código da Tabela 27 tem 4 dígitos.' }) codigoEsocial!: string;
 }
 
 export class CreateGheDto {
@@ -138,6 +171,8 @@ export class CreateExameGheDto {
   @Min(1)
   @Max(60)
   periodicidadeMeses?: number;
+
+  @IsOptional() @Matches(/^(\d{4})?$/, { message: 'O código da Tabela 27 tem 4 dígitos.' }) codigoEsocial?: string;
 }
 
 export class MedicoPcmsoDto {
@@ -150,7 +185,17 @@ export class MedicoPcmsoDto {
   crm!: string;
 }
 
+const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+
 export class UpdateEmpresaDto {
+  // eSocial
+  @IsOptional() @Matches(/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/, { message: 'CPF do médico do PCMSO inválido.' }) medicoPcmsoCpf?: string;
+  @IsOptional() @IsIn(UFS, { message: 'UF do CRM do médico do PCMSO inválida.' }) medicoPcmsoUf?: string;
+  @IsOptional() @Matches(/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/, { message: 'CPF do responsável técnico inválido.' }) responsavelTecnicoCpf?: string;
+  @IsOptional() @IsIn(['CRM', 'CREA', 'OUTRO']) responsavelTecnicoConselho?: string;
+  @IsOptional() @IsIn(UFS, { message: 'UF do registro do responsável técnico inválida.' }) responsavelTecnicoUf?: string;
+  @IsOptional() @IsIn(['PRODUCAO_RESTRITA', 'PRODUCAO']) esocialAmbiente?: string;
+
   @IsOptional()
   @IsString()
   @Length(2, 200)

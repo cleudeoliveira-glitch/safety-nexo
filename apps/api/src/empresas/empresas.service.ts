@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CnaeService } from '../cnae/cnae.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
+import { CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 
 @Injectable()
 export class EmpresasService {
@@ -63,6 +63,25 @@ export class EmpresasService {
     });
   }
 
+  // Matrícula, categoria e CPF para os eventos do eSocial.
+  async dadosEsocialColaborador(consultoriaId: string, empresaId: string, colaboradorId: string, dto: EsocialColaboradorDto) {
+    await this.buscar(consultoriaId, empresaId);
+    const limpo = (v?: string) => (v === undefined ? undefined : v.trim() || null);
+    const { count } = await this.prisma.colaborador.updateMany({
+      where: { id: colaboradorId, empresaId },
+      data: { matricula: limpo(dto.matricula), codCateg: limpo(dto.codCateg), cpf: limpo(dto.cpf) },
+    });
+    if (!count) throw new NotFoundException('Colaborador não encontrado nesta empresa');
+    return this.prisma.colaborador.findUnique({ where: { id: colaboradorId } });
+  }
+
+  async codigoExame(consultoriaId: string, empresaId: string, gheId: string, exameId: string, dto: CodigoExameDto) {
+    await this.buscar(consultoriaId, empresaId);
+    const { count } = await this.prisma.exameGhe.updateMany({ where: { id: exameId, gheId, ghe: { empresaId } }, data: { codigoEsocial: dto.codigoEsocial || null } });
+    if (!count) throw new NotFoundException('Exame não encontrado neste GHE');
+    return this.prisma.exameGhe.findUnique({ where: { id: exameId } });
+  }
+
   async listarGhes(consultoriaId: string, empresaId: string) {
     await this.buscar(consultoriaId, empresaId);
     return this.prisma.ghe.findMany({
@@ -93,6 +112,7 @@ export class EmpresasService {
       where: { id: riscoId },
       data: {
         ...dto,
+        esocial: dto.esocial ? JSON.parse(JSON.stringify(dto.esocial)) : undefined,
         intensidade: vazioVira(dto.intensidade),
         limiteTolerancia: vazioVira(dto.limiteTolerancia),
         tecnicaMedicao: vazioVira(dto.tecnicaMedicao),

@@ -37,6 +37,21 @@ export class EsocialController {
     res.end(ev.xml);
   }
 
+  @Post('empresas/:empresaId/esocial/s2220/:asoId')
+  s2220(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('asoId') id: string, @Body('retificar') r?: boolean) {
+    return this.esocial.gerarS2220(c, e, id, r === true);
+  }
+
+  @Post('empresas/:empresaId/esocial/s2240/:colaboradorId')
+  s2240(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Body('inicio') inicio?: string, @Body('retificar') r?: boolean) {
+    return this.esocial.gerarS2240(c, e, id, inicio, r === true);
+  }
+
+  @Post('empresas/:empresaId/esocial/s2210/:catId')
+  s2210(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('catId') id: string, @Body('retificar') r?: boolean) {
+    return this.esocial.gerarS2210(c, e, id, r === true);
+  }
+
   @Post('empresas/:empresaId/esocial/enviar')
   enviar(@ConsultoriaId() c: string, @Param('empresaId') e: string) {
     return this.esocial.enviarPendentes(c, e);

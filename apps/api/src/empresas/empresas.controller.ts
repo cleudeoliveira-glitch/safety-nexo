@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ConsultoriaId } from '../common/consultoria.decorator';
-import { AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
+import { CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 import { EmpresasService } from './empresas.service';
 import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
@@ -78,6 +78,16 @@ export class EmpresasController {
     @Body() dto: CreateExameGheDto,
   ) {
     return this.empresas.criarExame(consultoriaId, empresaId, gheId, dto);
+  }
+
+  @Put(':empresaId/colaboradores/:colaboradorId/esocial')
+  dadosEsocialColaborador(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Body() dto: EsocialColaboradorDto) {
+    return this.empresas.dadosEsocialColaborador(c, e, id, dto);
+  }
+
+  @Put(':empresaId/ghes/:gheId/exames/:exameId/codigo')
+  codigoExame(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('gheId') g: string, @Param('exameId') x: string, @Body() dto: CodigoExameDto) {
+    return this.empresas.codigoExame(c, e, g, x, dto);
   }
 
   @Put(':empresaId/ghes/:gheId/periculosidade')

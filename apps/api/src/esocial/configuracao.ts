@@ -28,10 +28,10 @@ export const MAX_EVENTOS_POR_LOTE = 50;
 export const GRUPO_NAO_PERIODICOS = 2; // S-2210, S-2220 e S-2240
 
 // Id do evento: "ID" + tipo de inscrição + inscrição com 14 posições (CNPJ base completado com zeros)
-// + data e hora (AAAAMMDDHHMMSS) + sequencial de 5 dígitos. A CONFIRMAR com o padrão do XSD.
+// + data e hora (AAAAMMDDHHMMSS) + sequencial de 5 dígitos. Confere com o padrão TS_Id do XSD S-1.3: ID\d{1}[A-Z0-9]{12}\d{21}.
 export function gerarIdEvento(tpInsc: 1 | 2, nrInsc: string, quando: Date, sequencial: number) {
   const p = (n: number, t = 2) => String(n).padStart(t, '0');
   const d = new Date(quando.getTime() - 3 * 3600_000); // horário de Brasília
   const carimbo = `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())}`;
-  return `ID${tpInsc}${nrInsc.replace(/\D/g, '').padEnd(14, '0')}${carimbo}${p(sequencial, 5)}`;
+  return `ID${tpInsc}${nrInsc.toUpperCase().replace(/[^A-Z0-9]/g, '').padEnd(14, '0')}${carimbo}${p(sequencial, 5)}`;
 }
