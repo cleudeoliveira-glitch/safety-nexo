@@ -46,6 +46,17 @@ export type ColaboradorDetalhe = Colaborador & { ghe: Ghe | null; asos: Aso[]; e
 export type Pendencia = { titulo: string; detalhe: string; nivel: 'vencido' | 'pendente' | 'em-dia' };
 export type Vencimento = { tipo: string; versao: number; vencimento: string; dias: number };
 export type Painel = { empresa: Pick<Empresa, 'id' | 'razaoSocial' | 'cnpj'>; percentual: number; pendencias: Pendencia[]; vencimentos: Vencimento[] };
+export type Cipa = {
+  grauRisco: number | null;
+  numFuncionarios: number;
+  atendidaSesmt: boolean;
+  representante: string | null;
+  dimensionamento:
+    | { situacao: 'SEM_GRAU' }
+    | { situacao: 'REPRESENTANTE'; minimoParaCipa: number }
+    | { situacao: 'CIPA'; efetivos: number; suplentes: number };
+  calendario: { inicioMandato: string; fimMandato: string; convocacaoAte: string; eleicaoAte: string; posse: string } | null;
+};
 export type CnaeInfo = { classe: string; denominacao: string; grauRisco: number };
 
 async function chamar<T>(metodo: string, caminho: string, corpo?: unknown): Promise<T> {
@@ -105,6 +116,11 @@ async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
 export const gerarDocumento = (empresaId: string, tipo: 'pgr' | 'pcmso') =>
   baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo.toUpperCase());
 
+export const buscarCipa = (empresaId: string) => chamar<Cipa>('GET', `/empresas/${empresaId}/cipa`);
+export const salvarCipa = (empresaId: string, dados: { atendidaSesmt?: boolean; inicioMandato?: string; representante?: string }) =>
+  chamar<Cipa>('PUT', `/empresas/${empresaId}/cipa`, dados);
+export const gerarCipa = (empresaId: string) => baixarPdf(`/empresas/${empresaId}/cipa/pdf`, 'dimensionamento da CIPA');
+
 const rotaColaborador = (empresaId: string, colaboradorId: string) => `/empresas/${empresaId}/colaboradores/${colaboradorId}`;
 export const buscarColaborador = (empresaId: string, colaboradorId: string) =>
   chamar<ColaboradorDetalhe>('GET', rotaColaborador(empresaId, colaboradorId));
@@ -122,7 +138,8 @@ export function salvarArquivo(pdf: Blob, nome: string) {
   const url = URL.createObjectURL(pdf);
   const link = document.createElement('a');
   link.href = url;
-  link.download = nome;
+  // Sem acentos: alguns navegadores trocam nomes acentuados por "download".
+  link.download = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   document.body.appendChild(link);
   link.click();
   link.remove();

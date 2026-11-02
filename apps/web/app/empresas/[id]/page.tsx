@@ -5,7 +5,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   atualizarEmpresa,
+  buscarCipa,
   buscarEmpresa,
+  Cipa,
   Colaborador,
   criarColaborador,
   criarExame,
@@ -14,11 +16,13 @@ import {
   definirMedico,
   Empresa,
   enviarLogoEmpresa,
+  gerarCipa,
   gerarDocumento,
   Ghe,
   listarColaboradores,
   listarGhes,
   salvarArquivo,
+  salvarCipa,
 } from '@/lib/api';
 
 const TIPOS_RISCO = [
@@ -42,12 +46,19 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [ghes, setGhes] = useState<Ghe[]>([]);
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
+  const [cipa, setCipa] = useState<Cipa | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
 
   const recarregar = useCallback(async () => {
     try {
-      const [e, g, c] = await Promise.all([buscarEmpresa(empresaId), listarGhes(empresaId), listarColaboradores(empresaId)]);
+      const [e, g, c, ci] = await Promise.all([
+        buscarEmpresa(empresaId),
+        listarGhes(empresaId),
+        listarColaboradores(empresaId),
+        buscarCipa(empresaId),
+      ]);
       setEmpresa(e);
+      setCipa(ci);
       setGhes(g);
       setColaboradores(c);
     } catch (e) {
@@ -75,11 +86,11 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     };
   }
 
-  async function baixar(tipo: 'pgr' | 'pcmso') {
+  async function baixar(tipo: 'pgr' | 'pcmso' | 'cipa') {
     try {
-      const pdf = await gerarDocumento(empresaId, tipo);
+      const pdf = tipo === 'cipa' ? await gerarCipa(empresaId) : await gerarDocumento(empresaId, tipo);
       salvarArquivo(pdf, `${tipo.toUpperCase()}-${empresa?.razaoSocial ?? 'empresa'}.pdf`);
-      setAviso({ tipo: 'ok', texto: `${tipo.toUpperCase()} gerado.` });
+      setAviso({ tipo: 'ok', texto: tipo === 'cipa' ? 'Dimensionamento da CIPA gerado.' : `${tipo.toUpperCase()} gerado.` });
     } catch (e) {
       setAviso({ tipo: 'erro', texto: (e as Error).message });
     }
@@ -289,7 +300,51 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
         </form>
       </Cartao>
 
-      <Cartao titulo="5. Documentos" id="documentos">
+      {cipa && (
+        <Cartao
+          titulo="5. CIPA"
+          id="cipa"
+          acao={cipa.dimensionamento.situacao !== 'SEM_GRAU' && (
+            <Botao variante="secundario" onClick={() => baixar('cipa')}>Baixar dimensionamento</Botao>
+          )}
+        >
+          <ResumoCipa cipa={cipa} />
+          {cipa.dimensionamento.situacao !== 'SEM_GRAU' && (
+            <form
+              className="mt-4 grid gap-4 md:grid-cols-3"
+              onSubmit={enviar(
+                (d) =>
+                  salvarCipa(empresaId, {
+                    atendidaSesmt: d.get('atendidaSesmt') === 'on',
+                    ...(texto(d, 'inicioMandato') ? { inicioMandato: texto(d, 'inicioMandato') } : {}),
+                    ...(d.has('representante') ? { representante: texto(d, 'representante') } : {}),
+                  }),
+                'CIPA salva.',
+              )}
+            >
+              <Campo id="cipa-inicio" name="inicioMandato" type="date" rotulo="Início do mandato atual"
+                defaultValue={cipa.calendario?.inicioMandato.slice(0, 10) ?? ''}
+                ajuda={{
+                  oQueE: 'Data da posse da gestão atual. Com ela o sistema calcula o fim do mandato e os prazos da próxima eleição.',
+                  ondeAcho: 'Na ata de posse da CIPA.',
+                  baseLegal: 'NR-05, itens 5.4.6, 5.5.1 e 5.5.3',
+                }} />
+              {cipa.dimensionamento.situacao === 'REPRESENTANTE' && (
+                <Campo id="cipa-representante" name="representante" rotulo="Representante nomeado" placeholder="Ex.: João Lima"
+                  defaultValue={cipa.representante ?? ''}
+                  ajuda={{ oQueE: 'Empregado nomeado para ajudar nas ações de prevenção quando a empresa não precisa de CIPA.', baseLegal: 'NR-05, item 5.4.13' }} />
+              )}
+              <label className="flex items-center gap-2 self-end pb-3 text-sm">
+                <input type="checkbox" name="atendidaSesmt" defaultChecked={cipa.atendidaSesmt} className="h-4 w-4 accent-primary" />
+                Empresa atendida por SESMT
+              </label>
+              <div className="flex justify-end md:col-span-3"><Botao type="submit">Salvar CIPA</Botao></div>
+            </form>
+          )}
+        </Cartao>
+      )}
+
+      <Cartao titulo="6. Documentos" id="documentos">
         <p className="mb-4 text-sm text-text/60">Cada documento sai em PDF com a logo da empresa no cabeçalho e a da sua consultoria no rodapé.</p>
         <div className="flex flex-wrap gap-3">
           <Botao onClick={() => baixar('pgr')}>Gerar PGR</Botao>
@@ -297,5 +352,50 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
         </div>
       </Cartao>
     </main>
+  );
+}
+
+const dataBr = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+
+// Explica o resultado do Quadro I da NR-05 em linguagem simples.
+function ResumoCipa({ cipa }: { cipa: Cipa }) {
+  const d = cipa.dimensionamento;
+  if (d.situacao === 'SEM_GRAU') {
+    return <Aviso tipo="info">Informe o CNAE ou o grau de risco nos dados da empresa para o sistema calcular a CIPA.</Aviso>;
+  }
+  if (d.situacao === 'REPRESENTANTE') {
+    return (
+      <p className="text-sm">
+        Com {cipa.numFuncionarios} funcionário(s) no grau de risco {cipa.grauRisco}, a empresa <strong>não precisa de CIPA</strong> (passa a precisar a
+        partir de {d.minimoParaCipa}).{' '}
+        {cipa.atendidaSesmt
+          ? 'Como é atendida por SESMT, ele cumpre esse papel.'
+          : 'Ela deve nomear um representante entre os funcionários para ajudar na prevenção.'}
+      </p>
+    );
+  }
+  const c = cipa.calendario;
+  return (
+    <div className="space-y-3 text-sm">
+      <p>
+        Com {cipa.numFuncionarios} funcionário(s) no grau de risco {cipa.grauRisco}, a CIPA precisa de{' '}
+        <strong>{d.efetivos} efetivo(s) e {d.suplentes} suplente(s) eleitos pelos funcionários</strong>, e o mesmo número indicado pela empresa.
+      </p>
+      {c && (
+        <ul className="grid gap-2 md:grid-cols-4">
+          {[
+            ['Fim do mandato', c.fimMandato],
+            ['Publicar edital até', c.convocacaoAte],
+            ['Eleição até', c.eleicaoAte],
+            ['Posse da nova gestão', c.posse],
+          ].map(([rotulo, data]) => (
+            <li key={rotulo} className="rounded-card border border-border bg-background px-3 py-2">
+              <span className="block text-xs text-text/60">{rotulo}</span>
+              <strong>{dataBr(data)}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

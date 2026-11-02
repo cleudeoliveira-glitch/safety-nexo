@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { situacaoCipa } from '../cipa/cipa.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type Pendencia = { titulo: string; detalhe: string; nivel: 'vencido' | 'pendente' | 'em-dia' };
@@ -76,6 +77,7 @@ export class PainelService {
     }
 
     pendencias.push(...this.pendenciasDosColaboradores(empresa.colaboradores, hoje));
+    pendencias.push(...this.pendenciasDaCipa(empresa, hoje));
 
     const vencimentos = [...ultimos.values()]
       .filter((doc) => doc.vencimento)
@@ -99,6 +101,32 @@ export class PainelService {
       pendencias,
       vencimentos,
     };
+  }
+
+  private pendenciasDaCipa(empresa: Parameters<typeof situacaoCipa>[0], hoje: Date): Pendencia[] {
+    const { dimensionamento: d, calendario: c, atendidaSesmt, representante } = situacaoCipa(empresa);
+    const data = (x: Date) => x.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+
+    if (d.situacao === 'REPRESENTANTE') {
+      if (atendidaSesmt || representante) return [];
+      return [{ titulo: 'Nomeie o representante da NR-05', detalhe: 'A empresa não precisa de CIPA, mas precisa de um representante', nivel: 'pendente' }];
+    }
+    if (d.situacao !== 'CIPA') return [];
+    if (!c) {
+      return [{
+        titulo: 'Organize a CIPA',
+        detalhe: `${d.efetivos} efetivo(s) e ${d.suplentes} suplente(s) de cada lado. Informe o mandato atual, se já houver`,
+        nivel: 'pendente',
+      }];
+    }
+    if (c.fimMandato < hoje) return [{ titulo: 'Mandato da CIPA vencido', detalhe: `Terminou em ${data(c.fimMandato)}`, nivel: 'vencido' }];
+    if (c.eleicaoAte < hoje) return [{ titulo: 'Eleição da CIPA atrasada', detalhe: `Devia ocorrer até ${data(c.eleicaoAte)}`, nivel: 'vencido' }];
+    if (c.convocacaoAte < hoje) {
+      return [{ titulo: 'Edital da CIPA atrasado', detalhe: `A convocação devia sair até ${data(c.convocacaoAte)}; eleição até ${data(c.eleicaoAte)}`, nivel: 'vencido' }];
+    }
+    const dias = Math.ceil((c.convocacaoAte.getTime() - hoje.getTime()) / DIA_MS);
+    if (dias <= 30) return [{ titulo: `Publique o edital da CIPA em até ${dias} dia(s)`, detalhe: `Prazo: ${data(c.convocacaoAte)}`, nivel: 'pendente' }];
+    return [];
   }
 
   // ASO e CA viram uma tarefa por situação, com os nomes, para não lotar o painel.

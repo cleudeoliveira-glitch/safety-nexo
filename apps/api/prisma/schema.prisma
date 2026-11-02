@@ -31,6 +31,9 @@ model Empresa {
   logoPath       String?       // logo da empresa cliente: vai no cabeçalho dos documentos
   medicoPcmsoNome String?      // médico responsável pelo PCMSO (NR-07)
   medicoPcmsoCrm  String?
+  atendidaSesmt   Boolean      @default(false) // com SESMT, ele cumpre o papel da CIPA (NR-05, 5.4.13.1)
+  cipaInicioMandato DateTime?  // início do mandato atual da CIPA (ou do representante nomeado)
+  cipaRepresentante String?    // representante nomeado quando a empresa fica abaixo do Quadro I
   createdAt      DateTime      @default(now())
   colaboradores  Colaborador[]
   ghes           Ghe[]
