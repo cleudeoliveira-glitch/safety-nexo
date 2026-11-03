@@ -37,6 +37,7 @@ export class PainelService {
         controlesEmergencia: { where: { validade: { not: null } } },
         atestados: { where: { inicio: { gte: new Date(Date.now() - 180 * DIA_MS) } } },
         terceiros: { where: { OR: [{ fim: null }, { fim: { gte: new Date() } }] }, select: { razaoSocial: true, documentos: { where: { validade: { lt: new Date() } }, select: { tipo: true } } } },
+        registrosSaude: { where: { proximaData: { not: null } }, select: { tipo: true, titulo: true, data: true, proximaData: true, colaborador: { select: { id: true, nome: true } } } },
         turmas: { where: { norma: 'IT-17' }, select: { fim: true, validadeMeses: true, participantes: { select: { colaboradorId: true } } } },
       },
     });
@@ -121,6 +122,7 @@ export class PainelService {
     }
 
     pendencias.push(...this.pendenciasDeEmergencia(empresa, hoje));
+    pendencias.push(...this.pendenciasDoProntuario(empresa.registrosSaude, hoje));
 
     const vencimentos = [...ultimos.values()]
       .filter((doc) => doc.vencimento)
@@ -258,5 +260,24 @@ export class PainelService {
     if (caVencido.length) pendencias.push({ titulo: `EPI com CA vencido: ${caVencido.length}`, detalhe: `Troque o EPI: ${lista(caVencido)}`, nivel: 'vencido' });
     if (asoAVencer.length) pendencias.push({ titulo: `ASO vence em até 30 dias: ${asoAVencer.length}`, detalhe: lista(asoAVencer), nivel: 'pendente' });
     return pendencias;
+  }
+
+  // Vale o registro mais recente de cada vacina (pelo nome antes do traço) ou de cada tipo de exame, por funcionário.
+  private pendenciasDoProntuario(regs: { tipo: string; titulo: string; data: Date; proximaData: Date | null; colaborador: { id: string; nome: string } }[], hoje: Date): Pendencia[] {
+    const chave = (r: { tipo: string; titulo: string; colaborador: { id: string } }) => `${r.colaborador.id}|${r.tipo}|${r.tipo === 'VACINA' ? r.titulo.split(/[-–(]/)[0].trim().toLowerCase() : ''}`;
+    const ultimo = new Map<string, (typeof regs)[number]>();
+    for (const r of regs) { const k = chave(r); const a = ultimo.get(k); if (!a || r.data > a.data) ultimo.set(k, r); }
+    const NOME: Record<string, string> = { VACINA: 'vacina', AUDIOMETRIA: 'audiometria', ESPIROMETRIA: 'espirometria', OUTRO: 'exame' };
+    const vencidos: string[] = []; const aVencer: string[] = [];
+    for (const r of ultimo.values()) {
+      const dias = Math.floor((r.proximaData!.getTime() - hoje.getTime()) / DIA_MS);
+      const txt = `${r.colaborador.nome} (${r.tipo === 'VACINA' ? r.titulo : NOME[r.tipo]})`;
+      if (dias < 0) vencidos.push(txt); else if (dias <= 30) aVencer.push(txt);
+    }
+    const lista = (l: string[]) => l.slice(0, 5).join(', ') + (l.length > 5 ? ` e mais ${l.length - 5}` : '');
+    const out: Pendencia[] = [];
+    if (vencidos.length) out.push({ titulo: `Vacina ou exame atrasado: ${vencidos.length}`, detalhe: lista(vencidos), nivel: 'vencido' });
+    if (aVencer.length) out.push({ titulo: `Vacina ou exame em até 30 dias: ${aVencer.length}`, detalhe: lista(aVencer), nivel: 'pendente' });
+    return out;
   }
 }

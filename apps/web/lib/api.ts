@@ -659,3 +659,13 @@ export const importarPdf = {
   importar: (e: string, id: string, ghes: { nome: string; descricao?: string; riscos: RiscoImportar[] }[]) => chamar<{ novosGhes: number; novosRiscos: number; repetidos: number }>('POST', `/empresas/${e}/importar-pdf/${id}/importar`, { ghes }),
   remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/importar-pdf/${id}`),
 };
+
+// ---------- Prontuário de saúde ----------
+export type TipoRegistro = 'VACINA' | 'AUDIOMETRIA' | 'ESPIROMETRIA' | 'OUTRO';
+export type RegistroSaude = { id: string; colaboradorId: string; colaborador: { nome: string }; tipo: TipoRegistro; data: string; titulo: string; resultado: string | null; dados: Record<string, unknown> | null; profissional: string | null; lote: string | null; proximaData: string | null; observacao: string | null };
+export const prontuario = {
+  listar: (e: string, colaboradorId?: string) => chamar<RegistroSaude[]>('GET', `/empresas/${e}/prontuario${colaboradorId ? `?colaboradorId=${colaboradorId}` : ''}`),
+  criar: (e: string, d: Record<string, unknown>) => chamar<RegistroSaude>('POST', `/empresas/${e}/prontuario`, d),
+  remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/prontuario/${id}`),
+  pdf: (e: string, colaboradorId: string) => baixarPdf(`/empresas/${e}/prontuario/pdf/${colaboradorId}`, 'prontuário'),
+};

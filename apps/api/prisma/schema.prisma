@@ -82,6 +82,7 @@ model Empresa {
   atestados      Atestado[]
   fapRat         FapRat[]
   importacoesPdf ImportacaoPdf[]
+  registrosSaude RegistroSaude[]
   jornadaDiariaHoras Float @default(8) // para o índice de absenteísmo
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
   emergencia     Json?
@@ -111,6 +112,7 @@ model Colaborador {
   cats          Cat[]
   afastamentos  Afastamento[]
   atestados     Atestado[]
+  registrosSaude RegistroSaude[]
 
   @@index([empresaId])
 }
@@ -896,4 +898,27 @@ model ImportacaoPdf {
   importadoEm   DateTime?
 
   @@index([empresaId])
+}
+
+// Prontuário: vacinas e exames complementares (audiometria, espirometria e outros) de cada funcionário.
+model RegistroSaude {
+  id            String      @id @default(cuid())
+  empresaId     String
+  empresa       Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  tipo          String      // VACINA | AUDIOMETRIA | ESPIROMETRIA | OUTRO
+  data          DateTime    @db.Date
+  titulo        String      // nome da vacina e dose, ou tipo do exame (ex.: "Hepatite B - 2ª dose", "Audiometria referencial")
+  resultado     String?     // resultado ou conclusão do laudo, como escrito pelo profissional
+  dados         Json?       // audiometria: limiares por orelha e frequência; espirometria: CVF, VEF1, VEF1/CVF
+  profissional  String?     // quem aplicou ou examinou, com registro
+  lote          String?     // vacina
+  proximaData   DateTime?   @db.Date // próxima dose ou próximo exame, informada pela consultora ou pelo médico
+  observacao    String?
+  arquivoId     String?     // laudo ou carteira de vacinação guardada no arquivo
+  createdAt     DateTime    @default(now())
+
+  @@index([empresaId])
+  @@index([colaboradorId])
 }

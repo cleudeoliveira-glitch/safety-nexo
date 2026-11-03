@@ -81,6 +81,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
           <div className="flex flex-wrap gap-2">
             <Botao variante="secundario" onClick={() => baixar(() => gerarOs(empresaId, colaboradorId), `Ordem-de-servico-${colaborador.nome}.pdf`)}>Ordem de serviço</Botao>
             <Botao variante="secundario" onClick={() => baixar(() => gerarPpp(empresaId, colaboradorId), `PPP-${colaborador.nome}.pdf`)}>Baixar PPP</Botao>
+            <Link href={`/empresas/${empresaId}/prontuario?colaborador=${colaboradorId}`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Prontuário de saúde</Link>
           </div>
         </div>
         <p className="text-text/60">
