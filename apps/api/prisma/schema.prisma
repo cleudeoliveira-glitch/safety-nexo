@@ -73,6 +73,9 @@ model Empresa {
   inspecoes      Inspecao[]
   eventosEsocial EventoEsocial[]
   controlesEmergencia ControleEmergencia[]
+  terceiros      Terceiro[]
+  atestados      Atestado[]
+  jornadaDiariaHoras Float @default(8) // para o índice de absenteísmo
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
   emergencia     Json?
 
@@ -100,6 +103,7 @@ model Colaborador {
   treinamentos  Participacao[]
   cats          Cat[]
   afastamentos  Afastamento[]
+  atestados     Atestado[]
 
   @@index([empresaId])
 }
@@ -613,4 +617,70 @@ model Cobranca {
 
   @@index([consultoriaId, vencimento])
   @@unique([contratoId, referencia])
+}
+
+// Empresa prestadora de serviço que trabalha dentro do cliente (terceirizada).
+model Terceiro {
+  id            String   @id @default(cuid())
+  empresaId     String
+  empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  razaoSocial   String
+  cnpj          String?
+  servico       String
+  contato       String?
+  telefone      String?
+  inicio        DateTime? @db.Date
+  fim           DateTime? @db.Date
+  createdAt     DateTime @default(now())
+  documentos    TerceiroDocumento[]
+  trabalhadores TerceiroTrabalhador[]
+
+  @@index([empresaId])
+}
+
+model TerceiroDocumento {
+  id          String    @id @default(cuid())
+  terceiroId  String
+  terceiro    Terceiro  @relation(fields: [terceiroId], references: [id], onDelete: Cascade)
+  tipo        String
+  validade    DateTime? @db.Date
+  observacao  String?
+  createdAt   DateTime  @default(now())
+
+  @@index([terceiroId])
+}
+
+model TerceiroTrabalhador {
+  id           String    @id @default(cuid())
+  terceiroId   String
+  terceiro     Terceiro  @relation(fields: [terceiroId], references: [id], onDelete: Cascade)
+  nome         String
+  cpf          String?
+  funcao       String?
+  asoValidade  DateTime? @db.Date
+  integracao   DateTime? @db.Date // data da integração de segurança feita no cliente
+  treinamentos Json      @default("[]") // [{ nome, validade }]
+  createdAt    DateTime  @default(now())
+
+  @@index([terceiroId])
+}
+
+// Atestado médico de falta (não é o ASO). Base do absenteísmo.
+model Atestado {
+  id            String      @id @default(cuid())
+  empresaId     String
+  empresa       Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  inicio        DateTime    @db.Date
+  dias          Int         @default(0) // dias de afastamento; 0 quando for só por horas
+  horas         Float?      // atestado de comparecimento por horas
+  tipo          String      // DOENCA, ACIDENTE_TRABALHO, ACOMPANHAMENTO, ODONTOLOGICO, OUTRO
+  cid           String?
+  medico        String?
+  observacao    String?
+  createdAt     DateTime    @default(now())
+
+  @@index([empresaId, inicio])
+  @@index([colaboradorId])
 }

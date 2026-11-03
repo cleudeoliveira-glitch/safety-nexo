@@ -1,6 +1,19 @@
 // Tradução de cada rota que altera algo (ou gera documento) para uma frase simples.
 // A ordem importa: a primeira regra que casar vence.
 const REGRAS: [string, RegExp, string][] = [
+  ['POST', /\/colaboradores\/importar\/previa$/, ''],
+  ['POST', /\/colaboradores\/importar$/, 'Importou funcionários da planilha do RH'],
+  ['POST', /\/terceiros$/, 'Cadastrou uma empresa terceirizada'],
+  ['PUT', /\/terceiros\/:id$/, 'Alterou uma empresa terceirizada'],
+  ['DELETE', /\/terceiros\/:id$/, 'Removeu uma empresa terceirizada'],
+  ['POST', /\/terceiros\/:id\/documentos$/, 'Registrou documento de terceirizada'],
+  ['DELETE', /\/terceiros\/:id\/documentos\/:docId$/, 'Removeu documento de terceirizada'],
+  ['POST', /\/terceiros\/:id\/trabalhadores$/, 'Cadastrou trabalhador terceirizado'],
+  ['PUT', /\/terceiros\/:id\/trabalhadores\/:trabId$/, 'Alterou trabalhador terceirizado'],
+  ['DELETE', /\/terceiros\/:id\/trabalhadores\/:trabId$/, 'Removeu trabalhador terceirizado'],
+  ['POST', /\/atestados$/, 'Lançou um atestado médico'],
+  ['DELETE', /\/atestados\/:id$/, 'Removeu um atestado médico'],
+  ['PUT', /\/absenteismo\/jornada$/, 'Alterou a jornada diária'],
   ['PATCH', /^\/empresas\/:empresaId$/, 'Alterou os dados da empresa'],
   ['PUT', /\/logo$/, 'Trocou a logo'],
   ['POST', /^\/empresas$/, 'Cadastrou uma empresa'],
@@ -87,6 +100,6 @@ const REGRAS: [string, RegExp, string][] = [
 
 export function descreverAcao(metodo: string, rota: string): string {
   const regra = REGRAS.find(([m, r]) => m === metodo && r.test(rota));
-  if (regra) return regra[2];
+  if (regra) return regra[2]; // frase vazia: não entra no histórico
   return metodo === 'DELETE' ? 'Apagou um registro' : rota.endsWith('/pdf') ? 'Baixou um documento' : 'Fez uma alteração';
 }

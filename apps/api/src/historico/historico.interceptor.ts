@@ -18,6 +18,7 @@ export class HistoricoInterceptor implements NestInterceptor {
       const sessao = req.sessao;
       if (!sessao?.sub) return; // cadastro, entrar e rotas públicas ficam de fora
       const rota: string = `${req.baseUrl ?? ''}${req.route?.path ?? req.path}`;
+      if (!descreverAcao(metodo, rota)) return; // consultas feitas por POST (ex.: prévia da importação)
       this.gravar(sessao, metodo, rota, req.params?.empresaId ?? null).catch((e) => this.log.warn(`não gravou o histórico: ${e.message}`));
     }));
   }

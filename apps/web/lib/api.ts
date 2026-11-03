@@ -483,3 +483,51 @@ export function centavos(texto: string): number | undefined {
   const n = Number(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t);
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : undefined;
 }
+
+// ---------- Conectores: planilha do RH, terceiros e absenteísmo ----------
+export type LinhaImportacao = { linha: number; nome: string; cpf: string | null; cargo: string | null; ghe: string | null; acao: 'novo' | 'atualizar' | 'erro'; erros: string[]; avisos: string[] };
+export type PreviaImportacao = { colunas: string[]; ignoradas: string[]; resumo: { novos: number; atualizar: number; erros: number }; linhas: LinhaImportacao[] };
+const comArquivo = (arquivo: File) => { const f = new FormData(); f.append('arquivo', arquivo); return f; };
+export const previaImportacao = (empresaId: string, arquivo: File) => chamar<PreviaImportacao>('POST', `/empresas/${empresaId}/colaboradores/importar/previa`, comArquivo(arquivo));
+export const importarColaboradores = (empresaId: string, arquivo: File) =>
+  chamar<{ criados: number; atualizados: number; ignorados: number }>('POST', `/empresas/${empresaId}/colaboradores/importar`, comArquivo(arquivo));
+
+export type Situacao = 'ok' | 'vencendo' | 'vencido' | 'sem-validade';
+export type TerceiroDocumento = { id: string; tipo: string; validade: string | null; observacao: string | null; situacao: Situacao };
+export type TreinamentoTerceiro = { nome: string; validade?: string; situacao?: Situacao };
+export type TerceiroTrabalhador = { id: string; nome: string; cpf: string | null; funcao: string | null; asoValidade: string | null; integracao: string | null; treinamentos: TreinamentoTerceiro[]; pendencias: string[]; liberado: boolean };
+export type Terceiro = {
+  id: string; razaoSocial: string; cnpj: string | null; servico: string; contato: string | null; telefone: string | null; inicio: string | null; fim: string | null;
+  documentos: TerceiroDocumento[]; trabalhadores: TerceiroTrabalhador[]; faltando: string[]; vencidos: string[]; contratoVencido: boolean; liberada: boolean;
+};
+export type TerceiroDados = { razaoSocial: string; cnpj?: string; servico: string; contato?: string; telefone?: string; inicio?: string; fim?: string };
+export type TrabalhadorDados = { nome: string; cpf?: string; funcao?: string; asoValidade?: string; integracao?: string; treinamentos?: { nome: string; validade?: string }[] };
+export const terceiros = {
+  sugeridos: (e: string) => chamar<string[]>('GET', `/empresas/${e}/terceiros/documentos-sugeridos`),
+  listar: (e: string) => chamar<Terceiro[]>('GET', `/empresas/${e}/terceiros`),
+  criar: (e: string, d: TerceiroDados) => chamar<Terceiro>('POST', `/empresas/${e}/terceiros`, d),
+  alterar: (e: string, id: string, d: TerceiroDados) => chamar<Terceiro>('PUT', `/empresas/${e}/terceiros/${id}`, d),
+  remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/terceiros/${id}`),
+  documento: (e: string, id: string, d: { tipo: string; validade?: string; observacao?: string }) => chamar<TerceiroDocumento>('POST', `/empresas/${e}/terceiros/${id}/documentos`, d),
+  removerDocumento: (e: string, id: string, doc: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/terceiros/${id}/documentos/${doc}`),
+  trabalhador: (e: string, id: string, d: TrabalhadorDados) => chamar<TerceiroTrabalhador>('POST', `/empresas/${e}/terceiros/${id}/trabalhadores`, d),
+  removerTrabalhador: (e: string, id: string, t: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/terceiros/${id}/trabalhadores/${t}`),
+};
+
+export type Atestado = { id: string; colaboradorId: string; colaborador: { nome: string }; inicio: string; dias: number; horas: number | null; tipo: string; cid: string | null; medico: string | null; observacao: string | null };
+export type AtestadoDados = { colaboradorId: string; inicio: string; dias: number; horas?: number; tipo: string; cid?: string; medico?: string; observacao?: string };
+export type MesAbsenteismo = { mes: number; colaboradores: number; diasUteis: number; horasPrevistas: number; horasPerdidas: number; atestados: number; taxa: number };
+export type Absenteismo = {
+  ano: number; jornada: number; meses: MesAbsenteismo[];
+  total: { horasPrevistas: number; horasPerdidas: number; atestados: number; taxa: number };
+  porGhe: { nome: string; horas: number }[]; porTipo: { nome: string; horas: number }[]; porCid: { nome: string; horas: number }[]; quemMaisFaltou: { nome: string; horas: number }[];
+  alertasInss: { colaboradorId: string; nome: string; cid: string | null; dias: number; desde: string; jaAfastado: boolean }[];
+};
+export const atestados = {
+  tipos: (e: string) => chamar<Record<string, string>>('GET', `/empresas/${e}/atestados/tipos`),
+  listar: (e: string, ano: number) => chamar<Atestado[]>('GET', `/empresas/${e}/atestados?ano=${ano}`),
+  criar: (e: string, d: AtestadoDados) => chamar<Atestado>('POST', `/empresas/${e}/atestados`, d),
+  remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/atestados/${id}`),
+  indicadores: (e: string, ano: number) => chamar<Absenteismo>('GET', `/empresas/${e}/absenteismo?ano=${ano}`),
+  jornada: (e: string, horas: number) => chamar<{ jornadaDiariaHoras: number }>('PUT', `/empresas/${e}/absenteismo/jornada`, { jornadaDiariaHoras: horas }),
+};

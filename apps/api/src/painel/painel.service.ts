@@ -1,4 +1,5 @@
 import { situacaoAfastamento } from '../saude/saude.service';
+import { alertasInss } from '../conectores/absenteismo';
 import { dimensionarBrigada } from '../emergencia/it17';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { situacaoCipa } from '../cipa/cipa.service';
@@ -21,7 +22,9 @@ export class PainelService {
         ghes: { include: { _count: { select: { riscos: true, exames: true, colaboradores: true } } } },
         colaboradores: {
           select: {
+            id: true,
             nome: true,
+            dataAdmissao: true,
             gheId: true,
             asos: { orderBy: { dataExame: 'desc' }, take: 1, select: { proximoExame: true } },
             entregasEpi: { orderBy: { dataEntrega: 'desc' }, select: { epi: true, validadeCa: true } },
@@ -32,6 +35,8 @@ export class PainelService {
         cats: { where: { enviadaEm: null }, include: { colaborador: { select: { nome: true } } } },
         afastamentos: { where: { motivo: { in: ['01', '03'] } }, include: { colaborador: { select: { nome: true, asos: { where: { tipo: 'RETORNO_TRABALHO' }, select: { dataExame: true } } } } } },
         controlesEmergencia: { where: { validade: { not: null } } },
+        atestados: { where: { inicio: { gte: new Date(Date.now() - 180 * DIA_MS) } } },
+        terceiros: { where: { OR: [{ fim: null }, { fim: { gte: new Date() } }] }, select: { razaoSocial: true, documentos: { where: { validade: { lt: new Date() } }, select: { tipo: true } } } },
         turmas: { where: { norma: 'IT-17' }, select: { fim: true, validadeMeses: true, participantes: { select: { colaboradorId: true } } } },
       },
     });
@@ -103,6 +108,16 @@ export class PainelService {
       if (!sit.pedeRetorno || sit.asoRetorno) continue;
       if (af.fim) pendencias.unshift({ titulo: `ASO de retorno de ${af.colaborador.nome}`, detalhe: `Afastado por ${sit.dias} dias: faça o exame de retorno antes de voltar ao trabalho (NR-07)`, nivel: 'vencido' });
       else pendencias.push({ titulo: `${af.colaborador.nome} afastado há ${sit.dias} dias`, detalhe: 'Na volta, faça o ASO de retorno antes de reassumir (NR-07)', nivel: 'pendente' });
+    }
+
+    // Atestados da mesma doença somando mais de 15 dias em 60 dias: do 16º dia em diante é com o INSS.
+    const afastadosAgora = new Set(empresa.afastamentos.filter((a) => !a.fim).map((a) => a.colaboradorId));
+    for (const al of alertasInss(empresa.colaboradores, empresa.atestados)) {
+      if (afastadosAgora.has(al.colaboradorId)) continue;
+      pendencias.unshift({ titulo: `${al.nome}: ${al.dias} dias de atestado`, detalhe: 'Passou de 15 dias pela mesma doença: encaminhe ao INSS e registre o afastamento (Lei 8.213/91, art. 60)', nivel: 'vencido' });
+    }
+    for (const t of empresa.terceiros) {
+      if (t.documentos.length) pendencias.push({ titulo: `Documento vencido da terceirizada ${t.razaoSocial}`, detalhe: t.documentos.map((d) => d.tipo).join(', '), nivel: 'vencido' });
     }
 
     pendencias.push(...this.pendenciasDeEmergencia(empresa, hoje));
