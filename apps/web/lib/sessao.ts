@@ -40,6 +40,7 @@ export function sair() {
   try {
     localStorage.removeItem(CHAVE);
     localStorage.removeItem(CHAVE_USUARIO);
+    localStorage.removeItem('safety-nexo:campo'); // lista de empresas guardada para o campo (o que falta enviar fica)
   } catch {}
   window.location.href = '/entrar';
 }

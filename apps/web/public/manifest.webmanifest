@@ -1,0 +1,15 @@
+{
+  "name": "Safety Nexo",
+  "short_name": "Safety Nexo",
+  "description": "Segurança do trabalho sem complicação para consultorias SST.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F9FB",
+  "theme_color": "#0E4A5B",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ],
+  "shortcuts": [{ "name": "Campo sem internet", "url": "/campo" }]
+}

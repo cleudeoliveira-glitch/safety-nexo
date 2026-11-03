@@ -106,6 +106,9 @@ export default function Home() {
           ))}
         </select>
         <div className="mt-3 grid gap-2">
+          <Link href="/campo" className="rounded-card border border-primary px-3 py-2 text-center text-sm font-semibold text-primary">
+            Campo (funciona sem internet)
+          </Link>
           {!empresaCliente && (
             <>
               <Link href="/geral" className="rounded-card border border-primary px-3 py-2 text-center text-sm font-semibold text-primary">
