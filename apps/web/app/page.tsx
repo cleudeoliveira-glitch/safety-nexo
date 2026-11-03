@@ -18,6 +18,7 @@ const segments: [nome: string, rota: string | null][] = [
   ['Governança', '/esocial'],
   ['Conectores', '/conectores'],
   ['Documentos', '/arquivo'],
+  ['Psicossocial', '/psicossocial'],
 ];
 
 const passosTour: PassoTour[] = [
@@ -139,7 +140,7 @@ export default function Home() {
           </button>
         </div>
         <nav className="mt-8 space-y-3">
-          {segments.filter(([nome]) => !(empresaCliente && nome === 'Governança')).map(([nome, rota]) =>
+          {segments.filter(([nome]) => !(empresaCliente && (nome === 'Governança' || nome === 'Psicossocial'))).map(([nome, rota]) =>
             rota !== null && empresaId ? (
               <Link key={nome} href={`/empresas/${empresaId}${rota}`} className="block text-sm font-medium hover:text-primary">
                 {nome}

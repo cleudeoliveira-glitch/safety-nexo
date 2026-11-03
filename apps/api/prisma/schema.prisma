@@ -76,6 +76,7 @@ model Empresa {
   terceiros      Terceiro[]
   arquivos       Arquivo[]
   pedidosAssinatura PedidoAssinatura[]
+  avaliacoesPsicossociais AvaliacaoPsicossocial[]
   atestados      Atestado[]
   jornadaDiariaHoras Float @default(8) // para o índice de absenteísmo
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
@@ -767,4 +768,50 @@ model Signatario {
   presencial Boolean          @default(false) // assinou no aparelho de quem pediu
 
   @@index([pedidoId])
+}
+
+// Avaliação psicossocial: questionário anônimo respondido por link. Sem nome, sem e-mail, sem IP:
+// só o setor (GHE) e as respostas. Resultado aparece por setor só com o mínimo de respostas.
+model AvaliacaoPsicossocial {
+  id           String   @id @default(cuid())
+  empresaId    String
+  empresa      Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  questionario String   // id em src/psicossocial/questionarios.ts
+  titulo       String
+  status       String   @default("ABERTA") // ABERTA, ENCERRADA
+  token        String   @unique
+  minimoGrupo  Int      @default(5)
+  criadoPorNome String
+  criadoEm     DateTime @default(now())
+  encerradaEm  DateTime?
+  respostas    RespostaPsicossocial[]
+  acoes        AcaoPsicossocial[]
+
+  @@index([empresaId])
+}
+
+model RespostaPsicossocial {
+  id          String   @id @default(cuid())
+  avaliacaoId String
+  avaliacao   AvaliacaoPsicossocial @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  setor       String
+  valores     Json     // { "1": 0, "2": 1, ... }
+  dia         DateTime @db.Date // só o dia, para não identificar pela hora
+
+  @@index([avaliacaoId])
+}
+
+model AcaoPsicossocial {
+  id          String   @id @default(cuid())
+  avaliacaoId String
+  avaliacao   AvaliacaoPsicossocial @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  setor       String?
+  dimensao    String
+  acao        String
+  responsavel String?
+  prazo       DateTime? @db.Date
+  feita       Boolean  @default(false)
+  criadoEm    DateTime @default(now())
+
+  @@index([avaliacaoId])
 }

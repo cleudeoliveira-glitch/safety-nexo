@@ -581,3 +581,31 @@ export type ConferenciaAssinatura = {
   signatarios: { nome: string; cpf: string | null; papel: string; assinadoEm: string | null; presencial: boolean; comLocalizacao: boolean }[];
 };
 export const conferirAssinatura = (codigo: string) => chamar<ConferenciaAssinatura>('GET', `/assinatura/${encodeURIComponent(codigo)}`);
+
+// ---------- Avaliação psicossocial ----------
+export type DimensaoPs = { id: string; nome: string; tipo: 'casos' | 'media'; corte?: number; rotuloResultado: string; maiorEPior: boolean };
+export type QuestionarioPs = { id: string; sigla: string; nome: string; descricao: string; fonte: string; totalItens: number };
+export type AvaliacaoPs = { id: string; titulo: string; questionario: string; sigla: string; status: 'ABERTA' | 'ENCERRADA'; minimoGrupo: number; link: string; criadoEm: string; criadoPorNome: string; _count: { respostas: number; acoes: number } };
+export type LinhaPs = { setor: string; respostas: number; oculto: boolean; valores: Record<string, number | null> | null };
+export type AcaoPs = { id: string; setor: string | null; dimensao: string; acao: string; responsavel: string | null; prazo: string | null; feita: boolean };
+export type ResultadoPs = { avaliacao: AvaliacaoPs; questionario: { id: string; sigla: string; nome: string; fonte: string; dimensoes: DimensaoPs[] }; total: LinhaPs; setores: LinhaPs[]; acoes: AcaoPs[] };
+export const psicossocial = {
+  questionarios: (e: string) => chamar<QuestionarioPs[]>('GET', `/empresas/${e}/psicossocial/questionarios`),
+  listar: (e: string) => chamar<AvaliacaoPs[]>('GET', `/empresas/${e}/psicossocial`),
+  criar: (e: string, d: { questionario: string; titulo: string; minimoGrupo?: number }) => chamar<AvaliacaoPs>('POST', `/empresas/${e}/psicossocial`, d),
+  encerrar: (e: string, id: string) => chamar<AvaliacaoPs>('PUT', `/empresas/${e}/psicossocial/${id}/encerrar`),
+  reabrir: (e: string, id: string) => chamar<AvaliacaoPs>('PUT', `/empresas/${e}/psicossocial/${id}/reabrir`),
+  resultado: (e: string, id: string) => chamar<ResultadoPs>('GET', `/empresas/${e}/psicossocial/${id}/resultado`),
+  acao: (e: string, id: string, d: { setor?: string; dimensao: string; acao: string; responsavel?: string; prazo?: string }) => chamar<AcaoPs>('POST', `/empresas/${e}/psicossocial/${id}/acoes`, d),
+  marcar: (e: string, id: string, acaoId: string, feita: boolean) => chamar<{ ok: boolean }>('PUT', `/empresas/${e}/psicossocial/${id}/acoes/${acaoId}`, { feita }),
+  removerAcao: (e: string, id: string, acaoId: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/psicossocial/${id}/acoes/${acaoId}`),
+  levarAoPgr: (e: string, id: string, d: { setor: string; dimensao: string; severidade: string }) => chamar<unknown>('POST', `/empresas/${e}/psicossocial/${id}/pgr`, d),
+};
+export type FormularioPs = {
+  titulo: string; empresa: string; consultoria: string; aberta: boolean; setores: string[];
+  questionario: { sigla: string; nome: string; descricao: string; escala: { valor: number; rotulo: string }[]; itens: { n: number; texto: string }[]; aviso: string | null };
+};
+export const formularioPs = {
+  dados: (token: string) => chamar<FormularioPs>('GET', `/psicossocial/${token}`),
+  responder: (token: string, d: { setor: string; valores: Record<string, number> }) => chamar<{ ok: boolean; aviso: string | null }>('POST', `/psicossocial/${token}`, d),
+};
