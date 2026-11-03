@@ -633,3 +633,13 @@ export const cincoS = {
   remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/5s/${id}`),
   pdf: (e: string, id: string) => baixarPdf(`/empresas/${e}/5s/${id}/pdf`, 'PDF da auditoria'),
 };
+
+// ---------- FAP e RAT ----------
+export type AnoFap = { id: string; ano: number; rat: number; fap: number; ratAjustado: number; efeito: 'reduz' | 'aumenta' | 'neutro'; percentual: number; folhaMensal: number | null; custoMensal: number | null; semFap: number | null; diferencaMensal: number | null; observacao: string | null };
+export type DadosFap = { cnae: string | null; anos: AnoFap[]; ocorrencias: { desde: string; cats: number; comAfastamento: number; obitos: number; afastamentosInss: number } };
+export const fapRat = {
+  listar: (e: string) => chamar<DadosFap>('GET', `/empresas/${e}/fap`),
+  salvar: (e: string, d: { ano: number; rat: number; fap: number; folhaMensal?: number; observacao?: string }) => chamar<{ id: string; ano: number }>('PUT', `/empresas/${e}/fap`, d),
+  remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/fap/${id}`),
+  relatorio: (e: string) => baixarPdf(`/empresas/${e}/fap/relatorio`, 'relatório de FAP e RAT'),
+};

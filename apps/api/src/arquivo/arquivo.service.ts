@@ -38,6 +38,7 @@ const CATEGORIAS: [RegExp, string][] = [
   [/^SIPAT|^Auditoria-5S/i, 'Pessoas e cultura'],
   [/Lista-de-presenca|Certificados/i, 'Treinamentos'],
   [/emergencia|Brigada/i, 'Emergência'],
+  [/^FAP/i, 'Previdência e custos'],
 ];
 export const categoriaDoNome = (nome: string) => CATEGORIAS.find(([r]) => r.test(nome))?.[1] ?? 'Outros';
 

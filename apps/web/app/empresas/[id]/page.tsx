@@ -451,6 +451,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Link href={`/empresas/${empresaId}/esocial`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">eSocial →</Link>
           <Link href={`/empresas/${empresaId}/historico`} className="rounded-card border border-border px-4 py-2 text-sm font-semibold text-text/70 hover:bg-primary/5">Histórico →</Link>
           <Link href={`/empresas/${empresaId}/cultura`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">SIPAT e 5S →</Link>
+          <Link href={`/empresas/${empresaId}/fap`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">FAP e RAT →</Link>
           <Link href={`/empresas/${empresaId}/psicossocial`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Psicossocial →</Link>
           <Link href={`/empresas/${empresaId}/arquivo`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Arquivo de documentos →</Link>
           <Link href={`/empresas/${empresaId}/conectores`} className="rounded-card border border-border px-4 py-2 text-sm font-semibold text-text/70 hover:bg-primary/5">Importar do RH, terceiros e faltas →</Link>

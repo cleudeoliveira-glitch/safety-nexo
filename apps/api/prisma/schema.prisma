@@ -80,6 +80,7 @@ model Empresa {
   sipats         Sipat[]
   auditorias5s   Auditoria5s[]
   atestados      Atestado[]
+  fapRat         FapRat[]
   jornadaDiariaHoras Float @default(8) // para o índice de absenteísmo
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
   emergencia     Json?
@@ -861,4 +862,20 @@ model Auditoria5s {
   criadoEm    DateTime @default(now())
 
   @@index([empresaId, setor])
+}
+
+// FAP/RAT por ano: o RAT (1, 2 ou 3%) vem do enquadramento da atividade e o FAP (0,5000 a 2,0000) é divulgado pela Previdência para cada empresa.
+model FapRat {
+  id          String   @id @default(cuid())
+  empresaId   String
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  ano         Int
+  rat         Int
+  fap         Decimal  @db.Decimal(5, 4)
+  folhaMensal Decimal? @db.Decimal(14, 2)
+  observacao  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([empresaId, ano])
 }
