@@ -442,3 +442,44 @@ export const removerAfastamento = (empresaId: string, id: string) => chamar<{ ok
 export type ItemHistorico = { id: string; usuarioNome: string; papel: 'CONSULTORIA' | 'EMPRESA'; acao: string; createdAt: string };
 export const buscarHistorico = (empresaId: string, antes?: string) =>
   chamar<ItemHistorico[]>('GET', `/empresas/${empresaId}/historico${antes ? `?antes=${encodeURIComponent(antes)}` : ''}`);
+
+// ---------- Comercial (valores em centavos) ----------
+export type ConfigComercial = { nome: string; cnpj: string | null; cidade: string | null; pixChave: string | null; pixNome: string | null };
+export type ItemProposta = { descricao: string; quantidade: number; valorCentavos: number };
+export type Proposta = { id: string; numero: number; empresaId: string | null; clienteNome: string; clienteCnpj: string | null; clienteContato: string | null; data: string; validadeDias: number; itens: ItemProposta[]; observacoes: string | null; status: 'ABERTA' | 'ACEITA' | 'RECUSADA'; total: number; contratos: { id: string; numero: number }[] };
+export type Contrato = { id: string; numero: number; empresaId: string; empresa: { razaoSocial: string }; propostaId: string | null; objeto: string; valorMensalCentavos: number | null; diaVencimento: number | null; inicio: string; fim: string | null; status: 'ATIVO' | 'ENCERRADO' };
+export type Servico = { id: string; numero: number; empresaId: string; empresa: { razaoSocial: string }; contratoId: string | null; descricao: string; previsto: string | null; responsavel: string | null; valorCentavos: number | null; concluidoEm: string | null; status: 'ABERTA' | 'CONCLUIDA' | 'CANCELADA'; cobrancas: { id: string; status: string }[] };
+export type Cobranca = { id: string; empresaId: string; empresa: { razaoSocial: string }; descricao: string; valorCentavos: number; vencimento: string; status: 'ABERTA' | 'PAGA' | 'CANCELADA'; pagoEm: string | null; vencida: boolean };
+export type ResumoComercial = { emAberto: number; vencido: number; recebidoNoMes: number; contratosAtivos: number };
+const C = '/comercial';
+export const comercial = {
+  configuracao: () => chamar<ConfigComercial>('GET', `${C}/configuracao`),
+  salvarConfiguracao: (d: Partial<ConfigComercial>) => chamar<ConfigComercial>('PUT', `${C}/configuracao`, d),
+  resumo: () => chamar<ResumoComercial>('GET', `${C}/resumo`),
+  propostas: () => chamar<Proposta[]>('GET', `${C}/propostas`),
+  criarProposta: (d: { empresaId?: string; clienteNome?: string; clienteCnpj?: string; clienteContato?: string; data: string; validadeDias?: number; itens: ItemProposta[]; observacoes?: string }) => chamar<Proposta>('POST', `${C}/propostas`, d),
+  statusProposta: (id: string, status: Proposta['status']) => chamar<{ ok: boolean }>('PUT', `${C}/propostas/${id}/status`, { status }),
+  pdfProposta: (id: string) => baixarPdf(`${C}/propostas/${id}/pdf`, 'proposta'),
+  contratos: () => chamar<Contrato[]>('GET', `${C}/contratos`),
+  criarContrato: (d: { empresaId: string; propostaId?: string; objeto: string; valorMensalCentavos?: number; diaVencimento?: number; inicio: string; fim?: string; observacoes?: string }) => chamar<Contrato>('POST', `${C}/contratos`, d),
+  encerrarContrato: (id: string) => chamar<{ ok: boolean }>('PUT', `${C}/contratos/${id}/encerrar`, {}),
+  pdfContrato: (id: string) => baixarPdf(`${C}/contratos/${id}/pdf`, 'contrato'),
+  mensalidades: (mes: string) => chamar<{ criadas: number; contratos: number }>('POST', `${C}/mensalidades`, { mes }),
+  servicos: () => chamar<Servico[]>('GET', `${C}/servicos`),
+  criarServico: (d: { empresaId: string; contratoId?: string; descricao: string; previsto?: string; responsavel?: string; valorCentavos?: number }) => chamar<Servico>('POST', `${C}/servicos`, d),
+  concluirServico: (id: string) => chamar<{ ok: boolean; cobranca: boolean }>('PUT', `${C}/servicos/${id}/concluir`, {}),
+  cobrancas: () => chamar<Cobranca[]>('GET', `${C}/cobrancas`),
+  criarCobranca: (d: { empresaId: string; descricao: string; valorCentavos: number; vencimento: string }) => chamar<Cobranca>('POST', `${C}/cobrancas`, d),
+  pagar: (id: string, data?: string) => chamar<{ ok: boolean }>('PUT', `${C}/cobrancas/${id}/paga`, data ? { data } : {}),
+  cancelar: (id: string) => chamar<{ ok: boolean }>('PUT', `${C}/cobrancas/${id}/cancelar`, {}),
+  pix: (id: string) => chamar<{ copiaECola: string; qr: string; recebedor: string } | null>('GET', `${C}/cobrancas/${id}/pix`),
+  pdfCobranca: (id: string) => baixarPdf(`${C}/cobrancas/${id}/pdf`, 'cobrança'),
+};
+export const reais = (centavos: number | null | undefined) => (centavos === null || centavos === undefined ? '—' : (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+// "1.234,56" ou "1234.56" para centavos.
+export function centavos(texto: string): number | undefined {
+  const t = texto.trim().replace(/[R$\s]/g, '');
+  if (!t) return undefined;
+  const n = Number(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : undefined;
+}

@@ -108,6 +108,9 @@ export default function Home() {
               <Link href="/geral" className="rounded-card border border-primary px-3 py-2 text-center text-sm font-semibold text-primary">
                 Visão geral das empresas
               </Link>
+              <Link href="/comercial" className="rounded-card border border-primary px-3 py-2 text-center text-sm font-semibold text-primary">
+                Comercial
+              </Link>
               <Link href="/empresas/nova" className="rounded-card bg-primary px-3 py-2 text-center text-sm font-semibold text-white">
                 + Nova empresa
               </Link>
