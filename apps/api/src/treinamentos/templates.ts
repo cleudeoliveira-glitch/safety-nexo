@@ -12,7 +12,7 @@ export type ParticipantePdf = { nome: string; cpf: string | null; cargo: string;
 
 const titulo = (t: TurmaPdf) => (t.norma ? `${t.nome} (${t.norma})` : t.nome);
 
-export function listaPresencaHtml(moldura: Moldura, turma: TurmaPdf, participantes: { nome: string; cpf: string | null; cargo: string }[]) {
+export function listaPresencaHtml(moldura: Moldura, turma: TurmaPdf, participantes: { nome: string; cpf: string | null; cargo: string; rosto?: string | null }[]) {
   return documentoHtml(
     moldura,
     `
@@ -25,7 +25,7 @@ export function listaPresencaHtml(moldura: Moldura, turma: TurmaPdf, participant
       <table>
         <thead><tr><th style="width:30px">Nº</th><th>Nome</th><th>CPF</th><th>Função</th><th style="width:30%">Assinatura</th></tr></thead>
         <tbody>${participantes
-          .map((p, i) => `<tr><td>${i + 1}</td><td>${escape(p.nome)}</td><td>${escape(p.cpf ?? '')}</td><td>${escape(p.cargo)}</td><td style="height:22px"></td></tr>`)
+          .map((p, i) => `<tr><td>${i + 1}</td><td>${escape(p.nome)}</td><td>${escape(p.cpf ?? '')}</td><td>${escape(p.cargo)}</td><td style="height:22px">${p.rosto ? `<small>Reconhecimento facial · ${escape(p.rosto)}</small>` : ''}</td></tr>`)
           .join('')}</tbody>
       </table>
     </section>

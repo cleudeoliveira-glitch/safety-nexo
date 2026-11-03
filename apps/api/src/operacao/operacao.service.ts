@@ -171,6 +171,8 @@ export class OperacaoService {
     const dds = await this.prisma.dds.findFirst({ where: { id: ddsId, empresaId } });
     if (!dds) throw new NotFoundException('DDS não encontrado');
     const moldura = await this.moldura(consultoriaId, empresaId, 'Diálogo Diário de Segurança (DDS)', [['Ministrante', dds.ministrante]]);
-    return this.pdf.render(ddsHtml(moldura, dds, await this.pessoas(dds.participantes)));
+    const rostos = await this.prisma.presencaFacial.findMany({ where: { tipo: 'DDS', refId: ddsId }, select: { colaboradorId: true, codigo: true } });
+    const pessoas = (await this.pessoas(dds.participantes)).map((p) => ({ ...p, rosto: rostos.find((r) => r.colaboradorId === p.id)?.codigo ?? null }));
+    return this.pdf.render(ddsHtml(moldura, dds, pessoas));
   }
 }

@@ -1,6 +1,6 @@
 import { documentoHtml, escape, Moldura } from '../documentos/layout';
 
-export type Pessoa = { nome: string; cargo: string };
+export type Pessoa = { nome: string; cargo: string; rosto?: string | null };
 const data = (d: Date) => d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 const dataHora = (d: Date) => d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
 const assinatura = (nome: string, papel: string) => `<div class="assinatura">${escape(nome)}<span>${escape(papel)}</span></div>`;
@@ -10,7 +10,7 @@ function listaAssinaturas(pessoas: Pessoa[], vazio: string) {
   if (!pessoas.length) return `<p>${vazio}</p>`;
   return `<table>
     <thead><tr><th style="width:30px">Nº</th><th>Nome</th><th>Função</th><th style="width:35%">Assinatura</th></tr></thead>
-    <tbody>${pessoas.map((p, i) => `<tr><td>${i + 1}</td><td>${escape(p.nome)}</td><td>${escape(p.cargo)}</td><td style="height:22px"></td></tr>`).join('')}</tbody>
+    <tbody>${pessoas.map((p, i) => `<tr><td>${i + 1}</td><td>${escape(p.nome)}</td><td>${escape(p.cargo)}</td><td style="height:22px">${p.rosto ? `<small>Reconhecimento facial · ${escape(p.rosto)}</small>` : ''}</td></tr>`).join('')}</tbody>
   </table>`;
 }
 

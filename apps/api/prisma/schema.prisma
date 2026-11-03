@@ -115,6 +115,8 @@ model Colaborador {
   afastamentos  Afastamento[]
   atestados     Atestado[]
   registrosSaude RegistroSaude[]
+  rosto         RostoColaborador?
+  presencasFaciais PresencaFacial[]
 
   @@index([empresaId])
 }
@@ -934,4 +936,40 @@ model HorasTrabalhadas {
   horas     Float
 
   @@unique([empresaId, mes])
+}
+
+// Biometria facial (LGPD, art. 11): só com consentimento. Não guarda a foto do cadastro, só os
+// descritores numéricos do rosto (cifrados com CERT_SECRET) e o hash deles.
+model RostoColaborador {
+  colaboradorId      String      @id
+  colaborador        Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  descritores        String      @db.Text // cifrado
+  hash               String
+  consentimentoEm    DateTime
+  consentimentoTexto String
+  consentimentoIp    String?
+  atualizadoEm       DateTime    @updatedAt
+}
+
+// Comprovante de uma confirmação pelo rosto: entrega de EPI, presença em DDS ou em treinamento.
+model PresencaFacial {
+  id            String      @id @default(cuid())
+  codigo        String      @unique
+  empresaId     String
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  tipo          String      // EPI | DDS | TREINAMENTO
+  refId         String      // id da entrega, do DDS ou da turma
+  foto          String      @db.Text // foto tirada na hora (JPEG em data URI)
+  fotoItem      String?     @db.Text // foto do EPI entregue, se tirada
+  distancia     Float
+  latitude      Float?
+  longitude     Float?
+  precisaoM     Float?
+  ip            String?
+  aparelho      String?
+  hash          String
+  createdAt     DateTime    @default(now())
+
+  @@index([empresaId, tipo, refId])
 }

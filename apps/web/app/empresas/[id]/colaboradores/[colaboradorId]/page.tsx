@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { CameraRosto } from '@/components/CameraRosto';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarEpi, salvarArquivo } from '@/lib/api';
+import { buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarEpi, rosto, salvarArquivo, type ConfigRosto, type StatusRosto } from '@/lib/api';
 
 const TIPOS_ASO = [
   ['ADMISSIONAL', 'Admissional'],
@@ -29,10 +30,18 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
   const { id: empresaId, colaboradorId } = params;
   const [colaborador, setColaborador] = useState<ColaboradorDetalhe | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
+  const [cfgRosto, setCfgRosto] = useState<ConfigRosto | null>(null);
+  const [stRosto, setStRosto] = useState<StatusRosto | null>(null);
+  const [consente, setConsente] = useState(false);
+  const [camera, setCamera] = useState<null | 'cadastro' | 'epi'>(null);
+  const [comprovante, setComprovante] = useState<string | null>(null);
+  const formEpi = useRef<HTMLFormElement>(null);
 
   const recarregar = useCallback(async () => {
     try {
       setColaborador(await buscarColaborador(empresaId, colaboradorId));
+      rosto.config().then(setCfgRosto).catch(() => setCfgRosto(null));
+      rosto.status(empresaId, colaboradorId).then(setStRosto).catch(() => setStRosto(null));
     } catch (e) {
       setAviso({ tipo: 'erro', texto: (e as Error).message });
     }
@@ -70,6 +79,11 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
   }
 
   const texto = (dados: FormData, campo: string) => String(dados.get(campo) ?? '').trim();
+  const confirmadas = new Map((colaborador.presencasFaciais ?? []).map((p) => [p.refId, p.codigo]));
+  const dadosEpi = () => {
+    const d = new FormData(formEpi.current!);
+    return { epi: texto(d, 'epi'), ca: texto(d, 'ca'), ...(texto(d, 'validadeCa') ? { validadeCa: texto(d, 'validadeCa') } : {}), quantidade: Number(texto(d, 'quantidade') || 1), motivo: texto(d, 'motivo') };
+  };
   const examesPrevistos = colaborador.ghe?.exames.map((e) => e.nome) ?? [];
 
   return (
@@ -150,6 +164,29 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
         )}
       </Cartao>
 
+      {cfgRosto?.ativo && stRosto && (
+        <Cartao titulo="Reconhecimento facial">
+          {stRosto.cadastrado ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+              <p><span className="font-semibold text-success">Rosto cadastrado</span> com autorização do funcionário em {new Date(stRosto.consentimentoEm!).toLocaleDateString('pt-BR')}. Pode entregar EPI e marcar presença pelo rosto.</p>
+              <div className="flex gap-2">
+                <Botao variante="secundario" onClick={() => setCamera('cadastro')}>Cadastrar de novo</Botao>
+                <Botao variante="secundario" onClick={async () => { if (!confirm('Apagar o rosto cadastrado? O funcionário volta a assinar à mão.')) return; try { setStRosto(await rosto.remover(empresaId, colaboradorId)); setAviso({ tipo: 'ok', texto: 'Rosto apagado. A autorização foi retirada.' }); } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); } }}>Apagar rosto</Botao>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3 text-sm">
+              <p>Com o rosto cadastrado, o funcionário confirma a entrega de EPI e a presença em DDS e treinamentos só olhando para a câmera. A assinatura à mão continua valendo para quem preferir.</p>
+              <label className="flex items-start gap-2 rounded-card border border-border bg-background p-3">
+                <input type="checkbox" className="mt-1" checked={consente} onChange={(e) => setConsente(e.target.checked)} />
+                <span>{cfgRosto.textoConsentimento}</span>
+              </label>
+              <div className="flex justify-end"><Botao disabled={cfgRosto.consentimentoObrigatorio && !consente} onClick={() => setCamera('cadastro')}>Cadastrar rosto</Botao></div>
+            </div>
+          )}
+        </Cartao>
+      )}
+
       <Cartao
         titulo="Ficha de EPI"
         acao={
@@ -159,6 +196,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
         }
       >
         <form
+          ref={formEpi}
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar(
             (d) =>
@@ -183,7 +221,15 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
             {MOTIVOS_EPI.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
           </Selecao>
           <Campo id="epi-data" name="dataEntrega" type="date" rotulo="Data da entrega" required defaultValue={hoje()} />
-          <div className="flex justify-end md:col-span-3"><Botao type="submit">Registrar entrega</Botao></div>
+          <div className="flex flex-wrap justify-end gap-2 md:col-span-3">
+            <Botao type="submit" variante={stRosto?.cadastrado ? 'secundario' : 'primario'}>Registrar entrega</Botao>
+            {cfgRosto?.ativo && stRosto?.cadastrado && (
+              <Botao type="button" onClick={() => { if (formEpi.current?.reportValidity()) { setComprovante(null); setCamera('epi'); } }}>Entregar com reconhecimento facial</Botao>
+            )}
+          </div>
+          {comprovante && (
+            <div className="md:col-span-3"><Aviso tipo="ok">Entrega confirmada pelo rosto. <button type="button" className="underline" onClick={() => baixar(() => rosto.pdf(empresaId, comprovante), `Comprovante-facial-${colaborador.nome}.pdf`)}>Baixar comprovante</button></Aviso></div>
+          )}
         </form>
 
         {colaborador.entregasEpi.length > 0 && (
@@ -194,6 +240,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
                 <li key={e.id} className="flex flex-wrap justify-between gap-2 py-2.5">
                   <span>
                     <strong>{e.epi}</strong> · CA {e.ca} · {e.quantidade} un. · {nomeDe(MOTIVOS_EPI, e.motivo)}
+                    {confirmadas.has(e.id) && <> · <button className="text-primary underline" onClick={() => baixar(() => rosto.pdf(empresaId, confirmadas.get(e.id)!), `Comprovante-facial-${colaborador.nome}.pdf`)}>confirmada pelo rosto</button></>}
                   </span>
                   <span className={vencido ? 'text-danger' : 'text-text/60'}>
                     {data(e.dataEntrega)}
@@ -205,6 +252,19 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
           </ul>
         )}
       </Cartao>
+
+      {camera === 'cadastro' && (
+        <CameraRosto titulo={`Cadastrar o rosto de ${colaborador.nome}`} modo="cadastro" onFechar={() => setCamera(null)}
+          onCaptura={async (c) => { setStRosto(await rosto.cadastrar(empresaId, colaboradorId, c.descritores, consente)); return 'Rosto cadastrado. Já pode usar na entrega de EPI e nas presenças.'; }} />
+      )}
+      {camera === 'epi' && (
+        <CameraRosto titulo={`Entrega de EPI para ${colaborador.nome}`} modo="unico" pedirFotoItem onFechar={() => setCamera(null)}
+          onCaptura={async (c) => {
+            const r = await rosto.entregarEpi(empresaId, colaboradorId, { ...dadosEpi(), descritor: c.descritor, foto: c.foto, ...(c.fotoItem ? { fotoItem: c.fotoItem } : {}), latitude: c.latitude, longitude: c.longitude, precisao: c.precisao });
+            setComprovante(r.codigo); formEpi.current?.reset(); await recarregar();
+            return `Rosto conferido. Entrega de ${r.entrega.epi} registrada.`;
+          }} />
+      )}
     </main>
   );
 }

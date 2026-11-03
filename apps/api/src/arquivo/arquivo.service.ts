@@ -31,7 +31,7 @@ const TIPOS_ACEITOS: Record<string, string> = {
 // Em que pasta do arquivo cai cada PDF gerado, pelo nome do arquivo.
 const CATEGORIAS: [RegExp, string][] = [
   [/^(PGR|PCMSO|LTCAT|LIP|LPP|PGRTR)\b/i, 'Programas e laudos'],
-  [/^(ASO|Ficha-EPI|PPP)/i, 'Funcionários'],
+  [/^(ASO|Ficha-EPI|PPP|Comprovante-facial)/i, 'Funcionários'],
   [/^(AET|CAT)/i, 'Saúde ocupacional'],
   [/CIPA|Edital|Ata|Cedula|Ficha-de-inscricao|Certificado/i, 'CIPA'],
   [/^(APR|Permissao|DDS|Inspecao|Ordem)/i, 'Operação diária'],

@@ -1,6 +1,6 @@
 import { documentoHtml, escape, Moldura } from '../documentos/layout';
 
-export type EntregaPdf = { epi: string; ca: string; validadeCa: Date | null; quantidade: number; motivo: string; dataEntrega: Date };
+export type EntregaPdf = { epi: string; ca: string; validadeCa: Date | null; quantidade: number; motivo: string; dataEntrega: Date; confirmacao?: string | null };
 
 const MOTIVOS: Record<string, string> = {
   ENTREGA_INICIAL: 'Entrega inicial',
@@ -37,7 +37,7 @@ export function renderFichaEpiHtml(
               <td>${data(e.validadeCa)}</td>
               <td>${e.quantidade}</td>
               <td>${escape(MOTIVOS[e.motivo] ?? e.motivo)}</td>
-              <td class="assinar"></td>
+              <td class="assinar">${e.confirmacao ? `<small>Reconhecimento facial<br>código ${escape(e.confirmacao)}</small>` : ''}</td>
             </tr>`,
           )
           .join('')}

@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { CameraRosto } from '@/components/CameraRosto';
 import { EscolherPessoas } from '@/components/EscolherPessoas';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   adicionarParticipantes,
+  rosto,
   buscarCatalogoTreinamentos,
   buscarEmpresa,
   Colaborador,
@@ -35,6 +37,7 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
   const [chaveForm, setChaveForm] = useState(0);
   const [participantes, setParticipantes] = useState<string[]>([]);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
+  const [camera, setCamera] = useState<Turma | null>(null);
 
   const recarregar = useCallback(async () => {
     try {
@@ -182,6 +185,7 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <Botao variante="secundario" onClick={() => setCamera(t)}>Presença pelo rosto</Botao>
                       <Botao variante="secundario" onClick={() => baixar(t, 'lista')}>Lista de presença</Botao>
                       <Botao variante="secundario" onClick={() => baixar(t, 'certificados')} disabled={!t.participantes.length}>Certificados</Botao>
                     </div>
@@ -218,6 +222,10 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
           </div>
         )}
       </Cartao>
+      {camera && (
+        <CameraRosto titulo={`Presença no treinamento: ${camera.nome}`} modo="continuo" onFechar={() => { setCamera(null); recarregar(); }}
+          onCaptura={async (c) => { const r = await rosto.presencaTurma(empresaId, camera.id, { descritor: c.descritor, foto: c.foto, latitude: c.latitude, longitude: c.longitude, precisao: c.precisao }); return r.repetido ? `${r.nome} já estava na turma` : `${r.nome}: presença registrada`; }} />
+      )}
     </main>
   );
 }

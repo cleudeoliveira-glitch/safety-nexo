@@ -70,7 +70,7 @@ export type Aso = {
   medicoExaminadorNome: string; medicoExaminadorCrm: string; exames: string[]; riscos: string[]; proximoExame: string | null;
 };
 export type EntregaEpi = { id: string; epi: string; ca: string; validadeCa: string | null; quantidade: number; motivo: string; dataEntrega: string };
-export type ColaboradorDetalhe = Colaborador & { ghe: Ghe | null; asos: Aso[]; entregasEpi: EntregaEpi[] };
+export type ColaboradorDetalhe = Colaborador & { ghe: Ghe | null; asos: Aso[]; entregasEpi: EntregaEpi[]; presencasFaciais?: { refId: string; codigo: string }[] };
 export type Pendencia = { titulo: string; detalhe: string; nivel: 'vencido' | 'pendente' | 'em-dia' };
 export type Vencimento = { tipo: string; versao: number; vencimento: string; dias: number };
 export type Painel = { empresa: Pick<Empresa, 'id' | 'razaoSocial' | 'cnpj'>; percentual: number; pendencias: Pendencia[]; vencimentos: Vencimento[] };
@@ -680,10 +680,29 @@ export type PainelSsma = {
   serie: MesSsma[]; ranking: { nome: string; acidentes: number }[]; afastamento: { com: number; sem: number };
   estrategico: { diasAtestadoMes: number; custoAbsenteismoMes: number | null; diasAtestado12: number; custoAbsenteismo12: number | null; cids: { cid: string; dias: number }[]; diasInss12: number; fap: { ano: number; fap: number; diferencaMensal: number | null } | null; setorMaisCat: { nome: string; acidentes: number } | null };
 };
-const qs = (f: { fim?: string; gheId?: string }) => new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString();
+const qs = (f: Record<string, string | undefined>) => new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString();
 export const ssma = {
   montar: (e: string, f: { fim?: string; gheId?: string }) => chamar<PainelSsma>('GET', `/empresas/${e}/ssma?${qs(f)}`),
   config: (e: string, custoDiaFalta: number | null) => chamar<{ ok: boolean }>('PUT', `/empresas/${e}/ssma/config`, { custoDiaFalta }),
   horas: (e: string, mes: string, horas: number | null) => chamar<{ ok: boolean }>('PUT', `/empresas/${e}/ssma/horas`, { mes, horas }),
   pdf: (e: string, f: { fim?: string; gheId?: string }) => baixarPdf(`/empresas/${e}/ssma/pdf?${qs(f)}`, 'painel SSMA'),
+};
+
+// Reconhecimento facial (face-api.js roda no navegador; a comparação é feita no servidor).
+export type ConfigRosto = { ativo: boolean; limiar: number; consentimentoObrigatorio: boolean; textoConsentimento: string };
+export type StatusRosto = { cadastrado: boolean; consentimentoEm: string | null; hash: string | null };
+export type Captura = { descritor: number[]; foto: string; latitude?: number; longitude?: number; precisao?: number };
+export type PresencaRosto = { colaboradorId: string; nome: string; codigo: string; repetido: boolean };
+export const rosto = {
+  config: () => chamar<ConfigRosto>('GET', '/rosto/config'),
+  listar: (e: string) => chamar<{ id: string; nome: string; cargo: string; cadastrado: boolean }[]>('GET', `/empresas/${e}/rosto`),
+  status: (e: string, c: string) => chamar<StatusRosto>('GET', `/empresas/${e}/colaboradores/${c}/rosto`),
+  cadastrar: (e: string, c: string, descritores: number[][], consentimento: boolean) => chamar<StatusRosto>('PUT', `/empresas/${e}/colaboradores/${c}/rosto`, { descritores, consentimento }),
+  remover: (e: string, c: string) => chamar<StatusRosto>('DELETE', `/empresas/${e}/colaboradores/${c}/rosto`),
+  entregarEpi: (e: string, c: string, dados: Captura & Record<string, unknown>) => chamar<{ entrega: EntregaEpi; codigo: string; distancia: number }>('POST', `/empresas/${e}/colaboradores/${c}/epis/rosto`, dados),
+  presencaDds: (e: string, ddsId: string, cap: Captura) => chamar<PresencaRosto>('POST', `/empresas/${e}/dds/${ddsId}/presenca-rosto`, cap),
+  presencaTurma: (e: string, turmaId: string, cap: Captura) => chamar<PresencaRosto>('POST', `/empresas/${e}/turmas/${turmaId}/presenca-rosto`, cap),
+  comprovantes: (e: string, tipo: 'EPI' | 'DDS' | 'TREINAMENTO', refId: string) => chamar<{ codigo: string; colaboradorId: string; nome: string; em: string }[]>('GET', `/empresas/${e}/presencas-faciais?${qs({ tipo, refId })}`),
+  pdf: (e: string, codigo: string) => baixarPdf(`/empresas/${e}/presencas-faciais/${codigo}/pdf`, 'comprovante'),
+  validar: (codigo: string) => chamar<{ codigo: string; tipo: string; titulo: string; itens: [string, string][]; colaborador: string; cpf: string | null; empresa: string; em: string; hash: string; comLocal: boolean }>('GET', `/validar-rosto/${codigo}`),
 };

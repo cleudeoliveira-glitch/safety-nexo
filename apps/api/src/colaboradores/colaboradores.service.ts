@@ -25,6 +25,7 @@ export class ColaboradoresService {
         ghe: { include: { riscos: true, exames: true } },
         asos: { orderBy: { dataExame: 'desc' } },
         entregasEpi: { orderBy: { dataEntrega: 'desc' } },
+        presencasFaciais: { where: { tipo: 'EPI' }, select: { refId: true, codigo: true } },
       },
     });
     if (!colaborador) throw new NotFoundException('Colaborador não encontrado');
@@ -94,6 +95,13 @@ export class ColaboradoresService {
     return this.pdf.render(html);
   }
 
+  // Entregas confirmadas pelo rosto levam o código do comprovante na coluna de assinatura.
+  private async comConfirmacao<T extends { id: string }>(colaboradorId: string, entregas: T[]) {
+    const l = await this.prisma.presencaFacial.findMany({ where: { tipo: 'EPI', colaboradorId }, select: { refId: true, codigo: true } });
+    const m = new Map(l.map((p) => [p.refId, p.codigo]));
+    return entregas.map((e) => ({ ...e, confirmacao: m.get(e.id) ?? null }));
+  }
+
   async pdfFichaEpi(consultoriaId: string, empresaId: string, colaboradorId: string) {
     const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
     const { empresa, logoEmpresa, consultoria } = await this.contexto.carregar(consultoriaId, empresaId, 'FICHA_EPI');
@@ -109,7 +117,7 @@ export class ColaboradoresService {
         aviso: AVISO,
       },
       colaborador,
-      [...colaborador.entregasEpi].reverse(),
+      await this.comConfirmacao(colaborador.id, [...colaborador.entregasEpi].reverse()),
     );
     return this.pdf.render(html);
   }

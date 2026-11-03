@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { CameraRosto } from '@/components/CameraRosto';
 import { EscolherPessoas } from '@/components/EscolherPessoas';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
@@ -23,6 +24,7 @@ import {
   listarDds,
   listarPermissoes,
   Permissao,
+  rosto,
   salvarArquivo,
   TipoPt,
   buscarModelosChecklist,
@@ -249,6 +251,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
   const [participantes, setParticipantes] = useState<string[]>([]);
   const [categoria, setCategoria] = useState('');
   const [busca, setBusca] = useState('');
+  const [camera, setCamera] = useState<Dds | null>(null);
   const categorias = [...new Set(conteudo.temasDds.map((t) => t.categoria))].sort();
   const feitos = new Set(lista.map((d) => d.tema));
   const semAcento = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -328,12 +331,19 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
             {lista.map((d) => (
               <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
                 <span><strong>{data(d.data)}</strong> · {d.tema} · {d.participantes.length} participante(s)</span>
-                <Botao variante="secundario" onClick={() => baixar(d.id, `DDS-${d.data.slice(0, 10)}`)}>Baixar lista de presença</Botao>
+                <span className="flex flex-wrap gap-2">
+                  <Botao variante="secundario" onClick={() => setCamera(d)}>Presença pelo rosto</Botao>
+                  <Botao variante="secundario" onClick={() => baixar(d.id, `DDS-${d.data.slice(0, 10)}`)}>Baixar lista de presença</Botao>
+                </span>
               </li>
             ))}
           </ul>
         )}
       </Cartao>
+      {camera && (
+        <CameraRosto titulo={`Presença no DDS: ${camera.tema}`} modo="continuo" onFechar={() => { setCamera(null); recarregar(); }}
+          onCaptura={async (c) => { const r = await rosto.presencaDds(empresaId, camera.id, { descritor: c.descritor, foto: c.foto, latitude: c.latitude, longitude: c.longitude, precisao: c.precisao }); return r.repetido ? `${r.nome} já estava com presença` : `${r.nome}: presença registrada`; }} />
+      )}
     </div>
   );
 }

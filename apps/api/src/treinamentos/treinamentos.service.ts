@@ -12,7 +12,7 @@ const AVISO = 'Documento gerado pelo Safety Nexo. Deve ser conferido e assinado 
 const WEB = () => process.env.WEB_ORIGIN ?? 'http://localhost:3000';
 
 // Código curto e difícil de adivinhar, sem letras que se confundem (0/O, 1/I).
-function novoCodigo() {
+export function novoCodigo() {
   const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return [...randomBytes(10)].map((b) => letras[b % letras.length]).join('').replace(/(.{5})/, '$1-');
 }
@@ -117,8 +117,10 @@ export class TreinamentosService {
     const pessoas = turma.participantes.map((p) => ({ nome: p.colaborador.nome, cpf: p.colaborador.cpf, cargo: p.colaborador.cargo, codigo: p.codigo }));
 
     if (documento === 'lista') {
+      const rostos = await this.prisma.presencaFacial.findMany({ where: { tipo: 'TREINAMENTO', refId: turmaId }, select: { colaboradorId: true, codigo: true } });
+      const lista = turma.participantes.map((p) => ({ nome: p.colaborador.nome, cpf: p.colaborador.cpf, cargo: p.colaborador.cargo, codigo: p.codigo, rosto: rostos.find((r) => r.colaboradorId === p.colaboradorId)?.codigo ?? null }));
       const moldura = { titulo: 'Lista de presença de treinamento', logoEmpresa, consultoria, aviso: AVISO, infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj]] as [string, string][] };
-      return this.pdf.render(listaPresencaHtml(moldura, dados, pessoas));
+      return this.pdf.render(listaPresencaHtml(moldura, dados, lista));
     }
     const comQr = await Promise.all(
       pessoas.map(async (p) => {
