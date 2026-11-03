@@ -37,7 +37,10 @@ import {
   salvarCodigoExame,
   UNIDADES_ESOCIAL,
   RiscoEsocial,
+  buscarTabelasEsocial,
+  TabelasEsocial,
 } from '@/lib/api';
+import { EscolhaTabela } from '@/components/EscolhaTabela';
 import { ehEmpresa } from '@/lib/sessao';
 
 const TIPOS_RISCO = [
@@ -273,7 +276,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                       {e.nome} · {MOMENTOS.filter(([campo]) => e[campo]).map(([, nome]) => nome.toLowerCase()).join(', ')}
                       {e.periodicidadeMeses ? ` · a cada ${e.periodicidadeMeses} meses` : ''}
                       {' · '}
-                      <CodigoExame valor={e.codigoEsocial ?? ''} salvar={(cod) => agir(() => salvarCodigoExame(empresaId, ghe.id, e.id, cod), `Código de ${e.nome} salvo.`)} />
+                      <CodigoExame id={e.id} valor={e.codigoEsocial ?? ''} salvar={(cod) => agir(() => salvarCodigoExame(empresaId, ghe.id, e.id, cod), `Código de ${e.nome} salvo.`)} />
                     </li>
                   ))}
                 </ul>
@@ -302,8 +305,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                   <option value="COMPLEMENTAR">Complementar</option>
                 </Selecao>
                 <Campo id={`exame-per-${ghe.id}`} name="periodicidade" type="number" min={1} max={60} rotulo="Periodicidade (meses)" placeholder="Ex.: 12" />
-                <Campo id={`exame-cod-${ghe.id}`} name="codigoEsocial" rotulo="Código eSocial (Tabela 27)" inputMode="numeric" maxLength={4} placeholder="0000"
-                  ajuda={{ oQueE: 'Código do procedimento na Tabela 27 do eSocial. Vai no evento S-2220 do ASO.', baseLegal: 'eSocial, Tabela 27' }} />
+                <EscolhaT27 id={`exame-cod-${ghe.id}`} className="md:col-span-3" />
                 <fieldset className="flex flex-wrap gap-4 text-sm md:col-span-2">
                   <legend className="mb-1 font-semibold">Quando é feito</legend>
                   {MOMENTOS.map(([campo, nome]) => (
@@ -547,6 +549,7 @@ function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosL
     if (sugerido && !grau) setGrau(sugerido);
   }
   const es = risco.esocial ?? {};
+  const tabelas = useTabelas();
   const simNao = (v: FormDataEntryValue | null) => (v === 'S' ? true : v === 'N' ? false : null);
   const valor = (v: boolean | null | undefined) => (v === true ? 'S' : v === false ? 'N' : '');
   return (
@@ -622,8 +625,8 @@ function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosL
         </Selecao>
         <fieldset className="grid gap-3 border-t border-border pt-3 md:col-span-3 md:grid-cols-3">
           <legend className="text-sm font-semibold">Para o eSocial (S-2240)</legend>
-          <Campo id={`av-t24-${risco.id}`} name="codAgNoc" rotulo="Código da Tabela 24" defaultValue={es.codAgNoc ?? ''} placeholder="00.00.000"
-            ajuda={{ oQueE: 'Código do agente nocivo na Tabela 24 do eSocial. Use 09.01.001 quando não há exposição a agente nocivo.', baseLegal: 'eSocial, Tabela 24' }} />
+          <EscolhaTabela id={`av-t24-${risco.id}`} name="codAgNoc" rotulo="Agente nocivo (Tabela 24)" itens={tabelas?.t24 ?? []} valor={es.codAgNoc}
+            busca={risco.agente} className="md:col-span-3" />
           {tipo === 'QUANTITATIVA' && (
             <Selecao id={`av-un-${risco.id}`} name="unMed" rotulo="Unidade da medição" defaultValue={es.unMed ?? ''}>
               <option value="">Escolha</option>
@@ -688,14 +691,28 @@ function Periculosidade({ ghe, anexos, salvar }: { ghe: Ghe; anexos: AnexosLaudo
   );
 }
 
-// Código da Tabela 27 de um exame já programado, editável na própria linha.
-function CodigoExame({ valor, salvar }: { valor: string; salvar: (codigo: string) => void }) {
+// Tabelas do eSocial, carregadas uma vez.
+function useTabelas() {
+  const [t, setT] = useState<TabelasEsocial | null>(null);
+  useEffect(() => { buscarTabelasEsocial().then(setT).catch(() => setT(null)); }, []);
+  return t;
+}
+
+function EscolhaT27({ id, className, valor, aoEscolher }: { id: string; className?: string; valor?: string | null; aoEscolher?: (c: string) => void }) {
+  const t = useTabelas();
+  return <EscolhaTabela id={id} name="codigoEsocial" rotulo="Procedimento no eSocial (Tabela 27)" itens={t?.t27 ?? []} valor={valor} busca="audiometria" className={className} aoEscolher={aoEscolher} />;
+}
+
+// Código da Tabela 27 de um exame já programado: mostra o código e abre a lista para trocar.
+function CodigoExame({ id, valor, salvar }: { id: string; valor: string; salvar: (codigo: string) => void }) {
   return (
-    <span className="inline-flex items-center gap-1">
-      <span className={valor ? 'text-text/60' : 'text-warning'}>eSocial</span>
-      <input aria-label="Código do eSocial (Tabela 27)" defaultValue={valor} maxLength={4} inputMode="numeric" placeholder="0000"
-        className="w-16 rounded border border-border px-1 py-0.5 text-xs"
-        onBlur={(e) => { if (e.target.value.trim() !== valor) salvar(e.target.value.trim()); }} />
-    </span>
+    <details className="inline">
+      <summary className={`inline cursor-pointer text-xs font-semibold hover:underline ${valor ? 'text-success' : 'text-warning'}`}>
+        {valor ? `eSocial ${valor} (trocar)` : 'falta o código do eSocial'}
+      </summary>
+      <div className="mt-2 max-w-xl rounded-card border border-border bg-background p-3">
+        <EscolhaT27 id={`cod27-${id}`} valor={valor} aoEscolher={(c) => c && salvar(c)} />
+      </div>
+    </details>
   );
 }

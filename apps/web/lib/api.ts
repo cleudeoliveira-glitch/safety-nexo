@@ -420,3 +420,8 @@ export const UNIDADES_ESOCIAL: [number, string][] = [
   [19, 'W/m²'], [20, 'A/m'], [21, 'mT'], [22, 'μT'], [23, 'mA'], [24, 'kV/m'], [25, 'V/m'], [26, 'J/m²'], [27, 'mJ/cm²'], [28, 'mSv'], [29, 'mppdc'], [30, 'UR (%)'],
 ];
 export const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+
+// Tabelas oficiais do eSocial: [código, descrição] (a 24 traz também o grupo).
+export type TabelasEsocial = { t13: [string, string][]; t14: [string, string][]; t15: [string, string][]; t17: [string, string][]; t24: [string, string, string][]; t27: [string, string][] };
+let cacheTabelas: Promise<TabelasEsocial> | null = null;
+export const buscarTabelasEsocial = () => (cacheTabelas ??= chamar<TabelasEsocial>('GET', '/esocial/tabelas').catch((e) => { cacheTabelas = null; throw e; }));

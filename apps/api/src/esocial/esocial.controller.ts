@@ -3,11 +3,18 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { EsocialService } from './esocial.service';
+import { tabelasParaTela } from './codigos';
 
 // eSocial: só a consultoria (dona do certificado) transmite.
 @Controller()
 export class EsocialController {
   constructor(private readonly esocial: EsocialService) {}
+
+  // Tabelas oficiais do eSocial (13, 14, 15, 17, 24 e 27) para as listas da tela.
+  @Get('esocial/tabelas')
+  tabelas() {
+    return tabelasParaTela();
+  }
 
   @Get('esocial/certificado')
   certificado(@ConsultoriaId() c: string) {

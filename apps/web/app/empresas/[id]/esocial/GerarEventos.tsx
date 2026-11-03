@@ -1,8 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { EscolhaTabela } from '@/components/EscolhaTabela';
 import { Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   atualizarEmpresa,
+  buscarTabelasEsocial,
+  TabelasEsocial,
   gerarEventoEsocial,
   OrigensEsocial,
   salvarEsocialCat,
@@ -129,12 +133,13 @@ export function EventosColaboradores({ empresaId, o, agir }: { empresaId: string
 const TP_LOCAL: [number, string][] = [[1, 'Na própria empresa'], [3, 'Em empresa onde presta serviço'], [4, 'Via pública'], [5, 'Área rural'], [6, 'Embarcação'], [9, 'Outros']];
 
 export function EventosCat({ empresaId, o, agir }: { empresaId: string; o: OrigensEsocial; agir: Agir }) {
+  const [tab, setTab] = useState<TabelasEsocial | null>(null);
+  useEffect(() => { buscarTabelasEsocial().then(setTab).catch(() => setTab(null)); }, []);
   if (!o.cats.length) return null;
   return (
     <Cartao titulo="Acidentes de trabalho (S-2210)">
       <p className="mb-4 text-sm text-text/60">
-        Complete os códigos do eSocial de cada CAT. Os códigos de 9 dígitos estão nas tabelas 13 a 17 do eSocial.
-        Assim que eu receber o arquivo das tabelas, esses campos viram listas para escolher.
+        Complete os dados do eSocial de cada CAT. Nas listas, digite uma palavra para achar mais rápido (ex.: "mão", "queda", "corte").
       </p>
       <ul className="space-y-3">
         {o.cats.map((c) => {
@@ -164,13 +169,13 @@ export function EventosCat({ empresaId, o, agir }: { empresaId: string; o: Orige
                     return 'Dados da CAT salvos.';
                   });
                 }}>
-                  <Campo id={`sit-${c.id}`} name="sit" rotulo="Situação geradora (Tab. 15/16)" defaultValue={e.codSitGeradora ?? ''} inputMode="numeric" maxLength={9} />
-                  <Campo id={`parte-${c.id}`} name="parte" rotulo="Parte atingida (Tab. 13)" defaultValue={e.codParteAting ?? ''} inputMode="numeric" maxLength={9} />
+                  <EscolhaTabela id={`sit-${c.id}`} name="sit" rotulo="Como aconteceu (situação geradora)" itens={tab?.t15 ?? []} valor={e.codSitGeradora} busca="queda" className="md:col-span-2" />
+                  <EscolhaTabela id={`parte-${c.id}`} name="parte" rotulo="Parte do corpo atingida" itens={tab?.t13 ?? []} valor={e.codParteAting} busca="mão" />
                   <Selecao id={`lado-${c.id}`} name="lado" rotulo="Lado" defaultValue={e.lateralidade ?? 0}>
                     <option value={0}>Não se aplica</option><option value={1}>Esquerdo</option><option value={2}>Direito</option><option value={3}>Ambos</option>
                   </Selecao>
-                  <Campo id={`ag-${c.id}`} name="agente" rotulo="Agente causador (Tab. 14/15)" defaultValue={e.codAgntCausador ?? ''} inputMode="numeric" maxLength={9} />
-                  <Campo id={`les-${c.id}`} name="lesao" rotulo="Natureza da lesão (Tab. 17)" defaultValue={e.codLesao ?? ''} inputMode="numeric" maxLength={9} />
+                  <EscolhaTabela id={`ag-${c.id}`} name="agente" rotulo="O que causou (agente causador)" itens={c.tipoAcidente === 'DOENCA' ? [...(tab?.t14 ?? []), ...(tab?.t15 ?? [])] : (tab?.t14 ?? [])} valor={e.codAgntCausador} busca="forno" className="md:col-span-2" />
+                  <EscolhaTabela id={`les-${c.id}`} name="lesao" rotulo="Tipo de lesão" itens={tab?.t17 ?? []} valor={e.codLesao} busca="queimadura" />
                   <Campo id={`horas-${c.id}`} name="horas" rotulo="Horas trabalhadas antes" defaultValue={c.horasTrabalhadas ?? ''} placeholder="Ex.: 03:30" />
                   <Selecao id={`loc-${c.id}`} name="tpLocal" rotulo="Onde aconteceu" defaultValue={e.tpLocal ?? 1}>
                     {TP_LOCAL.map(([v, n]) => <option key={v} value={v}>{n}</option>)}

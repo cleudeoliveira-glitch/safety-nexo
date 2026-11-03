@@ -1,3 +1,4 @@
+import { CODIGOS } from './codigos';
 import { Aso, Cat, Colaborador, Empresa, ExameGhe, Ghe, GheRisco } from '@prisma/client';
 
 // Montagem dos eventos de SST conforme os Esquemas XSD v. S-1.3 (NT 07/2026 rev. 20/10/2026):
@@ -84,7 +85,7 @@ export function montarS2220(id: Identificacao, empresa: Empresa, col: Colaborado
   const itens = exames.map((nome) => {
     const cad = examesDoGhe.find((x) => x.nome.trim().toLowerCase() === nome.trim().toLowerCase());
     const cod = digitos(cad?.codigoEsocial);
-    p.exigir(cod.length === 4, `código do eSocial (Tabela 27) do exame "${nome}" no cadastro do GHE`);
+    p.exigir(CODIGOS.t27.has(cod), `código do eSocial (Tabela 27) do exame "${nome}" no cadastro do GHE`);
     return el('exame', c('dtExm', dia(aso.dataExame)), c('procRealizado', cod), PROC_COM_OBS.includes(cod) ? c('obsProc', corta(nome, 999)) : '');
   });
   const coord = separarCrm(empresa.medicoPcmsoCrm, empresa.medicoPcmsoUf);
@@ -118,7 +119,7 @@ export function montarS2240(id: Identificacao, empresa: Empresa, col: Colaborado
   const agentes = nocivos.length ? nocivos.map((r) => {
     const e = (r.esocial ?? {}) as EsocialRisco;
     const cod = e.codAgNoc ?? '';
-    p.exigir(/^\d{2}\.\d{2}\.\d{3}$/.test(cod), `código da Tabela 24 do agente "${r.agente}" (${ghe?.nome})`);
+    p.exigir(CODIGOS.t24.has(cod), `código da Tabela 24 do agente "${r.agente}" (${ghe?.nome})`);
     const quant = r.tipoAvaliacao === 'QUANTITATIVA';
     p.exigir(r.tipoAvaliacao, `tipo de avaliação do agente "${r.agente}"`);
     if (quant) {
@@ -180,11 +181,12 @@ export function montarS2210(id: Identificacao, empresa: Empresa, col: Colaborado
   const tpAcid = TP_ACID[cat.tipoAcidente];
   const tpCat = TP_CAT[cat.tipoCat];
   const tpLocal: number = e.tpLocal ?? 1; // acidente no exterior (2) não é atendido aqui
-  const nove = (v: string | undefined, rotulo: string) => { const d = digitos(v); p.exigir(d.length === 9, rotulo); return d; };
-  const sit = nove(e.codSitGeradora, 'código da situação geradora do acidente (Tabela 15 ou 16)');
-  const parte = nove(e.codParteAting, 'código da parte do corpo atingida (Tabela 13)');
-  const agente = nove(e.codAgntCausador, 'código do agente causador (Tabela 14 ou 15)');
-  const lesao = nove(e.codLesao, 'código da natureza da lesão (Tabela 17)');
+  const nove = (v: string | undefined, validos: Set<string>[], rotulo: string) => { const d = digitos(v); p.exigir(validos.some((t) => t.has(d)), rotulo); return d; };
+  const sit = nove(e.codSitGeradora, [CODIGOS.t15], 'situação geradora do acidente (Tabela 15)');
+  const parte = nove(e.codParteAting, [CODIGOS.t13], 'parte do corpo atingida (Tabela 13)');
+  // Acidente típico ou de trajeto: só Tabela 14. Doença: Tabela 14 ou 15.
+  const agente = nove(e.codAgntCausador, tpAcid === 2 ? [CODIGOS.t14, CODIGOS.t15] : [CODIGOS.t14], 'agente causador (Tabela 14)');
+  const lesao = nove(e.codLesao, [CODIGOS.t17], 'natureza da lesão (Tabela 17)');
   p.exigir(cat.atendimentoData, 'data e hora do atendimento médico');
   if (cat.atendimentoData) p.exigir(dataIso(cat.atendimentoData) >= dataIso(cat.dataHora), 'data do atendimento igual ou depois da data do acidente');
   if (e.ultDiaTrab && col.dataAdmissao) p.exigir(e.ultDiaTrab.slice(0, 10) >= dia(col.dataAdmissao), 'último dia trabalhado igual ou depois da admissão');
