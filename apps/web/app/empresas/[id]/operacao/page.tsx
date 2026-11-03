@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
+import { guardarCaptura } from '@/lib/rosto-offline';
 import { EscolherPessoas } from '@/components/EscolherPessoas';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
@@ -342,7 +343,8 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
       </Cartao>
       {camera && (
         <CameraRosto titulo={`Presença no DDS: ${camera.tema}`} modo="continuo" onFechar={() => { setCamera(null); recarregar(); }}
-          onCaptura={async (c) => { const r = await rosto.presencaDds(empresaId, camera.id, { descritor: c.descritor, foto: c.foto, latitude: c.latitude, longitude: c.longitude, precisao: c.precisao }); return r.repetido ? `${r.nome} já estava com presença` : `${r.nome}: presença registrada`; }} />
+          guardarOffline={async (c) => { await guardarCaptura({ tipo: 'DDS', empresaId, refId: camera.id, titulo: camera.tema, dados: { descritor: c.descritor, foto: c.foto, latitude: c.latitude, longitude: c.longitude, precisao: c.precisao, provaDeVida: c.provaDeVida } }); return 'Sem internet: guardado no aparelho. Será conferido e enviado quando a internet voltar.'; }}
+          onCaptura={async (c) => { const r = await rosto.presencaDds(empresaId, camera.id, { descritor: c.descritor, foto: c.foto, latitude: c.latitude, longitude: c.longitude, precisao: c.precisao, provaDeVida: c.provaDeVida }); return r.repetido ? `${r.nome} já estava com presença` : `${r.nome}: presença registrada`; }} />
       )}
     </div>
   );

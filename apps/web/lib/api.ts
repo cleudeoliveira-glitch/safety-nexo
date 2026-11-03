@@ -689,9 +689,9 @@ export const ssma = {
 };
 
 // Reconhecimento facial (face-api.js roda no navegador; a comparação é feita no servidor).
-export type ConfigRosto = { ativo: boolean; limiar: number; consentimentoObrigatorio: boolean; textoConsentimento: string };
+export type ConfigRosto = { ativo: boolean; limiar: number; consentimentoObrigatorio: boolean; provaDeVida: boolean; textoConsentimento: string };
 export type StatusRosto = { cadastrado: boolean; consentimentoEm: string | null; hash: string | null };
-export type Captura = { descritor: number[]; foto: string; latitude?: number; longitude?: number; precisao?: number };
+export type Captura = { descritor: number[]; foto: string; latitude?: number; longitude?: number; precisao?: number; provaDeVida?: boolean; capturadoEm?: string };
 export type PresencaRosto = { colaboradorId: string; nome: string; codigo: string; repetido: boolean };
 export const rosto = {
   config: () => chamar<ConfigRosto>('GET', '/rosto/config'),
@@ -705,4 +705,16 @@ export const rosto = {
   comprovantes: (e: string, tipo: 'EPI' | 'DDS' | 'TREINAMENTO', refId: string) => chamar<{ codigo: string; colaboradorId: string; nome: string; em: string }[]>('GET', `/empresas/${e}/presencas-faciais?${qs({ tipo, refId })}`),
   pdf: (e: string, codigo: string) => baixarPdf(`/empresas/${e}/presencas-faciais/${codigo}/pdf`, 'comprovante'),
   validar: (codigo: string) => chamar<{ codigo: string; tipo: string; titulo: string; itens: [string, string][]; colaborador: string; cpf: string | null; empresa: string; em: string; hash: string; comLocal: boolean }>('GET', `/validar-rosto/${codigo}`),
+};
+
+// Almoxarifado de EPI.
+export type ItemEstoque = { id: string; epi: string; ca: string; validadeCa: string | null; tamanho: string | null; quantidade: number; minimo: number; ativo: boolean; baixo: boolean; caVencido: boolean };
+export type MovEstoque = { id: string; tipo: 'ENTRADA' | 'SAIDA' | 'AJUSTE'; quantidade: number; saldo: number; observacao: string | null; colaborador: string | null; createdAt: string };
+export const estoque = {
+  listar: (e: string) => chamar<ItemEstoque[]>('GET', `/empresas/${e}/estoque`),
+  criar: (e: string, d: { epi: string; ca: string; validadeCa?: string; tamanho?: string; quantidade: number; minimo?: number }) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque`, d),
+  editar: (e: string, id: string, d: { validadeCa?: string | null; minimo?: number; ativo?: boolean }) => chamar<ItemEstoque>('PATCH', `/empresas/${e}/estoque/${id}`, d),
+  entrada: (e: string, id: string, quantidade: number, observacao?: string) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque/${id}/entrada`, { quantidade, observacao }),
+  ajuste: (e: string, id: string, quantidade: number, observacao: string) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque/${id}/ajuste`, { quantidade, observacao }),
+  movimentos: (e: string, id: string) => chamar<MovEstoque[]>('GET', `/empresas/${e}/estoque/${id}/movimentos`),
 };

@@ -24,7 +24,13 @@ export function carregarFaceApi(): Promise<FaceApi> {
   return carregando;
 }
 
-export type Leitura = { descritor: number[]; confianca: number; caixa: { x: number; y: number; w: number; h: number } };
+export type Leitura = { descritor: number[]; confianca: number; olhos: number; caixa: { x: number; y: number; w: number; h: number } };
+
+// Abertura dos olhos (EAR): cai perto de zero quando a pessoa pisca. Pontos 36-41 e 42-47 do modelo de 68 pontos.
+type P = { x: number; y: number };
+const d2 = (a: P, b: P) => Math.hypot(a.x - b.x, a.y - b.y);
+const ear = (o: P[]) => (d2(o[1], o[5]) + d2(o[2], o[4])) / (2 * d2(o[0], o[3]));
+export const aberturaOlhos = (pts: P[]) => (ear(pts.slice(36, 42)) + ear(pts.slice(42, 48))) / 2;
 
 export async function lerRosto(video: HTMLVideoElement): Promise<Leitura | null | 'varios'> {
   const faceapi = await carregarFaceApi();
@@ -35,7 +41,7 @@ export async function lerRosto(video: HTMLVideoElement): Promise<Leitura | null 
   const r = await faceapi.detectSingleFace(video, opcoes).withFaceLandmarks().withFaceDescriptor();
   if (!r) return null;
   const b = r.detection.box;
-  return { descritor: Array.from(r.descriptor), confianca: r.detection.score, caixa: { x: b.x, y: b.y, w: b.width, h: b.height } };
+  return { descritor: Array.from(r.descriptor), confianca: r.detection.score, olhos: aberturaOlhos(r.landmarks.positions), caixa: { x: b.x, y: b.y, w: b.width, h: b.height } };
 }
 
 export function distancia(a: number[], b: number[]) {
@@ -66,4 +72,30 @@ export function localizacao(): Promise<{ latitude?: number; longitude?: number; 
       { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 },
     );
   });
+}
+
+// Piscada: os olhos fecham (abertura cai a menos de 70% do normal) e abrem de novo.
+export class DetectorPiscada {
+  private normal: number[] = [];
+  private fechou = false;
+  ler(olhos: number): boolean {
+    const base = this.normal.length >= 2 ? [...this.normal].sort((a, b) => a - b)[Math.floor(this.normal.length / 2)] : null;
+    if (base && olhos < base * 0.7) { this.fechou = true; return false; }
+    if (base && this.fechou && olhos > base * 0.85) return true;
+    if (!this.fechou) { this.normal.push(olhos); if (this.normal.length > 8) this.normal.shift(); }
+    return false;
+  }
+}
+
+const CHAVE_CFG = 'safety-nexo:rosto-config';
+export async function configRosto(): Promise<{ provaDeVida: boolean; ativo: boolean }> {
+  try {
+    const { rosto } = await import('./api');
+    const c = await rosto.config();
+    try { localStorage.setItem(CHAVE_CFG, JSON.stringify(c)); } catch { /* nada */ }
+    return c;
+  } catch {
+    try { const b = localStorage.getItem(CHAVE_CFG); if (b) return JSON.parse(b); } catch { /* nada */ }
+    return { provaDeVida: true, ativo: true };
+  }
 }

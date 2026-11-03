@@ -20,6 +20,7 @@ export function configFacial() {
     ativo: process.env.FACE_API_ENABLED !== 'false',
     limiar: Number.isFinite(limiar) && limiar > 0 && limiar < 1.5 ? limiar : 0.6,
     consentimentoObrigatorio: process.env.LGPD_FACIAL_CONSENT_REQUIRED !== 'false',
+    provaDeVida: process.env.FACE_LIVENESS_REQUIRED !== 'false',
   };
 }
 

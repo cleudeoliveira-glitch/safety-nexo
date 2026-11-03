@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
+import { guardarCaptura } from '@/lib/rosto-offline';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarEpi, rosto, salvarArquivo, type ConfigRosto, type StatusRosto } from '@/lib/api';
+import { buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarEpi, rosto, estoque, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto } from '@/lib/api';
 
 const TIPOS_ASO = [
   ['ADMISSIONAL', 'Admissional'],
@@ -36,12 +37,15 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
   const [camera, setCamera] = useState<null | 'cadastro' | 'epi'>(null);
   const [comprovante, setComprovante] = useState<string | null>(null);
   const formEpi = useRef<HTMLFormElement>(null);
+  const [itensEstoque, setItensEstoque] = useState<ItemEstoque[]>([]);
+  const [itemId, setItemId] = useState('');
 
   const recarregar = useCallback(async () => {
     try {
       setColaborador(await buscarColaborador(empresaId, colaboradorId));
       rosto.config().then(setCfgRosto).catch(() => setCfgRosto(null));
       rosto.status(empresaId, colaboradorId).then(setStRosto).catch(() => setStRosto(null));
+      estoque.listar(empresaId).then((l) => setItensEstoque(l.filter((i) => i.ativo))).catch(() => setItensEstoque([]));
     } catch (e) {
       setAviso({ tipo: 'erro', texto: (e as Error).message });
     }
@@ -82,7 +86,9 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
   const confirmadas = new Map((colaborador.presencasFaciais ?? []).map((p) => [p.refId, p.codigo]));
   const dadosEpi = () => {
     const d = new FormData(formEpi.current!);
-    return { epi: texto(d, 'epi'), ca: texto(d, 'ca'), ...(texto(d, 'validadeCa') ? { validadeCa: texto(d, 'validadeCa') } : {}), quantidade: Number(texto(d, 'quantidade') || 1), motivo: texto(d, 'motivo') };
+    const base = { quantidade: Number(texto(d, 'quantidade') || 1), motivo: texto(d, 'motivo') };
+    if (itemId) return { ...base, estoqueId: itemId };
+    return { ...base, epi: texto(d, 'epi'), ca: texto(d, 'ca'), ...(texto(d, 'validadeCa') ? { validadeCa: texto(d, 'validadeCa') } : {}) };
   };
   const examesPrevistos = colaborador.ghe?.exames.map((e) => e.nome) ?? [];
 
@@ -200,22 +206,23 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar(
             (d) =>
-              registrarEpi(empresaId, colaboradorId, {
-                epi: texto(d, 'epi'),
-                ca: texto(d, 'ca'),
-                ...(texto(d, 'validadeCa') ? { validadeCa: texto(d, 'validadeCa') } : {}),
-                quantidade: Number(texto(d, 'quantidade') || 1),
-                motivo: texto(d, 'motivo'),
-                dataEntrega: texto(d, 'dataEntrega'),
-              }),
+              registrarEpi(empresaId, colaboradorId, { ...dadosEpi(), dataEntrega: texto(d, 'dataEntrega') }),
             'Entrega de EPI registrada.',
           )}
         >
+          {itensEstoque.length > 0 && (
+            <Selecao id="epi-estoque" rotulo="Do almoxarifado" value={itemId} onChange={(e) => setItemId(e.target.value)} className="md:col-span-3">
+              <option value="">Não, vou digitar o EPI e o CA</option>
+              {itensEstoque.map((i) => <option key={i.id} value={i.id} disabled={i.quantidade < 1 || i.caVencido}>{i.epi}{i.tamanho ? ` (${i.tamanho})` : ''} · CA {i.ca} · saldo {i.quantidade}{i.caVencido ? ' · CA vencido' : ''}</option>)}
+            </Selecao>
+          )}
+          {!itemId && (<>
           <Campo id="epi-nome" name="epi" rotulo="EPI" required placeholder="Ex.: Luva térmica" />
           <Campo id="epi-ca" name="ca" rotulo="Número do CA" required placeholder="Ex.: 12345"
             ajuda={{ oQueE: 'Certificado de Aprovação: número que prova que o EPI foi aprovado pelo Ministério do Trabalho.', ondeAcho: 'Gravado no próprio EPI ou na embalagem.', baseLegal: 'NR-06' }} />
           <Campo id="epi-validade" name="validadeCa" type="date" rotulo="Validade do CA"
             ajuda={{ oQueE: 'Até quando o CA vale. Com o CA vencido, o EPI não deve ser entregue.', ondeAcho: 'Na consulta de CA do Ministério do Trabalho.' }} />
+          </>)}
           <Campo id="epi-qtd" name="quantidade" type="number" min={1} rotulo="Quantidade" required defaultValue={1} />
           <Selecao id="epi-motivo" name="motivo" rotulo="Motivo" required>
             {MOTIVOS_EPI.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
@@ -259,9 +266,10 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
       )}
       {camera === 'epi' && (
         <CameraRosto titulo={`Entrega de EPI para ${colaborador.nome}`} modo="unico" pedirFotoItem onFechar={() => setCamera(null)}
+          guardarOffline={async (c) => { await guardarCaptura({ tipo: 'EPI', empresaId, refId: colaboradorId, titulo: colaborador.nome, dados: { ...dadosEpi(), descritor: c.descritor, foto: c.foto, ...(c.fotoItem ? { fotoItem: c.fotoItem } : {}), latitude: c.latitude, longitude: c.longitude, precisao: c.precisao, provaDeVida: c.provaDeVida } }); formEpi.current?.reset(); setItemId(''); return 'Sem internet: guardado no aparelho. Será conferido e enviado quando a internet voltar.'; }}
           onCaptura={async (c) => {
-            const r = await rosto.entregarEpi(empresaId, colaboradorId, { ...dadosEpi(), descritor: c.descritor, foto: c.foto, ...(c.fotoItem ? { fotoItem: c.fotoItem } : {}), latitude: c.latitude, longitude: c.longitude, precisao: c.precisao });
-            setComprovante(r.codigo); formEpi.current?.reset(); await recarregar();
+            const r = await rosto.entregarEpi(empresaId, colaboradorId, { ...dadosEpi(), descritor: c.descritor, foto: c.foto, ...(c.fotoItem ? { fotoItem: c.fotoItem } : {}), latitude: c.latitude, longitude: c.longitude, precisao: c.precisao, provaDeVida: c.provaDeVida });
+            setComprovante(r.codigo); formEpi.current?.reset(); setItemId(''); await recarregar();
             return `Rosto conferido. Entrega de ${r.entrega.epi} registrada.`;
           }} />
       )}

@@ -86,6 +86,7 @@ model Empresa {
   jornadaDiariaHoras Float @default(8) // para o índice de absenteísmo
   custoDiaFalta  Decimal? @db.Decimal(12, 2) // custo médio de um dia de falta, informado pela consultora (painel SSMA)
   horasTrabalhadas HorasTrabalhadas[]
+  estoqueEpi     EstoqueEpi[]
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
   emergencia     Json?
 
@@ -251,6 +252,7 @@ model EntregaEpi {
   quantidade    Int         @default(1)
   motivo        String      // ENTREGA_INICIAL, DESGASTE, PERDA, DANO
   dataEntrega   DateTime
+  estoqueId     String?     // item do almoxarifado que teve baixa
   createdAt     DateTime    @default(now())
 
   @@index([colaboradorId])
@@ -969,7 +971,41 @@ model PresencaFacial {
   ip            String?
   aparelho      String?
   hash          String
+  provaDeVida   Boolean     @default(false) // piscou os olhos na frente da câmera
+  capturadoEm   DateTime?   // quando foi capturado sem internet (enviado depois)
   createdAt     DateTime    @default(now())
 
   @@index([empresaId, tipo, refId])
+}
+
+// Almoxarifado de EPI da empresa: saldo por EPI e CA. Cada entrega pode dar baixa aqui.
+model EstoqueEpi {
+  id         String             @id @default(cuid())
+  empresaId  String
+  empresa    Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  epi        String
+  ca         String
+  validadeCa DateTime?
+  tamanho    String?
+  quantidade Int                @default(0)
+  minimo     Int                @default(0)
+  ativo      Boolean            @default(true)
+  createdAt  DateTime           @default(now())
+  movimentos MovimentoEstoque[]
+
+  @@index([empresaId])
+}
+
+model MovimentoEstoque {
+  id           String     @id @default(cuid())
+  estoqueId    String
+  estoque      EstoqueEpi @relation(fields: [estoqueId], references: [id], onDelete: Cascade)
+  tipo         String     // ENTRADA | SAIDA | AJUSTE
+  quantidade   Int        // + entra, - sai
+  saldo        Int        // saldo depois do movimento
+  entregaEpiId String?
+  observacao   String?
+  createdAt    DateTime   @default(now())
+
+  @@index([estoqueId])
 }

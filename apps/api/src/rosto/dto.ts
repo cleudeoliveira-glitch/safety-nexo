@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, Length, Matches, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, Length, Matches, MaxLength, Min, ValidateIf } from 'class-validator';
 
 const FOTO = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/;
 
@@ -15,11 +15,14 @@ export class CapturaDto {
   @IsOptional() @IsNumber() latitude?: number;
   @IsOptional() @IsNumber() longitude?: number;
   @IsOptional() @IsNumber() precisao?: number;
+  @IsOptional() @IsBoolean() provaDeVida?: boolean; // piscou na frente da câmera
+  @IsOptional() @IsDateString() capturadoEm?: string; // captura feita sem internet
 }
 
 export class EntregaRostoDto extends CapturaDto {
-  @IsString() @Length(2, 200) epi!: string;
-  @IsString() @Length(1, 20) ca!: string;
+  @IsOptional() @IsString() estoqueId?: string;
+  @ValidateIf((o) => !o.estoqueId) @IsString() @Length(2, 200) epi!: string;
+  @ValidateIf((o) => !o.estoqueId) @IsString() @Length(1, 20) ca!: string;
   @IsOptional() @IsDateString() validadeCa?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) quantidade?: number;
   @IsIn(['ENTREGA_INICIAL', 'DESGASTE', 'PERDA', 'DANO']) motivo!: string;

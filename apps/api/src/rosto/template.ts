@@ -3,7 +3,7 @@ import { documentoHtml, escape, Moldura } from '../documentos/layout';
 type Dados = {
   codigo: string; tipo: string; foto: string; fotoItem: string | null; distancia: number; limiar: number;
   latitude: number | null; longitude: number | null; precisaoM: number | null; ip: string | null; aparelho: string | null;
-  hash: string; createdAt: Date; url: string; qr: string;
+  hash: string; createdAt: Date; url: string; qr: string; provaDeVida: boolean; capturadoEm: Date | null;
   colaborador: { nome: string; cpf: string | null; cargo: string };
   item: [string, string][];
 };
@@ -24,8 +24,12 @@ export function comprovanteHtml(m: Moldura, d: Dados) {
   const linhas: [string, string][] = [
     ['Funcionário', d.colaborador.nome], ['CPF', d.colaborador.cpf ?? '-'], ['Função', d.colaborador.cargo],
     ...d.item,
-    ['Data e hora', quando(d.createdAt)], ['Local', local],
+    ...(d.capturadoEm
+      ? [['Data e hora', `${quando(d.capturadoEm)} (feito sem internet)`], ['Enviado e conferido em', quando(d.createdAt)]] as [string, string][]
+      : [['Data e hora', quando(d.createdAt)]] as [string, string][]),
+    ['Local', local],
     ['Reconhecimento', `rosto confere com o cadastro (distância ${num(d.distancia, 3)}; aceita até ${num(d.limiar, 2)})`],
+    ['Prova de vida', d.provaDeVida ? 'sim: a pessoa piscou os olhos na frente da câmera' : 'não feita'],
     ['IP', d.ip ?? '-'], ['Aparelho', d.aparelho ?? '-'],
   ];
   return documentoHtml(m, `

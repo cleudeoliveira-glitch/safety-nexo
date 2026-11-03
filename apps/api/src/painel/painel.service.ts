@@ -123,6 +123,11 @@ export class PainelService {
 
     pendencias.push(...this.pendenciasDeEmergencia(empresa, hoje));
     pendencias.push(...this.pendenciasDoProntuario(empresa.registrosSaude, hoje));
+    // Almoxarifado de EPI: saldo no mínimo ou CA vencido.
+    for (const i of await this.prisma.estoqueEpi.findMany({ where: { empresaId, ativo: true } })) {
+      if (i.validadeCa && i.validadeCa < hoje && i.quantidade > 0) pendencias.push({ titulo: `CA vencido no almoxarifado: ${i.epi}`, detalhe: `CA ${i.ca} venceu em ${i.validadeCa.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}. Troque o lote antes de entregar`, nivel: 'vencido' });
+      else if (i.quantidade <= i.minimo) pendencias.push({ titulo: `Comprar ${i.epi}`, detalhe: `Restam ${i.quantidade} no almoxarifado (mínimo ${i.minimo})`, nivel: 'pendente' });
+    }
 
     const vencimentos = [...ultimos.values()]
       .filter((doc) => doc.vencimento)

@@ -1,3 +1,4 @@
+import { registrarEntrega } from '../estoque/baixa';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
@@ -52,13 +53,9 @@ export class ColaboradoresService {
 
   async registrarEntregaEpi(consultoriaId: string, empresaId: string, colaboradorId: string, dto: CreateEntregaEpiDto) {
     await this.detalhar(consultoriaId, empresaId, colaboradorId);
-    return this.prisma.entregaEpi.create({
-      data: {
-        ...dto,
-        colaboradorId,
-        dataEntrega: new Date(dto.dataEntrega),
-        validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null,
-      },
+    return registrarEntrega(this.prisma, empresaId, {
+      colaboradorId, estoqueId: dto.estoqueId, epi: dto.epi?.trim(), ca: dto.ca?.trim(), quantidade: dto.quantidade ?? 1, motivo: dto.motivo,
+      dataEntrega: new Date(dto.dataEntrega), validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null,
     });
   }
 

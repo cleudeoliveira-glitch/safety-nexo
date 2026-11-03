@@ -1,4 +1,4 @@
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, Length, Min } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsOptional, IsString, Length, Min, ValidateIf } from 'class-validator';
 import { TIPOS_ASO } from './regras';
 
 export class CreateAsoDto {
@@ -29,10 +29,17 @@ export class CreateAsoDto {
 }
 
 export class CreateEntregaEpiDto {
+  // Com item do almoxarifado, EPI e CA vêm do item.
+  @IsOptional()
+  @IsString()
+  estoqueId?: string;
+
+  @ValidateIf((o) => !o.estoqueId)
   @IsString()
   @Length(2, 200)
   epi!: string;
 
+  @ValidateIf((o) => !o.estoqueId)
   @IsString()
   @Length(1, 20)
   ca!: string;

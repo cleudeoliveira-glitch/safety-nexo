@@ -5,6 +5,7 @@ import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
 import { cifrar, decifrar } from '../esocial/cifra';
 import { PrismaService } from '../prisma/prisma.service';
+import { registrarEntrega } from '../estoque/baixa';
 import { novoCodigo } from '../treinamentos/treinamentos.service';
 import { configFacial, descritorValido, menorDistancia, TEXTO_CONSENTIMENTO } from './calculo';
 import { CadastrarRostoDto, CapturaDto, EntregaRostoDto } from './dto';
@@ -100,14 +101,26 @@ export class RostoService {
     return { encontrado: true as const, ...m, distancia: Number(m.distancia.toFixed(4)) };
   }
 
+  // Confere o que vem do aparelho antes de comparar o rosto.
+  private captura(dto: CapturaDto) {
+    if (configFacial().provaDeVida && !dto.provaDeVida) throw new BadRequestException('Falta a prova de vida: a pessoa precisa piscar os olhos na frente da câmera.');
+    if (!dto.capturadoEm) return null;
+    const em = new Date(dto.capturadoEm);
+    const agora = Date.now();
+    if (em.getTime() > agora + 5 * 60_000) throw new BadRequestException('A data da captura está no futuro. Confira o relógio do aparelho.');
+    if (em.getTime() < agora - 30 * 86_400_000) throw new BadRequestException('Captura sem internet com mais de 30 dias. Faça de novo.');
+    return em;
+  }
+
   private async registrar(empresaId: string, colaboradorId: string, tipo: string, refId: string, dist: number, dto: CapturaDto & { fotoItem?: string }, origem: Origem, item: unknown) {
     const quando = new Date();
-    const base = { colaboradorId, tipo, refId, item, distancia: Number(dist.toFixed(4)), foto: sha(dto.foto), fotoItem: dto.fotoItem ? sha(dto.fotoItem) : null, latitude: dto.latitude ?? null, longitude: dto.longitude ?? null, quando: quando.toISOString() };
+    const capturadoEm = dto.capturadoEm ? new Date(dto.capturadoEm) : null;
+    const base = { colaboradorId, tipo, refId, item, distancia: Number(dist.toFixed(4)), foto: sha(dto.foto), fotoItem: dto.fotoItem ? sha(dto.fotoItem) : null, latitude: dto.latitude ?? null, longitude: dto.longitude ?? null, provaDeVida: !!dto.provaDeVida, capturadoEm: capturadoEm?.toISOString() ?? null, quando: quando.toISOString() };
     return this.prisma.presencaFacial.create({
       data: {
         codigo: novoCodigo(), empresaId, colaboradorId, tipo, refId, foto: dto.foto, fotoItem: dto.fotoItem ?? null, distancia: base.distancia,
         latitude: dto.latitude ?? null, longitude: dto.longitude ?? null, precisaoM: dto.precisao ?? null, ip: origem.ip, aparelho: origem.aparelho?.slice(0, 300) ?? null,
-        hash: sha(JSON.stringify(base)), createdAt: quando,
+        hash: sha(JSON.stringify(base)), provaDeVida: !!dto.provaDeVida, capturadoEm, createdAt: quando,
       },
     });
   }
@@ -121,11 +134,13 @@ export class RostoService {
 
   async entregarEpi(c: string, e: string, id: string, dto: EntregaRostoDto, origem: Origem) {
     this.ativo();
+    const capturadoEm = this.captura(dto);
     const col = await this.colaborador(c, e, id);
     const dist = this.conferir(col, dto.descritor);
-    const agora = new Date();
-    const entrega = await this.prisma.entregaEpi.create({
-      data: { colaboradorId: id, epi: dto.epi.trim(), ca: dto.ca.trim(), validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null, quantidade: dto.quantidade ?? 1, motivo: dto.motivo, dataEntrega: new Date(`${agora.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })}T00:00:00Z`) },
+    const dia = (capturadoEm ?? new Date()).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    const entrega = await registrarEntrega(this.prisma, e, {
+      colaboradorId: id, estoqueId: dto.estoqueId, epi: dto.epi?.trim(), ca: dto.ca?.trim(), validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null,
+      quantidade: dto.quantidade ?? 1, motivo: dto.motivo, dataEntrega: new Date(`${dia}T00:00:00Z`),
     });
     const p = await this.registrar(e, id, 'EPI', entrega.id, dist, dto, origem, { epi: entrega.epi, ca: entrega.ca, quantidade: entrega.quantidade, motivo: entrega.motivo });
     return { entrega, codigo: p.codigo, distancia: p.distancia };
@@ -133,6 +148,7 @@ export class RostoService {
 
   async presencaDds(c: string, e: string, ddsId: string, dto: CapturaDto, origem: Origem) {
     this.ativo();
+    this.captura(dto);
     await this.empresa(c, e);
     const dds = await this.prisma.dds.findFirst({ where: { id: ddsId, empresaId: e } });
     if (!dds) throw new NotFoundException('DDS não encontrado');
@@ -147,6 +163,7 @@ export class RostoService {
 
   async presencaTurma(c: string, e: string, turmaId: string, dto: CapturaDto, origem: Origem) {
     this.ativo();
+    this.captura(dto);
     await this.empresa(c, e);
     const turma = await this.prisma.turma.findFirst({ where: { id: turmaId, empresaId: e } });
     if (!turma) throw new NotFoundException('Turma não encontrada');
@@ -201,7 +218,7 @@ export class RostoService {
     return {
       codigo: p.codigo, tipo: p.tipo, titulo: item?.titulo ?? 'registro', itens: item?.linhas ?? [],
       colaborador: p.colaborador.nome, cpf: cpf && cpf.length === 11 ? `***.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-**` : null,
-      empresa: p.colaborador.empresa.razaoSocial, em: p.createdAt, hash: p.hash, comLocal: p.latitude != null,
+      empresa: p.colaborador.empresa.razaoSocial, em: p.capturadoEm ?? p.createdAt, semInternet: !!p.capturadoEm, provaDeVida: p.provaDeVida, hash: p.hash, comLocal: p.latitude != null,
     };
   }
 }
