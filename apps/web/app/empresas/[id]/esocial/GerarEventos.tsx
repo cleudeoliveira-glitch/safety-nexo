@@ -214,3 +214,29 @@ export function EventosCat({ empresaId, o, agir }: { empresaId: string; o: Orige
     </Cartao>
   );
 }
+
+export function EventosAfastamento({ empresaId, o, agir }: { empresaId: string; o: OrigensEsocial; agir: Agir }) {
+  if (!o.afastamentos.length) return null;
+  const gerar = (id: string, retificar: boolean) =>
+    agir(async () => { const ev = await gerarEventoEsocial(empresaId, 's2230', id, { retificar }); return `${ev.descricao}: evento assinado e colocado na fila.`; });
+  return (
+    <Cartao titulo="Afastamentos (S-2230)">
+      <p className="mb-4 text-sm text-text/60">
+        Os afastamentos são registrados em Saúde Ocupacional. Se a volta já estiver registrada, o início e a volta vão juntos.
+        Se o início já foi aceito, gere de novo depois de registrar a volta para enviar o término.
+      </p>
+      <ul className="divide-y divide-border text-sm">
+        {o.afastamentos.map((a) => (
+          <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+            <span>{a.colaborador} · motivo {a.motivo} · {data(a.inicio)} {a.fim ? `a ${data(a.fim)}` : '(ainda afastado)'}</span>
+            <span className="flex items-center gap-4">
+              {a.inicioEvento?.status === 'PROCESSADO'
+                ? <><span className="text-xs text-success">Início aceito</span>{a.fim && <BotoesEvento s={a.fimEvento} gerar={() => gerar(a.id, false)} />}</>
+                : <BotoesEvento s={a.inicioEvento} gerar={(r) => gerar(a.id, r)} />}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Cartao>
+  );
+}

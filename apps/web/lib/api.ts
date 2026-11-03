@@ -402,6 +402,7 @@ export type OrigensEsocial = {
     atendimentoData: string | null; medicoNome: string | null; medicoCrm: string | null; cid: string | null; diasTratamento: number | null;
     esocial: CatEsocial | null; s2210: SituacaoEvento;
   }[];
+  afastamentos: { id: string; colaborador: string; motivo: string; inicio: string; fim: string | null; inicioEvento: SituacaoEvento; fimEvento: SituacaoEvento }[];
 };
 export const buscarOrigensEsocial = (empresaId: string) => chamar<OrigensEsocial>('GET', `/empresas/${empresaId}/esocial/origens`);
 export const salvarEsocialColaborador = (empresaId: string, colaboradorId: string, dados: { cpf?: string; matricula?: string; codCateg?: string }) =>
@@ -410,7 +411,7 @@ export const salvarCodigoExame = (empresaId: string, gheId: string, exameId: str
   chamar<Exame>('PUT', `/empresas/${empresaId}/ghes/${gheId}/exames/${exameId}/codigo`, { codigoEsocial });
 export const salvarEsocialCat = (empresaId: string, catId: string, dados: CatEsocial & { horasTrabalhadas?: string; atendimentoData?: string; medicoNome?: string; medicoCrm?: string; cid?: string; diasTratamento?: number }) =>
   chamar<unknown>('PUT', `/empresas/${empresaId}/cats/${catId}/esocial`, dados);
-export const gerarEventoEsocial = (empresaId: string, tipo: 's2210' | 's2220' | 's2240', referenciaId: string, corpo: { inicio?: string; retificar?: boolean } = {}) =>
+export const gerarEventoEsocial = (empresaId: string, tipo: 's2210' | 's2220' | 's2230' | 's2240', referenciaId: string, corpo: { inicio?: string; retificar?: boolean } = {}) =>
   chamar<EventoEsocial>('POST', `/empresas/${empresaId}/esocial/${tipo}/${referenciaId}`, corpo);
 
 // Unidades de medida do S-2240 (campo unMed do XSD S-1.3).
@@ -425,3 +426,15 @@ export const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
 export type TabelasEsocial = { t13: [string, string][]; t14: [string, string][]; t15: [string, string][]; t17: [string, string][]; t24: [string, string, string][]; t27: [string, string][] };
 let cacheTabelas: Promise<TabelasEsocial> | null = null;
 export const buscarTabelasEsocial = () => (cacheTabelas ??= chamar<TabelasEsocial>('GET', '/esocial/tabelas').catch((e) => { cacheTabelas = null; throw e; }));
+
+// Afastamentos (S-2230).
+export type Afastamento = {
+  id: string; colaboradorId: string; colaborador: string; motivo: string; inicio: string; fim: string | null; mesmoMotivo: boolean | null;
+  acidenteTransito: number | null; observacao: string | null; catId: string | null; dias: number; emAberto: boolean; pedeRetorno: boolean; asoRetorno: boolean;
+};
+export const buscarMotivosAfastamento = (empresaId: string) => chamar<[string, string][]>('GET', `/empresas/${empresaId}/afastamentos/motivos`);
+export const listarAfastamentos = (empresaId: string) => chamar<Afastamento[]>('GET', `/empresas/${empresaId}/afastamentos`);
+export const criarAfastamento = (empresaId: string, dados: { colaboradorId: string; motivo: string; inicio: string; fim?: string; mesmoMotivo?: boolean; acidenteTransito?: number; observacao?: string; catId?: string }) =>
+  chamar<Afastamento>('POST', `/empresas/${empresaId}/afastamentos`, dados);
+export const encerrarAfastamento = (empresaId: string, id: string, fim: string) => chamar<Afastamento>('PUT', `/empresas/${empresaId}/afastamentos/${id}/fim`, { fim });
+export const removerAfastamento = (empresaId: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${empresaId}/afastamentos/${id}`);

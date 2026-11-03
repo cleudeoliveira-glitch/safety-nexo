@@ -56,6 +56,7 @@ model Empresa {
   usuarios       Usuario[]
   aets           Aet[]
   cats           Cat[]
+  afastamentos   Afastamento[]
   inspecoes      Inspecao[]
   eventosEsocial EventoEsocial[]
   controlesEmergencia ControleEmergencia[]
@@ -85,6 +86,7 @@ model Colaborador {
   cipa          CipaMembro[]
   treinamentos  Participacao[]
   cats          Cat[]
+  afastamentos  Afastamento[]
 
   @@index([empresaId])
 }
@@ -470,6 +472,25 @@ model EventoEsocial {
   mensagens    Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([empresaId])
+}
+
+// Afastamento temporário (S-2230). Motivo pela Tabela 18 do eSocial.
+model Afastamento {
+  id               String      @id @default(cuid())
+  empresaId        String
+  empresa          Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  colaboradorId    String
+  colaborador      Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  motivo           String      // código da Tabela 18 (ex.: 01 acidente/doença do trabalho)
+  inicio           DateTime    @db.Date
+  fim              DateTime?   @db.Date // último dia afastado; vazio enquanto continua afastado
+  mesmoMotivo      Boolean?    // mesma doença de afastamento anterior em 60 dias (motivos 01 e 03)
+  acidenteTransito Int?        // 1 atropelamento, 2 colisão, 3 outros
+  observacao       String?
+  catId            String?     // CAT que originou, quando houver
+  createdAt        DateTime    @default(now())
 
   @@index([empresaId])
 }

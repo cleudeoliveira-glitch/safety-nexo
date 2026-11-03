@@ -59,6 +59,11 @@ export class EsocialController {
     return this.esocial.gerarS2240(c, e, id, inicio, r === true);
   }
 
+  @Post('empresas/:empresaId/esocial/s2230/:afastamentoId')
+  s2230(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('afastamentoId') id: string, @Body('retificar') r?: boolean) {
+    return this.esocial.gerarS2230(c, e, id, r === true);
+  }
+
   @Post('empresas/:empresaId/esocial/s2210/:catId')
   s2210(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('catId') id: string, @Body('retificar') r?: boolean) {
     return this.esocial.gerarS2210(c, e, id, r === true);

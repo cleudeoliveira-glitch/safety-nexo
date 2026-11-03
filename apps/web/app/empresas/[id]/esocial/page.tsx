@@ -19,7 +19,7 @@ import {
   transmitirEsocial,
 } from '@/lib/api';
 import { ehEmpresa } from '@/lib/sessao';
-import { DadosEmpresaEsocial, EventosCat, EventosColaboradores } from './GerarEventos';
+import { DadosEmpresaEsocial, EventosAfastamento, EventosCat, EventosColaboradores } from './GerarEventos';
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
@@ -32,6 +32,7 @@ const STATUS: Record<EventoEsocial['status'], { nome: string; cor: string }> = {
 const TIPOS: Record<string, string> = {
   'S-2210': 'Comunicação de acidente (CAT)',
   'S-2220': 'Exame ocupacional (ASO)',
+  'S-2230': 'Afastamento temporário',
   'S-2240': 'Condições ambientais (riscos)',
 };
 
@@ -129,6 +130,7 @@ export default function EsocialPage({ params }: { params: { id: string } }) {
         <DadosEmpresaEsocial key={JSON.stringify(origens.empresa)} empresaId={empresaId} o={origens.empresa} agir={agir} />
         <EventosColaboradores empresaId={empresaId} o={origens} agir={agir} />
         <EventosCat empresaId={empresaId} o={origens} agir={agir} />
+        <EventosAfastamento empresaId={empresaId} o={origens} agir={agir} />
       </>}
 
       <Cartao titulo="Fila de envio" acao={

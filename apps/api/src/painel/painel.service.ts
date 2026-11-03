@@ -1,3 +1,4 @@
+import { situacaoAfastamento } from '../saude/saude.service';
 import { dimensionarBrigada } from '../emergencia/it17';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { situacaoCipa } from '../cipa/cipa.service';
@@ -29,6 +30,7 @@ export class PainelService {
         },
         documentos: { orderBy: { geradoEm: 'desc' } },
         cats: { where: { enviadaEm: null }, include: { colaborador: { select: { nome: true } } } },
+        afastamentos: { where: { motivo: { in: ['01', '03'] } }, include: { colaborador: { select: { nome: true, asos: { where: { tipo: 'RETORNO_TRABALHO' }, select: { dataExame: true } } } } } },
         controlesEmergencia: { where: { validade: { not: null } } },
         turmas: { where: { norma: 'IT-17' }, select: { fim: true, validadeMeses: true, participantes: { select: { colaboradorId: true } } } },
       },
@@ -93,6 +95,14 @@ export class PainelService {
       const quando = prazo.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
       if (prazo < hoje) pendencias.unshift({ titulo: `CAT fora do prazo: ${cat.colaborador.nome}`, detalhe: `Devia ser enviada até ${quando}. Envie pelo eSocial e registre o recibo`, nivel: 'vencido' });
       else pendencias.unshift({ titulo: `Envie a CAT de ${cat.colaborador.nome}`, detalhe: `Prazo: ${quando} (eSocial S-2210)`, nivel: 'pendente' });
+    }
+
+    // NR-07, 7.5.9: volta de afastamento de 30 dias ou mais por doença ou acidente pede ASO de retorno.
+    for (const af of empresa.afastamentos) {
+      const sit = situacaoAfastamento(af, af.colaborador.asos.map((x) => x.dataExame));
+      if (!sit.pedeRetorno || sit.asoRetorno) continue;
+      if (af.fim) pendencias.unshift({ titulo: `ASO de retorno de ${af.colaborador.nome}`, detalhe: `Afastado por ${sit.dias} dias: faça o exame de retorno antes de voltar ao trabalho (NR-07)`, nivel: 'vencido' });
+      else pendencias.push({ titulo: `${af.colaborador.nome} afastado há ${sit.dias} dias`, detalhe: 'Na volta, faça o ASO de retorno antes de reassumir (NR-07)', nivel: 'pendente' });
     }
 
     pendencias.push(...this.pendenciasDeEmergencia(empresa, hoje));

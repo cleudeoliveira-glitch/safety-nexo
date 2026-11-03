@@ -85,3 +85,18 @@ export class AtualizarCatEsocialDto extends EsocialCatDto {
 export class EnvioCatDto {
   @IsString() @Length(1, 60) recibo!: string;
 }
+
+export class CriarAfastamentoDto {
+  @IsString() colaboradorId!: string;
+  @Matches(/^\d{2}$/, { message: 'Escolha o motivo do afastamento.' }) motivo!: string;
+  @IsDateString({}, { message: 'Informe o primeiro dia de afastamento.' }) inicio!: string;
+  @IsOptional() @IsDateString({}, { message: 'Data de volta inválida.' }) fim?: string;
+  @IsOptional() @IsBoolean() mesmoMotivo?: boolean;
+  @IsOptional() @IsIn([1, 2, 3]) acidenteTransito?: number;
+  @IsOptional() @IsString() @MaxLength(255) observacao?: string;
+  @IsOptional() @IsString() catId?: string;
+}
+
+export class EncerrarAfastamentoDto {
+  @IsDateString({}, { message: 'Informe o último dia de afastamento.' }) fim!: string;
+}

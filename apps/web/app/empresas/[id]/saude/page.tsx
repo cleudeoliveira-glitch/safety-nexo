@@ -21,8 +21,9 @@ import {
   salvarArquivo,
 } from '@/lib/api';
 import { ehEmpresa } from '@/lib/sessao';
+import { AbaAfastamentos } from './AbaAfastamentos';
 
-type Aba = 'aet' | 'cat';
+type Aba = 'aet' | 'cat' | 'afast';
 type Avisar = (tipo: 'erro' | 'ok', texto: string) => void;
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
@@ -282,7 +283,8 @@ export default function SaudePage({ params }: { params: { id: string } }) {
     const ehCliente = ehEmpresa();
     setCliente(ehCliente);
     // A empresa cliente costuma vir aqui para registrar um acidente.
-    if (ehCliente || window.location.hash === '#cat') setAba('cat');
+    if (window.location.hash === '#afastamentos') setAba('afast');
+    else if (ehCliente || window.location.hash === '#cat') setAba('cat');
     recarregar();
   }, [recarregar]);
 
@@ -298,7 +300,7 @@ export default function SaudePage({ params }: { params: { id: string } }) {
   if (!empresa) return <main className="p-10">{aviso ? <Aviso tipo="erro">{aviso.texto}</Aviso> : 'Carregando…'}</main>;
 
   const pendentes = cats.filter((c) => !c.enviadaEm).length;
-  const abas: [Aba, string][] = [['aet', 'Ergonomia (AET)'], ['cat', `Acidentes (CAT)${pendentes ? ` · ${pendentes} a enviar` : ''}`]];
+  const abas: [Aba, string][] = [['aet', 'Ergonomia (AET)'], ['cat', `Acidentes (CAT)${pendentes ? ` · ${pendentes} a enviar` : ''}`], ['afast', 'Afastamentos']];
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
@@ -323,6 +325,7 @@ export default function SaudePage({ params }: { params: { id: string } }) {
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 
       {aba === 'aet' && <AbaAet empresaId={empresaId} lista={aets} cliente={cliente} recarregar={recarregar} avisar={avisar} baixar={baixador(gerarAet)} />}
+      {aba === 'afast' && <AbaAfastamentos empresaId={empresaId} colaboradores={colaboradores} cats={cats} avisar={avisar} />}
       {aba === 'cat' && <AbaCat empresaId={empresaId} colaboradores={colaboradores} lista={cats} recarregar={recarregar} avisar={avisar} baixar={baixador(gerarCat)} />}
     </main>
   );

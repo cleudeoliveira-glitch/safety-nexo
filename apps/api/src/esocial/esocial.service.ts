@@ -4,7 +4,7 @@ import { abrirCertificado } from './certificado';
 import { cifrar, decifrar } from './cifra';
 import { assinarEvento } from './assinatura';
 import { Ambiente, AMBIENTES, gerarIdEvento, MAX_EVENTOS_POR_LOTE } from './configuracao';
-import { Identificacao, montarS2210, montarS2220, montarS2240, soDocumento } from './eventos';
+import { Identificacao, montarS2210, montarS2220, montarS2230, montarS2240, soDocumento } from './eventos';
 import { consultarLote, enviarLote, montarLote } from './transmissao';
 
 @Injectable()
@@ -82,6 +82,7 @@ export class EsocialService {
       this.prisma.cat.findMany({ where: { empresaId }, orderBy: { dataHora: 'desc' }, include: { colaborador: { select: { nome: true } } } }),
       this.prisma.eventoEsocial.findMany({ where: { empresaId }, orderBy: { createdAt: 'desc' }, select: { tipo: true, referenciaId: true, status: true, recibo: true } }),
     ]);
+    const afastamentos = await this.prisma.afastamento.findMany({ where: { empresaId }, orderBy: { inicio: 'desc' }, include: { colaborador: { select: { nome: true } } } });
     const ultimo = (tipo: string, ref: string) => eventos.find((e) => e.tipo === tipo && e.referenciaId === ref) ?? null;
     return {
       empresa: {
@@ -95,13 +96,14 @@ export class EsocialService {
         asos: c.asos.map((a) => ({ ...a, s2220: ultimo('S-2220', a.id) })),
       })),
       cats: cats.map(({ colaborador, ...c }) => ({ ...c, colaborador: colaborador.nome, s2210: ultimo('S-2210', c.id) })),
+      afastamentos: afastamentos.map(({ colaborador, ...a }) => ({ ...a, colaborador: colaborador.nome, inicioEvento: ultimo('S-2230', a.id), fimEvento: ultimo('S-2230', `${a.id}:fim`) })),
     };
   }
 
   // ---------- geração dos eventos ----------
   // Monta, confere o que falta, assina e põe na fila. Um evento ainda não enviado da mesma origem é substituído.
   private async enfileirar(
-    consultoriaId: string, empresaId: string, tipo: 'S-2210' | 'S-2220' | 'S-2240', referenciaId: string, descricao: string, retificar: boolean,
+    consultoriaId: string, empresaId: string, tipo: 'S-2210' | 'S-2220' | 'S-2230' | 'S-2240', referenciaId: string, descricao: string, retificar: boolean,
     montar: (id: Identificacao) => { xml: string; pendencias: string[] },
   ) {
     const empresa = await this.empresa(consultoriaId, empresaId);
@@ -156,6 +158,22 @@ export class EsocialService {
     const quando = cat.dataHora.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     return this.enfileirar(consultoriaId, empresaId, 'S-2210', cat.id, `CAT de ${cat.colaborador.nome} (${quando})`, retificar,
       (id) => montarS2210(id, empresa, cat.colaborador, cat));
+  }
+
+  // Afastamento: o início vai com a volta, se já houver; depois de aceito o início, a volta vai num evento só dela.
+  async gerarS2230(consultoriaId: string, empresaId: string, afastamentoId: string, retificar = false) {
+    const af = await this.prisma.afastamento.findFirst({ where: { id: afastamentoId, empresaId, empresa: { consultoriaId } }, include: { colaborador: true } });
+    if (!af) throw new NotFoundException('Afastamento não encontrado');
+    const empresa = await this.empresa(consultoriaId, empresaId);
+    const inicioAceito = await this.prisma.eventoEsocial.findFirst({ where: { empresaId, tipo: 'S-2230', referenciaId: af.id, status: 'PROCESSADO' } });
+    const fase = inicioAceito && !retificar ? 'fim' : 'inicio';
+    if (fase === 'fim' && !af.fim) throw new BadRequestException('O início do afastamento já foi aceito. Registre a data da volta para enviar o término.');
+    const anteriores = await this.prisma.afastamento.findMany({ where: { colaboradorId: af.colaboradorId } });
+    const quando = af.inicio.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    const ref = fase === 'fim' ? `${af.id}:fim` : af.id;
+    const texto = fase === 'fim' ? `Volta de ${af.colaborador.nome} (afastado desde ${quando})` : `Afastamento de ${af.colaborador.nome} desde ${quando}`;
+    return this.enfileirar(consultoriaId, empresaId, 'S-2230', ref, texto, retificar,
+      (id) => montarS2230(id, empresa, af.colaborador, af, fase, anteriores));
   }
 
   // Envia os eventos pendentes da empresa em lotes de até 50 e guarda o protocolo.

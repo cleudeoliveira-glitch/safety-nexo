@@ -1,5 +1,5 @@
 import { CODIGOS } from './codigos';
-import { Aso, Cat, Colaborador, Empresa, ExameGhe, Ghe, GheRisco } from '@prisma/client';
+import { Afastamento, Aso, Cat, Colaborador, Empresa, ExameGhe, Ghe, GheRisco } from '@prisma/client';
 
 // Montagem dos eventos de SST conforme os Esquemas XSD v. S-1.3 (NT 07/2026 rev. 20/10/2026):
 // evtCAT (S-2210), evtMonit (S-2220) e evtExpRisco (S-2240).
@@ -230,4 +230,27 @@ export function montarS2210(id: Identificacao, empresa: Empresa, col: Colaborado
       el('emitente', c('nmEmit', corta(cat.medicoNome, 70)), c('ideOC', conselho), c('nrOC', digitos(cat.medicoCrm).slice(0, 14)), conselho !== 3 ? c('ufOC', ufMed) : '')) : '',
     tpCat !== 1 ? el('catOrigem', c('nrRecCatOrig', e.reciboCatOrigem)) : '');
   return { xml: raiz('evtCAT', id, corpo), pendencias: p.itens };
+}
+
+// ---------- S-2230: afastamento temporário ----------
+// fase "inicio" leva o início (e o fim, se já houver); fase "fim" leva só o término de um início já aceito.
+export function montarS2230(id: Identificacao, empresa: Empresa, col: Colaborador, a: Afastamento, fase: 'inicio' | 'fim', anteriores: Afastamento[]) {
+  const p = new Pendencias();
+  const vinculo = ideVinculo(col, p);
+  const saude = ['01', '03'].includes(a.motivo);
+  if (a.motivo === '21') p.exigir(a.observacao, 'observação do afastamento (obrigatória para este motivo)');
+  if (fase === 'fim') p.exigir(a.fim, 'data da volta do afastamento');
+  if (saude && a.mesmoMotivo) {
+    const limite = a.inicio.getTime() - 60 * 86_400_000;
+    p.exigir(anteriores.some((x) => x.id !== a.id && x.motivo === a.motivo && x.fim && x.fim.getTime() >= limite && x.fim < a.inicio),
+      'afastamento anterior pelo mesmo motivo nos últimos 60 dias (marcado "mesma doença", mas não há outro registrado)');
+  }
+  const ini = fase === 'inicio' ? el('iniAfastamento',
+    c('dtIniAfast', dia(a.inicio)), c('codMotAfast', a.motivo),
+    saude && a.mesmoMotivo !== null && a.mesmoMotivo !== undefined && dia(a.inicio) >= '2026-10-26' ? c('infoMesmoMtv', sn(a.mesmoMotivo)) : '',
+    saude ? c('tpAcidTransito', a.acidenteTransito) : '',
+    c('observacao', corta(a.observacao, 255))) : '';
+  const fim = a.fim ? el('fimAfastamento', c('dtTermAfast', dia(a.fim))) : '';
+  const corpo = ideEvento(id) + ideEmpregador(empresa) + vinculo + el('infoAfastamento', ini, fim);
+  return { xml: raiz('evtAfastTemp', id, corpo), pendencias: p.itens };
 }
