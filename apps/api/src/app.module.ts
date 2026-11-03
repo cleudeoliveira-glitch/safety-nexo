@@ -7,6 +7,7 @@ import { SaudeModule } from './saude/saude.module';
 import { LaudosModule } from './laudos/laudos.module';
 import { EsocialModule } from './esocial/esocial.module';
 import { HistoricoModule } from './historico/historico.module';
+import { ComercialModule } from './comercial/comercial.module';
 import { EmergenciaModule } from './emergencia/emergencia.module';
 import { InspecoesModule } from './inspecoes/inspecoes.module';
 import { OperacaoModule } from './operacao/operacao.module';
@@ -20,7 +21,7 @@ import { PainelModule } from './painel/painel.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule],
+  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule],
   controllers: [HealthController],
 })
 export class AppModule {}

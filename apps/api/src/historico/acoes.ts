@@ -69,6 +69,20 @@ const REGRAS: [string, RegExp, string][] = [
   ['POST', /\/acessos/, 'Criou acesso para a empresa'],
   ['DELETE', /\/acessos/, 'Removeu acesso da empresa'],
   ['PUT', /^\/consultoria\/logo$/, 'Trocou a logo da consultoria'],
+  ['PUT', /^\/comercial\/configuracao$/, 'Alterou os dados comerciais e o Pix'],
+  ['POST', /^\/comercial\/propostas\/:id\/pdf$/, 'Baixou uma proposta'],
+  ['POST', /^\/comercial\/propostas$/, 'Criou uma proposta'],
+  ['PUT', /^\/comercial\/propostas\/:id\/status$/, 'Mudou a situação de uma proposta'],
+  ['POST', /^\/comercial\/contratos\/:id\/pdf$/, 'Baixou um contrato'],
+  ['POST', /^\/comercial\/contratos$/, 'Criou um contrato'],
+  ['PUT', /^\/comercial\/contratos\/:id\/encerrar$/, 'Encerrou um contrato'],
+  ['POST', /^\/comercial\/mensalidades$/, 'Gerou as mensalidades do mês'],
+  ['POST', /^\/comercial\/servicos$/, 'Abriu uma ordem de serviço'],
+  ['PUT', /^\/comercial\/servicos\/:id\/concluir$/, 'Concluiu uma ordem de serviço'],
+  ['POST', /^\/comercial\/cobrancas\/:id\/pdf$/, 'Baixou uma cobrança'],
+  ['POST', /^\/comercial\/cobrancas$/, 'Criou uma cobrança'],
+  ['PUT', /^\/comercial\/cobrancas\/:id\/paga$/, 'Marcou cobrança como paga'],
+  ['PUT', /^\/comercial\/cobrancas\/:id\/cancelar$/, 'Cancelou uma cobrança'],
 ];
 
 export function descreverAcao(metodo: string, rota: string): string {

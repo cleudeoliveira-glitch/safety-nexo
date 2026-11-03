@@ -14,9 +14,18 @@ model Consultoria {
   plano     String    @default("FREE")
   limiteEmpresas Int  @default(3)
   logoPath  String?   // logo da consultoria: vai no rodapé dos documentos
+  // Dados comerciais: aparecem na proposta, no contrato e na cobrança Pix.
+  cnpj      String?
+  cidade    String?
+  pixChave  String?
+  pixNome   String?   // nome do recebedor, como no banco (até 25 letras no QR)
   createdAt DateTime  @default(now())
   empresas  Empresa[]
   usuarios  Usuario[]
+  propostas Proposta[]
+  contratos Contrato[]
+  servicos  Servico[]
+  cobrancas Cobranca[]
 }
 
 model Empresa {
@@ -57,6 +66,10 @@ model Empresa {
   aets           Aet[]
   cats           Cat[]
   afastamentos   Afastamento[]
+  propostas      Proposta[]
+  contratos      Contrato[]
+  servicos       Servico[]
+  cobrancas      Cobranca[]
   inspecoes      Inspecao[]
   eventosEsocial EventoEsocial[]
   controlesEmergencia ControleEmergencia[]
@@ -510,4 +523,94 @@ model Historico {
 
   @@index([consultoriaId, createdAt])
   @@index([empresaId, createdAt])
+}
+
+// ---------- Comercial (valores em centavos) ----------
+model Proposta {
+  id            String      @id @default(cuid())
+  consultoriaId String
+  consultoria   Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  numero        Int
+  empresaId     String?
+  empresa       Empresa?    @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+  clienteNome   String      // cliente ainda não cadastrado também recebe proposta
+  clienteCnpj   String?
+  clienteContato String?
+  data          DateTime    @db.Date
+  validadeDias  Int         @default(15)
+  itens         Json        // [{ descricao, quantidade, valorCentavos }]
+  observacoes   String?
+  status        String      @default("ABERTA") // ABERTA, ACEITA, RECUSADA
+  createdAt     DateTime    @default(now())
+  contratos     Contrato[]
+
+  @@unique([consultoriaId, numero])
+}
+
+model Contrato {
+  id            String      @id @default(cuid())
+  consultoriaId String
+  consultoria   Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  numero        Int
+  empresaId     String
+  empresa       Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  propostaId    String?
+  proposta      Proposta?   @relation(fields: [propostaId], references: [id], onDelete: SetNull)
+  objeto        String      // serviços contratados
+  valorMensalCentavos Int?  // mensalidade; vazio quando o contrato é só por serviço
+  diaVencimento Int?        // dia do mês da mensalidade
+  inicio        DateTime    @db.Date
+  fim           DateTime?   @db.Date
+  observacoes   String?
+  status        String      @default("ATIVO") // ATIVO, ENCERRADO
+  createdAt     DateTime    @default(now())
+  servicos      Servico[]
+  cobrancas     Cobranca[]
+
+  @@unique([consultoriaId, numero])
+}
+
+// Ordem de serviço comercial: um trabalho a executar para o cliente (visita, laudo, treinamento).
+model Servico {
+  id            String      @id @default(cuid())
+  consultoriaId String
+  consultoria   Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  numero        Int
+  empresaId     String
+  empresa       Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  contratoId    String?
+  contrato      Contrato?   @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+  descricao     String
+  previsto      DateTime?   @db.Date
+  responsavel   String?
+  valorCentavos Int?        // valor avulso, cobrado à parte do contrato
+  concluidoEm   DateTime?   @db.Date
+  status        String      @default("ABERTA") // ABERTA, CONCLUIDA, CANCELADA
+  createdAt     DateTime    @default(now())
+  cobrancas     Cobranca[]
+
+  @@unique([consultoriaId, numero])
+}
+
+model Cobranca {
+  id            String      @id @default(cuid())
+  consultoriaId String
+  consultoria   Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  empresaId     String
+  empresa       Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  contratoId    String?
+  contrato      Contrato?   @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+  servicoId     String?
+  servico       Servico?    @relation(fields: [servicoId], references: [id], onDelete: SetNull)
+  descricao     String
+  valorCentavos Int
+  vencimento    DateTime    @db.Date
+  referencia    String?     // mês da mensalidade (AAAA-MM), evita cobrar duas vezes
+  txid          String      // identificador no Pix
+  status        String      @default("ABERTA") // ABERTA, PAGA, CANCELADA
+  pagoEm        DateTime?   @db.Date
+  createdAt     DateTime    @default(now())
+
+  @@index([consultoriaId, vencimento])
+  @@unique([contratoId, referencia])
 }
