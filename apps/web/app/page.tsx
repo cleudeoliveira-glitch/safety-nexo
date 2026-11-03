@@ -17,6 +17,7 @@ const segments: [nome: string, rota: string | null][] = [
   ['Emergência', '/emergencia'],
   ['Governança', '/esocial'],
   ['Conectores', '/conectores'],
+  ['Documentos', '/arquivo'],
 ];
 
 const passosTour: PassoTour[] = [

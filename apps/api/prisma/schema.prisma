@@ -74,6 +74,7 @@ model Empresa {
   eventosEsocial EventoEsocial[]
   controlesEmergencia ControleEmergencia[]
   terceiros      Terceiro[]
+  arquivos       Arquivo[]
   atestados      Atestado[]
   jornadaDiariaHoras Float @default(8) // para o índice de absenteísmo
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
@@ -683,4 +684,42 @@ model Atestado {
 
   @@index([empresaId, inicio])
   @@index([colaboradorId])
+}
+
+// Arquivo de documentos (GED): cada PDF gerado fica guardado, e a consultoria ou o RH podem enviar outros.
+// Mesma "chave" = versões do mesmo documento.
+model Arquivo {
+  id            String   @id @default(cuid())
+  empresaId     String
+  empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  chave         String
+  titulo        String
+  categoria     String
+  origem        String   // GERADO ou ENVIADO
+  versao        Int
+  nomeArquivo   String
+  mime          String
+  tamanho       Int
+  caminho       String
+  texto         String?  @db.Text
+  descricao     String?
+  criadoPorId   String?
+  criadoPorNome String
+  criadoEm      DateTime @default(now())
+  acessos       ArquivoAcesso[]
+
+  @@index([empresaId, chave])
+  @@index([empresaId, criadoEm])
+}
+
+model ArquivoAcesso {
+  id          String   @id @default(cuid())
+  arquivoId   String
+  arquivo     Arquivo  @relation(fields: [arquivoId], references: [id], onDelete: Cascade)
+  usuarioId   String
+  usuarioNome String
+  papel       String
+  em          DateTime @default(now())
+
+  @@index([arquivoId])
 }

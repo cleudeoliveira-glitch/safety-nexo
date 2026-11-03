@@ -9,6 +9,7 @@ import { EsocialModule } from './esocial/esocial.module';
 import { HistoricoModule } from './historico/historico.module';
 import { ComercialModule } from './comercial/comercial.module';
 import { ConectoresModule } from './conectores/conectores.module';
+import { ArquivoModule } from './arquivo/arquivo.module';
 import { EmergenciaModule } from './emergencia/emergencia.module';
 import { InspecoesModule } from './inspecoes/inspecoes.module';
 import { OperacaoModule } from './operacao/operacao.module';
@@ -22,7 +23,7 @@ import { PainelModule } from './painel/painel.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule],
+  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule],
   controllers: [HealthController],
 })
 export class AppModule {}

@@ -2,6 +2,8 @@
 // A ordem importa: a primeira regra que casar vence.
 const REGRAS: [string, RegExp, string][] = [
   ['POST', /\/colaboradores\/importar\/previa$/, ''],
+  ['POST', /\/arquivo$/, 'Enviou um documento ao arquivo'],
+  ['DELETE', /\/arquivo\/:id$/, 'Apagou um documento do arquivo'],
   ['POST', /\/colaboradores\/importar$/, 'Importou funcionários da planilha do RH'],
   ['POST', /\/terceiros$/, 'Cadastrou uma empresa terceirizada'],
   ['PUT', /\/terceiros\/:id$/, 'Alterou uma empresa terceirizada'],

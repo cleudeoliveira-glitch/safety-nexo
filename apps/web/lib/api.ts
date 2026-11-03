@@ -531,3 +531,27 @@ export const atestados = {
   indicadores: (e: string, ano: number) => chamar<Absenteismo>('GET', `/empresas/${e}/absenteismo?ano=${ano}`),
   jornada: (e: string, horas: number) => chamar<{ jornadaDiariaHoras: number }>('PUT', `/empresas/${e}/absenteismo/jornada`, { jornadaDiariaHoras: horas }),
 };
+
+// ---------- Arquivo de documentos (GED) ----------
+export type VersaoArquivo = { id: string; versao: number; criadoEm: string; criadoPorNome: string; nomeArquivo: string };
+export type ItemArquivo = {
+  id: string; titulo: string; categoria: string; origem: 'GERADO' | 'ENVIADO'; versao: number; nomeArquivo: string; mime: string; tamanho: number;
+  descricao: string | null; criadoPorNome: string; criadoEm: string; visualizacoes: number; trecho: string | null; achadoNaVersao: number | null; anteriores: VersaoArquivo[];
+};
+export type AcessoArquivo = { id: string; usuarioNome: string; papel: 'CONSULTORIA' | 'EMPRESA'; em: string; arquivo: { versao: number } };
+export const arquivo = {
+  listar: (e: string, busca?: string) => chamar<ItemArquivo[]>('GET', `/empresas/${e}/arquivo${busca ? `?busca=${encodeURIComponent(busca)}` : ''}`),
+  enviar: (e: string, arq: File, dados: { titulo?: string; categoria?: string; descricao?: string; versaoDe?: string }) => {
+    const f = new FormData(); f.append('arquivo', arq);
+    for (const [k, v] of Object.entries(dados)) if (v) f.append(k, v);
+    return chamar<ItemArquivo>('POST', `/empresas/${e}/arquivo`, f);
+  },
+  acessos: (e: string, id: string) => chamar<AcessoArquivo[]>('GET', `/empresas/${e}/arquivo/${id}/acessos`),
+  remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/arquivo/${id}`),
+  baixar: async (e: string, id: string): Promise<Blob> => {
+    const res = await fetch(`${API_URL}/empresas/${e}/arquivo/${id}/baixar`, { headers: cabecalhos() });
+    verificarSessao(res);
+    if (!res.ok) { const erro = await res.json().catch(() => null); throw new Error(erro?.message ?? `Não foi possível abrir o documento (${res.status}).`); }
+    return res.blob();
+  },
+};

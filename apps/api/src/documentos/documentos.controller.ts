@@ -33,6 +33,7 @@ export class DocumentosController {
 }
 
 export function enviarPdf(res: Response, pdf: Buffer, nome: string) {
+  res.locals.arquivoPdf = { pdf, nome }; // o ArquivoInterceptor guarda uma cópia no arquivo da empresa
   res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${nome}"` });
   res.end(pdf);
 }
