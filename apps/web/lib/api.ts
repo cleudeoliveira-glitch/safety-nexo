@@ -438,3 +438,7 @@ export const criarAfastamento = (empresaId: string, dados: { colaboradorId: stri
   chamar<Afastamento>('POST', `/empresas/${empresaId}/afastamentos`, dados);
 export const encerrarAfastamento = (empresaId: string, id: string, fim: string) => chamar<Afastamento>('PUT', `/empresas/${empresaId}/afastamentos/${id}/fim`, { fim });
 export const removerAfastamento = (empresaId: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${empresaId}/afastamentos/${id}`);
+
+export type ItemHistorico = { id: string; usuarioNome: string; papel: 'CONSULTORIA' | 'EMPRESA'; acao: string; createdAt: string };
+export const buscarHistorico = (empresaId: string, antes?: string) =>
+  chamar<ItemHistorico[]>('GET', `/empresas/${empresaId}/historico${antes ? `?antes=${encodeURIComponent(antes)}` : ''}`);

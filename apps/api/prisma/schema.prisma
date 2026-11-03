@@ -494,3 +494,20 @@ model Afastamento {
 
   @@index([empresaId])
 }
+
+// Histórico de alterações: quem fez o quê, quando (gravado automaticamente a cada alteração ou documento gerado).
+model Historico {
+  id            String   @id @default(cuid())
+  consultoriaId String
+  empresaId     String?
+  usuarioId     String
+  usuarioNome   String
+  papel         String   // CONSULTORIA | EMPRESA
+  acao          String   // descrição em português
+  metodo        String
+  rota          String
+  createdAt     DateTime @default(now())
+
+  @@index([consultoriaId, createdAt])
+  @@index([empresaId, createdAt])
+}
