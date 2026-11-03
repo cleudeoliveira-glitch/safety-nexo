@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "AssinaturaPresenca" ADD COLUMN     "enviadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { RostoCampo } from '@/components/RostoCampo';
+import { ListasGuardadas } from '@/components/ListasGuardadas';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { EtapaApr, ItemInspecao } from '@/lib/api';
 import { BaseCampo, enviarPendentes, guardarPendente, lerBase, lerPendentes, Pendente, prepararCampo, removerPendente, tirarErro } from '@/lib/campo';
@@ -93,6 +94,7 @@ export default function CampoPage() {
         <Selecao id="cp-emp" rotulo="Empresa" value={empresaId} onChange={(e) => setEmpresaId(e.target.value)}>
           <option value="">Escolha</option>{base.empresas.map((e) => <option key={e.id} value={e.id}>{e.razaoSocial}</option>)}
         </Selecao>
+        <ListasGuardadas empresaId={empresaId} />
         <div role="tablist" className="flex flex-wrap gap-2">
           {([['inspecao', 'Inspeção (checklist)'], ['apr', 'APR'], ['rosto', 'Pelo rosto']] as [Aba, string][]).map(([v, n]) => (
             <button key={v} role="tab" aria-selected={aba === v} onClick={() => setAba(v)} className={`rounded-card px-4 py-2 text-sm font-semibold ${aba === v ? 'bg-primary text-white' : 'border border-border bg-white'}`}>{n}</button>

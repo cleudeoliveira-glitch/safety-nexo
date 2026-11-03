@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional, Matches, MaxLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsNumber, IsOptional, Matches, MaxLength } from 'class-validator';
 
 export class AssinarPresencaDto {
   @Matches(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/, { message: 'Faça o X ou a assinatura no quadro.' }) @MaxLength(400_000, { message: 'A assinatura ficou grande demais.' }) imagem!: string;
@@ -7,6 +7,7 @@ export class AssinarPresencaDto {
   @IsOptional() @IsNumber() longitude?: number;
   @IsOptional() @IsNumber() precisao?: number;
   @IsOptional() @IsBoolean() aRogo?: boolean; // não sabe ler: o instrutor assina como testemunha
+  @IsOptional() @IsDateString() assinadoEm?: string; // assinatura feita sem internet, enviada depois
 }
 
 export class FotoColaboradorDto {

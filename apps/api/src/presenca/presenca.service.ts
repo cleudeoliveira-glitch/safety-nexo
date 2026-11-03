@@ -61,9 +61,11 @@ export class PresencaService {
     if (!ev.ids.includes(colaboradorId)) throw new BadRequestException('Esta pessoa não está na lista. Inclua antes de assinar.');
     const ja = await this.prisma.assinaturaPresenca.findUnique({ where: { tipo_refId_colaboradorId: { tipo, refId, colaboradorId } } });
     if (ja) throw new ConflictException('Esta pessoa já assinou.');
-    const assinadoEm = new Date();
+    const assinadoEm = dto.assinadoEm ? new Date(dto.assinadoEm) : new Date();
+    if (assinadoEm.getTime() > Date.now() + 5 * 60_000) throw new BadRequestException('A hora da assinatura está no futuro. Confira o relógio do aparelho.');
+    if (assinadoEm.getTime() < Date.now() - 30 * 86_400_000) throw new BadRequestException('Assinatura feita sem internet há mais de 30 dias. Peça para assinar de novo.');
     const testemunha = dto.aRogo ? ev.responsavel : null;
-    const base = { tipo, refId, colaboradorId, imagem: sha(dto.imagem), foto: dto.foto ? sha(dto.foto) : null, testemunha, latitude: dto.latitude ?? null, longitude: dto.longitude ?? null, assinadoEm: assinadoEm.toISOString() };
+    const base = { tipo, refId, colaboradorId, imagem: sha(dto.imagem), foto: dto.foto ? sha(dto.foto) : null, testemunha, latitude: dto.latitude ?? null, longitude: dto.longitude ?? null, assinadoEm: assinadoEm.toISOString(), semInternet: !!dto.assinadoEm };
     await this.prisma.assinaturaPresenca.create({
       data: { tipo, refId, colaboradorId, imagem: dto.imagem, foto: dto.foto ?? null, testemunha, latitude: dto.latitude ?? null, longitude: dto.longitude ?? null, precisaoM: dto.precisao ?? null, ip: origem.ip, aparelho: origem.aparelho?.slice(0, 300) ?? null, hash: sha(JSON.stringify(base)), assinadoEm },
     });

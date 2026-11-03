@@ -1036,7 +1036,8 @@ model AssinaturaPresenca {
   ip            String?
   aparelho      String?
   hash          String
-  assinadoEm    DateTime    @default(now())
+  assinadoEm    DateTime    @default(now()) // hora em que a pessoa assinou (mesmo sem internet)
+  enviadoEm     DateTime    @default(now()) // hora em que chegou ao sistema
 
   @@unique([tipo, refId, colaboradorId])
   @@index([tipo, refId])

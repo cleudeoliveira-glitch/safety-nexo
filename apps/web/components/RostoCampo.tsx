@@ -48,7 +48,7 @@ export function RostoCampo({ empresaId, base }: { empresaId: string; base: BaseR
           <ul className="divide-y divide-border text-sm">
             {daEmpresa.map((c) => (
               <li key={c.id} className="py-2">
-                <p><strong>{c.tipo === 'EPI' ? 'Entrega de EPI' : c.tipo === 'DDS' ? 'Presença no DDS' : 'Presença no treinamento'}</strong> · {c.titulo}</p>
+                <p><strong>{c.tipo === 'EPI' ? 'Entrega de EPI' : c.tipo === 'DDS' ? 'Presença no DDS' : c.tipo === 'TOQUE' ? 'Assinatura na lista' : 'Presença no treinamento'}</strong> · {c.titulo}</p>
                 <p className="text-xs text-text/60">Capturado em {quando(c.criadoEm)}</p>
                 {c.erro && (
                   <p className="text-xs text-danger">O sistema recusou: {c.erro}{' '}
