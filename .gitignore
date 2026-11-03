@@ -5,4 +5,4 @@ dist
 .env.local
 apps/api/storage
 *.tsbuildinfo
-public/modelos-rosto
+apps/web/public/modelos-rosto
