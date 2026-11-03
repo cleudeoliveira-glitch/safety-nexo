@@ -1,3 +1,6 @@
+import { selarIcp } from '../assinaturas/selo';
+import { EsocialService } from '../esocial/esocial.service';
+import { assinaturasDaLista } from '../presenca/consulta';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
@@ -14,6 +17,7 @@ export class OperacaoService {
     private readonly prisma: PrismaService,
     private readonly contexto: ContextoDocumentoService,
     private readonly pdf: PdfService,
+    private readonly esocial: EsocialService,
   ) {}
 
   conteudo() {
@@ -172,7 +176,14 @@ export class OperacaoService {
     if (!dds) throw new NotFoundException('DDS não encontrado');
     const moldura = await this.moldura(consultoriaId, empresaId, 'Diálogo Diário de Segurança (DDS)', [['Ministrante', dds.ministrante]]);
     const rostos = await this.prisma.presencaFacial.findMany({ where: { tipo: 'DDS', refId: ddsId }, select: { colaboradorId: true, codigo: true } });
-    const pessoas = (await this.pessoas(dds.participantes)).map((p) => ({ ...p, rosto: rostos.find((r) => r.colaboradorId === p.id)?.codigo ?? null }));
-    return this.pdf.render(ddsHtml(moldura, dds, pessoas));
+    const toques = await assinaturasDaLista(this.prisma, 'DDS', ddsId);
+    const usouLista = toques.size > 0 || rostos.length > 0; // com lista eletrônica, quem não assinou é falta
+    const pessoas = (await this.pessoas(dds.participantes)).map((p) => {
+      const rosto = rostos.find((r) => r.colaboradorId === p.id)?.codigo ?? null;
+      const toque = toques.get(p.id) ?? null;
+      return { ...p, rosto, toque, faltou: usouLista && !rosto && !toque };
+    });
+    const pdf = await this.pdf.render(ddsHtml(moldura, dds, pessoas));
+    return usouLista ? (await selarIcp(this.esocial, consultoriaId, pdf, `Lista de presença do DDS: ${dds.tema}`)).pdf : pdf;
   }
 }

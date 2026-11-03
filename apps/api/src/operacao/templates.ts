@@ -1,6 +1,16 @@
 import { documentoHtml, escape, Moldura } from '../documentos/layout';
 
-export type Pessoa = { nome: string; cargo: string; rosto?: string | null };
+export type AssinaturaToque = { imagem: string; assinadoEm: Date; testemunha: string | null };
+export type Pessoa = { nome: string; cargo: string; rosto?: string | null; toque?: AssinaturaToque | null; faltou?: boolean };
+const hora = (d: Date) => d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+// Célula de assinatura: X ou assinatura feita na tela, rosto, falta ou espaço para assinar à mão.
+export const NOTA_TOQUE = '<p class="meta">Assinaturas feitas na tela pelo próprio trabalhador. Foto, data, hora, local e código de integridade (hash) de cada uma ficam guardados no Safety Nexo. Quando a consultoria tem certificado digital cadastrado, este PDF sai assinado com ICP-Brasil (NR-01, item 1.6).</p>';
+export function celulaAssinatura(p: Pessoa) {
+  if (p.toque) return `<img src="${p.toque.imagem}" alt="Assinatura" style="height:34px;max-width:180px"/><br><small>${hora(p.toque.assinadoEm)}${p.toque.testemunha ? ` · a rogo, testemunha: ${escape(p.toque.testemunha)}` : ''}</small>`;
+  if (p.rosto) return `<small>Reconhecimento facial · ${escape(p.rosto)}</small>`;
+  if (p.faltou) return '<strong style="color:#b91c1c">Faltou</strong>';
+  return '';
+}
 const data = (d: Date) => d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 const dataHora = (d: Date) => d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
 const assinatura = (nome: string, papel: string) => `<div class="assinatura">${escape(nome)}<span>${escape(papel)}</span></div>`;
@@ -10,8 +20,8 @@ function listaAssinaturas(pessoas: Pessoa[], vazio: string) {
   if (!pessoas.length) return `<p>${vazio}</p>`;
   return `<table>
     <thead><tr><th style="width:30px">Nº</th><th>Nome</th><th>Função</th><th style="width:35%">Assinatura</th></tr></thead>
-    <tbody>${pessoas.map((p, i) => `<tr><td>${i + 1}</td><td>${escape(p.nome)}</td><td>${escape(p.cargo)}</td><td style="height:22px">${p.rosto ? `<small>Reconhecimento facial · ${escape(p.rosto)}</small>` : ''}</td></tr>`).join('')}</tbody>
-  </table>`;
+    <tbody>${pessoas.map((p, i) => `<tr><td>${i + 1}</td><td>${escape(p.nome)}</td><td>${escape(p.cargo)}</td><td style="height:22px">${celulaAssinatura(p)}</td></tr>`).join('')}</tbody>
+  </table>${pessoas.some((p) => p.toque) ? NOTA_TOQUE : ''}`;
 }
 
 export type EtapaApr = { etapa: string; riscos: string; medidas: string; epis?: string };

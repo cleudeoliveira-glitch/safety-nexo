@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { rosto } from '@/lib/api';
 import type { BaseRosto } from '@/lib/campo';
 import { CapturaGuardada, enviarCapturas, guardarCaptura, listarCapturas, removerCaptura, tentarDeNovo } from '@/lib/rosto-offline';
+import { configRosto } from '@/lib/rosto';
 import { CameraRosto, CapturaRosto } from './CameraRosto';
 import { Aviso, Botao, Campo, Cartao, Selecao } from './ui';
 
@@ -25,6 +26,8 @@ export function RostoCampo({ empresaId, base }: { empresaId: string; base: BaseR
   const [camera, setCamera] = useState<null | { titulo: string; modo: 'unico' | 'continuo'; dados?: Record<string, unknown> }>(null);
   const [capturas, setCapturas] = useState<CapturaGuardada[]>([]);
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const [usos, setUsos] = useState({ EPI: true, DDS: false, TREINAMENTO: false });
+  useEffect(() => { configRosto().then((c) => { if (c.usos) setUsos(c.usos); }); }, []);
 
   const atualizar = useCallback(() => { listarCapturas().then(setCapturas); }, []);
   useEffect(() => { atualizar(); window.addEventListener('capturas-rosto', atualizar); return () => window.removeEventListener('capturas-rosto', atualizar); }, [atualizar]);
@@ -61,7 +64,7 @@ export function RostoCampo({ empresaId, base }: { empresaId: string; base: BaseR
 
       <Cartao titulo="Pelo rosto">
         <div role="tablist" className="mb-4 flex flex-wrap gap-2">
-          {([['epi', 'Entrega de EPI'], ['dds', 'Presença no DDS'], ['turma', 'Presença no treinamento']] as [Acao, string][]).map(([v, n]) => (
+          {([['epi', 'Entrega de EPI'], ['dds', 'Presença no DDS'], ['turma', 'Presença no treinamento']] as [Acao, string][]).filter(([v]) => v === 'epi' || (v === 'dds' ? usos.DDS : usos.TREINAMENTO)).map(([v, n]) => (
             <button key={v} role="tab" aria-selected={acao === v} onClick={() => { setAcao(v); setRef(''); }} className={`rounded-card px-3 py-1.5 text-sm font-semibold ${acao === v ? 'bg-primary text-white' : 'border border-border bg-white'}`}>{n}</button>
           ))}
         </div>

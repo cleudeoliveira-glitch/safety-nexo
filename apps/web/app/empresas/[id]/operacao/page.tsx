@@ -253,6 +253,8 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
   const [categoria, setCategoria] = useState('');
   const [busca, setBusca] = useState('');
   const [camera, setCamera] = useState<Dds | null>(null);
+  const [rostoDds, setRostoDds] = useState(false);
+  useEffect(() => { rosto.config().then((c) => setRostoDds(c.ativo && c.usos.DDS)).catch(() => setRostoDds(false)); }, []);
   const categorias = [...new Set(conteudo.temasDds.map((t) => t.categoria))].sort();
   const feitos = new Set(lista.map((d) => d.tema));
   const semAcento = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -333,7 +335,8 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
               <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
                 <span><strong>{data(d.data)}</strong> · {d.tema} · {d.participantes.length} participante(s)</span>
                 <span className="flex flex-wrap gap-2">
-                  <Botao variante="secundario" onClick={() => setCamera(d)}>Presença pelo rosto</Botao>
+                  <Link href={`/empresas/${empresaId}/lista/dds/${d.id}`} className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white">Lista para assinar</Link>
+                  {rostoDds && <Botao variante="secundario" onClick={() => setCamera(d)}>Presença pelo rosto</Botao>}
                   <Botao variante="secundario" onClick={() => baixar(d.id, `DDS-${d.data.slice(0, 10)}`)}>Baixar lista de presença</Botao>
                 </span>
               </li>

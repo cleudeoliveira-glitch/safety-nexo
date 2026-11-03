@@ -21,9 +21,15 @@ export function configFacial() {
     limiar: Number.isFinite(limiar) && limiar > 0 && limiar < 1.5 ? limiar : 0.6,
     consentimentoObrigatorio: process.env.LGPD_FACIAL_CONSENT_REQUIRED !== 'false',
     provaDeVida: process.env.FACE_LIVENESS_REQUIRED !== 'false',
+    // Onde o rosto vale. Padrão: só na entrega de EPI; DDS e treinamento usam a lista de toque.
+    usos: {
+      EPI: process.env.FACE_RECOGNITION_ENABLED_EPI !== 'false',
+      DDS: process.env.FACE_RECOGNITION_ENABLED_DDS === 'true',
+      TREINAMENTO: process.env.FACE_RECOGNITION_ENABLED_TREINAMENTO === 'true',
+    },
   };
 }
 
 export const TEXTO_CONSENTIMENTO =
-  'Autorizo o uso da minha biometria facial para confirmar entregas de EPI e minha presença em treinamentos e DDS, nos termos da Lei 13.709/2018 (LGPD). ' +
+  'Autorizo o uso da minha biometria facial para confirmar as entregas de EPI que eu receber (e, quando a empresa usar, minha presença em treinamentos e DDS), nos termos da Lei 13.709/2018 (LGPD). ' +
   'Sei que a foto do cadastro não é guardada, só um código numérico do rosto, e que posso retirar esta autorização a qualquer momento.';

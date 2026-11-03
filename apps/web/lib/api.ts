@@ -689,7 +689,7 @@ export const ssma = {
 };
 
 // Reconhecimento facial (face-api.js roda no navegador; a comparação é feita no servidor).
-export type ConfigRosto = { ativo: boolean; limiar: number; consentimentoObrigatorio: boolean; provaDeVida: boolean; textoConsentimento: string };
+export type ConfigRosto = { ativo: boolean; limiar: number; consentimentoObrigatorio: boolean; provaDeVida: boolean; usos: { EPI: boolean; DDS: boolean; TREINAMENTO: boolean }; textoConsentimento: string };
 export type StatusRosto = { cadastrado: boolean; consentimentoEm: string | null; hash: string | null };
 export type Captura = { descritor: number[]; foto: string; latitude?: number; longitude?: number; precisao?: number; provaDeVida?: boolean; capturadoEm?: string };
 export type PresencaRosto = { colaboradorId: string; nome: string; codigo: string; repetido: boolean };
@@ -717,4 +717,20 @@ export const estoque = {
   entrada: (e: string, id: string, quantidade: number, observacao?: string) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque/${id}/entrada`, { quantidade, observacao }),
   ajuste: (e: string, id: string, quantidade: number, observacao: string) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque/${id}/ajuste`, { quantidade, observacao }),
   movimentos: (e: string, id: string) => chamar<MovEstoque[]>('GET', `/empresas/${e}/estoque/${id}/movimentos`),
+};
+
+// Lista de toque: cada pessoa assina com o dedo na lista de presença do DDS ou do treinamento.
+export type PessoaLista = { colaboradorId: string; nome: string; cargo: string; cpf: string | null; foto: string | null; assinadoEm: string | null; testemunha: string | null };
+export type ListaToque = { titulo: string; subtitulo: string; responsavel: string; pessoas: PessoaLista[]; assinadas: number; foraDaLista: number };
+export type TipoListaToque = 'dds' | 'turmas';
+export const listaToque = {
+  ver: (e: string, t: TipoListaToque, id: string) => chamar<ListaToque>('GET', `/empresas/${e}/lista-toque/${t}/${id}`),
+  marcarTodos: (e: string, t: TipoListaToque, id: string) => chamar<ListaToque>('POST', `/empresas/${e}/lista-toque/${t}/${id}/marcar-todos`),
+  assinar: (e: string, t: TipoListaToque, id: string, colab: string, d: { imagem: string; foto?: string; latitude?: number; longitude?: number; precisao?: number; aRogo?: boolean }) =>
+    chamar<ListaToque>('POST', `/empresas/${e}/lista-toque/${t}/${id}/${colab}`, d),
+};
+export const fotoColaborador = {
+  ver: (e: string, c: string) => chamar<{ foto: string | null }>('GET', `/empresas/${e}/colaboradores/${c}/foto`),
+  salvar: (e: string, c: string, imagem: string) => chamar<{ foto: string | null }>('PUT', `/empresas/${e}/colaboradores/${c}/foto`, { imagem }),
+  apagar: (e: string, c: string) => chamar<{ foto: string | null }>('DELETE', `/empresas/${e}/colaboradores/${c}/foto`),
 };

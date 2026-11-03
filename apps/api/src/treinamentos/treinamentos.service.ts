@@ -1,6 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import * as QRCode from 'qrcode';
+import { selarIcp } from '../assinaturas/selo';
+import { EsocialService } from '../esocial/esocial.service';
+import { assinaturasDaLista } from '../presenca/consulta';
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -30,6 +33,7 @@ export class TreinamentosService {
     private readonly prisma: PrismaService,
     private readonly contexto: ContextoDocumentoService,
     private readonly pdf: PdfService,
+    private readonly esocial: EsocialService,
   ) {}
 
   catalogo() {
@@ -114,21 +118,29 @@ export class TreinamentosService {
     const turma = await this.turma(consultoriaId, empresaId, turmaId);
     const { empresa, logoEmpresa, consultoria } = await this.contexto.carregar(consultoriaId, empresaId, 'TREINAMENTO');
     const dados = { ...turma, validade: validadeDaTurma(turma) };
-    const pessoas = turma.participantes.map((p) => ({ nome: p.colaborador.nome, cpf: p.colaborador.cpf, cargo: p.colaborador.cargo, codigo: p.codigo }));
+    const pessoas = turma.participantes.map((p) => ({ colaboradorId: p.colaboradorId, nome: p.colaborador.nome, cpf: p.colaborador.cpf, cargo: p.colaborador.cargo, codigo: p.codigo }));
 
+    const toques = await assinaturasDaLista(this.prisma, 'TREINAMENTO', turmaId);
+    // Com assinatura eletrônica, o PDF sai selado com o certificado ICP-Brasil da consultoria (NR-01, 1.6).
+    const selar = async (pdf: Buffer, motivo: string) => (toques.size ? (await selarIcp(this.esocial, consultoriaId, pdf, motivo)).pdf : pdf);
     if (documento === 'lista') {
       const rostos = await this.prisma.presencaFacial.findMany({ where: { tipo: 'TREINAMENTO', refId: turmaId }, select: { colaboradorId: true, codigo: true } });
-      const lista = turma.participantes.map((p) => ({ nome: p.colaborador.nome, cpf: p.colaborador.cpf, cargo: p.colaborador.cargo, codigo: p.codigo, rosto: rostos.find((r) => r.colaboradorId === p.colaboradorId)?.codigo ?? null }));
+      const usouLista = toques.size > 0 || rostos.length > 0;
+      const lista = turma.participantes.map((p) => {
+        const rosto = rostos.find((r) => r.colaboradorId === p.colaboradorId)?.codigo ?? null;
+        const toque = toques.get(p.colaboradorId) ?? null;
+        return { nome: p.colaborador.nome, cpf: p.colaborador.cpf, cargo: p.colaborador.cargo, codigo: p.codigo, rosto, toque, faltou: usouLista && !rosto && !toque };
+      });
       const moldura = { titulo: 'Lista de presença de treinamento', logoEmpresa, consultoria, aviso: AVISO, infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj]] as [string, string][] };
-      return this.pdf.render(listaPresencaHtml(moldura, dados, lista));
+      return selar(await this.pdf.render(listaPresencaHtml(moldura, dados, lista)), `Lista de presença: ${turma.nome}`);
     }
     const comQr = await Promise.all(
       pessoas.map(async (p) => {
         const urlValidacao = `${WEB()}/validar/${p.codigo}`;
-        return { ...p, urlValidacao, qrDataUri: await QRCode.toDataURL(urlValidacao, { margin: 0, width: 200 }) };
+        return { ...p, urlValidacao, qrDataUri: await QRCode.toDataURL(urlValidacao, { margin: 0, width: 200 }), toque: toques.get(p.colaboradorId) ?? null };
       }),
     );
-    return this.pdf.render(certificadosHtml({ logoEmpresa, consultoria, aviso: AVISO, infos: [] }, empresa.razaoSocial, dados, comQr));
+    return selar(await this.pdf.render(certificadosHtml({ logoEmpresa, consultoria, aviso: AVISO, infos: [] }, empresa.razaoSocial, dados, comQr)), `Certificados: ${turma.nome}`);
   }
 
   // Consulta pública do QR Code: mostra só o necessário para confirmar o certificado.

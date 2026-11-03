@@ -19,6 +19,7 @@ import { ProntuarioModule } from './prontuario/prontuario.module';
 import { SsmaModule } from './ssma/ssma.module';
 import { RostoModule } from './rosto/rosto.module';
 import { EstoqueModule } from './estoque/estoque.module';
+import { PresencaModule } from './presenca/presenca.module';
 import { EmergenciaModule } from './emergencia/emergencia.module';
 import { InspecoesModule } from './inspecoes/inspecoes.module';
 import { OperacaoModule } from './operacao/operacao.module';
@@ -32,7 +33,7 @@ import { PainelModule } from './painel/painel.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule],
+  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule, PresencaModule],
   controllers: [HealthController],
 })
 export class AppModule {}

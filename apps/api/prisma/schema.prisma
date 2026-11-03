@@ -117,6 +117,8 @@ model Colaborador {
   atestados     Atestado[]
   registrosSaude RegistroSaude[]
   rosto         RostoColaborador?
+  foto          FotoColaborador?
+  assinaturasPresenca AssinaturaPresenca[]
   presencasFaciais PresencaFacial[]
 
   @@index([empresaId])
@@ -1008,4 +1010,34 @@ model MovimentoEstoque {
   createdAt    DateTime   @default(now())
 
   @@index([estoqueId])
+}
+
+// Foto do funcionário (opcional), só para aparecer na lista de assinatura.
+model FotoColaborador {
+  colaboradorId String      @id
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  imagem        String      @db.Text // JPEG pequeno em data URI
+  atualizadoEm  DateTime    @updatedAt
+}
+
+// Assinatura com o dedo na lista de presença do DDS ou do treinamento.
+model AssinaturaPresenca {
+  id            String      @id @default(cuid())
+  tipo          String      // DDS | TREINAMENTO
+  refId         String      // id do DDS ou da turma
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  imagem        String      @db.Text // desenho (PNG em data URI)
+  foto          String?     @db.Text // foto tirada na hora (JPEG)
+  testemunha    String?     // quem assinou como testemunha (pessoa que não sabe ler)
+  latitude      Float?
+  longitude     Float?
+  precisaoM     Float?
+  ip            String?
+  aparelho      String?
+  hash          String
+  assinadoEm    DateTime    @default(now())
+
+  @@unique([tipo, refId, colaboradorId])
+  @@index([tipo, refId])
 }

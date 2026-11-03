@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
 import { guardarCaptura } from '@/lib/rosto-offline';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarEpi, rosto, estoque, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto } from '@/lib/api';
+import { buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto } from '@/lib/api';
 
 const TIPOS_ASO = [
   ['ADMISSIONAL', 'Admissional'],
@@ -27,6 +27,15 @@ const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt
 // Data local (não UTC): à noite o UTC já está no dia seguinte.
 const hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
+// Reduz a foto para 240 px (fica leve na lista).
+async function reduzirFoto(arq: File): Promise<string> {
+  const img = await createImageBitmap(arq);
+  const lado = Math.min(img.width, img.height);
+  const c = document.createElement('canvas'); c.width = 240; c.height = 240;
+  c.getContext('2d')!.drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2, lado, lado, 0, 0, 240, 240);
+  return c.toDataURL('image/jpeg', 0.82);
+}
+
 export default function ColaboradorPage({ params }: { params: { id: string; colaboradorId: string } }) {
   const { id: empresaId, colaboradorId } = params;
   const [colaborador, setColaborador] = useState<ColaboradorDetalhe | null>(null);
@@ -39,12 +48,14 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
   const formEpi = useRef<HTMLFormElement>(null);
   const [itensEstoque, setItensEstoque] = useState<ItemEstoque[]>([]);
   const [itemId, setItemId] = useState('');
+  const [foto, setFoto] = useState<string | null>(null);
 
   const recarregar = useCallback(async () => {
     try {
       setColaborador(await buscarColaborador(empresaId, colaboradorId));
       rosto.config().then(setCfgRosto).catch(() => setCfgRosto(null));
       rosto.status(empresaId, colaboradorId).then(setStRosto).catch(() => setStRosto(null));
+      fotoColaborador.ver(empresaId, colaboradorId).then((f) => setFoto(f.foto)).catch(() => setFoto(null));
       estoque.listar(empresaId).then((l) => setItensEstoque(l.filter((i) => i.ativo))).catch(() => setItensEstoque([]));
     } catch (e) {
       setAviso({ tipo: 'erro', texto: (e as Error).message });
@@ -168,6 +179,22 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
             ))}
           </ul>
         )}
+      </Cartao>
+
+      <Cartao titulo="Foto para a lista de assinatura">
+        <div className="flex flex-wrap items-center gap-4 text-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {foto ? <img src={foto} alt={`Foto de ${colaborador.nome}`} className="h-20 w-20 rounded-full object-cover" /> : <span className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-2xl font-semibold text-primary">{colaborador.nome.split(/\s+/).map((p) => p[0]).filter((_, i, a) => i === 0 || i === a.length - 1).join('').toUpperCase()}</span>}
+          <p className="min-w-48 flex-1 text-text/70">Opcional. Aparece na lista de presença do DDS e do treinamento para conferir quem está assinando. Sem foto, aparecem as iniciais.</p>
+          <label className="cursor-pointer rounded-card border border-primary px-4 py-2 font-semibold text-primary">
+            {foto ? 'Trocar foto' : 'Tirar ou escolher foto'}
+            <input type="file" accept="image/*" capture="user" className="sr-only" onChange={async (ev) => {
+              const arq = ev.target.files?.[0]; ev.target.value = ''; if (!arq) return;
+              try { setFoto((await fotoColaborador.salvar(empresaId, colaboradorId, await reduzirFoto(arq))).foto); setAviso({ tipo: 'ok', texto: 'Foto guardada.' }); } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+            }} />
+          </label>
+          {foto && <Botao variante="secundario" onClick={async () => { try { setFoto((await fotoColaborador.apagar(empresaId, colaboradorId)).foto); } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); } }}>Apagar foto</Botao>}
+        </div>
       </Cartao>
 
       {cfgRosto?.ativo && stRosto && (

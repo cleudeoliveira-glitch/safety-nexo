@@ -1,3 +1,4 @@
+import { AssinaturaToque, celulaAssinatura, NOTA_TOQUE, Pessoa } from '../operacao/templates';
 import { cabecalhoHtml, documentoHtml, escape, folhaHtml, Moldura, rodapeHtml } from '../documentos/layout';
 
 const data = (d: Date) => d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
@@ -8,11 +9,11 @@ export type TurmaPdf = {
   nome: string; norma: string | null; cargaHoraria: number; conteudo: string[]; inicio: Date; fim: Date;
   local: string; instrutor: string; qualificacao: string; responsavelTecnico: string; validade: Date | null;
 };
-export type ParticipantePdf = { nome: string; cpf: string | null; cargo: string; codigo: string; qrDataUri: string; urlValidacao: string };
+export type ParticipantePdf = { nome: string; cpf: string | null; cargo: string; codigo: string; qrDataUri: string; urlValidacao: string; toque?: AssinaturaToque | null };
 
 const titulo = (t: TurmaPdf) => (t.norma ? `${t.nome} (${t.norma})` : t.nome);
 
-export function listaPresencaHtml(moldura: Moldura, turma: TurmaPdf, participantes: { nome: string; cpf: string | null; cargo: string; rosto?: string | null }[]) {
+export function listaPresencaHtml(moldura: Moldura, turma: TurmaPdf, participantes: (Pessoa & { cpf: string | null })[]) {
   return documentoHtml(
     moldura,
     `
@@ -25,9 +26,10 @@ export function listaPresencaHtml(moldura: Moldura, turma: TurmaPdf, participant
       <table>
         <thead><tr><th style="width:30px">Nº</th><th>Nome</th><th>CPF</th><th>Função</th><th style="width:30%">Assinatura</th></tr></thead>
         <tbody>${participantes
-          .map((p, i) => `<tr><td>${i + 1}</td><td>${escape(p.nome)}</td><td>${escape(p.cpf ?? '')}</td><td>${escape(p.cargo)}</td><td style="height:22px">${p.rosto ? `<small>Reconhecimento facial · ${escape(p.rosto)}</small>` : ''}</td></tr>`)
+          .map((p, i) => `<tr><td>${i + 1}</td><td>${escape(p.nome)}</td><td>${escape(p.cpf ?? '')}</td><td>${escape(p.cargo)}</td><td style="height:22px">${celulaAssinatura(p)}</td></tr>`)
           .join('')}</tbody>
       </table>
+      ${participantes.some((p) => p.toque) ? NOTA_TOQUE : ''}
     </section>
     <div class="assinaturas">${assinatura(turma.instrutor, 'Instrutor(a)')}${assinatura(turma.responsavelTecnico, 'Responsável técnico')}</div>`,
   );
@@ -46,7 +48,7 @@ export function certificadosHtml(moldura: Omit<Moldura, 'titulo'>, razaoSocial: 
       <ol>${turma.conteudo.map((c) => `<li>${escape(c)}</li>`).join('')}</ol>
       <p><strong>Instrutor(a):</strong> ${escape(turma.instrutor)} · ${escape(turma.qualificacao)}</p>
       <div class="assinaturas">
-        ${assinatura(p.nome, 'Participante')}
+        ${p.toque ? `<div class="assinatura" style="border-top:0"><img src="${p.toque.imagem}" alt="Assinatura" style="height:40px;max-width:200px;display:block;margin:0 auto;border-bottom:1px solid #111"/>${escape(p.nome)}<span>Participante${p.toque.testemunha ? ` · a rogo, testemunha: ${escape(p.toque.testemunha)}` : ''}</span></div>` : assinatura(p.nome, 'Participante')}
         ${assinatura(turma.instrutor, 'Instrutor(a)')}
         ${assinatura(turma.responsavelTecnico, 'Responsável técnico')}
       </div>

@@ -39,6 +39,8 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
   const [participantes, setParticipantes] = useState<string[]>([]);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
   const [camera, setCamera] = useState<Turma | null>(null);
+  const [rostoTurma, setRostoTurma] = useState(false);
+  useEffect(() => { rosto.config().then((c) => setRostoTurma(c.ativo && c.usos.TREINAMENTO)).catch(() => setRostoTurma(false)); }, []);
 
   const recarregar = useCallback(async () => {
     try {
@@ -186,7 +188,8 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Botao variante="secundario" onClick={() => setCamera(t)}>Presença pelo rosto</Botao>
+                      <Link href={`/empresas/${empresaId}/lista/turmas/${t.id}`} className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white">Lista para assinar</Link>
+                      {rostoTurma && <Botao variante="secundario" onClick={() => setCamera(t)}>Presença pelo rosto</Botao>}
                       <Botao variante="secundario" onClick={() => baixar(t, 'lista')}>Lista de presença</Botao>
                       <Botao variante="secundario" onClick={() => baixar(t, 'certificados')} disabled={!t.participantes.length}>Certificados</Botao>
                     </div>

@@ -88,7 +88,7 @@ export class DetectorPiscada {
 }
 
 const CHAVE_CFG = 'safety-nexo:rosto-config';
-export async function configRosto(): Promise<{ provaDeVida: boolean; ativo: boolean }> {
+export async function configRosto(): Promise<{ provaDeVida: boolean; ativo: boolean; usos?: { EPI: boolean; DDS: boolean; TREINAMENTO: boolean } }> {
   try {
     const { rosto } = await import('./api');
     const c = await rosto.config();
@@ -96,6 +96,6 @@ export async function configRosto(): Promise<{ provaDeVida: boolean; ativo: bool
     return c;
   } catch {
     try { const b = localStorage.getItem(CHAVE_CFG); if (b) return JSON.parse(b); } catch { /* nada */ }
-    return { provaDeVida: true, ativo: true };
+    return { provaDeVida: true, ativo: true, usos: { EPI: true, DDS: false, TREINAMENTO: false } };
   }
 }

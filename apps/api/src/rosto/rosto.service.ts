@@ -23,8 +23,10 @@ export class RostoService {
     return { ...configFacial(), textoConsentimento: TEXTO_CONSENTIMENTO };
   }
 
-  private ativo() {
-    if (!configFacial().ativo) throw new BadRequestException('O reconhecimento facial está desligado neste servidor.');
+  private ativo(uso?: 'EPI' | 'DDS' | 'TREINAMENTO') {
+    const cfg = configFacial();
+    if (!cfg.ativo) throw new BadRequestException('O reconhecimento facial está desligado neste servidor.');
+    if (uso && !cfg.usos[uso]) throw new BadRequestException(uso === 'EPI' ? 'O rosto na entrega de EPI está desligado.' : 'A presença pelo rosto está desligada. Use a lista de toque para assinar.');
   }
 
   private async empresa(c: string, e: string) {
@@ -133,7 +135,7 @@ export class RostoService {
   }
 
   async entregarEpi(c: string, e: string, id: string, dto: EntregaRostoDto, origem: Origem) {
-    this.ativo();
+    this.ativo('EPI');
     const capturadoEm = this.captura(dto);
     const col = await this.colaborador(c, e, id);
     const dist = this.conferir(col, dto.descritor);
@@ -147,7 +149,7 @@ export class RostoService {
   }
 
   async presencaDds(c: string, e: string, ddsId: string, dto: CapturaDto, origem: Origem) {
-    this.ativo();
+    this.ativo('DDS');
     this.captura(dto);
     await this.empresa(c, e);
     const dds = await this.prisma.dds.findFirst({ where: { id: ddsId, empresaId: e } });
@@ -162,7 +164,7 @@ export class RostoService {
   }
 
   async presencaTurma(c: string, e: string, turmaId: string, dto: CapturaDto, origem: Origem) {
-    this.ativo();
+    this.ativo('TREINAMENTO');
     this.captura(dto);
     await this.empresa(c, e);
     const turma = await this.prisma.turma.findFirst({ where: { id: turmaId, empresaId: e } });
