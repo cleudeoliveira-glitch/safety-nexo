@@ -555,3 +555,29 @@ export const arquivo = {
     return res.blob();
   },
 };
+
+// ---------- Assinaturas ----------
+export type SignatarioPedido = { id: string; ordem: number; nome: string; cpf: string | null; papel: string; assinadoEm: string | null; presencial: boolean; latitude: number | null; link: string | null };
+export type PedidoAssinatura = {
+  id: string; titulo: string; status: 'ABERTO' | 'GERANDO' | 'CONCLUIDO' | 'CANCELADO'; codigo: string; icp: boolean; icpTitular: string | null;
+  arquivoId: string; arquivoFinalId: string | null; criadoPorNome: string; criadoEm: string; concluidoEm: string | null; signatarios: SignatarioPedido[];
+};
+export type DadosAssinatura = { imagem: string; latitude?: number; longitude?: number; precisao?: number; cpf?: string };
+export const assinaturas = {
+  listar: (e: string) => chamar<PedidoAssinatura[]>('GET', `/empresas/${e}/assinaturas`),
+  criar: (e: string, d: { arquivoId: string; icp: boolean; signatarios: { nome: string; cpf?: string; papel: string }[] }) => chamar<PedidoAssinatura>('POST', `/empresas/${e}/assinaturas`, d),
+  assinarAqui: (e: string, id: string, sid: string, d: DadosAssinatura) => chamar<{ ok: boolean; faltam: number }>('POST', `/empresas/${e}/assinaturas/${id}/signatarios/${sid}/assinar`, d),
+  cancelar: (e: string, id: string) => chamar<{ ok: boolean }>('POST', `/empresas/${e}/assinaturas/${id}/cancelar`),
+  concluir: (e: string, id: string) => chamar<{ ok: boolean }>('POST', `/empresas/${e}/assinaturas/${id}/concluir`),
+};
+export type LinkAssinatura = { titulo: string; empresa: string; consultoria: string; status: string; nome: string; papel: string; pedeCpf: boolean; assinadoEm: string | null; codigo: string };
+export const linkAssinatura = {
+  dados: (token: string) => chamar<LinkAssinatura>('GET', `/assinar/${token}`),
+  urlDocumento: (token: string) => `${API_URL}/assinar/${token}/documento`,
+  assinar: (token: string, d: DadosAssinatura) => chamar<{ ok: boolean; faltam: number }>('POST', `/assinar/${token}`, d),
+};
+export type ConferenciaAssinatura = {
+  titulo: string; empresa: string; consultoria: string; status: string; criadoEm: string; concluidoEm: string | null; hashOriginal: string; hashFinal: string | null; icpTitular: string | null;
+  signatarios: { nome: string; cpf: string | null; papel: string; assinadoEm: string | null; presencial: boolean; comLocalizacao: boolean }[];
+};
+export const conferirAssinatura = (codigo: string) => chamar<ConferenciaAssinatura>('GET', `/assinatura/${encodeURIComponent(codigo)}`);

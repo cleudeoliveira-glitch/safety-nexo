@@ -3,6 +3,10 @@
 const REGRAS: [string, RegExp, string][] = [
   ['POST', /\/colaboradores\/importar\/previa$/, ''],
   ['POST', /\/arquivo$/, 'Enviou um documento ao arquivo'],
+  ['POST', /\/assinaturas$/, 'Pediu assinatura de um documento'],
+  ['POST', /\/assinaturas\/:id\/signatarios\/:sid\/assinar$/, 'Colheu uma assinatura no aparelho'],
+  ['POST', /\/assinaturas\/:id\/concluir$/, 'Concluiu um pedido de assinatura'],
+  ['POST', /\/assinaturas\/:id\/cancelar$/, 'Cancelou um pedido de assinatura'],
   ['DELETE', /\/arquivo\/:id$/, 'Apagou um documento do arquivo'],
   ['POST', /\/colaboradores\/importar$/, 'Importou funcionários da planilha do RH'],
   ['POST', /\/terceiros$/, 'Cadastrou uma empresa terceirizada'],

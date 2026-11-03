@@ -4,5 +4,5 @@ import { ArquivoController } from './arquivo.controller';
 import { ArquivoInterceptor } from './arquivo.interceptor';
 import { ArquivoService } from './arquivo.service';
 
-@Module({ controllers: [ArquivoController], providers: [ArquivoService, { provide: APP_INTERCEPTOR, useClass: ArquivoInterceptor }] })
+@Module({ controllers: [ArquivoController], providers: [ArquivoService, { provide: APP_INTERCEPTOR, useClass: ArquivoInterceptor }], exports: [ArquivoService] })
 export class ArquivoModule {}

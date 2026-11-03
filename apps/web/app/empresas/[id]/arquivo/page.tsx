@@ -42,6 +42,7 @@ function Item({ a, empresaId, cliente, agir, abrir }: { a: ItemArquivo; empresaI
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <button className="text-primary underline" onClick={() => abrir(a.id, a.nomeArquivo)}>Abrir</button>
           <button className="text-primary underline" onClick={() => abrir(a.id, a.nomeArquivo, true)}>Baixar</button>
+          {a.mime === 'application/pdf' && !a.titulo.endsWith('(assinado)') && <Link className="text-primary underline" href={`/empresas/${empresaId}/assinaturas?arquivo=${a.id}`}>Pedir assinatura</Link>}
           {a.anteriores.length > 0 && <button className="text-primary underline" onClick={() => setPainel(painel === 'versoes' ? null : 'versoes')}>Versões anteriores ({a.anteriores.length})</button>}
           <button className="text-primary underline" onClick={verAcessos}>Quem abriu ({a.visualizacoes})</button>
           {a.origem === 'ENVIADO' && (<>
@@ -112,7 +113,7 @@ export default function ArquivoPage({ params }: { params: { id: string } }) {
       <div>
         <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">Arquivo de documentos</h1>
-        <p className="text-text/60">{empresa.razaoSocial} · todo PDF gerado no sistema fica guardado aqui, com as versões e quem abriu</p>
+        <p className="text-text/60">{empresa.razaoSocial} · todo PDF gerado no sistema fica guardado aqui, com as versões e quem abriu · <Link href={`/empresas/${empresaId}/assinaturas`} className="text-primary hover:underline">Assinaturas →</Link></p>
       </div>
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 

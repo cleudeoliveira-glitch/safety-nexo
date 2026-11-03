@@ -54,7 +54,7 @@ export class ArquivoService {
     return (await this.prisma.usuario.findUnique({ where: { id }, select: { nome: true } }))?.nome ?? '—';
   }
 
-  private async gravar(dados: { empresaId: string; chave: string; titulo: string; categoria: string; origem: 'GERADO' | 'ENVIADO'; nomeArquivo: string; mime: string; conteudo: Buffer; descricao?: string; sessao: SessaoUsuario }) {
+  private async gravar(dados: { empresaId: string; chave: string; titulo: string; categoria: string; origem: 'GERADO' | 'ENVIADO'; nomeArquivo: string; mime: string; conteudo: Buffer; descricao?: string; sessao: SessaoUsuario | { nome: string } }) {
     const ultimo = await this.prisma.arquivo.findFirst({ where: { empresaId: dados.empresaId, chave: dados.chave }, orderBy: { versao: 'desc' }, select: { versao: true } });
     const pasta = join(PASTA, dados.empresaId);
     await mkdir(pasta, { recursive: true });
@@ -64,7 +64,7 @@ export class ArquivoService {
       data: {
         empresaId: dados.empresaId, chave: dados.chave, titulo: dados.titulo, categoria: dados.categoria, origem: dados.origem,
         versao: (ultimo?.versao ?? 0) + 1, nomeArquivo: dados.nomeArquivo, mime: dados.mime, tamanho: dados.conteudo.length, caminho,
-        descricao: dados.descricao, criadoPorId: dados.sessao.sub, criadoPorNome: await this.nomeUsuario(dados.sessao.sub),
+        descricao: dados.descricao, ...('sub' in dados.sessao ? { criadoPorId: dados.sessao.sub, criadoPorNome: await this.nomeUsuario(dados.sessao.sub) } : { criadoPorNome: dados.sessao.nome }),
       },
     });
     if (dados.mime === 'application/pdf') {
@@ -85,6 +85,17 @@ export class ArquivoService {
       if (c) titulo = `${titulo} · ${c.nome}`;
     }
     return this.gravar({ empresaId, chave: `gerado:${rota}`, titulo, categoria: categoriaDoNome(base), origem: 'GERADO', nomeArquivo, mime: 'application/pdf', conteudo: pdf, sessao });
+  }
+
+  // Uso interno (assinaturas): lê um arquivo da empresa sem registrar acesso.
+  async lerInterno(empresaId: string, id: string) {
+    const a = await this.prisma.arquivo.findFirst({ where: { id, empresaId } });
+    if (!a) throw new NotFoundException('Documento não encontrado');
+    return { arquivo: a, conteudo: await readFile(join(PASTA, a.caminho)) };
+  }
+
+  async guardarAssinado(empresaId: string, pedidoId: string, titulo: string, categoria: string, nomeArquivo: string, pdf: Buffer, quem: string) {
+    return this.gravar({ empresaId, chave: `assinado:${pedidoId}`, titulo, categoria, origem: 'GERADO', nomeArquivo, mime: 'application/pdf', conteudo: pdf, descricao: 'Documento com a folha de assinaturas', sessao: { nome: quem } });
   }
 
   async enviar(sessao: SessaoUsuario, empresaId: string, arquivo: Express.Multer.File | undefined, dados: { titulo?: string; categoria?: string; descricao?: string; versaoDe?: string }) {

@@ -75,6 +75,7 @@ model Empresa {
   controlesEmergencia ControleEmergencia[]
   terceiros      Terceiro[]
   arquivos       Arquivo[]
+  pedidosAssinatura PedidoAssinatura[]
   atestados      Atestado[]
   jornadaDiariaHoras Float @default(8) // para o índice de absenteísmo
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
@@ -722,4 +723,48 @@ model ArquivoAcesso {
   em          DateTime @default(now())
 
   @@index([arquivoId])
+}
+
+// Pedido de assinatura de um PDF do arquivo. Quando todos assinam, sai o PDF final com a folha de
+// assinaturas (e o certificado ICP-Brasil da consultoria, se pedido).
+model PedidoAssinatura {
+  id             String   @id @default(cuid())
+  empresaId      String
+  empresa        Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  arquivoId      String   // versão do documento que está sendo assinada
+  titulo         String
+  status         String   @default("ABERTO") // ABERTO, CONCLUIDO, CANCELADO
+  codigo         String   @unique // código público de conferência
+  hashOriginal   String
+  icp            Boolean  @default(false)
+  icpTitular     String?
+  arquivoFinalId String?
+  hashFinal      String?
+  criadoPorNome  String
+  criadoEm       DateTime @default(now())
+  concluidoEm    DateTime?
+  signatarios    Signatario[]
+
+  @@index([empresaId])
+}
+
+model Signatario {
+  id         String           @id @default(cuid())
+  pedidoId   String
+  pedido     PedidoAssinatura @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  ordem      Int
+  nome       String
+  cpf        String?
+  papel      String
+  token      String           @unique // link para assinar sem login
+  assinadoEm DateTime?
+  imagem     String?          @db.Text // desenho da assinatura (PNG em data URI)
+  latitude   Float?
+  longitude  Float?
+  precisao   Float?
+  ip         String?
+  navegador  String?
+  presencial Boolean          @default(false) // assinou no aparelho de quem pediu
+
+  @@index([pedidoId])
 }
