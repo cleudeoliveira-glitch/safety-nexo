@@ -81,6 +81,7 @@ model Empresa {
   auditorias5s   Auditoria5s[]
   atestados      Atestado[]
   fapRat         FapRat[]
+  importacoesPdf ImportacaoPdf[]
   jornadaDiariaHoras Float @default(8) // para o índice de absenteísmo
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
   emergencia     Json?
@@ -878,4 +879,21 @@ model FapRat {
   updatedAt   DateTime @updatedAt
 
   @@unique([empresaId, ano])
+}
+
+// PGR ou laudo antigo lido pela IA: o resultado fica aqui para a consultora conferir antes de entrar na empresa.
+model ImportacaoPdf {
+  id            String    @id @default(cuid())
+  empresaId     String
+  empresa       Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  arquivoId     String?   // cópia guardada no arquivo de documentos
+  nomeArquivo   String
+  status        String    // LENDO | PRONTO | ERRO | IMPORTADO
+  resultado     Json?
+  erro          String?
+  criadoPorNome String
+  createdAt     DateTime  @default(now())
+  importadoEm   DateTime?
+
+  @@index([empresaId])
 }

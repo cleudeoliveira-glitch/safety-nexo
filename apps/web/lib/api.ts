@@ -643,3 +643,19 @@ export const fapRat = {
   remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/fap/${id}`),
   relatorio: (e: string) => baixarPdf(`/empresas/${e}/fap/relatorio`, 'relatório de FAP e RAT'),
 };
+
+// ---------- Documentos antigos lidos com IA ----------
+export type TipoRisco = 'FISICO' | 'QUIMICO' | 'BIOLOGICO' | 'ERGONOMICO' | 'ACIDENTE';
+export type RiscoLido = { tipo: TipoRisco; agente: string; fonteGeradora: string | null; medidasControle: string | null; severidade: 'BAIXA' | 'MEDIA' | 'ALTA' | null; intensidade: string | null; limiteTolerancia: string | null; pagina: number | null };
+export type GheLido = { nome: string; descricao: string | null; cargos: string[]; trabalhadores: number | null; riscos: RiscoLido[] };
+export type DocumentoLido = { tipoDocumento: string | null; empresa: string | null; cnpj: string | null; dataElaboracao: string | null; responsavelTecnico: string | null; ghes: GheLido[]; avisos: string[] };
+export type Leitura = { id: string; nomeArquivo: string; status: 'LENDO' | 'PRONTO' | 'ERRO' | 'IMPORTADO'; resultado: DocumentoLido | null; erro: string | null; criadoPorNome: string; createdAt: string; importadoEm: string | null; arquivoId: string | null };
+export type RiscoImportar = { tipo: TipoRisco; agente: string; fonteGeradora: string; medidasControle?: string; severidade: 'BAIXA' | 'MEDIA' | 'ALTA'; intensidade?: string; limiteTolerancia?: string };
+export const importarPdf = {
+  situacao: (e: string) => chamar<{ iaLigada: boolean }>('GET', `/empresas/${e}/importar-pdf/situacao`),
+  listar: (e: string) => chamar<Leitura[]>('GET', `/empresas/${e}/importar-pdf`),
+  obter: (e: string, id: string) => chamar<Leitura & { ghesExistentes: string[] }>('GET', `/empresas/${e}/importar-pdf/${id}`),
+  enviar: (e: string, arq: File) => { const f = new FormData(); f.append('arquivo', arq); return chamar<Leitura>('POST', `/empresas/${e}/importar-pdf`, f); },
+  importar: (e: string, id: string, ghes: { nome: string; descricao?: string; riscos: RiscoImportar[] }[]) => chamar<{ novosGhes: number; novosRiscos: number; repetidos: number }>('POST', `/empresas/${e}/importar-pdf/${id}/importar`, { ghes }),
+  remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/importar-pdf/${id}`),
+};
