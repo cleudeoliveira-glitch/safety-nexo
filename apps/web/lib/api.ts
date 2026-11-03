@@ -139,7 +139,7 @@ export function enviarLogoEmpresa(empresaId: string, arquivo: File) {
 async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
   const res = await fetch(`${API_URL}${caminho}`, { method: 'POST', headers: cabecalhos() });
   verificarSessao(res);
-  if (!res.ok) throw new Error(`Não foi possível gerar o ${nome} (${res.status}).`);
+  if (!res.ok) { const erro = await res.json().catch(() => null); throw new Error(erro?.message ?? `Não foi possível gerar o ${nome} (${res.status}).`); }
   return res.blob();
 }
 
@@ -608,4 +608,28 @@ export type FormularioPs = {
 export const formularioPs = {
   dados: (token: string) => chamar<FormularioPs>('GET', `/psicossocial/${token}`),
   responder: (token: string, d: { setor: string; valores: Record<string, number> }) => chamar<{ ok: boolean; aviso: string | null }>('POST', `/psicossocial/${token}`, d),
+};
+
+// ---------- SIPAT e 5S ----------
+export type AtividadeSipat = { id: string; data: string; horario: string; titulo: string; responsavel: string; local: string; duracaoMin: number; presentes: string[] };
+export type Sipat = { id: string; ano: number; tema: string; inicio: string; fim: string; atividades: AtividadeSipat[] };
+export type Senso = { id: string; nome: string; itens: string[] };
+export type Auditoria5s = { id: string; setor: string; data: string; auditor: string; notas: Record<string, number>; observacoes: string | null; resultado: { porSenso: { id: string; nome: string; percentual: number }[]; total: number } };
+export const sipat = {
+  listar: (e: string) => chamar<Sipat[]>('GET', `/empresas/${e}/sipat`),
+  criar: (e: string, d: { ano: number; tema: string; inicio: string; fim: string }) => chamar<Sipat>('POST', `/empresas/${e}/sipat`, d),
+  remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/sipat/${id}`),
+  atividade: (e: string, id: string, d: Omit<AtividadeSipat, 'id' | 'presentes'>) => chamar<AtividadeSipat>('POST', `/empresas/${e}/sipat/${id}/atividades`, d),
+  removerAtividade: (e: string, id: string, a: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/sipat/${id}/atividades/${a}`),
+  presenca: (e: string, id: string, a: string, presentes: string[]) => chamar<{ presentes: number }>('PUT', `/empresas/${e}/sipat/${id}/atividades/${a}/presenca`, { presentes }),
+  programacao: (e: string, id: string) => baixarPdf(`/empresas/${e}/sipat/${id}/programacao`, 'PDF da programação'),
+  lista: (e: string, id: string, a: string) => baixarPdf(`/empresas/${e}/sipat/${id}/atividades/${a}/lista`, 'PDF da lista de presença'),
+  relatorio: (e: string, id: string) => baixarPdf(`/empresas/${e}/sipat/${id}/relatorio`, 'PDF do relatório'),
+};
+export const cincoS = {
+  checklist: (e: string) => chamar<{ escala: { valor: number; rotulo: string }[]; sensos: Senso[] }>('GET', `/empresas/${e}/5s/checklist`),
+  listar: (e: string) => chamar<Auditoria5s[]>('GET', `/empresas/${e}/5s`),
+  criar: (e: string, d: { setor: string; data: string; auditor: string; notas: Record<string, number>; observacoes?: string }) => chamar<Auditoria5s>('POST', `/empresas/${e}/5s`, d),
+  remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/5s/${id}`),
+  pdf: (e: string, id: string) => baixarPdf(`/empresas/${e}/5s/${id}/pdf`, 'PDF da auditoria'),
 };

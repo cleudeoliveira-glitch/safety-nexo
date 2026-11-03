@@ -77,6 +77,8 @@ model Empresa {
   arquivos       Arquivo[]
   pedidosAssinatura PedidoAssinatura[]
   avaliacoesPsicossociais AvaliacaoPsicossocial[]
+  sipats         Sipat[]
+  auditorias5s   Auditoria5s[]
   atestados      Atestado[]
   jornadaDiariaHoras Float @default(8) // para o índice de absenteísmo
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
@@ -814,4 +816,49 @@ model AcaoPsicossocial {
   criadoEm    DateTime @default(now())
 
   @@index([avaliacaoId])
+}
+
+// SIPAT: semana de prevenção, com a programação e a presença de cada atividade.
+model Sipat {
+  id         String   @id @default(cuid())
+  empresaId  String
+  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  ano        Int
+  tema       String
+  inicio     DateTime @db.Date
+  fim        DateTime @db.Date
+  criadoEm   DateTime @default(now())
+  atividades SipatAtividade[]
+
+  @@index([empresaId])
+}
+
+model SipatAtividade {
+  id          String   @id @default(cuid())
+  sipatId     String
+  sipat       Sipat    @relation(fields: [sipatId], references: [id], onDelete: Cascade)
+  data        DateTime @db.Date
+  horario     String
+  titulo      String
+  responsavel String   // palestrante ou quem conduz
+  local       String
+  duracaoMin  Int      @default(60)
+  presentes   String[] // ids dos colaboradores que participaram
+
+  @@index([sipatId])
+}
+
+// Auditoria 5S de um setor: nota de 0 a 4 em cada item do checklist.
+model Auditoria5s {
+  id          String   @id @default(cuid())
+  empresaId   String
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  setor       String
+  data        DateTime @db.Date
+  auditor     String
+  notas       Json     // { "seiri-1": 3, ... }
+  observacoes String?
+  criadoEm    DateTime @default(now())
+
+  @@index([empresaId, setor])
 }

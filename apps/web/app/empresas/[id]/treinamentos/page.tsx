@@ -119,7 +119,7 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
         <Link href="/" className="text-sm text-primary">← Voltar ao painel</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">Pessoas e cultura</h1>
         <p className="text-text/60">
-          {empresa.razaoSocial} · <Link href={`/empresas/${empresaId}#cipa`} className="text-primary hover:underline">CIPA e eleição →</Link>
+          {empresa.razaoSocial} · <Link href={`/empresas/${empresaId}#cipa`} className="text-primary hover:underline">CIPA e eleição →</Link> · <Link href={`/empresas/${empresaId}/cultura`} className="text-primary hover:underline">SIPAT e 5S →</Link>
         </p>
       </div>
 

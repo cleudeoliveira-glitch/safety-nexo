@@ -12,6 +12,7 @@ import { ConectoresModule } from './conectores/conectores.module';
 import { ArquivoModule } from './arquivo/arquivo.module';
 import { AssinaturasModule } from './assinaturas/assinaturas.module';
 import { PsicossocialModule } from './psicossocial/psicossocial.module';
+import { CulturaModule } from './cultura/cultura.module';
 import { EmergenciaModule } from './emergencia/emergencia.module';
 import { InspecoesModule } from './inspecoes/inspecoes.module';
 import { OperacaoModule } from './operacao/operacao.module';
@@ -25,7 +26,7 @@ import { PainelModule } from './painel/painel.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule],
+  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule],
   controllers: [HealthController],
 })
 export class AppModule {}
