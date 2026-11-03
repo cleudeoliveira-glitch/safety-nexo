@@ -106,6 +106,7 @@ export default function Home() {
           ))}
         </select>
         <div className="mt-3 grid gap-2">
+          {empresaId && <Link href={`/empresas/${empresaId}/ssma`} className="rounded-card bg-primary px-3 py-2 text-center text-sm font-semibold text-white">Painel SSMA (indicadores)</Link>}
           <Link href="/campo" className="rounded-card border border-primary px-3 py-2 text-center text-sm font-semibold text-primary">
             Campo (funciona sem internet)
           </Link>

@@ -669,3 +669,21 @@ export const prontuario = {
   remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/prontuario/${id}`),
   pdf: (e: string, colaboradorId: string) => baixarPdf(`/empresas/${e}/prontuario/pdf/${colaboradorId}`, 'prontuário'),
 };
+
+// ---------- Painel SSMA ----------
+export type MesSsma = { mes: string; acidentes: number; comAfastamento: number; obitos: number; diasPerdidos: number; hht: number; hhtEstimado: boolean; tf: number | null; tg: number | null };
+export type PainelSsma = {
+  empresa: { id: string; razaoSocial: string; jornadaDiariaHoras: number; custoDiaFalta: number | null };
+  filtro: { fim: string; gheId: string | null; setor: string | null }; setores: { id: string; nome: string }[];
+  saude: number | null; emDia: { item: string; ok: number; de: number; pct: number | null }[];
+  atual: MesSsma & { variacaoTf: number | null; variacaoTg: number | null };
+  serie: MesSsma[]; ranking: { nome: string; acidentes: number }[]; afastamento: { com: number; sem: number };
+  estrategico: { diasAtestadoMes: number; custoAbsenteismoMes: number | null; diasAtestado12: number; custoAbsenteismo12: number | null; cids: { cid: string; dias: number }[]; diasInss12: number; fap: { ano: number; fap: number; diferencaMensal: number | null } | null; setorMaisCat: { nome: string; acidentes: number } | null };
+};
+const qs = (f: { fim?: string; gheId?: string }) => new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString();
+export const ssma = {
+  montar: (e: string, f: { fim?: string; gheId?: string }) => chamar<PainelSsma>('GET', `/empresas/${e}/ssma?${qs(f)}`),
+  config: (e: string, custoDiaFalta: number | null) => chamar<{ ok: boolean }>('PUT', `/empresas/${e}/ssma/config`, { custoDiaFalta }),
+  horas: (e: string, mes: string, horas: number | null) => chamar<{ ok: boolean }>('PUT', `/empresas/${e}/ssma/horas`, { mes, horas }),
+  pdf: (e: string, f: { fim?: string; gheId?: string }) => baixarPdf(`/empresas/${e}/ssma/pdf?${qs(f)}`, 'painel SSMA'),
+};
