@@ -1,0 +1,8 @@
+# Site (tela) do Safety Nexo no Netlify. O servidor (API) roda à parte, pelo Dockerfile.
+[build]
+  base = "apps/web"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
