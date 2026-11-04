@@ -1,13 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { mkdir, readFile, writeFile } from 'fs/promises';
 import { extname, join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
+import { Guarda } from '../common/guarda';
 
 const TIPOS_ACEITOS: Record<string, string> = { 'image/png': '.png', 'image/jpeg': '.jpg' };
 const TAMANHO_MAXIMO = 2 * 1024 * 1024;
 
-// TEMPORÁRIO: arquivos em disco local. Em produção, troca por Supabase Storage.
-const PASTA_LOGOS = process.env.LOGOS_DIR ?? join(__dirname, '..', '..', 'storage', 'logos');
+// Logos no Supabase Storage em produção; em disco no uso local (ver common/guarda.ts).
+const guarda = new Guarda('logos', process.env.LOGOS_DIR ?? join(__dirname, '..', '..', 'storage', 'logos'));
 
 @Injectable()
 export class LogosService {
@@ -28,7 +28,7 @@ export class LogosService {
   async comoDataUri(logoPath: string | null): Promise<string | null> {
     if (!logoPath) return null;
     try {
-      const conteudo = await readFile(join(PASTA_LOGOS, logoPath));
+      const conteudo = await guarda.ler(logoPath);
       const mime = extname(logoPath) === '.png' ? 'image/png' : 'image/jpeg';
       return `data:${mime};base64,${conteudo.toString('base64')}`;
     } catch {
@@ -42,9 +42,8 @@ export class LogosService {
     if (!extensao) throw new BadRequestException('A logo precisa ser PNG ou JPG.');
     if (arquivo.size > TAMANHO_MAXIMO) throw new BadRequestException('A logo precisa ter no máximo 2 MB.');
 
-    await mkdir(PASTA_LOGOS, { recursive: true });
     const nome = `${nomeBase}${extensao}`;
-    await writeFile(join(PASTA_LOGOS, nome), arquivo.buffer);
+    await guarda.gravar(nome, arquivo.buffer, arquivo.mimetype);
     return nome;
   }
 }

@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { mkdir, readFile, unlink, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { execFile } from 'child_process';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessaoUsuario } from '../common/sessao.decorator';
+import { Guarda } from '../common/guarda';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pdfParse: (b: Buffer) => Promise<{ text: string }> = require('pdf-parse/lib/pdf-parse.js');
@@ -21,7 +21,7 @@ function textoDoPdf(pdf: Buffer): Promise<string> {
   });
 }
 
-const PASTA = process.env.ARQUIVOS_DIR ?? join(__dirname, '..', '..', 'storage', 'arquivos');
+const guarda = new Guarda('arquivos', process.env.ARQUIVOS_DIR ?? join(__dirname, '..', '..', 'storage', 'arquivos'));
 const TIPOS_ACEITOS: Record<string, string> = {
   'application/pdf': '.pdf', 'image/png': '.png', 'image/jpeg': '.jpg',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
@@ -59,10 +59,8 @@ export class ArquivoService {
 
   private async gravar(dados: { empresaId: string; chave: string; titulo: string; categoria: string; origem: 'GERADO' | 'ENVIADO'; nomeArquivo: string; mime: string; conteudo: Buffer; descricao?: string; sessao: SessaoUsuario | { nome: string } }) {
     const ultimo = await this.prisma.arquivo.findFirst({ where: { empresaId: dados.empresaId, chave: dados.chave }, orderBy: { versao: 'desc' }, select: { versao: true } });
-    const pasta = join(PASTA, dados.empresaId);
-    await mkdir(pasta, { recursive: true });
     const caminho = `${dados.empresaId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}${TIPOS_ACEITOS[dados.mime] ?? ''}`;
-    await writeFile(join(PASTA, caminho), dados.conteudo);
+    await guarda.gravar(caminho, dados.conteudo, dados.mime);
     const arquivo = await this.prisma.arquivo.create({
       data: {
         empresaId: dados.empresaId, chave: dados.chave, titulo: dados.titulo, categoria: dados.categoria, origem: dados.origem,
@@ -94,7 +92,7 @@ export class ArquivoService {
   async lerInterno(empresaId: string, id: string) {
     const a = await this.prisma.arquivo.findFirst({ where: { id, empresaId } });
     if (!a) throw new NotFoundException('Documento não encontrado');
-    return { arquivo: a, conteudo: await readFile(join(PASTA, a.caminho)) };
+    return { arquivo: a, conteudo: await guarda.ler(a.caminho) };
   }
 
   async guardarAssinado(empresaId: string, pedidoId: string, titulo: string, categoria: string, nomeArquivo: string, pdf: Buffer, quem: string) {
@@ -161,7 +159,7 @@ export class ArquivoService {
     await this.empresa(sessao.consultoriaId, empresaId);
     const a = await this.prisma.arquivo.findFirst({ where: { id, empresaId } });
     if (!a) throw new NotFoundException('Documento não encontrado');
-    const conteudo = await readFile(join(PASTA, a.caminho)).catch(() => { throw new NotFoundException('O arquivo não está mais no servidor.'); });
+    const conteudo = await guarda.ler(a.caminho).catch(() => { throw new NotFoundException('O arquivo não está mais no servidor.'); });
     await this.prisma.arquivoAcesso.create({ data: { arquivoId: a.id, usuarioId: sessao.sub, usuarioNome: await this.nomeUsuario(sessao.sub), papel: sessao.papel } });
     return { arquivo: a, conteudo };
   }
@@ -179,7 +177,7 @@ export class ArquivoService {
     if (!a) throw new NotFoundException('Documento não encontrado');
     if (a.origem === 'GERADO') throw new BadRequestException('Documentos gerados pelo sistema ficam guardados como prova. Só os enviados podem ser apagados.');
     await this.prisma.arquivo.delete({ where: { id } });
-    await unlink(join(PASTA, a.caminho)).catch(() => undefined);
+    await guarda.apagar(a.caminho).catch(() => undefined);
     return { ok: true };
   }
 }

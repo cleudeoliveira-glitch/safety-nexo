@@ -1,0 +1,40 @@
+# Servidor (API) do Safety Nexo no Render, plano gratuito.
+# No Render: New > Blueprint > escolha este repositório. Ele pede os valores marcados com sync: false.
+services:
+  - type: web
+    name: safety-nexo-api
+    runtime: docker
+    plan: free
+    region: virginia            # perto do Supabase em us-east-1
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true     # o Render cria um segredo aleatório; ninguém precisa ver
+      - key: CERT_SECRET
+        generateValue: true
+      - key: WEB_ORIGIN
+        value: https://safety-nexo.netlify.app
+      - key: DATABASE_URL       # Supabase > Connect > Session pooler (porta 5432)
+        sync: false
+      - key: SUPABASE_URL       # Supabase > Project Settings > API > Project URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY   # Supabase > Project Settings > API Keys > service_role (secreta)
+        sync: false
+      - key: ANTHROPIC_API_KEY  # opcional: leitura de PGR antigo com IA
+        sync: false
+      - key: FACE_API_ENABLED
+        value: "true"
+      - key: FACE_RECOGNITION_THRESHOLD
+        value: "0.6"
+      - key: FACE_RECOGNITION_ENABLED_EPI
+        value: "true"
+      - key: FACE_RECOGNITION_ENABLED_DDS
+        value: "false"
+      - key: FACE_RECOGNITION_ENABLED_TREINAMENTO
+        value: "false"
+      - key: LGPD_FACIAL_CONSENT_REQUIRED
+        value: "true"
+      - key: FACE_LIVENESS_REQUIRED
+        value: "true"
