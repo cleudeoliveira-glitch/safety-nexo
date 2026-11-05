@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
@@ -361,6 +362,7 @@ function AbaFaltas({ empresaId, colaboradores, cliente, avisar }: { empresaId: s
 export default function ConectoresPage({ params }: { params: { id: string } }) {
   const empresaId = params.id;
   const [aba, setAba] = useState<Aba>('rh');
+  useAbaDoEndereco<Aba>(['rh', 'terceiros', 'faltas'], setAba);
   const [cliente, setCliente] = useState(false);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
@@ -372,8 +374,6 @@ export default function ConectoresPage({ params }: { params: { id: string } }) {
   }, [empresaId]);
   useEffect(() => {
     setCliente(ehEmpresa());
-    const h = window.location.hash.slice(1);
-    if (h === 'terceiros' || h === 'faltas') setAba(h);
     recarregar();
   }, [recarregar]);
 

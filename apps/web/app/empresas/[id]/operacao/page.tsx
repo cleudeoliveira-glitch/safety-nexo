@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
 import { useCallback, useEffect, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
 import { guardarCaptura } from '@/lib/rosto-offline';
@@ -468,6 +469,7 @@ function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: {
 export default function OperacaoPage({ params }: { params: { id: string } }) {
   const empresaId = params.id;
   const [aba, setAba] = useState<Aba>('apr');
+  useAbaDoEndereco(ABAS.map(([a]) => a), setAba);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [conteudo, setConteudo] = useState<ConteudoOperacao | null>(null);
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
@@ -519,7 +521,7 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
 
       <div role="tablist" className="flex flex-wrap gap-2">
         {ABAS.map(([valor, nome]) => (
-          <button key={valor} role="tab" aria-selected={aba === valor} onClick={() => { setAba(valor); setAviso(null); }}
+          <button key={valor} role="tab" aria-selected={aba === valor} onClick={() => { setAba(valor); setAviso(null); history.replaceState(null, '', `#${valor}`); }}
             className={`rounded-card px-4 py-2 text-sm font-semibold ${aba === valor ? 'bg-primary text-white' : 'border border-border bg-white'}`}>
             {nome}
           </button>

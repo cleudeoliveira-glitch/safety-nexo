@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { Auditoria5s, buscarEmpresa, cincoS, Colaborador, Empresa, Ghe, listarColaboradores, listarGhes, salvarArquivo, Senso, Sipat, sipat } from '@/lib/api';
@@ -188,12 +189,12 @@ function Aba5s({ empresaId, ghes, agir, baixar }: { empresaId: string; ghes: Ghe
 export default function CulturaPage({ params }: { params: { id: string } }) {
   const empresaId = params.id;
   const [aba, setAba] = useState<Aba>('sipat');
+  useAbaDoEndereco<Aba>(['sipat', '5s'], setAba);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
   const [ghes, setGhes] = useState<Ghe[]>([]);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
   useEffect(() => {
-    if (window.location.hash === '#5s') setAba('5s');
     Promise.all([buscarEmpresa(empresaId), listarColaboradores(empresaId), listarGhes(empresaId)]).then(([e, c, g]) => { setEmpresa(e); setColaboradores(c); setGhes(g); }).catch((e: Error) => setAviso({ tipo: 'erro', texto: e.message }));
   }, [empresaId]);
   const agir: Agir = async (f) => { try { setAviso({ tipo: 'ok', texto: await f() }); } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); } };

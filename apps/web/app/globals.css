@@ -13,7 +13,25 @@
 }
 
 body {
-  background: #f8f9fb;
+  background: #f3f6f8;
   color: #1f2937;
   font-family: Inter, 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+/* Menu lateral: azul petróleo com um brilho verde-menta da logo. */
+.fundo-menu {
+  background:
+    radial-gradient(120% 60% at 0% 0%, rgba(108, 240, 194, 0.16), transparent 60%),
+    radial-gradient(90% 50% at 100% 100%, rgba(30, 110, 200, 0.25), transparent 60%),
+    linear-gradient(180deg, #0e4a5b 0%, #0a3846 55%, #082f3a 100%);
+}
+.menu-rolagem {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+/* Faixa de destaque no topo do painel. */
+.fundo-destaque {
+  background:
+    radial-gradient(70% 120% at 100% 0%, rgba(108, 240, 194, 0.35), transparent 60%),
+    linear-gradient(120deg, #0e4a5b 0%, #12627a 60%, #168a7f 100%);
 }
