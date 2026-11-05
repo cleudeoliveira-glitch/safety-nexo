@@ -20,6 +20,7 @@ export type Empresa = {
   grauRisco: number | null;
   numFuncionarios: number;
   logoPath: string | null;
+  emailCobranca?: string | null;
   medicoPcmsoNome: string | null;
   medicoPcmsoCrm: string | null;
   responsavelTecnicoNome?: string | null;
@@ -446,10 +447,24 @@ export const buscarHistorico = (empresaId: string, antes?: string) =>
 // ---------- Comercial (valores em centavos) ----------
 export type ConfigComercial = { nome: string; cnpj: string | null; cidade: string | null; pixChave: string | null; pixNome: string | null };
 export type ItemProposta = { descricao: string; quantidade: number; valorCentavos: number };
-export type Proposta = { id: string; numero: number; empresaId: string | null; clienteNome: string; clienteCnpj: string | null; clienteContato: string | null; data: string; validadeDias: number; itens: ItemProposta[]; observacoes: string | null; status: 'ABERTA' | 'ACEITA' | 'RECUSADA'; total: number; contratos: { id: string; numero: number }[] };
+export type Proposta = { id: string; numero: number; empresaId: string | null; clienteNome: string; clienteCnpj: string | null; clienteContato: string | null; data: string; validadeDias: number; itens: ItemProposta[]; observacoes: string | null; status: 'ABERTA' | 'ACEITA' | 'RECUSADA'; total: number; contratos: { id: string; numero: number }[];
+  token: string | null; respostaNome: string | null; respostaCargo: string | null; respostaEm: string | null; motivoRecusa: string | null };
 export type Contrato = { id: string; numero: number; empresaId: string; empresa: { razaoSocial: string }; propostaId: string | null; objeto: string; valorMensalCentavos: number | null; diaVencimento: number | null; inicio: string; fim: string | null; status: 'ATIVO' | 'ENCERRADO' };
 export type Servico = { id: string; numero: number; empresaId: string; empresa: { razaoSocial: string }; contratoId: string | null; descricao: string; previsto: string | null; responsavel: string | null; valorCentavos: number | null; concluidoEm: string | null; status: 'ABERTA' | 'CONCLUIDA' | 'CANCELADA'; cobrancas: { id: string; status: string }[] };
 export type Cobranca = { id: string; empresaId: string; empresa: { razaoSocial: string }; descricao: string; valorCentavos: number; vencimento: string; status: 'ABERTA' | 'PAGA' | 'CANCELADA'; pagoEm: string | null; vencida: boolean };
+export type ReguaCobranca = { ligada: boolean; emailLigado: boolean; semEmail: string[] };
+export type PropostaPublica = {
+  numero: number; data: string; validadeAte: string; vencida: boolean;
+  consultoria: { nome: string; cnpj: string | null; cidade: string | null };
+  cliente: { nome: string; cnpj: string | null; contato: string | null };
+  itens: ItemProposta[]; total: number; observacoes: string | null;
+  status: 'ABERTA' | 'ACEITA' | 'RECUSADA'; respostaNome: string | null; respostaEm: string | null;
+};
+export const propostaOnline = {
+  ver: (token: string) => chamar<PropostaPublica>('GET', `/proposta-online/${token}`),
+  aceitar: (token: string, d: { nome: string; cargo?: string }) => chamar<{ ok: boolean }>('POST', `/proposta-online/${token}/aceitar`, d),
+  recusar: (token: string, d: { nome: string; motivo?: string }) => chamar<{ ok: boolean }>('POST', `/proposta-online/${token}/recusar`, d),
+};
 export type ResumoComercial = { emAberto: number; vencido: number; recebidoNoMes: number; contratosAtivos: number };
 const C = '/comercial';
 export const comercial = {
@@ -460,6 +475,10 @@ export const comercial = {
   criarProposta: (d: { empresaId?: string; clienteNome?: string; clienteCnpj?: string; clienteContato?: string; data: string; validadeDias?: number; itens: ItemProposta[]; observacoes?: string }) => chamar<Proposta>('POST', `${C}/propostas`, d),
   statusProposta: (id: string, status: Proposta['status']) => chamar<{ ok: boolean }>('PUT', `${C}/propostas/${id}/status`, { status }),
   pdfProposta: (id: string) => baixarPdf(`${C}/propostas/${id}/pdf`, 'proposta'),
+  linkProposta: (id: string) => chamar<{ token: string; url: string }>('POST', `${C}/propostas/${id}/link`),
+  regua: () => chamar<ReguaCobranca>('GET', `${C}/regua`),
+  ligarRegua: (ligada: boolean) => chamar<ReguaCobranca>('PUT', `${C}/regua`, { ligada }),
+  emailCobranca: (empresaId: string, email: string) => chamar<{ emailCobranca: string | null }>('PUT', `${C}/empresas/${empresaId}/email-cobranca`, { email: email || undefined }),
   contratos: () => chamar<Contrato[]>('GET', `${C}/contratos`),
   criarContrato: (d: { empresaId: string; propostaId?: string; objeto: string; valorMensalCentavos?: number; diaVencimento?: number; inicio: string; fim?: string; observacoes?: string }) => chamar<Contrato>('POST', `${C}/contratos`, d),
   encerrarContrato: (id: string) => chamar<{ ok: boolean }>('PUT', `${C}/contratos/${id}/encerrar`, {}),
