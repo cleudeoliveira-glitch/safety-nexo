@@ -1,8 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CnaeService } from '../cnae/cnae.service';
 import { ehAdminPlataforma } from '../admin/admin-plataforma';
 import { PrismaService } from '../prisma/prisma.service';
-import { CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
+import { CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CopiarDadosDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 
 @Injectable()
 export class EmpresasService {
@@ -92,6 +92,42 @@ export class EmpresasService {
       include: { riscos: true, exames: true, _count: { select: { colaboradores: true } } },
       orderBy: { nome: 'asc' },
     });
+  }
+
+  // Copia GHEs (com riscos, avaliações e exames) de outra empresa da mesma consultoria, para clientes parecidos.
+  // GHE com o mesmo nome no destino é pulado. Opcionalmente leva o médico do PCMSO e o responsável técnico.
+  async copiarDe(consultoriaId: string, destinoId: string, dto: CopiarDadosDto) {
+    if (destinoId === dto.origemId) throw new BadRequestException('Escolha outra empresa para copiar.');
+    await this.buscar(consultoriaId, destinoId);
+    const origem = await this.buscar(consultoriaId, dto.origemId);
+    const ghes = await this.prisma.ghe.findMany({
+      where: { empresaId: origem.id, ...(dto.gheIds?.length ? { id: { in: dto.gheIds } } : {}) },
+      include: { riscos: true, exames: true },
+    });
+    const existentes = new Set((await this.prisma.ghe.findMany({ where: { empresaId: destinoId }, select: { nome: true } })).map((g) => g.nome.trim().toLowerCase()));
+    const copiados: string[] = []; const pulados: string[] = [];
+    for (const g of ghes) {
+      if (existentes.has(g.nome.trim().toLowerCase())) { pulados.push(g.nome); continue; }
+      await this.prisma.ghe.create({
+        data: {
+          empresaId: destinoId, nome: g.nome, descricao: g.descricao, periculosidadeAnexo: g.periculosidadeAnexo, periculosidadeJustificativa: g.periculosidadeJustificativa,
+          riscos: { create: g.riscos.map(({ id: _i, gheId: _g, esocial, ...r }) => ({ ...r, esocial: esocial ?? undefined })) },
+          exames: { create: g.exames.map(({ id: _i, gheId: _g, ...e }) => e) },
+        },
+      });
+      copiados.push(g.nome);
+    }
+    if (dto.responsaveis) {
+      await this.prisma.empresa.update({
+        where: { id: destinoId },
+        data: {
+          medicoPcmsoNome: origem.medicoPcmsoNome, medicoPcmsoCrm: origem.medicoPcmsoCrm, medicoPcmsoCpf: origem.medicoPcmsoCpf, medicoPcmsoUf: origem.medicoPcmsoUf,
+          responsavelTecnicoNome: origem.responsavelTecnicoNome, responsavelTecnicoRegistro: origem.responsavelTecnicoRegistro, responsavelTecnicoCpf: origem.responsavelTecnicoCpf,
+          responsavelTecnicoConselho: origem.responsavelTecnicoConselho, responsavelTecnicoUf: origem.responsavelTecnicoUf,
+        },
+      });
+    }
+    return { copiados, pulados, responsaveis: !!dto.responsaveis };
   }
 
   async criarGhe(consultoriaId: string, empresaId: string, dto: CreateGheDto) {

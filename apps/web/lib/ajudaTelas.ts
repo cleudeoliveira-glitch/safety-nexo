@@ -351,6 +351,13 @@ export const GUIAS: GuiaTela[] = [
     paraQue: 'Mostra o plano atual, quantas empresas você já usa e deixa pedir a troca de plano.',
     partes: [{ titulo: 'Como usar', passos: ['Veja o seu plano e o limite de empresas.', 'Para mudar, escolha o novo plano e envie o pedido.'] }],
   },
+  {
+    id: 'esocial-geral',
+    endereco: /^\/esocial-geral$/,
+    titulo: 'eSocial de todas e multas',
+    paraQue: 'Diagnóstico do eSocial de todas as empresas, com a multa estimada do que falta, e envio de tudo de uma vez.',
+    partes: [{ titulo: 'Como usar', passos: ['Veja, empresa por empresa, os eventos que faltam enviar e a multa estimada.', 'Confira se o certificado digital da consultoria está enviado.', 'Envie os eventos de todas as empresas de uma vez e acompanhe os recibos.'] }],
+  },
 ];
 
 // Guia da tela aberta. Telas sem guia próprio usam o do painel.

@@ -27,6 +27,7 @@ model Consultoria {
   avisosEmail     Boolean   @default(true) // resumo semanal de vencimentos por e-mail
   pedidoPlano     String?   // plano que a consultoria pediu na tela "Meu plano" (o ADM faz a troca)
   pedidoPlanoEm   DateTime?
+  reguaCobranca   Boolean   @default(false) // avisos de cobrança por e-mail para as empresas clientes (antes e depois do vencimento)
   createdAt DateTime  @default(now())
   normasLidas AvisoNormaLido[]
   empresas  Empresa[]
@@ -99,6 +100,8 @@ model Empresa {
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
   emergencia     Json?
   relatoToken    String?  @unique // QR code de relato de quase acidente (página pública, sem login)
+  emailCobranca  String?  // e-mail que recebe as cobranças e os avisos de vencimento
+  toxicologicos  Toxicologico[]
   relatos        Relato[]
   acoesCorretivas AcaoCorretiva[]
   investigacoes  Investigacao[]
@@ -135,6 +138,7 @@ model Colaborador {
   presencasFaciais PresencaFacial[]
   portalToken   String?  @unique // espaço do trabalhador: link pessoal (confere o CPF ao abrir)
   eleitorCipa   CipaEleitor[]
+  toxicologicos Toxicologico[]
 
   @@index([empresaId])
 }
@@ -589,6 +593,13 @@ model Proposta {
   itens         Json        // [{ descricao, quantidade, valorCentavos }]
   observacoes   String?
   status        String      @default("ABERTA") // ABERTA, ACEITA, RECUSADA
+  // Aprovação online: o cliente abre o link (token), aceita ou recusa, e fica registrado quem respondeu.
+  token         String?     @unique
+  respostaNome  String?
+  respostaCargo String?
+  respostaEm    DateTime?
+  respostaIp    String?
+  motivoRecusa  String?
   createdAt     DateTime    @default(now())
   contratos     Contrato[]
 
@@ -657,6 +668,7 @@ model Cobranca {
   txid          String      // identificador no Pix
   status        String      @default("ABERTA") // ABERTA, PAGA, CANCELADA
   pagoEm        DateTime?   @db.Date
+  avisos        String[]    @default([]) // avisos de cobrança já mandados: ANTES3, DIA, DEPOIS3, DEPOIS10
   createdAt     DateTime    @default(now())
 
   @@index([consultoriaId, vencimento])
@@ -1172,4 +1184,22 @@ model CipaEleitor {
   votou         Boolean     @default(false)
 
   @@unique([eleicaoId, colaboradorId])
+}
+
+// Exame toxicológico do motorista profissional (CLT art. 168, § 6º). Vai ao eSocial pelo S-2221.
+model Toxicologico {
+  id            String      @id @default(cuid())
+  empresaId     String
+  empresa       Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  dataExame     DateTime    @db.Date
+  cnpjLaboratorio String
+  codigoExame   String      // código do exame no laudo (2 letras + 9 números)
+  medicoNome    String
+  medicoCrm     String?
+  medicoUf      String?
+  createdAt     DateTime    @default(now())
+
+  @@index([empresaId])
 }

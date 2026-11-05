@@ -1,7 +1,9 @@
 import { documentoHtml, escape, Moldura } from '../documentos/layout';
 import type { RelatorioInspecaoIa } from '../ia/ia';
+import { grauDoModelo, MODELOS_CHECKLIST } from './modelos';
+import { Faixa, multaItem, NOTA_MULTA, reais, somar } from './multas';
 
-export type ItemInspecao = { texto: string; resposta: 'C' | 'NC' | 'NA'; observacao?: string };
+export type ItemInspecao = { texto: string; resposta: 'C' | 'NC' | 'NA'; observacao?: string; grau?: number };
 const RESPOSTA = { C: 'Conforme', NC: 'Não conforme', NA: 'Não se aplica' };
 const TIPO_RISCO: Record<string, string> = { FISICO: 'Físico', QUIMICO: 'Químico', BIOLOGICO: 'Biológico', ERGONOMICO: 'Ergonômico', ACIDENTE: 'Acidente' };
 export type FotoNoPdf = { uri: string; legenda: string };
@@ -32,9 +34,22 @@ export function conformidade(itens: ItemInspecao[]) {
   return { aplicaveis, conformes, naoConformes: aplicaveis - conformes, percentual: aplicaveis ? Math.round((conformes / aplicaveis) * 100) : 100 };
 }
 
-export function inspecaoHtml(moldura: Moldura, d: { titulo: string; local: string; data: Date; inspetor: string; itens: ItemInspecao[]; fotos?: FotoNoPdf[]; relatorioIa?: RelatorioInspecaoIa | null; proximaInspecao?: Date | null }): string {
+// Multa estimada de cada não conformidade e o total, pelo número de empregados da empresa.
+export function multasInspecao(modelo: string, itens: ItemInspecao[], empregados: number) {
+  const tipo = MODELOS_CHECKLIST[modelo]?.tipo ?? 'S';
+  const porItem: (Faixa | null)[] = itens.map((i) => (i.resposta === 'NC' ? multaItem(i.grau ?? grauDoModelo(modelo, i.texto) ?? 0, empregados, tipo) : null));
+  return { porItem, total: somar(porItem), empregados };
+}
+
+export const resumoInspecao = (modelo: string, itens: ItemInspecao[], empregados: number) => ({ ...conformidade(itens), multa: multasInspecao(modelo, itens, empregados).total });
+
+const faixaTexto = (f: Faixa | null) => (f ? `${reais(f.minimo)} a ${reais(f.maximo)}` : '');
+
+export function inspecaoHtml(moldura: Moldura, d: { modelo: string; titulo: string; local: string; data: Date; inspetor: string; itens: ItemInspecao[]; fotos?: FotoNoPdf[]; relatorioIa?: RelatorioInspecaoIa | null; proximaInspecao?: Date | null }, empregados = 0): string {
   const c = conformidade(d.itens);
   const ncs = d.itens.filter((i) => i.resposta === 'NC');
+  const multas = multasInspecao(d.modelo, d.itens, empregados);
+  const numerados = d.itens.map((i, n) => ({ ...i, n })).filter((i) => multas.porItem[i.n]);
   return documentoHtml(
     moldura,
     `
@@ -47,6 +62,15 @@ export function inspecaoHtml(moldura: Moldura, d: { titulo: string; local: strin
           .map((i, n) => `<tr><td>${n + 1}</td><td>${escape(i.texto)}</td><td class="r-${i.resposta}">${RESPOSTA[i.resposta]}</td><td>${escape(i.observacao || '')}</td></tr>`)
           .join('')}</tbody>
       </table>
+      ${
+        numerados.length
+          ? `<h2>Multas que a empresa pode receber</h2>
+      <p class="resumo ruim"><strong>${faixaTexto(multas.total)}</strong> no total, somando ${numerados.length} não conformidade(s), para ${empregados || 1} empregado(s).</p>
+      <table><thead><tr><th>Nº</th><th>Não conformidade</th><th>Gravidade</th><th>Multa estimada</th></tr></thead>
+      <tbody>${numerados.map((i) => `<tr><td>${i.n + 1}</td><td>${escape(i.texto)}</td><td>I${i.grau ?? grauDoModelo(d.modelo, i.texto)}</td><td>${faixaTexto(multas.porItem[i.n])}</td></tr>`).join('')}</tbody></table>
+      <p class="meta">${NOTA_MULTA}</p>`
+          : ''
+      }
       ${
         ncs.length
           ? `<h2>Plano de ação</h2>

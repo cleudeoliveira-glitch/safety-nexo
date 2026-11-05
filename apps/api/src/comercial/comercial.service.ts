@@ -65,6 +65,13 @@ export class ComercialService {
     return this.configuracao(consultoriaId);
   }
 
+  async emailCobranca(consultoriaId: string, empresaId: string, email?: string) {
+    await this.empresa(consultoriaId, empresaId);
+    const valor = email?.trim().toLowerCase() || null;
+    await this.prisma.empresa.update({ where: { id: empresaId }, data: { emailCobranca: valor } });
+    return { emailCobranca: valor };
+  }
+
   // ---------- propostas ----------
   async listarPropostas(consultoriaId: string) {
     const lista = await this.prisma.proposta.findMany({ where: { consultoriaId }, orderBy: { numero: 'desc' }, include: { contratos: { select: { id: true, numero: true } } } });

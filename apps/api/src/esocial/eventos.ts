@@ -254,3 +254,35 @@ export function montarS2230(id: Identificacao, empresa: Empresa, col: Colaborado
   const corpo = ideEvento(id) + ideEmpregador(empresa) + vinculo + el('infoAfastamento', ini, fim);
   return { xml: raiz('evtAfastTemp', id, corpo), pendencias: p.itens };
 }
+
+// ---------- S-2221: exame toxicológico do motorista profissional ----------
+export type DadosToxicologico = { dataExame: Date; cnpjLaboratorio: string; codigoExame: string; medicoNome: string; medicoCrm: string | null; medicoUf: string | null };
+
+export function montarS2221(id: Identificacao, empresa: Empresa, col: Colaborador, t: DadosToxicologico) {
+  const p = new Pendencias();
+  p.exigir(cpfValido(col.cpf), `CPF válido de ${col.nome}`);
+  p.exigir(col.matricula, `matrícula do eSocial de ${col.nome} (o S-2221 exige matrícula)`);
+  const cnpjLab = digitos(t.cnpjLaboratorio);
+  p.exigir(cnpjLab.length === 14, 'CNPJ do laboratório com 14 números');
+  const cod = (t.codigoExame ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  p.exigir(/^[A-Z]{2}\d{9}$/.test(cod), 'código do exame como está no laudo (2 letras e 9 números, ex.: AB123456789)');
+  p.exigir(t.medicoNome?.trim(), 'nome do médico que assinou o laudo');
+  const crm = separarCrm(t.medicoCrm, t.medicoUf);
+  const corpo = ideEvento(id) + ideEmpregador(empresa)
+    + el('ideVinculo', c('cpfTrab', digitos(col.cpf)), c('matricula', col.matricula))
+    + el('toxicologico', c('dtExame', dia(t.dataExame)), c('cnpjLab', cnpjLab), c('codSeqExame', cod), c('nmMed', corta(t.medicoNome, 70)),
+      crm.numero ? c('nrCRM', crm.numero) : '', crm.numero && crm.uf ? c('ufCRM', crm.uf) : '');
+  return { xml: raiz('evtToxic', id, corpo), pendencias: p.itens };
+}
+
+// ---------- S-3000: exclusão de um evento já aceito (enviado por engano) ----------
+export function montarS3000(id: Identificacao, empresa: Empresa, tipoEvento: string, recibo: string, cpf: string | null) {
+  const p = new Pendencias();
+  p.exigir(/^S-\d{4}$/.test(tipoEvento), 'tipo do evento a excluir');
+  p.exigir(recibo, 'recibo do evento a excluir');
+  p.exigir(cpfValido(cpf), 'CPF do trabalhador do evento a excluir');
+  const corpo = el('ideEvento', c('tpAmb', id.tpAmb), c('procEmi', 1), c('verProc', VERSAO_APLICATIVO))
+    + ideEmpregador(empresa)
+    + el('infoExclusao', c('tpEvento', tipoEvento), c('nrRecEvt', recibo), el('ideTrabalhador', c('cpfTrab', digitos(cpf))));
+  return { xml: raiz('evtExclusao', id, corpo), pendencias: p.itens };
+}
