@@ -15,8 +15,8 @@ services:
         generateValue: true     # o Render cria um segredo aleatório; ninguém precisa ver
       - key: CERT_SECRET
         generateValue: true
-      - key: WEB_ORIGIN
-        value: https://safety-nexo.netlify.app
+      - key: WEB_ORIGIN         # endereços do site; o primeiro vai nos QR codes
+        value: https://safety-nexo-sst.netlify.app,https://safety-nexo.netlify.app
       - key: DATABASE_URL       # Supabase > Connect > Session pooler (porta 5432)
         sync: false
       - key: SUPABASE_URL       # Supabase > Project Settings > API > Project URL
