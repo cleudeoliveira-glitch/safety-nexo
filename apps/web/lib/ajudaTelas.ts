@@ -320,6 +320,37 @@ export const GUIAS: GuiaTela[] = [
     paraQue: 'Avisos quando uma NR ou regra do eSocial muda, com o que fazer.',
     partes: [{ titulo: 'Como usar', passos: ['Leia os avisos novos e marque como lido.', 'Ligue o resumo semanal por e-mail se quiser receber toda segunda-feira.'] }],
   },
+  {
+    id: 'emitir',
+    endereco: /^\/emitir$/,
+    titulo: 'Emitir documento',
+    paraQue: 'Todos os documentos do sistema num lugar só, para achar rápido o que você precisa emitir.',
+    partes: [{ titulo: 'Como usar', passos: ['Confira a empresa em foco no alto do menu.', 'Procure o documento pela busca ou pelos grupos.', 'Clique no cartão: ele abre a tela onde o documento é montado, já com os dados da empresa.'] }],
+  },
+  {
+    id: 'integracoes',
+    endereco: /^\/integracoes$/,
+    titulo: 'Integrações',
+    paraQue: 'Mostra tudo o que o Safety Nexo conecta, o que já está ligado e o que ainda falta.',
+    partes: [{ titulo: 'Como usar', passos: ['Veja em cada cartão se a integração está ligada.', 'Para ligar uma que falta, siga o caminho indicado no próprio cartão.'] }],
+  },
+  {
+    id: 'perfil',
+    endereco: /^\/perfil$/,
+    titulo: 'Meu perfil',
+    paraQue: 'Seus dados de acesso e, para a consultoria, os dados e a logo que saem no rodapé de todos os documentos.',
+    partes: [
+      { titulo: 'Meus dados e senha', passos: ['Confira o nome e o e-mail de acesso.', 'Para trocar a senha, digite a atual, a nova e repita a nova.'] },
+      { titulo: 'Minha consultoria', passos: ['Preencha o nome da consultoria, o CNPJ e a cidade.', 'Envie a logo da consultoria: ela sai no rodapé dos PDFs.'] },
+    ],
+  },
+  {
+    id: 'plano',
+    endereco: /^\/plano$/,
+    titulo: 'Meu plano',
+    paraQue: 'Mostra o plano atual, quantas empresas você já usa e deixa pedir a troca de plano.',
+    partes: [{ titulo: 'Como usar', passos: ['Veja o seu plano e o limite de empresas.', 'Para mudar, escolha o novo plano e envie o pedido.'] }],
+  },
 ];
 
 // Guia da tela aberta. Telas sem guia próprio usam o do painel.

@@ -27,7 +27,7 @@ export class EmpresasService {
     // A consultoria do dono da plataforma usa o sistema inteiro, sem plano e sem limite.
     const doDono = consultoria.usuarios.some((u) => ehAdminPlataforma(u.email));
     if (!doDono && consultoria._count.empresas >= consultoria.limiteEmpresas) {
-      throw new ForbiddenException('Limite de empresas do plano atingido. Faça upgrade para continuar.');
+      throw new ForbiddenException('Você chegou ao limite de empresas do seu plano. Abra "Meu plano" no menu para escolher um plano maior.');
     }
 
     // Grau de risco vem da NR-04 pelo CNAE, a menos que a consultoria informe outro.

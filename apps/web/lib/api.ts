@@ -328,13 +328,26 @@ export const gerarOs = (empresaId: string, colaboradorId: string) =>
 
 export type ModeloChecklist = { modelo: string; titulo: string; itens: string[] };
 export type ItemInspecao = { texto: string; resposta: 'C' | 'NC' | 'NA'; observacao?: string };
+export type RelatorioInspecaoIa = { resumo: string; perigos: (PerigoIa & { foto: number | null })[]; boasPraticas: string[]; prazoSugeridoDias: number };
 export type Inspecao = {
   id: string; modelo: string; titulo: string; local: string; data: string; inspetor: string; itens: ItemInspecao[];
+  proximaInspecao?: string | null; fotos: { n: number; legenda: string }[]; relatorioIa: RelatorioInspecaoIa | null;
   resumo: { aplicaveis: number; conformes: number; naoConformes: number; percentual: number };
 };
+export type NovaInspecao = Pick<Inspecao, 'modelo' | 'titulo' | 'local' | 'data' | 'inspetor' | 'itens'> & { proximaInspecao?: string };
 export const buscarModelosChecklist = () => chamar<ModeloChecklist[]>('GET', '/inspecoes/modelos');
 export const listarInspecoes = (empresaId: string) => chamar<Inspecao[]>('GET', `/empresas/${empresaId}/inspecoes`);
-export const criarInspecao = (empresaId: string, dados: Omit<Inspecao, 'id' | 'resumo'>) => chamar<Inspecao>('POST', `/empresas/${empresaId}/inspecoes`, dados);
+export const criarInspecao = (empresaId: string, dados: NovaInspecao) => chamar<Inspecao>('POST', `/empresas/${empresaId}/inspecoes`, dados);
+export function enviarFotosInspecao(empresaId: string, id: string, fotos: { foto: Blob; legenda: string }[]) {
+  const f = new FormData();
+  fotos.forEach((x, n) => f.append('fotos', x.foto, `foto-${n + 1}.jpg`));
+  f.append('legendas', JSON.stringify(fotos.map((x) => x.legenda)));
+  return chamar<Inspecao>('POST', `/empresas/${empresaId}/inspecoes/${id}/fotos`, f);
+}
+export const removerFotoInspecao = (empresaId: string, id: string, n: number) => chamar<Inspecao>('DELETE', `/empresas/${empresaId}/inspecoes/${id}/fotos/${n}`);
+export const fotoInspecao = (empresaId: string, id: string, n: number) => imagemProtegida(`/empresas/${empresaId}/inspecoes/${id}/fotos/${n}`);
+export const analisarInspecaoIa = (empresaId: string, id: string) => chamar<Inspecao>('POST', `/empresas/${empresaId}/inspecoes/${id}/ia`);
+export const definirProximaInspecao = (empresaId: string, id: string, data: string | null) => chamar<Inspecao>('PUT', `/empresas/${empresaId}/inspecoes/${id}/proxima`, { data });
 export const gerarInspecao = (empresaId: string, id: string) => baixarPdf(`/empresas/${empresaId}/inspecoes/${id}/pdf`, 'relatório da inspeção');
 
 // Emergência: brigada (IT 17 SP), AVCB, extintores e plano de emergência.
@@ -743,6 +756,7 @@ export type PlanoPlataforma = { codigo: string; nome: string; precoMensal: numbe
 export type ConsultoriaAdm = {
   id: string; nome: string; cnpj: string | null; cidade: string | null; plano: string; limiteEmpresas: number;
   bloqueada: boolean; motivoBloqueio: string | null; observacaoAdm: string | null; criadaEm: string;
+  pedidoPlano: string | null; pedidoPlanoEm: string | null; dono: boolean;
   responsavel: { nome: string; email: string } | null;
   empresas: number; usuarios: number; colaboradores: number; documentos: number; ultimoAcesso: string | null;
 };
@@ -902,4 +916,40 @@ export type MeuEspaco = {
 export const meuEspaco = {
   abrir: (token: string) => chamar<{ primeiroNome: string; empresa: string }>('GET', `/portal/${token}`),
   entrar: (token: string, cpf: string) => chamar<MeuEspaco>('POST', `/portal/${token}`, { cpf }),
+};
+
+// Meu plano: plano da consultoria, empresas usadas e pedido de troca (o dono da plataforma confirma no painel ADM).
+export type MeuPlano = {
+  plano: string; nomePlano: string; limiteEmpresas: number | null; empresas: number; acessoTotal: boolean;
+  pedidoPlano: string | null; pedidoPlanoEm: string | null;
+};
+export const meuPlano = {
+  ver: () => chamar<MeuPlano>('GET', '/meu-plano'),
+  pedir: (plano: string) => chamar<MeuPlano>('POST', '/meu-plano/pedido', { plano }),
+};
+
+// ---------- Resumo de emissões, perfil e integrações ----------
+export type Emissoes = {
+  total: number; noMes: number; porTipo: { nome: string; quantidade: number }[];
+  ultimas: { id: string; titulo: string; tipo: string; categoria: string; versao: number; criadoEm: string; criadoPorNome: string }[];
+};
+export const buscarEmissoes = (empresaId: string) => chamar<Emissoes>('GET', `/empresas/${empresaId}/painel/emissoes`);
+
+export type MinhaConta = {
+  nome: string; email: string; papel: 'CONSULTORIA' | 'EMPRESA'; criadoEm: string; adminPlataforma: boolean; empresa: string | null;
+  consultoria: { nome: string; cnpj: string | null; cidade: string | null; plano: string | null; logo: string | null };
+};
+export type Integracoes = {
+  ia: { ligada: boolean };
+  email: { ligado: boolean; dominioProprio: boolean; avisosEmail: boolean };
+  certificado: { titular: string; validoAte: string; valido: boolean } | null;
+  armazenamentoNuvem: boolean; pix: boolean;
+  uso: { colaboradores: number; terceiros: number; relatos: number };
+};
+export const conta = {
+  ver: () => chamar<MinhaConta>('GET', '/conta'),
+  salvar: (d: { nome?: string; email?: string; nomeConsultoria?: string; cnpj?: string; cidade?: string }) => chamar<MinhaConta>('PUT', '/conta', d),
+  trocarSenha: (atual: string, nova: string) => chamar<{ ok: boolean }>('PUT', '/conta/senha', { atual, nova }),
+  enviarLogo: (arq: File) => { const f = new FormData(); f.append('arquivo', arq); return chamar<unknown>('PUT', '/consultoria/logo', f); },
+  integracoes: () => chamar<Integracoes>('GET', '/integracoes'),
 };

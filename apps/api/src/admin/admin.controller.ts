@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoun
 import { Prisma } from '@prisma/client';
 import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
-import { SomenteAdmin } from './admin-plataforma';
+import { ehAdminPlataforma, SomenteAdmin } from './admin-plataforma';
 import { ILIMITADO, PLANOS, planoPorCodigo } from './planos';
 
 class AtualizarConsultoriaDto {
@@ -29,7 +29,7 @@ export class AdminController {
         orderBy: { createdAt: 'desc' },
         include: {
           _count: { select: { empresas: true, usuarios: true } },
-          usuarios: { where: { papel: 'CONSULTORIA' }, orderBy: { createdAt: 'asc' }, take: 1, select: { nome: true, email: true } },
+          usuarios: { where: { papel: 'CONSULTORIA' }, orderBy: { createdAt: 'asc' }, select: { nome: true, email: true } },
         },
       }),
       this.prisma.$queryRaw<Contagem[]>(Prisma.sql`
@@ -55,6 +55,10 @@ export class AdminController {
       bloqueada: c.bloqueada,
       motivoBloqueio: c.motivoBloqueio,
       observacaoAdm: c.observacaoAdm,
+      pedidoPlano: c.pedidoPlano,
+      pedidoPlanoEm: c.pedidoPlanoEm,
+      // Consultoria do dono da plataforma: acesso total, não paga plano e não entra na receita.
+      dono: c.usuarios.some((u) => ehAdminPlataforma(u.email)),
       criadaEm: c.createdAt,
       responsavel: c.usuarios[0] ?? null,
       empresas: c._count.empresas,
@@ -69,6 +73,7 @@ export class AdminController {
     inicioMes.setUTCHours(0, 0, 0, 0);
     const trintaDias = Date.now() - 30 * 24 * 3600 * 1000;
     const ativas = linhas.filter((l) => !l.bloqueada);
+    const cobradas = ativas.filter((l) => !l.dono);
     return {
       planos: PLANOS,
       totais: {
@@ -77,8 +82,8 @@ export class AdminController {
         bloqueadas: linhas.length - ativas.length,
         novasNoMes: linhas.filter((l) => l.criadaEm >= inicioMes).length,
         usaramEm30Dias: linhas.filter((l) => l.ultimoAcesso && l.ultimoAcesso.getTime() >= trintaDias).length,
-        pagantes: ativas.filter((l) => (planoPorCodigo(l.plano)?.precoMensal ?? 0) > 0).length,
-        receitaMensal: ativas.reduce((t, l) => t + (planoPorCodigo(l.plano)?.precoMensal ?? 0), 0),
+        pagantes: cobradas.filter((l) => (planoPorCodigo(l.plano)?.precoMensal ?? 0) > 0).length,
+        receitaMensal: cobradas.reduce((t, l) => t + (planoPorCodigo(l.plano)?.precoMensal ?? 0), 0),
         porPlano: PLANOS.map((p) => ({ codigo: p.codigo, nome: p.nome, total: ativas.filter((l) => l.plano === p.codigo).length })),
       },
       consultorias: linhas,
@@ -117,6 +122,9 @@ export class AdminController {
       if (!plano) throw new BadRequestException('Plano desconhecido.');
       dados.plano = plano.codigo;
       dados.limiteEmpresas = plano.limiteEmpresas ?? ILIMITADO;
+      // Plano trocado: o pedido feito em "Meu plano" foi atendido.
+      dados.pedidoPlano = null;
+      dados.pedidoPlanoEm = null;
     }
     if (dto.limiteEmpresas !== undefined) dados.limiteEmpresas = dto.limiteEmpresas;
     if (dto.bloqueada !== undefined) {

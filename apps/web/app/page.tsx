@@ -6,7 +6,7 @@ import { CampoAjuda } from '@/components/CampoAjuda';
 import { ABRIR_AJUDA } from '@/components/AjudaDaTela';
 import { Icone, NomeIcone } from '@/components/Icone';
 import { PassoTour, Tour, useTourPrimeiraVez } from '@/components/Tour';
-import { carregarPainel, Empresa, Painel, PainelSsma, ssma } from '@/lib/api';
+import { buscarEmissoes, carregarPainel, Emissoes, Empresa, Painel, PainelSsma, ssma } from '@/lib/api';
 import { aoMudarFoco, empresasDaConta, escolherFoco, salvarFoco } from '@/lib/empresaFoco';
 import { ehEmpresa, lerToken, lerUsuario } from '@/lib/sessao';
 
@@ -43,6 +43,7 @@ export default function Home() {
   const [empresas, setEmpresas] = useState<Empresa[] | null>(null);
   const [empresaId, setEmpresaId] = useState<string>('');
   const [painel, setPainel] = useState<Painel | null>(null);
+  const [emissoes, setEmissoes] = useState<Emissoes | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const tour = useTourPrimeiraVez();
   const [empresaCliente, setEmpresaCliente] = useState(false);
@@ -76,9 +77,11 @@ export default function Home() {
   useEffect(() => {
     if (!empresaId) return;
     setPainel(null);
+    setEmissoes(null);
     carregarPainel(empresaId)
       .then(setPainel)
       .catch((e: Error) => setErro(e.message));
+    buscarEmissoes(empresaId).then(setEmissoes).catch(() => undefined);
   }, [empresaId]);
 
   const base = `/empresas/${empresaId}`;
@@ -142,6 +145,9 @@ export default function Home() {
                       Gerar PGR em 3 minutos
                     </Link>
                   )}
+                  <Link href="/emitir" className="rounded-xl border border-white/40 px-5 py-3 font-semibold text-white transition hover:bg-white/10">
+                    Emitir documento
+                  </Link>
                   {empresaId && (
                     <Link href={base} className="rounded-xl border border-white/40 px-5 py-3 font-semibold text-white transition hover:bg-white/10">
                       Abrir cadastro da empresa
@@ -224,6 +230,8 @@ export default function Home() {
 
           {empresaId && <Indicadores empresaId={empresaId} />}
 
+          <ResumoEmissoes dados={emissoes} empresaId={empresaId} />
+
           <section className="mt-8">
             <h2 className="text-lg font-semibold">Acesso rápido</h2>
             <p className="text-sm text-text/60">Os módulos mais usados. Todos os outros ficam no menu da esquerda.</p>
@@ -250,6 +258,68 @@ export default function Home() {
 
       {tour.aberto && !semEmpresa && <Tour passos={passosTour} onFechar={tour.fechar} />}
     </main>
+  );
+}
+
+// Resumo de emissões: quantos documentos saíram, os últimos e quantos de cada tipo no mês.
+function ResumoEmissoes({ dados, empresaId }: { dados: Emissoes | null; empresaId: string }) {
+  if (!empresaId) return null;
+  const maior = Math.max(1, ...(dados?.porTipo.map((t) => t.quantidade) ?? [1]));
+  const mes = new Date().toLocaleDateString('pt-BR', { month: 'long' });
+  return (
+    <section className="mt-6 rounded-2xl border border-border bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icone nome="documento" className="h-4 w-4" /></span>
+          Documentos emitidos
+        </h2>
+        <div className="flex gap-2">
+          <Link href="/emitir" className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90">Emitir documento</Link>
+          <Link href={`/empresas/${empresaId}/arquivo`} className="rounded-xl border border-border px-4 py-2 text-sm font-semibold hover:border-primary">Ver todos</Link>
+        </div>
+      </div>
+      {!dados ? <Esqueleto linhas={2} /> : (
+        <div className="mt-4 grid gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 lg:col-span-1 lg:grid-cols-1">
+            <div className="rounded-xl bg-background p-4">
+              <p className="text-3xl font-bold text-primary">{dados.noMes}</p>
+              <p className="text-sm text-text/60">em {mes}</p>
+            </div>
+            <div className="rounded-xl bg-background p-4">
+              <p className="text-3xl font-bold text-text">{dados.total}</p>
+              <p className="text-sm text-text/60">desde o começo</p>
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-semibold">Por tipo, neste mês</p>
+            {dados.porTipo.length === 0 ? <p className="text-sm text-text/60">Nenhum documento neste mês ainda.</p> : (
+              <ul className="space-y-2 text-sm">
+                {dados.porTipo.slice(0, 6).map((t) => (
+                  <li key={t.nome}>
+                    <div className="flex justify-between"><span className="font-medium">{t.nome}</span><span className="text-text/60">{t.quantidade}</span></div>
+                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-background"><div className="h-full rounded-full bg-gradient-to-r from-primary to-[#168a7f]" style={{ width: `${(t.quantidade / maior) * 100}%` }} /></div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-semibold">Últimos emitidos</p>
+            {dados.ultimas.length === 0 ? <p className="text-sm text-text/60">Os PDFs que você gerar aparecem aqui, com a versão.</p> : (
+              <ul className="divide-y divide-border text-sm">
+                {dados.ultimas.map((a) => (
+                  <li key={a.id} className="flex items-center gap-2 py-2">
+                    <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-bold text-primary">{a.tipo}</span>
+                    <span className="min-w-0 flex-1 truncate" title={a.titulo}>{a.titulo}</span>
+                    <span className="shrink-0 text-xs text-text/50">v{a.versao} · {new Date(a.criadoEm).toLocaleDateString('pt-BR')}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

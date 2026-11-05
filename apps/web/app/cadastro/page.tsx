@@ -1,14 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Aviso, Botao, Campo } from '@/components/ui';
-import { cadastrar } from '@/lib/api';
+import { cadastrar, meuPlano } from '@/lib/api';
+import { PLANOS_SITE, reais, textoLimite } from '@/lib/planos';
 import { salvarToken, salvarUsuario } from '@/lib/sessao';
 
 export default function Cadastro() {
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  // Plano escolhido na página /planos (?plano=...). A conta começa no Free e o pedido vai para a equipe.
+  const [escolhido, setEscolhido] = useState<(typeof PLANOS_SITE)[number] | null>(null);
+  useEffect(() => {
+    const codigo = new URLSearchParams(window.location.search).get('plano');
+    const p = PLANOS_SITE.find((x) => x.codigo === codigo && x.precoMensal > 0);
+    if (p) setEscolhido(p);
+  }, []);
 
   async function enviar(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -24,6 +32,7 @@ export default function Cadastro() {
       });
       salvarToken(acesso.token);
       salvarUsuario(acesso.usuario);
+      if (escolhido) await meuPlano.pedir(escolhido.codigo).catch(() => undefined);
       window.location.href = '/empresas/nova';
     } catch (e) {
       setErro((e as Error).message);
@@ -39,6 +48,15 @@ export default function Cadastro() {
           <h1 className="text-2xl font-semibold text-primary">Crie sua conta grátis</h1>
           <p className="text-sm text-text/60">Plano Free: 1 empresa para começar, sem cartão.</p>
         </div>
+        {escolhido ? (
+          <p className="rounded-card border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+            Você escolheu o plano <strong>{escolhido.nome}</strong> ({reais(escolhido.precoMensal)} por mês, {textoLimite(escolhido.limiteEmpresas).toLowerCase()}).
+            Sua conta já começa a funcionar no Free e a equipe do Safety Nexo fala com você para ativar o {escolhido.nome}.
+          </p>
+        ) : null}
+        <p className="text-sm">
+          <Link href="/planos" className="font-semibold text-primary">Ver os planos e o que tem em cada um</Link>
+        </p>
         <Campo id="nomeConsultoria" name="nomeConsultoria" rotulo="Nome da sua consultoria" required placeholder="Ex.: Cleude Consultoria SST" />
         <Campo id="nome" name="nome" rotulo="Seu nome" required autoComplete="name" />
         <Campo id="email" name="email" type="email" rotulo="E-mail" required autoComplete="email" />
