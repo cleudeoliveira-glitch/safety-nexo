@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ConsultoriaId } from '../common/consultoria.decorator';
-import { CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
+import { CopiarDadosDto, CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 import { EmpresasService } from './empresas.service';
 import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
@@ -53,6 +53,11 @@ export class EmpresasController {
   @Get(':empresaId/ghes')
   listarGhes(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string) {
     return this.empresas.listarGhes(consultoriaId, empresaId);
+  }
+
+  @Post(':empresaId/copiar-de')
+  copiarDe(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Body() dto: CopiarDadosDto) {
+    return this.empresas.copiarDe(consultoriaId, empresaId, dto);
   }
 
   @Post(':empresaId/ghes')

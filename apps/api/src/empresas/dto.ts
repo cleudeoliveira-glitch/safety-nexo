@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsDateString, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
 
 export class CreateEmpresaDto {
   @IsString()
@@ -230,4 +230,11 @@ export class UpdateEmpresaDto {
   @IsString()
   @Length(2, 120)
   representanteLegalNome?: string;
+}
+
+export class CopiarDadosDto {
+  @IsString() origemId!: string;
+  // Vazio copia todos os GHEs da empresa de origem.
+  @IsOptional() @IsArray() @IsString({ each: true }) gheIds?: string[];
+  @IsOptional() @IsBoolean() responsaveis?: boolean;
 }

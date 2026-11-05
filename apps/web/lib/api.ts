@@ -114,6 +114,8 @@ export const carregarPainel = (empresaId: string) => chamar<Painel>('GET', `/emp
 export const buscarCnae = (codigo: string) => chamar<CnaeInfo>('GET', `/cnae/${encodeURIComponent(codigo)}`);
 
 export const listarGhes = (empresaId: string) => chamar<Ghe[]>('GET', `/empresas/${empresaId}/ghes`);
+export const copiarDadosDe = (empresaId: string, d: { origemId: string; gheIds?: string[]; responsaveis?: boolean }) =>
+  chamar<{ copiados: string[]; pulados: string[]; responsaveis: boolean }>('POST', `/empresas/${empresaId}/copiar-de`, d);
 export const criarGhe = (empresaId: string, dados: { nome: string; descricao?: string }) =>
   chamar<Ghe>('POST', `/empresas/${empresaId}/ghes`, dados);
 export const criarRisco = (empresaId: string, gheId: string, dados: Omit<Risco, 'id'>) =>
