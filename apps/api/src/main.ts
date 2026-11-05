@@ -10,7 +10,9 @@ async function bootstrap() {
   app.useBodyParser('json', { limit: '1mb' }); // o desenho da assinatura vem como imagem
   app.set('trust proxy', 1); // IP real de quem assina, atrás do servidor de hospedagem
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, exceptionFactory: errosEmPortugues }));
-  app.enableCors({ origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000' });
+  // WEB_ORIGIN aceita mais de um endereço separado por vírgula (o primeiro é o usado nos QR codes).
+  const origens = (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean);
+  app.enableCors({ origin: origens });
   await app.listen(process.env.PORT ?? 3001);
 }
 

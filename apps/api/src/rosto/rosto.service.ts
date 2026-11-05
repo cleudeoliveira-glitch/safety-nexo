@@ -11,7 +11,7 @@ import { configFacial, descritorValido, menorDistancia, TEXTO_CONSENTIMENTO } fr
 import { CadastrarRostoDto, CapturaDto, EntregaRostoDto } from './dto';
 import { comprovanteHtml } from './template';
 
-const WEB = () => process.env.WEB_ORIGIN ?? 'http://localhost:3000';
+const WEB = () => (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 type Origem = { ip: string | null; aparelho: string | null };
 

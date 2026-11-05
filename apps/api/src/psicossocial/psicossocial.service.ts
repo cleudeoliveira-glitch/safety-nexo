@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AcaoDto, CriarAvaliacaoDto, LevarPgrDto, ResponderDto } from './dto';
 import { questionario, QUESTIONARIOS, Questionario } from './questionarios';
 
-const WEB = () => process.env.WEB_ORIGIN ?? 'http://localhost:3000';
+const WEB = () => (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
 const TODOS = 'Empresa toda';
 
 // Resultado de um grupo de respostas em cada dimensão do questionário.

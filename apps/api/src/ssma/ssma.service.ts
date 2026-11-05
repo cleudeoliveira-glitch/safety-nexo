@@ -139,7 +139,7 @@ export class SsmaService {
     const ctx = await this.contexto.carregar(c, e, 'SSMA');
     const m = { titulo: 'Painel SSMA: indicadores de segurança e saúde', logoEmpresa: ctx.logoEmpresa, consultoria: ctx.consultoria, aviso: 'Documento gerado pelo Safety Nexo com os dados registrados no sistema.',
       infos: [['Empresa', ctx.empresa.razaoSocial], ['CNPJ', ctx.empresa.cnpj], ['Período', `${d.serie[0].mes.split('-').reverse().join('/')} a ${d.filtro.fim.split('-').reverse().join('/')}`], ['Setor', d.filtro.setor ?? 'Todos']] as [string, string][] };
-    const url = `${process.env.WEB_ORIGIN ?? 'http://localhost:3000'}/empresas/${e}/ssma`;
+    const url = `${(process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '')}/empresas/${e}/ssma`;
     return this.pdf.render(painelSsmaHtml({ ...m, qr: await QRCode.toDataURL(url, { margin: 0, width: 160 }) }, d));
   }
 }

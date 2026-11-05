@@ -16,7 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AssinarDto, CriarPedidoDto } from './dto';
 import { folhaHtml, mascararCpf } from './folha';
 
-const WEB = () => process.env.WEB_ORIGIN ?? 'http://localhost:3000';
+const WEB = () => (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
 const sha256 = (b: Buffer) => createHash('sha256').update(b).digest('hex');
 const digitos = (v?: string | null) => (v ?? '').replace(/\D/g, '');
 // Código curto para digitar, sem letras que se confundem (0/O, 1/I).
