@@ -68,4 +68,8 @@ export const TIPOS_PT = {
 export type TipoPt = keyof typeof TIPOS_PT;
 export const ehTipoPt = (tipo: string): tipo is TipoPt => tipo in TIPOS_PT;
 
-export { TEMAS_DDS } from './temas-dds';
+import { TEMAS_DDS as TEMAS_BASE } from './temas-dds';
+import { VIVENCIAS_DDS } from './vivencias-dds';
+
+// Cada tema sai com o texto para falar, a pergunta, uma situação para contar e a dinâmica vivencial.
+export const TEMAS_DDS = TEMAS_BASE.map((t) => ({ ...t, situacao: VIVENCIAS_DDS[t.tema]?.situacao ?? '', dinamica: VIVENCIAS_DDS[t.tema]?.dinamica ?? '' }));

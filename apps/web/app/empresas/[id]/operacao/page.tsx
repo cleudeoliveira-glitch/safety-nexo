@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
 import { guardarCaptura } from '@/lib/rosto-offline';
 import { EscolherPessoas } from '@/components/EscolherPessoas';
+import { RoteiroDds, textoDoRoteiro } from '@/components/RoteiroDds';
 import { EscolherFoto } from '@/components/Foto';
 import { AbaChecklist } from '@/components/Inspecoes';
 import { ehEmpresa } from '@/lib/sessao';
@@ -298,12 +299,20 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
     (t) => (!categoria || t.categoria === categoria) && (!busca.trim() || semAcento(`${t.tema} ${t.conteudo}`).includes(semAcento(busca.trim()))),
   );
 
-  // O texto pronto vem com a pergunta para abrir a conversa (DDS vivencial).
+  // O texto pronto vem com o caso para contar, a dinâmica vivencial e a pergunta para a equipe.
   function escolherTema(nome: string) {
     setTema(nome);
     const pronto = conteudo.temasDds.find((t) => t.tema === nome);
-    if (pronto) setTexto(`${pronto.conteudo}\n\nPara conversar com a equipe: ${pronto.pergunta}`);
+    if (pronto) setTexto(textoDoRoteiro(pronto));
   }
+  const escolhido = conteudo.temasDds.find((t) => t.tema === tema);
+
+  // Vindo da Biblioteca de DDS (?tema=...), o tema já abre escolhido.
+  useEffect(() => {
+    const pedido = new URLSearchParams(window.location.search).get('tema');
+    if (pedido) escolherTema(pedido);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function salvar(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
@@ -340,7 +349,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
             </Selecao>
             <Campo id="dds-busca" rotulo="Procurar tema" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Ex.: forno, escada, extintor" />
             <Selecao id="dds-pronto" rotulo="Tema pronto" value={conteudo.temasDds.some((t) => t.tema === tema) ? tema : ''} onChange={(e) => escolherTema(e.target.value)}
-              ajuda={{ oQueE: 'Conversa curta de segurança no início do turno. Cada tema traz o texto e uma pergunta para a equipe participar. Os marcados com ✓ já foram feitos nesta empresa.' }}>
+              ajuda={{ oQueE: 'Conversa curta de segurança no início do turno. Cada tema traz um caso para contar, o texto, uma dinâmica vivencial de 3 minutos e uma pergunta para a equipe. Os marcados com ✓ já foram feitos nesta empresa.' }}>
               <option value="">Escolher da biblioteca ({filtrados.length} de {conteudo.temasDds.length} temas)</option>
               {categorias.filter((c) => filtrados.some((t) => t.categoria === c)).map((c) => (
                 <optgroup key={c} label={c}>
@@ -350,9 +359,20 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
             </Selecao>
             <Campo id="dds-tema" rotulo="Tema" required value={tema} onChange={(e) => setTema(e.target.value)} placeholder="Ou escreva um tema" />
           </div>
+          <p className="text-sm text-text/70">
+            Quer ver os temas com calma, no celular?{' '}
+            <Link href="/dds" className="font-semibold text-primary hover:underline">Abra a Biblioteca de DDS</Link>: cada tema tem um caso para contar, o que falar, uma dinâmica vivencial e a pergunta para a equipe.
+          </p>
+          {escolhido && (
+            <details open className="rounded-card border border-border bg-background p-4">
+              <summary className="cursor-pointer font-semibold text-primary">Roteiro do DDS: {escolhido.tema}</summary>
+              <div className="mt-3"><RoteiroDds tema={escolhido} compacto /></div>
+            </details>
+          )}
           <div>
-            <label htmlFor="dds-texto" className="mb-1.5 block text-sm font-semibold">O que falar</label>
-            <textarea id="dds-texto" className={caixaTexto} rows={5} required value={texto} onChange={(e) => setTexto(e.target.value)} />
+            <label htmlFor="dds-texto" className="mb-1.5 block text-sm font-semibold">O que foi falado (vai para a lista de presença)</label>
+            <textarea id="dds-texto" className={caixaTexto} rows={8} required value={texto} onChange={(e) => setTexto(e.target.value)} />
+            <p className="mt-1 text-xs text-text/60">Já vem preenchido com o roteiro do tema. Você pode mudar o que quiser.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             <Campo id="dds-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />

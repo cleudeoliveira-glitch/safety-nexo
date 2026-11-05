@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { CampoAjuda } from '@/components/CampoAjuda';
-import { Painel as PainelLateral } from '@/components/Dicionario';
+import { ABRIR_AJUDA } from '@/components/AjudaDaTela';
 import { Icone, NomeIcone } from '@/components/Icone';
 import { PassoTour, Tour, useTourPrimeiraVez } from '@/components/Tour';
-import { buscarEmissoes, carregarPainel, Emissoes, Empresa, Painel } from '@/lib/api';
+import { buscarEmissoes, carregarPainel, Emissoes, Empresa, Painel, PainelSsma, ssma } from '@/lib/api';
 import { aoMudarFoco, empresasDaConta, escolherFoco, salvarFoco } from '@/lib/empresaFoco';
 import { ehEmpresa, lerToken, lerUsuario } from '@/lib/sessao';
 
@@ -15,16 +15,9 @@ const passosTour: PassoTour[] = [
   { alvo: 'hoje', titulo: 'O que fazer hoje', texto: 'Aqui aparece o que falta para os documentos ficarem completos e o que está vencendo.' },
   { alvo: 'saude', titulo: 'Saúde da Empresa', texto: 'Mostra quanto da empresa já está preenchido. A meta é 100%.' },
   { alvo: 'gerar', titulo: 'Gere o documento', texto: 'Com os dados completos, o PGR sai em PDF com a logo da empresa cliente.' },
-  { alvo: 'ajuda', titulo: 'Ajuda sempre à mão', texto: 'Use "Como usar?" para o passo a passo desta tela. O Dicionário SST fica no fim do menu.' },
+  { alvo: 'ajuda', titulo: 'Ajuda sempre à mão', texto: 'Toda tela tem o botão "Como usar esta tela?" no canto de baixo. A Central de ajuda e o Dicionário SST ficam no fim do menu.' },
 ];
 
-const comoUsar = [
-  'Escolha a empresa no alto do menu da esquerda. No celular, o menu abre pelo botão ☰.',
-  'Veja em "O que fazer hoje" o que falta. Cada item diz o próximo passo.',
-  'Complete os dados da empresa, cadastre os GHEs, os riscos e os colaboradores.',
-  'Quando a Saúde da Empresa chegar a 100%, gere o PGR e depois o PCMSO.',
-  'Todos os outros módulos (DDS, APR, CIPA, treinamentos, eSocial e mais) ficam no menu.',
-];
 
 const tonsPorNivel = {
   vencido: { ponto: 'bg-danger', selo: 'bg-danger/10 text-danger', rotulo: 'Vencido' },
@@ -33,17 +26,17 @@ const tonsPorNivel = {
 } as const;
 
 // Atalhos do painel: os módulos mais usados no dia a dia.
-const atalhos: { nome: string; texto: string; icone: NomeIcone; rota: string; soConsultoria?: boolean }[] = [
+const atalhos: { nome: string; texto: string; icone: NomeIcone; rota: string; soConsultoria?: boolean; geral?: boolean }[] = [
   { nome: 'PGR e PCMSO', texto: 'Gerar programas e laudos', icone: 'documento', rota: '#documentos', soConsultoria: true },
   { nome: 'Colaboradores', texto: 'ASO, EPI e ordem de serviço', icone: 'pessoas', rota: '#colaboradores' },
-  { nome: 'DDS', texto: '150 temas prontos', icone: 'fala', rota: '/operacao#dds' },
+  { nome: 'DDS', texto: '150 temas com dinâmica', icone: 'fala', rota: '/dds', geral: true },
   { nome: 'APR e PT', texto: 'Análise de risco e permissões', icone: 'escudo', rota: '/operacao#apr' },
   { nome: 'Treinamentos', texto: '28 NRs com certificado', icone: 'formatura', rota: '/treinamentos' },
   { nome: 'CIPA', texto: 'Dimensionamento e eleição', icone: 'votar', rota: '/cipa', soConsultoria: true },
   { nome: 'EPI', texto: 'Almoxarifado e entregas', icone: 'caixa', rota: '/almoxarifado' },
   { nome: 'eSocial', texto: 'S-2210, S-2220, S-2240', icone: 'nuvem', rota: '/esocial', soConsultoria: true },
   { nome: 'Emergência', texto: 'Brigada, AVCB e extintores', icone: 'fogo', rota: '/emergencia' },
-  { nome: 'Indicadores', texto: 'Painel SSMA', icone: 'grafico', rota: '/ssma' },
+  { nome: 'Indicadores', texto: 'Dashboard completo', icone: 'grafico', rota: '/ssma' },
 ];
 
 export default function Home() {
@@ -52,7 +45,6 @@ export default function Home() {
   const [painel, setPainel] = useState<Painel | null>(null);
   const [emissoes, setEmissoes] = useState<Emissoes | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [comoUsarAberto, setComoUsarAberto] = useState(false);
   const tour = useTourPrimeiraVez();
   const [empresaCliente, setEmpresaCliente] = useState(false);
   const [nome, setNome] = useState('');
@@ -108,7 +100,7 @@ export default function Home() {
           {nome ? `, ${nome}` : ''}! Que bom te ver por aqui.
         </p>
         <div className="flex gap-2">
-          <button type="button" onClick={() => setComoUsarAberto(true)} className="flex items-center gap-1.5 rounded-full border border-border bg-white px-3.5 py-1.5 text-sm font-medium text-text/80 shadow-sm hover:border-primary hover:text-primary">
+          <button type="button" onClick={() => window.dispatchEvent(new Event(ABRIR_AJUDA))} className="flex items-center gap-1.5 rounded-full border border-border bg-white px-3.5 py-1.5 text-sm font-medium text-text/80 shadow-sm hover:border-primary hover:text-primary">
             <Icone nome="interrogacao" className="h-4 w-4" /> Como usar?
           </button>
           <button type="button" onClick={tour.abrir} className="rounded-full border border-border bg-white px-3.5 py-1.5 text-sm font-medium text-text/80 shadow-sm hover:border-primary hover:text-primary">
@@ -236,6 +228,8 @@ export default function Home() {
             </div>
           </section>
 
+          {empresaId && <Indicadores empresaId={empresaId} />}
+
           <ResumoEmissoes dados={emissoes} empresaId={empresaId} />
 
           <section className="mt-8">
@@ -247,7 +241,7 @@ export default function Home() {
                 .map((a) => (
                   <Link
                     key={a.nome}
-                    href={empresaId ? `${base}${a.rota}` : '/empresas/nova'}
+                    href={a.geral ? a.rota : empresaId ? `${base}${a.rota}` : '/empresas/nova'}
                     className="group rounded-2xl border border-border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
                   >
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#168a7f] text-white shadow-sm">
@@ -262,15 +256,6 @@ export default function Home() {
         </>
       )}
 
-      {comoUsarAberto && (
-        <PainelLateral titulo="Como usar esta tela" onFechar={() => setComoUsarAberto(false)}>
-          <ol className="list-decimal space-y-3 pl-5 text-sm">
-            {comoUsar.map((passo) => (
-              <li key={passo}>{passo}</li>
-            ))}
-          </ol>
-        </PainelLateral>
-      )}
       {tour.aberto && !semEmpresa && <Tour passos={passosTour} onFechar={tour.fechar} />}
     </main>
   );
@@ -384,6 +369,75 @@ function BoasVindas({ cliente }: { cliente: boolean }) {
             <Icone nome="mais" /> Cadastrar a primeira empresa
           </Link>
           <p className="mt-3 text-sm text-white/70">Depois disso, todos os módulos do menu ficam liberados para ela.</p>
+        </>
+      )}
+    </section>
+  );
+}
+
+// Dashboard da empresa: os números de segurança de hoje e os acidentes dos últimos 12 meses.
+function Indicadores({ empresaId }: { empresaId: string }) {
+  const [dados, setDados] = useState<PainelSsma | null>(null);
+  const [falhou, setFalhou] = useState(false);
+  useEffect(() => {
+    setDados(null);
+    setFalhou(false);
+    ssma.montar(empresaId, {}).then(setDados).catch(() => setFalhou(true));
+  }, [empresaId]);
+
+  const cor = (p: number | null) => (p == null ? 'bg-border' : p >= 90 ? 'bg-success' : p >= 70 ? 'bg-warning' : 'bg-danger');
+  const maior = Math.max(1, ...(dados?.serie.map((m) => m.acidentes) ?? [0]));
+  const nomeMes = (m: string) => new Date(`${m}-15T12:00:00`).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+
+  return (
+    <section className="mt-6 rounded-2xl border border-border bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/10 text-success"><Icone nome="grafico" className="h-4 w-4" /></span>
+          Indicadores da empresa
+        </h2>
+        <Link href={`/empresas/${empresaId}/ssma`} className="text-sm font-semibold text-primary hover:underline">Ver dashboard completo →</Link>
+      </div>
+      {falhou && <p className="mt-4 text-sm text-text/60">Não consegui carregar os indicadores agora. Tente abrir o dashboard completo.</p>}
+      {!dados && !falhou && <Esqueleto linhas={2} />}
+      {dados && (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {dados.emDia.slice(0, 4).map((x) => (
+              <div key={x.item} className="rounded-xl bg-background p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-text/50">{x.item}</p>
+                <p className="mt-1 text-2xl font-bold">{x.pct == null ? '—' : `${x.pct}%`}</p>
+                <div className="mt-2 h-1.5 rounded-full bg-border">
+                  <div className={`h-1.5 rounded-full ${cor(x.pct)}`} style={{ width: `${x.pct ?? 0}%` }} />
+                </div>
+                <p className="mt-1.5 text-xs text-text/60">{x.de ? `${x.ok} de ${x.de} em dia` : 'Sem registros ainda'}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-[1fr_220px]">
+            <div>
+              <p className="text-sm font-semibold">Acidentes nos últimos 12 meses</p>
+              <div className="mt-3 flex h-24 items-end gap-1.5" aria-label="Acidentes por mês">
+                {dados.serie.map((m) => (
+                  <div key={m.mes} className="flex flex-1 flex-col items-center gap-1" title={`${nomeMes(m.mes)}: ${m.acidentes} acidente(s)`}>
+                    <span className="text-[10px] text-text/60">{m.acidentes || ''}</span>
+                    <div className={`w-full rounded-t ${m.acidentes ? 'bg-danger/80' : 'bg-success/30'}`} style={{ height: `${Math.max(4, (m.acidentes / maior) * 64)}px` }} />
+                    <span className="text-[10px] text-text/50">{nomeMes(m.mes)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-1">
+              <div className="rounded-xl bg-background p-3">
+                <p className="text-xs text-text/60">Acidentes este mês</p>
+                <p className="text-xl font-bold">{dados.atual.acidentes}</p>
+              </div>
+              <div className="rounded-xl bg-background p-3">
+                <p className="text-xs text-text/60">Dias perdidos este mês</p>
+                <p className="text-xl font-bold">{dados.atual.diasPerdidos}</p>
+              </div>
+            </div>
+          </div>
         </>
       )}
     </section>

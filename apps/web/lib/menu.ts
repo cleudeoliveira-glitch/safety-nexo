@@ -16,7 +16,8 @@ export const MENU: GrupoMenu[] = [
   {
     titulo: 'Início',
     itens: [
-      { nome: 'Painel', icone: 'casa', rota: '/', geral: true },
+      { nome: 'Painel (dashboard)', icone: 'casa', rota: '/', geral: true },
+      { nome: 'Dashboard de indicadores', icone: 'grafico', rota: '/ssma' },
       { nome: 'Emitir documento', icone: 'documento', rota: '/emitir', geral: true },
       { nome: 'Visão geral das empresas', icone: 'grade', rota: '/geral', geral: true, soConsultoria: true },
       { nome: 'Comercial', icone: 'cifrao', rota: '/comercial', geral: true, soConsultoria: true },
@@ -59,7 +60,8 @@ export const MENU: GrupoMenu[] = [
     itens: [
       { nome: 'APR (análise de risco)', icone: 'escudo', rota: '/operacao#apr' },
       { nome: 'Permissão de trabalho', icone: 'chave', rota: '/operacao#pt' },
-      { nome: 'DDS', icone: 'fala', rota: '/operacao#dds' },
+      { nome: 'DDS (registrar)', icone: 'fala', rota: '/operacao#dds' },
+      { nome: 'Biblioteca de DDS (150 temas)', icone: 'livro', rota: '/dds', geral: true },
       { nome: 'Checklists de NRs', icone: 'lista', rota: '/operacao#checklist' },
       { nome: 'Almoxarifado de EPI', icone: 'caixa', rota: '/almoxarifado' },
       { nome: 'Campo (sem internet)', icone: 'sinal', rota: '/campo', geral: true },
@@ -81,7 +83,6 @@ export const MENU: GrupoMenu[] = [
     itens: [
       { nome: 'eSocial', icone: 'nuvem', rota: '/esocial', soConsultoria: true },
       { nome: 'eSocial de todas e multas', icone: 'nuvem', rota: '/esocial-geral', geral: true, soConsultoria: true },
-      { nome: 'Painel SSMA (indicadores)', icone: 'grafico', rota: '/ssma' },
       { nome: 'FAP e RAT', icone: 'porcento', rota: '/fap', soConsultoria: true },
       { nome: 'Terceirizadas', icone: 'aperto', rota: '/conectores#terceiros' },
       { nome: 'Atestados e faltas', icone: 'relogio', rota: '/conectores#faltas' },
