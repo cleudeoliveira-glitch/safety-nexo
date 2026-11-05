@@ -69,6 +69,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   const [acessos, setAcessos] = useState<AcessoEmpresa[]>([]);
   const [anexos, setAnexos] = useState<AnexosLaudo | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
+  useEffect(() => { const t = new URLSearchParams(window.location.search).get('aviso'); if (t) setAviso({ tipo: 'erro', texto: t }); }, []);
 
   const recarregar = useCallback(async () => {
     try {

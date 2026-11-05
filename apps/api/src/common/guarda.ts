@@ -9,7 +9,9 @@ const CHAVE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BUCKET = process.env.SUPABASE_BUCKET ?? 'safety-nexo';
 export const guardaNaNuvem = !!(URL_SB && CHAVE);
 
-const cabecalho = () => ({ Authorization: `Bearer ${CHAVE}`, apikey: CHAVE! });
+// Chave antiga (JWT "eyJ..."): vai também no Authorization. Chave nova (sb_secret_...): só no apikey,
+// porque o Supabase recusa no Authorization o que não é JWT.
+const cabecalho = (): Record<string, string> => (CHAVE!.startsWith('eyJ') ? { Authorization: `Bearer ${CHAVE}`, apikey: CHAVE! } : { apikey: CHAVE! });
 const urlObjeto = (caminho: string) => `${URL_SB}/storage/v1/object/${BUCKET}/${caminho.split('/').map(encodeURIComponent).join('/')}`;
 
 let bucketPronto: Promise<void> | null = null;

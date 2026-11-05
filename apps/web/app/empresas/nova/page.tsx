@@ -41,8 +41,10 @@ export default function NovaEmpresa() {
         numFuncionarios: Number(dados.get('numFuncionarios') || 0),
       });
       const logo = dados.get('logo');
-      if (logo instanceof File && logo.size > 0) await enviarLogoEmpresa(empresa.id, logo);
-      router.push(`/empresas/${empresa.id}`);
+      // A empresa já foi criada: se só a logo falhar, segue para a empresa e avisa (dá para enviar a logo depois).
+      let aviso = '';
+      if (logo instanceof File && logo.size > 0) await enviarLogoEmpresa(empresa.id, logo).catch((e: Error) => { aviso = `?aviso=${encodeURIComponent(`Empresa cadastrada, mas a logo não foi enviada: ${e.message} Envie de novo na página da empresa.`)}`; });
+      router.push(`/empresas/${empresa.id}${aviso}`);
     } catch (e) {
       setErro((e as Error).message);
       setSalvando(false);
