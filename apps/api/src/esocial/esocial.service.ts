@@ -4,7 +4,9 @@ import { abrirCertificado } from './certificado';
 import { cifrar, decifrar } from './cifra';
 import { assinarEvento } from './assinatura';
 import { Ambiente, AMBIENTES, gerarIdEvento, MAX_EVENTOS_POR_LOTE } from './configuracao';
-import { Identificacao, montarS2210, montarS2220, montarS2230, montarS2240, soDocumento } from './eventos';
+import { Identificacao, montarS2210, montarS2220, montarS2221, montarS2230, montarS2240, montarS3000, soDocumento } from './eventos';
+import { ToxicologicoDto } from './dto';
+import { Faltas, INICIO_SST, multaDiagnostico, MULTA_S2220, MULTA_S2240, multaS2210, NOTA_DIAGNOSTICO } from './diagnostico';
 import { consultarLote, enviarLote, montarLote } from './transmissao';
 
 @Injectable()
@@ -83,6 +85,7 @@ export class EsocialService {
       this.prisma.eventoEsocial.findMany({ where: { empresaId }, orderBy: { createdAt: 'desc' }, select: { tipo: true, referenciaId: true, status: true, recibo: true } }),
     ]);
     const afastamentos = await this.prisma.afastamento.findMany({ where: { empresaId }, orderBy: { inicio: 'desc' }, include: { colaborador: { select: { nome: true } } } });
+    const toxicologicos = await this.prisma.toxicologico.findMany({ where: { empresaId }, orderBy: { dataExame: 'desc' }, include: { colaborador: { select: { nome: true } } } });
     const ultimo = (tipo: string, ref: string) => eventos.find((e) => e.tipo === tipo && e.referenciaId === ref) ?? null;
     return {
       empresa: {
@@ -97,13 +100,14 @@ export class EsocialService {
       })),
       cats: cats.map(({ colaborador, ...c }) => ({ ...c, colaborador: colaborador.nome, s2210: ultimo('S-2210', c.id) })),
       afastamentos: afastamentos.map(({ colaborador, ...a }) => ({ ...a, colaborador: colaborador.nome, inicioEvento: ultimo('S-2230', a.id), fimEvento: ultimo('S-2230', `${a.id}:fim`) })),
+      toxicologicos: toxicologicos.map(({ colaborador, ...t }) => ({ ...t, colaborador: colaborador.nome, s2221: ultimo('S-2221', t.id) })),
     };
   }
 
   // ---------- geração dos eventos ----------
   // Monta, confere o que falta, assina e põe na fila. Um evento ainda não enviado da mesma origem é substituído.
   private async enfileirar(
-    consultoriaId: string, empresaId: string, tipo: 'S-2210' | 'S-2220' | 'S-2230' | 'S-2240', referenciaId: string, descricao: string, retificar: boolean,
+    consultoriaId: string, empresaId: string, tipo: 'S-2210' | 'S-2220' | 'S-2221' | 'S-2230' | 'S-2240' | 'S-3000', referenciaId: string, descricao: string, retificar: boolean,
     montar: (id: Identificacao) => { xml: string; pendencias: string[] },
   ) {
     const empresa = await this.empresa(consultoriaId, empresaId);
@@ -176,6 +180,61 @@ export class EsocialService {
       (id) => montarS2230(id, empresa, af.colaborador, af, fase, anteriores));
   }
 
+  // ---------- S-2221: exame toxicológico ----------
+  async registrarToxicologico(consultoriaId: string, empresaId: string, d: ToxicologicoDto) {
+    await this.empresa(consultoriaId, empresaId);
+    const col = await this.prisma.colaborador.findFirst({ where: { id: d.colaboradorId, empresaId } });
+    if (!col) throw new NotFoundException('Colaborador não encontrado');
+    return this.prisma.toxicologico.create({
+      data: {
+        empresaId, colaboradorId: col.id, dataExame: new Date(d.dataExame.slice(0, 10)), cnpjLaboratorio: d.cnpjLaboratorio.replace(/\D/g, ''),
+        codigoExame: d.codigoExame.toUpperCase().replace(/[^A-Z0-9]/g, ''), medicoNome: d.medicoNome.trim(), medicoCrm: d.medicoCrm?.trim() || null, medicoUf: d.medicoUf?.trim().toUpperCase() || null,
+      },
+    });
+  }
+
+  async removerToxicologico(consultoriaId: string, empresaId: string, id: string) {
+    await this.empresa(consultoriaId, empresaId);
+    const enviado = await this.prisma.eventoEsocial.findFirst({ where: { empresaId, tipo: 'S-2221', referenciaId: id, status: { in: ['ENVIADO', 'PROCESSADO'] } } });
+    if (enviado) throw new BadRequestException('Este exame já foi enviado ao eSocial. Para tirar, exclua o evento no eSocial (S-3000).');
+    const { count } = await this.prisma.toxicologico.deleteMany({ where: { id, empresaId } });
+    if (!count) throw new NotFoundException('Exame não encontrado');
+    return { ok: true };
+  }
+
+  async gerarS2221(consultoriaId: string, empresaId: string, toxicologicoId: string, retificar = false) {
+    const t = await this.prisma.toxicologico.findFirst({ where: { id: toxicologicoId, empresaId, empresa: { consultoriaId } }, include: { colaborador: true } });
+    if (!t) throw new NotFoundException('Exame toxicológico não encontrado');
+    const empresa = await this.empresa(consultoriaId, empresaId);
+    const quando = t.dataExame.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    return this.enfileirar(consultoriaId, empresaId, 'S-2221', t.id, `Toxicológico de ${t.colaborador.nome} (${quando})`, retificar,
+      (id) => montarS2221(id, empresa, t.colaborador, t));
+  }
+
+  // ---------- S-3000: excluir um evento aceito ----------
+  async gerarS3000(consultoriaId: string, empresaId: string, eventoId: string) {
+    const empresa = await this.empresa(consultoriaId, empresaId);
+    const ev = await this.prisma.eventoEsocial.findFirst({ where: { id: eventoId, empresaId } });
+    if (!ev) throw new NotFoundException('Evento não encontrado');
+    if (ev.tipo === 'S-3000') throw new BadRequestException('Não dá para excluir uma exclusão.');
+    if (ev.status !== 'PROCESSADO' || !ev.recibo) throw new BadRequestException('Só dá para excluir evento aceito pelo governo (com recibo). Evento pendente ou com erro pode ser apagado gerando de novo.');
+    const cpf = await this.cpfDoEvento(ev.tipo, ev.referenciaId, empresaId);
+    return this.enfileirar(consultoriaId, empresaId, 'S-3000', ev.id, `Exclusão do ${ev.tipo}: ${ev.descricao}`, false,
+      (id) => montarS3000(id, empresa, ev.tipo, ev.recibo!, cpf));
+  }
+
+  // CPF do trabalhador do evento original (a origem é ASO, colaborador, CAT, afastamento ou toxicológico).
+  private async cpfDoEvento(tipo: string, referenciaId: string, empresaId: string) {
+    const ref = referenciaId.split(':')[0];
+    const sel = { select: { colaborador: { select: { cpf: true } } } } as const;
+    if (tipo === 'S-2240') return (await this.prisma.colaborador.findFirst({ where: { id: ref, empresaId }, select: { cpf: true } }))?.cpf ?? null;
+    if (tipo === 'S-2220') return (await this.prisma.aso.findFirst({ where: { id: ref }, ...sel }))?.colaborador.cpf ?? null;
+    if (tipo === 'S-2210') return (await this.prisma.cat.findFirst({ where: { id: ref, empresaId }, ...sel }))?.colaborador.cpf ?? null;
+    if (tipo === 'S-2230') return (await this.prisma.afastamento.findFirst({ where: { id: ref, empresaId }, ...sel }))?.colaborador.cpf ?? null;
+    if (tipo === 'S-2221') return (await this.prisma.toxicologico.findFirst({ where: { id: ref, empresaId }, ...sel }))?.colaborador.cpf ?? null;
+    return null;
+  }
+
   // Envia os eventos pendentes da empresa em lotes de até 50 e guarda o protocolo.
   async enviarPendentes(consultoriaId: string, empresaId: string) {
     const empresa = await this.empresa(consultoriaId, empresaId);
@@ -202,6 +261,77 @@ export class EsocialService {
     return resultados;
   }
 
+  // ---------- todas as empresas de uma vez ----------
+  // Situação dos eventos de cada empresa, para a tela geral do eSocial.
+  async resumoGeral(consultoriaId: string) {
+    const empresas = await this.prisma.empresa.findMany({ where: { consultoriaId }, orderBy: { razaoSocial: 'asc' }, select: { id: true, razaoSocial: true, cnpj: true, esocialAmbiente: true } });
+    const grupos = await this.prisma.eventoEsocial.groupBy({ by: ['empresaId', 'status'], where: { empresa: { consultoriaId } }, _count: { _all: true } });
+    return empresas.map((e) => {
+      const n = (st: string) => grupos.find((g) => g.empresaId === e.id && g.status === st)?._count._all ?? 0;
+      return { ...e, pendentes: n('PENDENTE'), enviados: n('ENVIADO'), aceitos: n('PROCESSADO'), erros: n('ERRO'), excluidos: n('EXCLUIDO') };
+    });
+  }
+
+  // Diagnóstico: o que falta enviar em cada empresa e a multa estimada (só olha o que está cadastrado no Safety Nexo).
+  async diagnostico(consultoriaId: string) {
+    const empresas = await this.prisma.empresa.findMany({
+      where: { consultoriaId }, orderBy: { razaoSocial: 'asc' },
+      select: {
+        id: true, razaoSocial: true, cnpj: true,
+        colaboradores: { select: { id: true, nome: true, cpf: true, matricula: true, codCateg: true, asos: { where: { dataExame: { gte: INICIO_SST } }, select: { id: true } } } },
+        cats: { select: { id: true } },
+        afastamentos: { where: { motivo: { in: ['01', '03'] } }, select: { id: true } },
+        eventosEsocial: { select: { tipo: true, referenciaId: true, status: true } },
+      },
+    });
+    const lista = empresas.map((e) => {
+      const aceitos = new Set(e.eventosEsocial.filter((x) => x.status === 'PROCESSADO' || x.status === 'ENVIADO').map((x) => `${x.tipo}|${x.referenciaId}`));
+      const tem = (tipo: string, ref: string) => aceitos.has(`${tipo}|${ref}`);
+      const semS2240 = e.colaboradores.filter((c) => !tem('S-2240', c.id));
+      const asosSemS2220 = e.colaboradores.flatMap((c) => c.asos.filter((a) => !tem('S-2220', a.id)));
+      const faltas: Faltas = {
+        s2240: semS2240.length,
+        s2220: asosSemS2220.length,
+        s2210: e.cats.filter((c) => !tem('S-2210', c.id)).length,
+        s2230: e.afastamentos.filter((a) => !tem('S-2230', a.id)).length,
+        cadastros: e.colaboradores.filter((c) => !c.cpf || (!c.matricula && !c.codCateg)).length,
+        erros: e.eventosEsocial.filter((x) => x.status === 'ERRO').length,
+      };
+      return { empresaId: e.id, razaoSocial: e.razaoSocial, cnpj: e.cnpj, trabalhadores: e.colaboradores.length, faltas, multa: multaDiagnostico(faltas) };
+    });
+    const total = lista.reduce((t, x) => ({ minimo: t.minimo + x.multa.minimo, maximo: t.maximo + x.multa.maximo }), { minimo: 0, maximo: 0 });
+    return { empresas: lista, total, valores: { s2220: MULTA_S2220, s2240: MULTA_S2240, s2210: multaS2210() }, nota: NOTA_DIAGNOSTICO };
+  }
+
+  // Envia os pendentes de todas as empresas com o certificado da consultoria. Uma empresa com problema não para as outras.
+  async enviarTodas(consultoriaId: string) {
+    await this.credencial(consultoriaId);
+    const empresas = await this.prisma.empresa.findMany({ where: { consultoriaId, eventosEsocial: { some: { status: { in: ['PENDENTE', 'ERRO'] }, protocolo: null } } }, select: { id: true, razaoSocial: true } });
+    if (!empresas.length) throw new BadRequestException('Nenhuma empresa tem eventos pendentes para enviar.');
+    const resultado = [];
+    for (const e of empresas) {
+      try {
+        const r = await this.enviarPendentes(consultoriaId, e.id);
+        resultado.push({ empresa: e.razaoSocial, ok: r.every((x) => x.cdResposta === '201'), eventos: r.reduce((s, x) => s + x.eventos, 0), mensagem: r.map((x) => x.descResposta).filter(Boolean).join('; ') });
+      } catch (err) {
+        resultado.push({ empresa: e.razaoSocial, ok: false, eventos: 0, mensagem: (err as Error).message });
+      }
+    }
+    return resultado;
+  }
+
+  async consultarTodas(consultoriaId: string) {
+    await this.credencial(consultoriaId);
+    const empresas = await this.prisma.empresa.findMany({ where: { consultoriaId, eventosEsocial: { some: { status: 'ENVIADO', protocolo: { not: null } } } }, select: { id: true, razaoSocial: true } });
+    if (!empresas.length) throw new BadRequestException('Nenhuma empresa tem envios aguardando a resposta do governo.');
+    const resultado = [];
+    for (const e of empresas) {
+      try { const r = await this.consultarEnviados(consultoriaId, e.id); resultado.push({ empresa: e.razaoSocial, ok: true, atualizados: r.atualizados, mensagem: '' }); }
+      catch (err) { resultado.push({ empresa: e.razaoSocial, ok: false, atualizados: 0, mensagem: (err as Error).message }); }
+    }
+    return resultado;
+  }
+
   // Consulta os lotes enviados e grava recibo (aceito) ou ocorrências (rejeitado) em cada evento.
   async consultarEnviados(consultoriaId: string, empresaId: string) {
     await this.empresa(consultoriaId, empresaId);
@@ -222,6 +352,8 @@ export class EsocialService {
           data: ok ? { status: 'PROCESSADO', recibo: ev.recibo, mensagens: ev.ocorrencias } : { status: 'ERRO', protocolo: null, mensagens: [{ codigo: ev.cdResposta, descricao: ev.descResposta }, ...ev.ocorrencias] },
         });
         if (ok && alvo.tipo === 'S-2210') await this.prisma.cat.updateMany({ where: { id: alvo.referenciaId }, data: { recibo: ev.recibo, enviadaEm: new Date() } });
+        // Exclusão aceita: o evento original deixa de valer no eSocial.
+        if (ok && alvo.tipo === 'S-3000') await this.prisma.eventoEsocial.updateMany({ where: { id: alvo.referenciaId }, data: { status: 'EXCLUIDO' } });
         atualizados++;
       }
     }

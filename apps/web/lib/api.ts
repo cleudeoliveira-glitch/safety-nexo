@@ -360,7 +360,7 @@ export const gerarPlanoEmergencia = (empresaId: string) => baixarPdf(`/empresas/
 export type CertificadoEsocial = { titular: string; documento: string; tipoDocumento: 'CNPJ' | 'CPF'; validoDe: string; validoAte: string };
 export type EventoEsocial = {
   id: string; tipo: string; descricao: string; idEvento: string; ambiente: 'PRODUCAO_RESTRITA' | 'PRODUCAO';
-  status: 'PENDENTE' | 'ENVIADO' | 'PROCESSADO' | 'ERRO'; protocolo: string | null; recibo: string | null;
+  status: 'PENDENTE' | 'ENVIADO' | 'PROCESSADO' | 'ERRO' | 'EXCLUIDO'; protocolo: string | null; recibo: string | null;
   mensagens: { codigo?: string; descricao?: string; localizacao?: string }[] | null; createdAt: string; updatedAt: string;
 };
 export const buscarCertificado = () => chamar<CertificadoEsocial | null>('GET', '/esocial/certificado');
@@ -404,6 +404,7 @@ export type OrigensEsocial = {
     esocial: CatEsocial | null; s2210: SituacaoEvento;
   }[];
   afastamentos: { id: string; colaborador: string; motivo: string; inicio: string; fim: string | null; inicioEvento: SituacaoEvento; fimEvento: SituacaoEvento }[];
+  toxicologicos: { id: string; colaboradorId: string; colaborador: string; dataExame: string; cnpjLaboratorio: string; codigoExame: string; medicoNome: string; medicoCrm: string | null; medicoUf: string | null; s2221: SituacaoEvento }[];
 };
 export const buscarOrigensEsocial = (empresaId: string) => chamar<OrigensEsocial>('GET', `/empresas/${empresaId}/esocial/origens`);
 export const salvarEsocialColaborador = (empresaId: string, colaboradorId: string, dados: { cpf?: string; matricula?: string; codCateg?: string }) =>
@@ -412,7 +413,24 @@ export const salvarCodigoExame = (empresaId: string, gheId: string, exameId: str
   chamar<Exame>('PUT', `/empresas/${empresaId}/ghes/${gheId}/exames/${exameId}/codigo`, { codigoEsocial });
 export const salvarEsocialCat = (empresaId: string, catId: string, dados: CatEsocial & { horasTrabalhadas?: string; atendimentoData?: string; medicoNome?: string; medicoCrm?: string; cid?: string; diasTratamento?: number }) =>
   chamar<unknown>('PUT', `/empresas/${empresaId}/cats/${catId}/esocial`, dados);
-export const gerarEventoEsocial = (empresaId: string, tipo: 's2210' | 's2220' | 's2230' | 's2240', referenciaId: string, corpo: { inicio?: string; retificar?: boolean } = {}) =>
+export const registrarToxicologico = (empresaId: string, d: { colaboradorId: string; dataExame: string; cnpjLaboratorio: string; codigoExame: string; medicoNome: string; medicoCrm?: string; medicoUf?: string }) =>
+  chamar<{ id: string }>('POST', `/empresas/${empresaId}/esocial/toxicologicos`, d);
+export const removerToxicologico = (empresaId: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${empresaId}/esocial/toxicologicos/${id}`);
+export const excluirEventoEsocial = (empresaId: string, eventoId: string) => chamar<EventoEsocial>('POST', `/empresas/${empresaId}/esocial/eventos/${eventoId}/excluir`);
+export type Faixa = { minimo: number; maximo: number };
+export type DiagnosticoEsocial = {
+  empresas: { empresaId: string; razaoSocial: string; cnpj: string; trabalhadores: number; faltas: { s2220: number; s2240: number; s2210: number; s2230: number; cadastros: number; erros: number }; multa: Faixa }[];
+  total: Faixa; valores: { s2220: Faixa; s2240: Faixa; s2210: Faixa }; nota: string;
+};
+export type ResumoEsocialEmpresa = { id: string; razaoSocial: string; cnpj: string; esocialAmbiente: string; pendentes: number; enviados: number; aceitos: number; erros: number; excluidos: number };
+export type ResultadoEmpresas = { empresa: string; ok: boolean; eventos?: number; atualizados?: number; mensagem: string }[];
+export const esocialGeral = {
+  resumo: () => chamar<ResumoEsocialEmpresa[]>('GET', '/esocial/geral'),
+  diagnostico: () => chamar<DiagnosticoEsocial>('GET', '/esocial/diagnostico'),
+  enviarTodas: () => chamar<ResultadoEmpresas>('POST', '/esocial/enviar-todas'),
+  consultarTodas: () => chamar<ResultadoEmpresas>('POST', '/esocial/consultar-todas'),
+};
+export const gerarEventoEsocial = (empresaId: string, tipo: 's2210' | 's2220' | 's2221' | 's2230' | 's2240', referenciaId: string, corpo: { inicio?: string; retificar?: boolean } = {}) =>
   chamar<EventoEsocial>('POST', `/empresas/${empresaId}/esocial/${tipo}/${referenciaId}`, corpo);
 
 // Unidades de medida do S-2240 (campo unMed do XSD S-1.3).
