@@ -15,9 +15,18 @@ export class CriarInspecaoDto {
   @IsString() @Length(2, 200) local!: string;
   @IsDateString({}, { message: 'Informe a data da inspeção.' }) data!: string;
   @IsString() @Length(2, 120) inspetor!: string;
+  @IsOptional() @IsDateString({}, { message: 'Data da próxima inspeção inválida.' }) proximaInspecao?: string;
   @IsArray()
   @ArrayMinSize(1, { message: 'Inclua pelo menos um item no checklist.' })
   @ValidateNested({ each: true })
   @Type(() => ItemInspecaoDto)
   itens!: ItemInspecaoDto[];
+}
+
+export class ProximaInspecaoDto {
+  @IsOptional() @IsDateString({}, { message: 'Data da próxima inspeção inválida.' }) data?: string | null;
+}
+
+export class FotosInspecaoDto {
+  @IsOptional() @IsString() @MaxLength(500) legendas?: string; // JSON com uma legenda por foto enviada
 }

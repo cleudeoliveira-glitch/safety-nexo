@@ -17,6 +17,7 @@ export const MENU: GrupoMenu[] = [
     titulo: 'Início',
     itens: [
       { nome: 'Painel', icone: 'casa', rota: '/', geral: true },
+      { nome: 'Emitir documento', icone: 'documento', rota: '/emitir', geral: true },
       { nome: 'Visão geral das empresas', icone: 'grade', rota: '/geral', geral: true, soConsultoria: true },
       { nome: 'Comercial', icone: 'cifrao', rota: '/comercial', geral: true, soConsultoria: true },
       { nome: 'Mudanças nas normas', icone: 'sino', rota: '/normas', geral: true, soConsultoria: true },
@@ -92,6 +93,13 @@ export const MENU: GrupoMenu[] = [
       { nome: 'Arquivo de documentos', icone: 'pasta', rota: '/arquivo' },
       { nome: 'Assinaturas', icone: 'caneta', rota: '/assinaturas' },
       { nome: 'Histórico de alterações', icone: 'relogio', rota: '/historico', soConsultoria: true },
+    ],
+  },
+  {
+    titulo: 'Conta',
+    itens: [
+      { nome: 'Meu perfil', icone: 'cracha', rota: '/perfil', geral: true },
+      { nome: 'Integrações', icone: 'sinal', rota: '/integracoes', geral: true, soConsultoria: true },
     ],
   },
 ];

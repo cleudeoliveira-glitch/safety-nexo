@@ -482,6 +482,9 @@ model Inspecao {
   data      DateTime
   inspetor  String
   itens     Json     // [{ texto, resposta: C | NC | NA, observacao }]
+  fotos     Json?    // até 5 fotos do local: [{ caminho, tipo, legenda }]
+  relatorioIa Json?  // análise da IA sobre as fotos (sugestão: a técnica revisa)
+  proximaInspecao DateTime? // quando inspecionar o local de novo (aviso no painel e no e-mail)
   createdAt DateTime @default(now())
 
   @@index([empresaId])
