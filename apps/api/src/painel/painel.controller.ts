@@ -12,4 +12,9 @@ export class PainelController {
   montar(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string) {
     return this.painel.montar(consultoriaId, empresaId);
   }
+
+  @Get('emissoes')
+  emissoes(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string) {
+    return this.painel.emissoes(consultoriaId, empresaId);
+  }
 }
