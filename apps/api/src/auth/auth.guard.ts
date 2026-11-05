@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { ehAdminPlataforma, SOMENTE_ADMIN } from '../admin/admin-plataforma';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { PERMITE_EMPRESA } from './permite-empresa.decorator';
@@ -30,9 +31,24 @@ export class AuthGuard implements CanActivate {
     }
 
     // Lê o usuário a cada pedido: um acesso removido para de funcionar na hora.
-    const usuario = await this.prisma.usuario.findUnique({ where: { id: sub } });
+    const usuario = await this.prisma.usuario.findUnique({ where: { id: sub }, include: { consultoria: { select: { bloqueada: true } } } });
     if (!usuario) throw new UnauthorizedException('Seu acesso foi removido. Fale com a sua consultoria.');
-    req.sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId, papel: usuario.papel, empresaId: usuario.empresaId };
+    const admin = usuario.papel === 'CONSULTORIA' && ehAdminPlataforma(usuario.email);
+    // Consultoria bloqueada pelo painel ADM para de funcionar na hora (inclusive o login das empresas dela).
+    if (usuario.consultoria.bloqueada && !admin) {
+      throw new ForbiddenException('Este acesso está suspenso. Fale com o suporte do Safety Nexo.');
+    }
+    req.sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId, papel: usuario.papel, empresaId: usuario.empresaId, admin };
+
+    // Último acesso (para o painel ADM), gravado no máximo uma vez por hora.
+    if (!usuario.ultimoAcesso || Date.now() - usuario.ultimoAcesso.getTime() > 3600_000) {
+      this.prisma.usuario.update({ where: { id: usuario.id }, data: { ultimoAcesso: new Date() } }).catch(() => undefined);
+    }
+
+    if (this.reflector.getAllAndOverride<boolean>(SOMENTE_ADMIN, alvos)) {
+      if (!admin) throw new ForbiddenException('Esta área é só do administrador da plataforma.');
+      return true;
+    }
     if (usuario.papel !== 'EMPRESA') return true;
 
     if (!this.reflector.getAllAndOverride<boolean>(PERMITE_EMPRESA, alvos)) {

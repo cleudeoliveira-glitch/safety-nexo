@@ -6,7 +6,7 @@ import { CampoAjuda } from '@/components/CampoAjuda';
 import { Dicionario, Painel as PainelLateral } from '@/components/Dicionario';
 import { PassoTour, Tour, useTourPrimeiraVez } from '@/components/Tour';
 import { carregarPainel, Empresa, listarEmpresas, Painel } from '@/lib/api';
-import { ehEmpresa, lerToken, sair } from '@/lib/sessao';
+import { ehAdminPlataforma, ehEmpresa, lerToken, sair } from '@/lib/sessao';
 
 // Cada segmento abre a parte do cadastro da empresa em foco; sem rota, ainda está em construção.
 const segments: [nome: string, rota: string | null][] = [
@@ -51,6 +51,7 @@ export default function Home() {
   const [painelAjuda, setPainelAjuda] = useState<'como-usar' | 'dicionario' | null>(null);
   const tour = useTourPrimeiraVez();
   const [empresaCliente, setEmpresaCliente] = useState(false);
+  const [adminPlataforma, setAdminPlataforma] = useState(false);
 
   useEffect(() => {
     if (!lerToken()) {
@@ -58,6 +59,7 @@ export default function Home() {
       return;
     }
     setEmpresaCliente(ehEmpresa());
+    setAdminPlataforma(ehAdminPlataforma());
     // A visão geral abre uma empresa específica pelo endereço (?empresa=...).
     const pedida = new URLSearchParams(window.location.search).get('empresa');
     listarEmpresas()
@@ -121,6 +123,11 @@ export default function Home() {
               <Link href="/empresas/nova" className="rounded-card bg-primary px-3 py-2 text-center text-sm font-semibold text-white">
                 + Nova empresa
               </Link>
+              {adminPlataforma && (
+                <Link href="/admin" className="rounded-card border border-dashed border-primary px-3 py-2 text-center text-sm font-semibold text-primary">
+                  Painel ADM da plataforma
+                </Link>
+              )}
             </>
           )}
           {empresaId && (

@@ -278,7 +278,7 @@ export function salvarArquivo(pdf: Blob, nome: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export type Acesso = { token: string; usuario: { nome: string; papel: 'CONSULTORIA' | 'EMPRESA'; empresaId: string | null } };
+export type Acesso = { token: string; usuario: { nome: string; papel: 'CONSULTORIA' | 'EMPRESA'; empresaId: string | null; adminPlataforma?: boolean } };
 export const entrar = (dados: { email: string; senha: string }) => chamar<Acesso>('POST', '/auth/entrar', dados);
 export const cadastrar = (dados: { nomeConsultoria: string; nome: string; email: string; senha: string }) =>
   chamar<Acesso>('POST', '/auth/cadastro', dados);
@@ -733,4 +733,32 @@ export const fotoColaborador = {
   ver: (e: string, c: string) => chamar<{ foto: string | null }>('GET', `/empresas/${e}/colaboradores/${c}/foto`),
   salvar: (e: string, c: string, imagem: string) => chamar<{ foto: string | null }>('PUT', `/empresas/${e}/colaboradores/${c}/foto`, { imagem }),
   apagar: (e: string, c: string) => chamar<{ foto: string | null }>('DELETE', `/empresas/${e}/colaboradores/${c}/foto`),
+};
+
+// Painel ADM da plataforma (só o dono do Safety Nexo).
+export type PlanoPlataforma = { codigo: string; nome: string; precoMensal: number; limiteEmpresas: number | null };
+export type ConsultoriaAdm = {
+  id: string; nome: string; cnpj: string | null; cidade: string | null; plano: string; limiteEmpresas: number;
+  bloqueada: boolean; motivoBloqueio: string | null; observacaoAdm: string | null; criadaEm: string;
+  responsavel: { nome: string; email: string } | null;
+  empresas: number; usuarios: number; colaboradores: number; documentos: number; ultimoAcesso: string | null;
+};
+export type PainelAdm = {
+  planos: PlanoPlataforma[];
+  totais: {
+    consultorias: number; ativas: number; bloqueadas: number; novasNoMes: number; usaramEm30Dias: number;
+    pagantes: number; receitaMensal: number; porPlano: { codigo: string; nome: string; total: number }[];
+  };
+  consultorias: ConsultoriaAdm[];
+};
+export type ConsultoriaAdmDetalhe = {
+  id: string; nome: string;
+  usuarios: { id: string; nome: string; email: string; papel: 'CONSULTORIA' | 'EMPRESA'; createdAt: string; ultimoAcesso: string | null; empresa: { razaoSocial: string } | null }[];
+  empresas: { id: string; razaoSocial: string; cnpj: string; createdAt: string; _count: { colaboradores: number; documentos: number; arquivos: number } }[];
+};
+export const admin = {
+  painel: () => chamar<PainelAdm>('GET', '/admin/consultorias'),
+  detalhe: (id: string) => chamar<ConsultoriaAdmDetalhe>('GET', `/admin/consultorias/${id}`),
+  atualizar: (id: string, dados: { plano?: string; limiteEmpresas?: number; bloqueada?: boolean; motivoBloqueio?: string; observacaoAdm?: string }) =>
+    chamar<unknown>('PATCH', `/admin/consultorias/${id}`, dados),
 };

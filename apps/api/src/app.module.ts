@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
+import { AdminModule } from './admin/admin.module';
 import { CnaeModule } from './cnae/cnae.module';
 import { AcessosModule } from './acessos/acessos';
 import { CipaModule } from './cipa/cipa.module';
@@ -33,7 +34,7 @@ import { PainelModule } from './painel/painel.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule, PresencaModule],
+  imports: [AuthModule, AdminModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule, PresencaModule],
   controllers: [HealthController],
 })
 export class AppModule {}

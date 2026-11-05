@@ -16,7 +16,7 @@ export function salvarToken(token: string) {
 }
 
 // Quem entrou: a consultoria vê todas as empresas; a empresa cliente vê só a dela.
-export type Usuario = { nome: string; papel: 'CONSULTORIA' | 'EMPRESA'; empresaId: string | null };
+export type Usuario = { nome: string; papel: 'CONSULTORIA' | 'EMPRESA'; empresaId: string | null; adminPlataforma?: boolean };
 const CHAVE_USUARIO = 'safety-nexo:usuario';
 
 export function salvarUsuario(usuario: Usuario) {
@@ -35,6 +35,8 @@ export function lerUsuario(): Usuario | null {
 }
 
 export const ehEmpresa = () => lerUsuario()?.papel === 'EMPRESA';
+// Dono da plataforma: vê o painel ADM com todas as consultorias.
+export const ehAdminPlataforma = () => lerUsuario()?.adminPlataforma === true;
 
 export function sair() {
   try {
