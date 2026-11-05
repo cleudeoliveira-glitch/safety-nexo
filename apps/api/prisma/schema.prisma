@@ -25,6 +25,8 @@ model Consultoria {
   bloqueadaEm     DateTime?
   observacaoAdm   String?   // anotação interna do dono da plataforma (ex.: combinado de pagamento)
   avisosEmail     Boolean   @default(true) // resumo semanal de vencimentos por e-mail
+  pedidoPlano     String?   // plano que a consultoria pediu na tela "Meu plano" (o ADM faz a troca)
+  pedidoPlanoEm   DateTime?
   createdAt DateTime  @default(now())
   normasLidas AvisoNormaLido[]
   empresas  Empresa[]

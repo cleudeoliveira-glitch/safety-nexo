@@ -740,6 +740,7 @@ export type PlanoPlataforma = { codigo: string; nome: string; precoMensal: numbe
 export type ConsultoriaAdm = {
   id: string; nome: string; cnpj: string | null; cidade: string | null; plano: string; limiteEmpresas: number;
   bloqueada: boolean; motivoBloqueio: string | null; observacaoAdm: string | null; criadaEm: string;
+  pedidoPlano: string | null; pedidoPlanoEm: string | null; dono: boolean;
   responsavel: { nome: string; email: string } | null;
   empresas: number; usuarios: number; colaboradores: number; documentos: number; ultimoAcesso: string | null;
 };
@@ -899,4 +900,14 @@ export type MeuEspaco = {
 export const meuEspaco = {
   abrir: (token: string) => chamar<{ primeiroNome: string; empresa: string }>('GET', `/portal/${token}`),
   entrar: (token: string, cpf: string) => chamar<MeuEspaco>('POST', `/portal/${token}`, { cpf }),
+};
+
+// Meu plano: plano da consultoria, empresas usadas e pedido de troca (o dono da plataforma confirma no painel ADM).
+export type MeuPlano = {
+  plano: string; nomePlano: string; limiteEmpresas: number | null; empresas: number; acessoTotal: boolean;
+  pedidoPlano: string | null; pedidoPlanoEm: string | null;
+};
+export const meuPlano = {
+  ver: () => chamar<MeuPlano>('GET', '/meu-plano'),
+  pedir: (plano: string) => chamar<MeuPlano>('POST', '/meu-plano/pedido', { plano }),
 };

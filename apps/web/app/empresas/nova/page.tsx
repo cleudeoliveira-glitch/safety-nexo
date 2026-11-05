@@ -86,6 +86,7 @@ export default function NovaEmpresa() {
           </div>
         </Cartao>
         {erro && <div className="mt-4"><Aviso tipo="erro">{erro}</Aviso></div>}
+        {erro?.includes('limite de empresas') && <p className="mt-2 text-sm"><Link href="/plano" className="font-semibold text-primary">Ver os planos</Link></p>}
         <div className="mt-6 flex justify-end">
           <Botao type="submit" disabled={salvando}>{salvando ? 'Salvando…' : 'Cadastrar empresa'}</Botao>
         </div>

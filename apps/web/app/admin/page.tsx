@@ -188,8 +188,14 @@ export default function PainelAdmPage() {
                       ))}
                     </select>
                     <span className="mt-1 block text-xs text-text/50">
-                      Até {c.limiteEmpresas >= ILIMITADO ? 'ilimitadas' : c.limiteEmpresas} empresa{c.limiteEmpresas === 1 ? '' : 's'}
+                      {c.dono ? 'Sua conta: acesso total, sem limite' : `Até ${c.limiteEmpresas >= ILIMITADO ? 'ilimitadas' : c.limiteEmpresas} empresa${c.limiteEmpresas === 1 ? '' : 's'}`}
                     </span>
+                    {c.pedidoPlano && (
+                      <span className="mt-1 block rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-[#c2410c]">
+                        Pediu o {painel.planos.find((p) => p.codigo === c.pedidoPlano)?.nome ?? c.pedidoPlano}
+                        {c.pedidoPlanoEm ? ` em ${data(c.pedidoPlanoEm)}` : ''}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-text/80">
                     <span className="block">{c.empresas} empresa{c.empresas === 1 ? '' : 's'}</span>

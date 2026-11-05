@@ -41,6 +41,9 @@ export default function Entrar() {
         <p className="text-center text-sm">
           Ainda não tem conta? <Link href="/cadastro" className="font-semibold text-primary">Crie grátis</Link>
         </p>
+        <p className="text-center text-sm">
+          <Link href="/planos" className="font-semibold text-primary">Ver os planos e o que tem em cada um</Link>
+        </p>
       </form>
     </main>
   );
