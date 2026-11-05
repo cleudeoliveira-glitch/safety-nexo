@@ -9,6 +9,8 @@ import {
   TabelasEsocial,
   gerarEventoEsocial,
   OrigensEsocial,
+  registrarToxicologico,
+  removerToxicologico,
   salvarEsocialCat,
   salvarEsocialColaborador,
   SituacaoEvento,
@@ -22,8 +24,8 @@ const TIPO_ASO: Record<string, string> = { ADMISSIONAL: 'Admissional', PERIODICO
 
 function Situacao({ s }: { s: SituacaoEvento }) {
   if (!s) return <span className="text-xs text-text/50">Ainda não gerado</span>;
-  const nome = { PENDENTE: 'Na fila', ENVIADO: 'Enviado', PROCESSADO: 'Aceito', ERRO: 'Recusado' }[s.status];
-  const cor = { PENDENTE: 'text-warning', ENVIADO: 'text-primary', PROCESSADO: 'text-success', ERRO: 'text-danger' }[s.status];
+  const nome = { PENDENTE: 'Na fila', ENVIADO: 'Enviado', PROCESSADO: 'Aceito', ERRO: 'Recusado', EXCLUIDO: 'Excluído' }[s.status];
+  const cor = { PENDENTE: 'text-warning', ENVIADO: 'text-primary', PROCESSADO: 'text-success', ERRO: 'text-danger', EXCLUIDO: 'text-text/50' }[s.status];
   return <span className={`text-xs font-semibold ${cor}`}>{nome}</span>;
 }
 
@@ -237,6 +239,60 @@ export function EventosAfastamento({ empresaId, o, agir }: { empresaId: string; 
           </li>
         ))}
       </ul>
+    </Cartao>
+  );
+}
+
+// Exame toxicológico do motorista profissional (categorias C, D e E): admissão, a cada 2 anos e 6 meses, e desligamento.
+export function EventosToxicologico({ empresaId, o, agir }: { empresaId: string; o: OrigensEsocial; agir: Agir }) {
+  const [aberto, setAberto] = useState(o.toxicologicos.length > 0);
+  const [chave, setChave] = useState(0);
+  const gerar = (id: string, retificar: boolean) =>
+    agir(async () => { const ev = await gerarEventoEsocial(empresaId, 's2221', id, { retificar }); return `${ev.descricao}: evento assinado e colocado na fila.`; });
+  return (
+    <Cartao titulo="Exame toxicológico de motoristas (S-2221)" acao={!aberto ? <Botao variante="secundario" onClick={() => setAberto(true)}>Registrar exame</Botao> : undefined}>
+      <p className="mb-4 text-sm text-text/60">
+        Para motoristas profissionais com CNH C, D ou E: exame na admissão, a cada 2 anos e 6 meses e no desligamento. Os dados estão no laudo do laboratório.
+      </p>
+      {aberto && (
+        <form key={chave} className="mb-4 grid gap-3 md:grid-cols-3" onSubmit={(ev) => {
+          ev.preventDefault(); const d = new FormData(ev.currentTarget);
+          agir(async () => {
+            await registrarToxicologico(empresaId, {
+              colaboradorId: texto(d, 'colaborador'), dataExame: texto(d, 'data'), cnpjLaboratorio: texto(d, 'cnpj'), codigoExame: texto(d, 'codigo'),
+              medicoNome: texto(d, 'medico'), medicoCrm: texto(d, 'crm') || undefined, medicoUf: texto(d, 'uf') || undefined,
+            });
+            setChave((k) => k + 1); return 'Exame registrado. Agora gere o evento.';
+          });
+        }}>
+          <Selecao id="tx-col" name="colaborador" rotulo="Motorista" required className="md:col-span-2">
+            <option value="">Escolha</option>{o.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome} · {c.cargo}</option>)}
+          </Selecao>
+          <Campo id="tx-data" name="data" type="date" rotulo="Data da coleta" required />
+          <Campo id="tx-cnpj" name="cnpj" rotulo="CNPJ do laboratório" required placeholder="00.000.000/0000-00" />
+          <Campo id="tx-cod" name="codigo" rotulo="Código do exame" required placeholder="AB123456789"
+            ajuda={{ oQueE: 'Número do exame que vem no laudo: 2 letras e 9 números.', ondeAcho: 'No laudo do exame toxicológico, emitido pelo laboratório.' }} />
+          <Campo id="tx-med" name="medico" rotulo="Médico que assinou o laudo" required />
+          <Campo id="tx-crm" name="crm" rotulo="CRM do médico" placeholder="Ex.: 12345" />
+          <Selecao id="tx-uf" name="uf" rotulo="UF do CRM"><option value="">—</option>{UFS.map((u) => <option key={u}>{u}</option>)}</Selecao>
+          <div className="flex items-end justify-end"><Botao type="submit">Salvar exame</Botao></div>
+        </form>
+      )}
+      {o.toxicologicos.length > 0 && (
+        <ul className="divide-y divide-border text-sm">
+          {o.toxicologicos.map((t) => (
+            <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+              <span>{t.colaborador} · {data(t.dataExame)} · exame {t.codigoExame}</span>
+              <span className="flex items-center gap-4">
+                <BotoesEvento s={t.s2221} gerar={(r) => gerar(t.id, r)} />
+                {(!t.s2221 || t.s2221.status === 'PENDENTE' || t.s2221.status === 'ERRO') && (
+                  <button className="text-sm text-danger underline" onClick={() => confirm('Apagar este exame?') && agir(async () => { await removerToxicologico(empresaId, t.id); return 'Exame apagado.'; })}>Apagar</button>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </Cartao>
   );
 }

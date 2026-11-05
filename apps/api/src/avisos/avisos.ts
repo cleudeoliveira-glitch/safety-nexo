@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'crypto';
 import { IsBoolean } from 'class-validator';
 import { Publica } from '../auth/publica.decorator';
 import { ConsultoriaId } from '../common/consultoria.decorator';
+import { enviarEmail, WEB } from '../common/email';
 import { escape } from '../documentos/layout';
 import { NormasModule, NormasService } from '../normas/normas';
 import { PainelModule } from '../painel/painel.module';
@@ -11,7 +12,6 @@ import { PrismaService } from '../prisma/prisma.service';
 
 class PreferenciaDto { @IsBoolean() avisosEmail!: boolean; }
 
-const WEB = () => (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
 type Bloco = { empresa: string; empresaId: string; pendencias: Pendencia[] };
 type Norma = { titulo: string; vigenciaEm: Date | null; empresas: { razaoSocial: string }[] };
 
@@ -33,15 +33,6 @@ export function emailHtml(nome: string, blocos: Bloco[], normas: Norma[]) {
       ${linhas}${blocoNormas}
       <p style="margin-top:24px;font-size:12px;color:#6b7280">Você recebe este e-mail toda segunda-feira. Para parar, desligue em <a href="${WEB()}/" style="color:#6b7280">Painel › Avisos por e-mail</a>.</p>
     </div></div>`;
-}
-
-async function enviarEmail(para: string[], assunto: string, html: string) {
-  const r = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: process.env.AVISOS_REMETENTE || 'Safety Nexo <onboarding@resend.dev>', to: para, subject: assunto, html }),
-  });
-  if (!r.ok) throw new Error(`Resend recusou (${r.status}): ${await r.text()}`);
 }
 
 // Resumo semanal: pendências e vencimentos de cada empresa + mudanças de norma não lidas.

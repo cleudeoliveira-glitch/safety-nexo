@@ -80,6 +80,7 @@ export const MENU: GrupoMenu[] = [
     titulo: 'Governança',
     itens: [
       { nome: 'eSocial', icone: 'nuvem', rota: '/esocial', soConsultoria: true },
+      { nome: 'eSocial de todas e multas', icone: 'nuvem', rota: '/esocial-geral', geral: true, soConsultoria: true },
       { nome: 'Painel SSMA (indicadores)', icone: 'grafico', rota: '/ssma' },
       { nome: 'FAP e RAT', icone: 'porcento', rota: '/fap', soConsultoria: true },
       { nome: 'Terceirizadas', icone: 'aperto', rota: '/conectores#terceiros' },

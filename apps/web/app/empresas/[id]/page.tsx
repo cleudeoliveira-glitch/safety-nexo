@@ -42,6 +42,7 @@ import {
 } from '@/lib/api';
 import { EscolhaTabela } from '@/components/EscolhaTabela';
 import { ehEmpresa } from '@/lib/sessao';
+import { CopiarDados } from '@/components/CopiarDados';
 import { rolarParaAncora } from '@/lib/abaDoEndereco';
 
 const TIPOS_RISCO = [
@@ -211,6 +212,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       </Cartao>
 
       <Cartao titulo="2. GHEs, riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
+        {!cliente && <div className="mb-4"><CopiarDados empresaId={empresaId} aoCopiar={(t, erro) => { setAviso({ tipo: erro ? 'erro' : 'ok', texto: t }); if (!erro) recarregar(); }} /></div>}
         <form
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar((d) => criarGhe(empresaId, { nome: texto(d, 'nome'), descricao: texto(d, 'descricao') || undefined }), 'GHE cadastrado.')}

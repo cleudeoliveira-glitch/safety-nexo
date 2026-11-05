@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
-  centavos, Cobranca, comercial, ConfigComercial, Contrato, Empresa, ItemProposta, listarEmpresas, Proposta, reais, ResumoComercial, salvarArquivo, Servico,
+  centavos, Cobranca, comercial, ConfigComercial, Contrato, Empresa, ItemProposta, listarEmpresas, Proposta, reais, ReguaCobranca, ResumoComercial, salvarArquivo, Servico,
 } from '@/lib/api';
 import { ehEmpresa } from '@/lib/sessao';
 
@@ -90,6 +90,7 @@ function AbaCobrancas({ empresas, lista, agir, baixar }: { empresas: Empresa[]; 
   const [pix, setPix] = useState<{ id: string; copiaECola: string; qr: string } | null>(null);
   return (
     <div className="space-y-6">
+      <CartaoRegua empresas={empresas} agir={agir} />
       <Cartao titulo="Mensalidades" acao={
         <div className="flex items-center gap-2">
           <input type="month" aria-label="Mês" value={mes} onChange={(e) => setMes(e.target.value)} className="rounded-card border border-border px-2 py-1.5 text-sm" />
@@ -160,6 +161,59 @@ function AbaCobrancas({ empresas, lista, agir, baixar }: { empresas: Empresa[]; 
   );
 }
 
+// Régua de cobrança: e-mail automático para o cliente 3 dias antes, no dia, 3 e 10 dias depois do vencimento.
+function CartaoRegua({ empresas, agir }: { empresas: Empresa[]; agir: Agir }) {
+  const [r, setR] = useState<ReguaCobranca | null>(null);
+  const [aberto, setAberto] = useState(false);
+  useEffect(() => { comercial.regua().then(setR).catch(() => setR(null)); }, [empresas]);
+  if (!r) return null;
+  return (
+    <Cartao titulo="Avisos automáticos de cobrança" acao={
+      <label className="flex items-center gap-2 text-sm font-semibold">
+        <input type="checkbox" checked={r.ligada} onChange={(e) => agir(async () => { setR(await comercial.ligarRegua(e.target.checked)); return e.target.checked ? 'Avisos de cobrança ligados.' : 'Avisos de cobrança desligados.'; })} />
+        {r.ligada ? 'Ligados' : 'Desligados'}
+      </label>}>
+      <p className="text-sm text-text/70">Quando ligado, o cliente recebe um e-mail com o valor, o Pix copia e cola e o PDF da cobrança <strong>3 dias antes</strong>, <strong>no dia</strong> e, se não constar como paga, <strong>3 e 10 dias depois</strong> do vencimento. Quando ele responder, a resposta vai para o seu e-mail.</p>
+      {!r.emailLigado && <p className="mt-2 text-sm text-warning">O envio de e-mails ainda não está ligado no servidor.</p>}
+      {r.ligada && r.semEmail.length > 0 && <p className="mt-2 text-sm text-danger">Sem e-mail de cobrança (não recebem aviso): {r.semEmail.join(', ')}.</p>}
+      <button type="button" className="mt-3 text-sm text-primary underline" onClick={() => setAberto(!aberto)}>{aberto ? 'Fechar' : 'E-mail de cobrança de cada cliente'}</button>
+      {aberto && (
+        <ul className="mt-3 divide-y divide-border">
+          {empresas.map((e) => (
+            <li key={e.id} className="py-2">
+              <form className="flex flex-wrap items-end gap-2" onSubmit={(ev) => {
+                ev.preventDefault(); const email = texto(new FormData(ev.currentTarget), 'email');
+                agir(async () => { await comercial.emailCobranca(e.id, email); setR(await comercial.regua()); return email ? `E-mail de cobrança de ${e.razaoSocial} salvo.` : `E-mail de cobrança de ${e.razaoSocial} apagado.`; });
+              }}>
+                <Campo id={`em-${e.id}`} name="email" type="email" rotulo={e.razaoSocial} defaultValue={e.emailCobranca ?? ''} placeholder="financeiro@cliente.com.br" className="min-w-64 flex-1" />
+                <Botao type="submit" variante="secundario">Salvar</Botao>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-3 text-xs text-text/50">Sem e-mail de cobrança, o aviso vai para o login da empresa cliente, se ela tiver.</p>
+    </Cartao>
+  );
+}
+
+// Link para o cliente aprovar a proposta pelo celular, com WhatsApp e e-mail prontos.
+function LinkProposta({ p, agir }: { p: Proposta; agir: Agir }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const mensagem = (u: string) => `Olá! Segue a proposta nº ${p.numero} de serviços de segurança do trabalho. Você pode ver e aprovar por este link: ${u}`;
+  if (!url) {
+    return <Botao variante="secundario" onClick={() => agir(async () => { const r = await comercial.linkProposta(p.id); setUrl(r.url); return 'Link pronto. Mande pelo WhatsApp ou por e-mail.'; })}>Link para aprovar</Botao>;
+  }
+  return (
+    <div className="flex w-full flex-wrap items-center gap-3 rounded-card border border-border bg-background p-3 text-sm">
+      <span className="min-w-0 flex-1 break-all font-mono text-xs">{url}</span>
+      <button className="text-primary underline" onClick={() => navigator.clipboard?.writeText(url).then(() => agir(async () => 'Link copiado.'))}>Copiar</button>
+      <a className="text-primary underline" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent(mensagem(url))}`}>WhatsApp</a>
+      <a className="text-primary underline" href={`mailto:?subject=${encodeURIComponent(`Proposta nº ${p.numero}`)}&body=${encodeURIComponent(mensagem(url))}`}>E-mail</a>
+    </div>
+  );
+}
+
 function AbaPropostas({ empresas, lista, agir, baixar, irParaContrato }: { empresas: Empresa[]; lista: Proposta[]; agir: Agir; baixar: (g: () => Promise<Blob>, n: string) => void; irParaContrato: () => void }) {
   const vazio = { descricao: '', quantidade: 1, valor: '' };
   const [itens, setItens] = useState([vazio]);
@@ -214,12 +268,17 @@ function AbaPropostas({ empresas, lista, agir, baixar, irParaContrato }: { empre
           <ul className="divide-y divide-border">
             {lista.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div><p className="font-semibold">Nº {p.numero} · {p.clienteNome}</p><p className="text-sm text-text/60">{data(p.data)} · {reais(p.total)}</p></div>
+                <div>
+                  <p className="font-semibold">Nº {p.numero} · {p.clienteNome}</p><p className="text-sm text-text/60">{data(p.data)} · {reais(p.total)}</p>
+                  {p.respostaNome && <p className="text-xs text-text/60">{p.status === 'ACEITA' ? 'Aceita' : 'Recusada'} online por {p.respostaNome}{p.respostaCargo ? ` (${p.respostaCargo})` : ''}{p.respostaEm ? ` em ${new Date(p.respostaEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}` : ''}{p.motivoRecusa ? `. Motivo: ${p.motivoRecusa}` : ''}</p>}
+                </div>
                 <div className="flex flex-wrap items-center gap-3">
                   {p.status === 'ACEITA' ? <Etiqueta cor="bg-success/15 text-success">Aceita{p.contratos[0] ? ` · contrato nº ${p.contratos[0].numero}` : ''}</Etiqueta>
                     : p.status === 'RECUSADA' ? <Etiqueta cor="bg-border text-text/60">Recusada</Etiqueta> : <Etiqueta cor="bg-warning/15 text-warning">Aguardando cliente</Etiqueta>}
                   <button className="text-sm text-primary underline" onClick={() => baixar(() => comercial.pdfProposta(p.id), `Proposta-${p.numero}`)}>PDF</button>
+                  {p.status === 'ACEITA' && !p.contratos[0] && <Botao variante="secundario" onClick={irParaContrato}>Fazer contrato</Botao>}
                   {p.status === 'ABERTA' && <>
+                    <LinkProposta p={p} agir={agir} />
                     <Botao variante="secundario" onClick={irParaContrato}>Aceita: fazer contrato</Botao>
                     <button className="text-sm text-text/60 underline" onClick={() => agir(async () => { await comercial.statusProposta(p.id, 'RECUSADA'); return 'Proposta marcada como recusada.'; })}>Recusada</button>
                   </>}
@@ -237,7 +296,7 @@ function AbaContratos({ empresas, propostas, lista, agir, baixar }: { empresas: 
   const [chave, setChave] = useState(0);
   const [proposta, setProposta] = useState('');
   const [empresa, setEmpresa] = useState('');
-  const abertas = propostas.filter((p) => p.status === 'ABERTA');
+  const abertas = propostas.filter((p) => p.status === 'ABERTA' || (p.status === 'ACEITA' && !p.contratos.length));
   const escolhida = abertas.find((p) => p.id === proposta);
   return (
     <div className="space-y-6">

@@ -111,7 +111,7 @@ export default function CampoPage() {
                 if (!checklist) throw new Error('Escolha o checklist.');
                 const faltam = checklist.itens.filter((_, i) => !respostas[i]).length;
                 if (faltam) throw new Error(`Responda todos os itens. Faltam ${faltam}.`);
-                const itens = checklist.itens.map((texto, i) => ({ texto, resposta: respostas[i], observacao: t(`obs-${i}`) || undefined }));
+                const itens = checklist.itens.map((texto, i) => ({ texto, resposta: respostas[i], observacao: t(`obs-${i}`) || undefined, grau: checklist.graus?.[i] }));
                 salvar('inspecao', `${checklist.titulo} · ${t('local')}`, { modelo: checklist.modelo, titulo: checklist.titulo, local: t('local'), data: t('data'), inspetor: t('inspetor'), itens });
               });
             }}>

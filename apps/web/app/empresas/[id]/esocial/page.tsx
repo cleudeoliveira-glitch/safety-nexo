@@ -12,6 +12,7 @@ import {
   Empresa,
   enviarCertificado,
   EventoEsocial,
+  excluirEventoEsocial,
   listarEventosEsocial,
   buscarOrigensEsocial,
   OrigensEsocial,
@@ -19,7 +20,7 @@ import {
   transmitirEsocial,
 } from '@/lib/api';
 import { ehEmpresa } from '@/lib/sessao';
-import { DadosEmpresaEsocial, EventosAfastamento, EventosCat, EventosColaboradores } from './GerarEventos';
+import { DadosEmpresaEsocial, EventosAfastamento, EventosCat, EventosColaboradores, EventosToxicologico } from './GerarEventos';
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
@@ -28,12 +29,15 @@ const STATUS: Record<EventoEsocial['status'], { nome: string; cor: string }> = {
   ENVIADO: { nome: 'Enviado, aguardando o governo', cor: 'bg-primary/10 text-primary' },
   PROCESSADO: { nome: 'Aceito', cor: 'bg-success/15 text-success' },
   ERRO: { nome: 'Recusado', cor: 'bg-danger/15 text-danger' },
+  EXCLUIDO: { nome: 'Excluído no eSocial', cor: 'bg-border text-text/60' },
 };
 const TIPOS: Record<string, string> = {
   'S-2210': 'Comunicação de acidente (CAT)',
   'S-2220': 'Exame ocupacional (ASO)',
   'S-2230': 'Afastamento temporário',
+  'S-2221': 'Exame toxicológico',
   'S-2240': 'Condições ambientais (riscos)',
+  'S-3000': 'Exclusão de evento',
 };
 
 export default function EsocialPage({ params }: { params: { id: string } }) {
@@ -84,7 +88,10 @@ export default function EsocialPage({ params }: { params: { id: string } }) {
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <div>
-        <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
+        <div className="flex flex-wrap justify-between gap-2">
+          <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
+          <Link href="/esocial" className="text-sm text-primary underline">eSocial de todas as empresas e diagnóstico de multas</Link>
+        </div>
         <h1 className="mt-4 text-3xl font-semibold text-primary">eSocial</h1>
         <p className="text-text/60">{empresa.razaoSocial}</p>
       </div>
@@ -131,6 +138,7 @@ export default function EsocialPage({ params }: { params: { id: string } }) {
         <EventosColaboradores empresaId={empresaId} o={origens} agir={agir} />
         <EventosCat empresaId={empresaId} o={origens} agir={agir} />
         <EventosAfastamento empresaId={empresaId} o={origens} agir={agir} />
+        <EventosToxicologico empresaId={empresaId} o={origens} agir={agir} />
       </>}
 
       <Cartao titulo="Fila de envio" acao={
@@ -147,7 +155,7 @@ export default function EsocialPage({ params }: { params: { id: string } }) {
         </div>
       }>
         <p className="mb-4 text-sm text-text/60">
-          Aqui ficam os eventos de CAT (S-2210), exames (S-2220) e riscos (S-2240) desta empresa. Envie os pendentes e, depois de alguns minutos, veja a resposta do governo.
+          Aqui ficam os eventos de CAT (S-2210), exames (S-2220 e S-2221), afastamentos (S-2230) e riscos (S-2240) desta empresa. Envie os pendentes e, depois de alguns minutos, veja a resposta do governo. Evento aceito por engano pode ser excluído no eSocial (S-3000).
         </p>
         {!eventos.length ? (
           <p className="rounded-card border border-dashed border-border p-6 text-center text-sm text-text/60">Nenhum evento na fila desta empresa.</p>
@@ -169,6 +177,11 @@ export default function EsocialPage({ params }: { params: { id: string } }) {
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS[ev.status].cor}`}>{STATUS[ev.status].nome}</span>
                   <button className="text-sm text-primary underline" onClick={() => baixarXmlEsocial(empresaId, ev).catch((e) => setAviso({ tipo: 'erro', texto: e.message }))}>XML</button>
+                  {ev.status === 'PROCESSADO' && ev.tipo !== 'S-3000' && (
+                    <button className="text-sm text-danger underline" disabled={ocupado} onClick={() => {
+                      if (confirm(`Excluir no eSocial o ${ev.tipo} "${ev.descricao}"? Isso gera um evento de exclusão (S-3000) para enviar.`)) agir(async () => { await excluirEventoEsocial(empresaId, ev.id); return 'Exclusão (S-3000) assinada e colocada na fila. Envie os pendentes.'; });
+                    }}>Excluir no eSocial</button>
+                  )}
                 </div>
               </li>
             ))}

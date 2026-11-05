@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsDateString, IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsBoolean, IsDateString, IsEmail, IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 
 export class ConfiguracaoComercialDto {
   @IsOptional() @IsString() @MaxLength(18) cnpj?: string;
@@ -64,4 +64,13 @@ export class MensalidadesDto {
 
 export class DataDto {
   @IsOptional() @IsDateString() data?: string;
+}
+
+export class LigarReguaDto {
+  @IsBoolean() ligada!: boolean;
+}
+
+export class EmailCobrancaDto {
+  // Vazio apaga o e-mail de cobrança da empresa.
+  @IsOptional() @IsEmail({}, { message: 'E-mail inválido.' }) email?: string;
 }

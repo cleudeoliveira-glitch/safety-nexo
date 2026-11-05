@@ -7,7 +7,7 @@ import { relatorioDeInspecao, RelatorioInspecaoIa } from '../ia/ia';
 import { PrismaService } from '../prisma/prisma.service';
 import { CriarInspecaoDto } from './dto';
 import { ehModelo } from './modelos';
-import { conformidade, FotoNoPdf, inspecaoHtml, ItemInspecao } from './templates';
+import { FotoNoPdf, inspecaoHtml, ItemInspecao, resumoInspecao } from './templates';
 
 // Fotos das inspeções: no Supabase Storage (ou na pasta local, sem nuvem).
 const guarda = new Guarda('inspecoes', process.env.INSPECOES_DIR ?? join(__dirname, '..', '..', 'storage', 'inspecoes'));
@@ -39,21 +39,28 @@ export class InspecoesService {
   }
 
   // O que vai para a tela: sem o caminho interno das fotos.
-  private paraTela<T extends { itens: unknown; fotos: unknown }>(i: T) {
+  // O resumo traz a conformidade e a multa estimada (NR-28) pelo número de empregados da empresa.
+  private async paraTela<T extends { empresaId: string; modelo: string; itens: unknown; fotos: unknown }>(i: T, empregados?: number) {
     const { fotos, ...resto } = i;
-    return { ...resto, fotos: fotosDe(fotos).map((f, n) => ({ n, legenda: f.legenda ?? '' })), resumo: conformidade(i.itens as unknown as ItemInspecao[]) };
+    const n = empregados ?? (await this.prisma.empresa.findUnique({ where: { id: i.empresaId }, select: { numFuncionarios: true } }))?.numFuncionarios ?? 0;
+    return { ...resto, fotos: fotosDe(fotos).map((f, k) => ({ n: k, legenda: f.legenda ?? '' })), resumo: resumoInspecao(i.modelo, i.itens as unknown as ItemInspecao[], n) };
   }
 
   async listar(consultoriaId: string, empresaId: string) {
-    await this.empresa(consultoriaId, empresaId);
+    const empresa = await this.empresa(consultoriaId, empresaId);
     const lista = await this.prisma.inspecao.findMany({ where: { empresaId }, orderBy: [{ data: 'desc' }, { createdAt: 'desc' }] });
-    return lista.map((i) => this.paraTela(i));
+    return Promise.all(lista.map((i) => this.paraTela(i, empresa.numFuncionarios)));
   }
 
   async criar(consultoriaId: string, empresaId: string, dto: CriarInspecaoDto) {
     await this.empresa(consultoriaId, empresaId);
     if (!ehModelo(dto.modelo)) throw new BadRequestException('Modelo de checklist desconhecido.');
-    const itens = dto.itens.map((i) => ({ texto: i.texto.trim(), resposta: i.resposta, ...(i.observacao?.trim() ? { observacao: i.observacao.trim() } : {}) }));
+    const itens = dto.itens.map((i) => ({
+      texto: i.texto.trim(),
+      resposta: i.resposta,
+      ...(i.observacao?.trim() ? { observacao: i.observacao.trim() } : {}),
+      ...(i.grau ? { grau: i.grau } : {}),
+    }));
     const { proximaInspecao, ...dados } = dto;
     const criada = await this.prisma.inspecao.create({
       data: { ...dados, local: dto.local.trim(), itens, empresaId, data: new Date(dto.data), proximaInspecao: proximaInspecao ? new Date(proximaInspecao) : null },
@@ -133,6 +140,7 @@ export class InspecoesService {
           aviso: 'Documento gerado pelo Safety Nexo. As não conformidades devem ser corrigidas e acompanhadas no plano de ação.',
         },
         { ...i, itens: i.itens as unknown as ItemInspecao[], fotos, relatorioIa: (i.relatorioIa as RelatorioInspecaoIa | null) ?? null },
+        empresa.numFuncionarios,
       ),
     );
   }
