@@ -6,6 +6,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
 import { guardarCaptura } from '@/lib/rosto-offline';
 import { EscolherPessoas } from '@/components/EscolherPessoas';
+import { EscolherFoto } from '@/components/Foto';
+import { ehEmpresa } from '@/lib/sessao';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   Apr,
@@ -36,6 +38,8 @@ import {
   ItemInspecao,
   listarInspecoes,
   ModeloChecklist,
+  ia,
+  prevencao,
 } from '@/lib/api';
 
 type Aba = 'apr' | 'pt' | 'dds' | 'checklist';
@@ -60,6 +64,24 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar }: 
   const [etapas, setEtapas] = useState<EtapaApr[]>([etapaVazia()]);
   const [equipe, setEquipe] = useState<string[]>([]);
   const mudarEtapa = (i: number, campo: keyof EtapaApr, valor: string) => setEtapas(etapas.map((e, j) => (j === i ? { ...e, [campo]: valor } : e)));
+  const [iaLigada, setIaLigada] = useState(false);
+  const [fotoApr, setFotoApr] = useState<Blob | null>(null);
+  const [pensando, setPensando] = useState(false);
+  const [dicaIa, setDicaIa] = useState<string | null>(null);
+  useEffect(() => { if (!ehEmpresa()) ia.status().then((x) => setIaLigada(x.ligada)).catch(() => setIaLigada(false)); }, []);
+
+  async function sugerirComIa() {
+    const atividade = (document.getElementById('apr-atividade') as HTMLInputElement | null)?.value.trim() ?? '';
+    const local = (document.getElementById('apr-local') as HTMLInputElement | null)?.value.trim() ?? '';
+    if (atividade.length < 3) return avisar('erro', 'Escreva a atividade primeiro.');
+    setPensando(true);
+    try {
+      const r = await ia.apr(empresaId, atividade, local, fotoApr);
+      if (r.etapas.length) setEtapas(r.etapas);
+      setDicaIa([r.permissoes.length ? `Pede permissão de trabalho: ${r.permissoes.join(', ')}.` : '', r.observacao ?? ''].filter(Boolean).join(' ') || null);
+      avisar('ok', 'A IA sugeriu as etapas. Confira e ajuste antes de salvar.');
+    } catch (e) { avisar('erro', (e as Error).message); } finally { setPensando(false); }
+  }
 
   async function salvar(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
@@ -77,6 +99,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar }: 
       form.reset();
       setEtapas([etapaVazia()]);
       setEquipe([]);
+      setFotoApr(null); setDicaIa(null);
       avisar('ok', 'APR salva. Baixe o PDF para colher as assinaturas da equipe.');
       await recarregar();
     } catch (e) {
@@ -95,6 +118,17 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar }: 
             <Campo id="apr-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
             <Campo id="apr-responsavel" name="responsavel" rotulo="Responsável" required placeholder="Ex.: Cleude Oliveira" />
           </div>
+
+          {iaLigada && (
+            <div className="space-y-2 rounded-card border border-primary/30 bg-primary/5 p-3 text-sm">
+              <p><strong>✨ Montar com IA:</strong> escreva a atividade e o local acima (e, se quiser, tire uma foto do lugar). A IA sugere as etapas, os riscos, as medidas e os EPIs. Você confere tudo.</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <EscolherFoto foto={fotoApr} mudar={setFotoApr} rotulo="Foto do local (opcional)" />
+                <Botao type="button" disabled={pensando} onClick={sugerirComIa}>{pensando ? 'A IA está montando…' : 'Sugerir etapas'}</Botao>
+              </div>
+              {dicaIa && <p className="text-primary">{dicaIa}</p>}
+            </div>
+          )}
 
           <div>
             <p className="mb-2 text-sm font-semibold">Etapas da atividade</p>
@@ -453,10 +487,16 @@ function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: {
                   <span className={`font-semibold ${i.resumo.percentual >= 80 ? 'text-success' : 'text-danger'}`}>{i.resumo.percentual}% conforme</span>
                   {i.resumo.naoConformes > 0 && <span className="text-text/60"> · {i.resumo.naoConformes} não conformidade(s)</span>}
                 </span>
-                <Botao variante="secundario" onClick={async () => {
-                  try { salvarArquivo(await gerarInspecao(empresaId, i.id), `Inspecao-${i.modelo}-${i.data.slice(0, 10)}.pdf`); }
-                  catch (e) { avisar('erro', (e as Error).message); }
-                }}>Baixar relatório</Botao>
+                <span className="flex flex-wrap gap-2">
+                  {i.resumo.naoConformes > 0 && <Botao variante="secundario" onClick={async () => {
+                    try { const r = await prevencao.acoesDaInspecao(empresaId, i.id); avisar('ok', r.criadas ? `${r.criadas} ação(ões) criadas no plano de ação.` : 'As não conformidades já estavam no plano de ação.'); }
+                    catch (e) { avisar('erro', (e as Error).message); }
+                  }}>Levar ao plano de ação</Botao>}
+                  <Botao variante="secundario" onClick={async () => {
+                    try { salvarArquivo(await gerarInspecao(empresaId, i.id), `Inspecao-${i.modelo}-${i.data.slice(0, 10)}.pdf`); }
+                    catch (e) { avisar('erro', (e as Error).message); }
+                  }}>Baixar relatório</Botao>
+                </span>
               </li>
             ))}
           </ul>

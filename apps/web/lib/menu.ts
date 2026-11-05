@@ -19,6 +19,7 @@ export const MENU: GrupoMenu[] = [
       { nome: 'Painel', icone: 'casa', rota: '/', geral: true },
       { nome: 'Visão geral das empresas', icone: 'grade', rota: '/geral', geral: true, soConsultoria: true },
       { nome: 'Comercial', icone: 'cifrao', rota: '/comercial', geral: true, soConsultoria: true },
+      { nome: 'Mudanças nas normas', icone: 'sino', rota: '/normas', geral: true, soConsultoria: true },
     ],
   },
   {
@@ -44,6 +45,14 @@ export const MENU: GrupoMenu[] = [
     ],
   },
   {
+    titulo: 'Prevenção',
+    itens: [
+      { nome: 'Relatos pelo QR code', icone: 'qr', rota: '/prevencao#relatos' },
+      { nome: 'Plano de ação', icone: 'check', rota: '/prevencao#acoes' },
+      { nome: 'Investigação de acidentes', icone: 'lupa', rota: '/prevencao#investigacao', soConsultoria: true },
+    ],
+  },
+  {
     titulo: 'Dia a dia',
     itens: [
       { nome: 'APR (análise de risco)', icone: 'escudo', rota: '/operacao#apr' },
@@ -58,6 +67,7 @@ export const MENU: GrupoMenu[] = [
     titulo: 'Pessoas e treinamentos',
     itens: [
       { nome: 'Treinamentos das NRs', icone: 'formatura', rota: '/treinamentos' },
+      { nome: 'Espaço do trabalhador', icone: 'cracha', rota: '/trabalhador' },
       { nome: 'Eleição da CIPA', icone: 'votar', rota: '/cipa', soConsultoria: true },
       { nome: 'SIPAT', icone: 'festa', rota: '/cultura#sipat' },
       { nome: 'Programa 5S', icone: 'vassoura', rota: '/cultura#5s' },

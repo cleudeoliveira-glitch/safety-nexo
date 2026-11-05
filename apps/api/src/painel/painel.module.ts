@@ -6,5 +6,6 @@ import { PainelService } from './painel.service';
 @Module({
   controllers: [PainelController, PainelGeralController],
   providers: [PainelService],
+  exports: [PainelService],
 })
 export class PainelModule {}
