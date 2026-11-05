@@ -187,9 +187,12 @@ export type Permissao = {
   executantes: string[]; emitente: string; checklist: { item: string; ok: boolean }[]; encerradaEm: string | null; apr: { numero: number } | null;
 };
 export type Dds = { id: string; tema: string; conteudo: string; data: string; duracaoMin: number; ministrante: string; participantes: string[] };
+// Tema da biblioteca de DDS: o que falar, a pergunta para a equipe, um caso para contar e a dinâmica vivencial.
+export type TemaDds = { categoria: string; tema: string; conteudo: string; pergunta: string; situacao: string; dinamica: string };
+
 export type ConteudoOperacao = {
   tiposPt: Record<TipoPt, { nome: string; norma: string; checklist: string[] }>;
-  temasDds: { categoria: string; tema: string; conteudo: string; pergunta: string }[];
+  temasDds: TemaDds[];
 };
 
 export const buscarConteudoOperacao = () => chamar<ConteudoOperacao>('GET', '/operacao/conteudo');

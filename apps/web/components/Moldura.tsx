@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { AjudaDaTela } from '@/components/AjudaDaTela';
 import { Dicionario } from '@/components/Dicionario';
 import { Icone } from '@/components/Icone';
 import type { Empresa } from '@/lib/api';
@@ -33,7 +34,8 @@ export function Moldura({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen md:pl-72">
       <Menu caminho={caminho} />
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 pb-20">{children}</div>
+      <AjudaDaTela caminho={caminho} />
     </div>
   );
 }
@@ -240,6 +242,9 @@ function Menu({ caminho }: { caminho: string }) {
             <Icone nome="coroa" className="h-[18px] w-[18px]" /> Painel ADM da plataforma
           </Link>
         )}
+        <Link href="/ajuda" className={`flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition ${caminho === '/ajuda' ? 'bg-white text-primary' : 'text-white/85 hover:bg-white/10'}`}>
+          <Icone nome="interrogacao" className="h-[18px] w-[18px] text-menta/80" /> Central de ajuda
+        </Link>
         <button type="button" onClick={() => setDicionario(true)} className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-white/85 hover:bg-white/10">
           <Icone nome="livro" className="h-[18px] w-[18px] text-menta/80" /> Dicionário SST
         </button>
