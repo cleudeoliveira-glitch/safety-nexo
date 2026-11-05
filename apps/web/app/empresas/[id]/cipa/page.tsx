@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
+import { VotacaoCelular } from '@/components/VotacaoCipa';
+import { ehEmpresa } from '@/lib/sessao';
 import {
   adicionarMembroCipa,
   atualizarEleicao,
@@ -30,6 +32,8 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
   const [eleicao, setEleicao] = useState<EleicaoCipa | null | undefined>(undefined);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
+  const [versaoVotos, setVersaoVotos] = useState(0);
+  const avisarVotacao = useCallback((tipo: 'erro' | 'ok', texto: string) => setAviso({ tipo, texto }), []);
 
   const recarregar = useCallback(async () => {
     try {
@@ -174,7 +178,7 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
                 <p className="mt-5 text-sm text-text/60">
                   Depois da apuração, digite os votos de cada um. A ordem e quem fica titular ou suplente saem sozinhos; no empate, vence quem tem mais tempo de casa.
                 </p>
-                <table className="mt-2 w-full text-sm">
+                <table key={versaoVotos} className="mt-2 w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text/60">
                       <th className="py-2">Candidato</th><th className="w-24">Votos</th><th>Resultado</th><th>Vice</th><th />
@@ -241,6 +245,9 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
               <Documento doc="ata-eleicao" nome="Ata-eleicao-CIPA">Baixar ata de eleição</Documento>
             </div>
           </Cartao>
+
+          <VotacaoCelular empresaId={empresaId} eleicaoId={eleicao.id} eleicaoEm={eleicao.eleicaoEm} consultoria={!ehEmpresa()} avisar={avisarVotacao}
+            aoApurar={async () => { await recarregar(); setVersaoVotos((v) => v + 1); }} />
 
           <Cartao titulo="3. Indicados pela empresa">
             <p className="mb-4 text-sm text-text/60">

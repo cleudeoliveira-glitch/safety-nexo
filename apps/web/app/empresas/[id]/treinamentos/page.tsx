@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
 import { guardarCaptura } from '@/lib/rosto-offline';
 import { EscolherPessoas } from '@/components/EscolherPessoas';
+import { TreinamentosSugeridos } from '@/components/TreinamentosSugeridos';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   adicionarParticipantes,
@@ -130,6 +131,11 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
       </div>
 
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
+
+      <TreinamentosSugeridos empresaId={empresaId} versao={turmas.length} usar={(nome, pessoas) => {
+        escolherModelo(nome); setParticipantes(pessoas);
+        document.getElementById('tr-modelo')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }} />
 
       <Cartao titulo="Nova turma de treinamento">
         <Selecao id="tr-modelo" rotulo="Começar de um modelo" value={modelo.nome} onChange={(e) => escolherModelo(e.target.value)} className="mb-4"

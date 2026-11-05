@@ -762,3 +762,141 @@ export const admin = {
   atualizar: (id: string, dados: { plano?: string; limiteEmpresas?: number; bloqueada?: boolean; motivoBloqueio?: string; observacaoAdm?: string }) =>
     chamar<unknown>('PATCH', `/admin/consultorias/${id}`, dados),
 };
+
+// ---------- Novidades: normas, prevenção, IA, votação da CIPA, espaço do trabalhador, e-mail ----------
+
+// Imagem protegida (foto de relato ou de ação): busca com o login e devolve um endereço local.
+export async function imagemProtegida(caminho: string): Promise<string> {
+  const res = await fetch(`${API_URL}${caminho}`, { headers: cabecalhos() });
+  verificarSessao(res);
+  if (!res.ok) throw new Error('Não foi possível abrir a foto.');
+  return URL.createObjectURL(await res.blob());
+}
+
+export type AvisoNorma = {
+  id: string; titulo: string; normas: string[]; resumo: string; oQueFazer: string | null; linkOficial: string | null;
+  publicadaEm: string | null; vigenciaEm: string | null; cnaePrefixos: string[]; grauRiscoMin: number | null; funcionariosMin: number | null; criadoEm: string;
+};
+export type AvisoNormaConsultoria = AvisoNorma & { lido: boolean; empresas: { id: string; razaoSocial: string }[] };
+export type NovoAvisoNorma = Omit<AvisoNorma, 'id' | 'criadoEm' | 'oQueFazer' | 'linkOficial' | 'publicadaEm' | 'vigenciaEm' | 'grauRiscoMin' | 'funcionariosMin'> & {
+  oQueFazer?: string; linkOficial?: string; publicadaEm?: string; vigenciaEm?: string; grauRiscoMin?: number; funcionariosMin?: number;
+};
+export const normas = {
+  avisos: () => chamar<AvisoNormaConsultoria[]>('GET', '/normas/avisos'),
+  lido: (id: string) => chamar<{ ok: boolean }>('POST', `/normas/avisos/${id}/lido`),
+  adminListar: () => chamar<(AvisoNorma & { _count: { lidos: number } })[]>('GET', '/admin/normas'),
+  adminCriar: (d: NovoAvisoNorma) => chamar<AvisoNorma>('POST', '/admin/normas', d),
+  adminAtualizar: (id: string, d: NovoAvisoNorma) => chamar<AvisoNorma>('PUT', `/admin/normas/${id}`, d),
+  adminRemover: (id: string) => chamar<{ ok: boolean }>('DELETE', `/admin/normas/${id}`),
+};
+
+export const avisosEmail = {
+  previa: () => chamar<{ avisosEmail: boolean; emailLigado: boolean; html: string }>('GET', '/avisos/previa'),
+  preferencia: (avisosEmail: boolean) => chamar<{ avisosEmail: boolean }>('PUT', '/avisos/preferencia', { avisosEmail }),
+};
+
+export type TipoRelato = 'QUASE_ACIDENTE' | 'CONDICAO_INSEGURA' | 'ATO_INSEGURO' | 'SUGESTAO';
+export const TIPOS_RELATO: Record<TipoRelato, string> = { QUASE_ACIDENTE: 'Quase acidente', CONDICAO_INSEGURA: 'Algo perigoso no local', ATO_INSEGURO: 'Alguém fazendo algo arriscado', SUGESTAO: 'Ideia para melhorar' };
+export type PerigoIa = { descricao: string; nr: string | null; tipo: string; probabilidade: number; severidade: number; acoes: string[] };
+export type AnaliseFotoIa = { resumo: string; imagemUtil: boolean; perigos: PerigoIa[]; boasPraticas: string[] };
+export type Relato = {
+  id: string; numero: number; tipo: TipoRelato; descricao: string; local: string | null; nome: string | null;
+  status: 'NOVO' | 'EM_ANALISE' | 'ENCERRADO'; resposta: string | null; analiseIa: AnaliseFotoIa | null; criadoEm: string; temFoto: boolean; acoes: boolean;
+};
+export type Prioridade = 'ALTA' | 'MEDIA' | 'BAIXA';
+export type Esforco = 'RAPIDO' | 'MEDIO' | 'DEMORADO';
+export type AcaoCorretiva = {
+  id: string; origem: string; origemId: string | null; origemTexto: string | null; descricao: string; local: string | null; responsavel: string | null;
+  prazo: string | null; prioridade: Prioridade; esforco: Esforco; status: 'ABERTA' | 'FEITA'; feitaEm: string | null; feitaPor: string | null;
+  observacao: string | null; temEvidencia: boolean; criadoEm: string; somenteLeitura: boolean;
+};
+export type NovaAcao = { descricao: string; local?: string; responsavel?: string; prazo?: string; prioridade?: Prioridade; esforco?: Esforco; origem?: string; origemId?: string; origemTexto?: string };
+export type CategoriaCausa = 'METODO' | 'MAQUINA' | 'MATERIAL' | 'PESSOAS' | 'AMBIENTE' | 'GESTAO';
+export const CATEGORIAS_CAUSA: Record<CategoriaCausa, string> = { METODO: 'Método (como o trabalho é feito)', MAQUINA: 'Máquina ou equipamento', MATERIAL: 'Material', PESSOAS: 'Pessoas (treino, cansaço, pressa)', AMBIENTE: 'Ambiente (piso, luz, calor)', GESTAO: 'Gestão (regras, supervisão)' };
+export type Investigacao = { id: string; catId: string | null; relatoId: string | null; titulo: string; dataOcorrencia: string; local: string; descricao: string; equipe: string; porques: string[]; causas: { categoria: CategoriaCausa; texto: string }[]; conclusao: string | null; criadoEm: string };
+export type NovaInvestigacao = Omit<Investigacao, 'id' | 'criadoEm' | 'catId' | 'relatoId' | 'conclusao'> & { catId?: string; relatoId?: string; conclusao?: string; medidas: { descricao: string; responsavel?: string; prazo?: string; prioridade?: Prioridade }[] };
+export type InvestigacaoIa = { porques: string[]; causas: { categoria: CategoriaCausa; texto: string }[]; medidas: { descricao: string; prioridade: Prioridade }[]; observacao: string | null };
+
+const comFoto = (campos: Record<string, string | undefined>, foto?: Blob | null) => {
+  const f = new FormData();
+  for (const [k, v] of Object.entries(campos)) if (v !== undefined && v !== '') f.append(k, v);
+  if (foto) f.append('foto', foto, 'foto.jpg');
+  return f;
+};
+
+export const prevencao = {
+  qr: (e: string) => chamar<{ link: string; qr: string }>('GET', `/empresas/${e}/relatos/qr`),
+  novoQr: (e: string) => chamar<{ link: string; qr: string }>('POST', `/empresas/${e}/relatos/qr/novo`),
+  cartaz: (e: string) => baixarPdf(`/empresas/${e}/relatos/cartaz`, 'cartaz'),
+  relatos: (e: string) => chamar<Relato[]>('GET', `/empresas/${e}/relatos`),
+  fotoRelato: (e: string, id: string) => imagemProtegida(`/empresas/${e}/relatos/${id}/foto`),
+  tratar: (e: string, id: string, d: { status: Relato['status']; resposta?: string }) => chamar<Relato>('PUT', `/empresas/${e}/relatos/${id}`, d),
+  analisarRelato: (e: string, id: string) => chamar<AnaliseFotoIa>('POST', `/empresas/${e}/relatos/${id}/ia`),
+  acoes: (e: string) => chamar<AcaoCorretiva[]>('GET', `/empresas/${e}/acoes`),
+  criarAcao: (e: string, d: NovaAcao) => chamar<AcaoCorretiva>('POST', `/empresas/${e}/acoes`, d),
+  atualizarAcao: (e: string, id: string, d: Partial<Pick<AcaoCorretiva, 'descricao' | 'responsavel' | 'prazo' | 'prioridade' | 'esforco' | 'status' | 'observacao'>>) => chamar<AcaoCorretiva>('PUT', `/empresas/${e}/acoes/${id}`, d),
+  removerAcao: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/acoes/${id}`),
+  evidencia: (e: string, id: string, foto: Blob) => chamar<{ ok: boolean }>('POST', `/empresas/${e}/acoes/${id}/evidencia`, comFoto({}, foto)),
+  verEvidencia: (e: string, id: string) => imagemProtegida(`/empresas/${e}/acoes/${id}/evidencia`),
+  acoesDaInspecao: (e: string, inspecaoId: string) => chamar<{ criadas: number }>('POST', `/empresas/${e}/acoes/da-inspecao/${inspecaoId}`),
+  pdfPlano: (e: string) => baixarPdf(`/empresas/${e}/acoes/pdf`, 'plano de ação'),
+  investigacoes: (e: string) => chamar<Investigacao[]>('GET', `/empresas/${e}/investigacoes`),
+  criarInvestigacao: (e: string, d: NovaInvestigacao) => chamar<Investigacao>('POST', `/empresas/${e}/investigacoes`, d),
+  removerInvestigacao: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/investigacoes/${id}`),
+  pdfInvestigacao: (e: string, id: string) => baixarPdf(`/empresas/${e}/investigacoes/${id}/pdf`, 'relatório da investigação'),
+};
+
+export const relatoPublico = {
+  dados: (token: string) => chamar<{ empresa: string; consultoria: string; setores: string[] }>('GET', `/relato/${token}`),
+  enviar: (token: string, d: { tipo: TipoRelato; descricao: string; local?: string; nome?: string }, foto?: Blob | null) =>
+    chamar<{ ok: boolean; numero: number }>('POST', `/relato/${token}`, comFoto(d, foto)),
+};
+
+export type AprIa = { etapas: EtapaApr[]; permissoes: string[]; observacao: string | null };
+export const ia = {
+  status: () => chamar<{ ligada: boolean }>('GET', '/ia/status'),
+  foto: (e: string, foto: Blob, contexto?: string) => chamar<AnaliseFotoIa>('POST', `/empresas/${e}/ia/foto`, comFoto({ contexto }, foto)),
+  apr: (e: string, atividade: string, local?: string, foto?: Blob | null) => chamar<AprIa>('POST', `/empresas/${e}/ia/apr`, comFoto({ atividade, local }, foto)),
+  investigacao: (e: string, descricao: string) => chamar<InvestigacaoIa>('POST', `/empresas/${e}/ia/investigacao`, { descricao }),
+};
+
+export type SituacaoVotacao = {
+  inicio: string | null; fim: string | null; apuradaEm: string | null; estado: 'NAO_ABERTA' | 'AGENDADA' | 'ABERTA' | 'ENCERRADA' | 'APURADA';
+  total: number; votaram: number; eleitores: { nome: string; cargo: string; codigo: string; link: string; votou: boolean }[];
+  resultado: { candidatos: { nome: string; votos: number }[]; brancos: number; nulos: number } | null;
+};
+const rotaVotacao = (e: string, eleicaoId: string) => `/empresas/${e}/cipa/eleicoes/${eleicaoId}/votacao`;
+export const votacaoCipa = {
+  situacao: (e: string, id: string) => chamar<SituacaoVotacao>('GET', rotaVotacao(e, id)),
+  abrir: (e: string, id: string, d: { inicio: string; fim: string }) => chamar<SituacaoVotacao>('POST', rotaVotacao(e, id), d),
+  encerrar: (e: string, id: string) => chamar<SituacaoVotacao>('POST', `${rotaVotacao(e, id)}/encerrar`),
+  apurar: (e: string, id: string) => chamar<SituacaoVotacao>('POST', `${rotaVotacao(e, id)}/apurar`),
+  tirinhas: (e: string, id: string) => baixarPdf(`${rotaVotacao(e, id)}/tirinhas`, 'códigos de votação'),
+};
+export type Cedula = { empresa: string; primeiroNome: string; inicio: string | null; fim: string | null; votou: boolean; aberta: boolean; pedeCpf: boolean; candidatos: { id: string; nome: string; cargo: string }[] };
+export const votoPublico = {
+  cedula: (codigo: string) => chamar<Cedula>('GET', `/cipa-voto/${codigo}`),
+  votar: (codigo: string, d: { escolha: string; cpfInicio?: string }) => chamar<{ ok: boolean }>('POST', `/cipa-voto/${codigo}`, d),
+};
+
+export type TreinamentoSugerido = { norma: string; modelo: string; motivo: string; onde: string[]; total: number; pendentes: { id: string; nome: string; cargo: string }[] };
+export const treinamentosSugeridos = (e: string) => chamar<TreinamentoSugerido[]>('GET', `/empresas/${e}/treinamentos/sugeridos`);
+
+export type LinkPortal = { id: string; nome: string; cargo: string; temCpf: boolean; link: string | null };
+export const portal = {
+  links: (e: string) => chamar<LinkPortal[]>('GET', `/empresas/${e}/portal`),
+  gerar: (e: string) => chamar<LinkPortal[]>('POST', `/empresas/${e}/portal/gerar`),
+  novo: (e: string, colaboradorId: string) => chamar<{ link: string }>('POST', `/empresas/${e}/portal/${colaboradorId}/novo`),
+};
+export type MeuEspaco = {
+  nome: string; cargo: string; empresa: string; consultoria: string;
+  asos: { tipo: string; dataExame: string; resultado: string; proximoExame: string | null }[];
+  epis: { epi: string; ca: string; quantidade: number; dataEntrega: string }[];
+  treinamentos: { nome: string; norma: string | null; cargaHoraria: number; concluidoEm: string; validade: string | null; vencido: boolean; certificado: string }[];
+  assinar: { titulo: string; papel: string; link: string }[];
+  votar: string | null; relato: string | null;
+};
+export const meuEspaco = {
+  abrir: (token: string) => chamar<{ primeiroNome: string; empresa: string }>('GET', `/portal/${token}`),
+  entrar: (token: string, cpf: string) => chamar<MeuEspaco>('POST', `/portal/${token}`, { cpf }),
+};
