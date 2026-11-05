@@ -11,7 +11,7 @@ import { enderecoDoItem, ItemMenu, MENU } from '@/lib/menu';
 import { lerToken, lerUsuario, sair, Usuario } from '@/lib/sessao';
 
 // Telas abertas por quem não entrou no sistema (ou de tela cheia) ficam sem o menu.
-const SEM_MENU = [/^\/relato\//, /^\/votar\//, /^\/meu\//, /^\/entrar/, /^\/cadastro/, /^\/assinar\//, /^\/assinatura\//, /^\/validar/, /^\/psicossocial\//, /^\/campo/, /\/lista\//];
+const SEM_MENU = [/^\/relato\//, /^\/votar\//, /^\/meu\//, /^\/entrar/, /^\/cadastro/, /^\/planos/, /^\/assinar\//, /^\/assinatura\//, /^\/validar/, /^\/psicossocial\//, /^\/campo/, /\/lista\//];
 
 const CHAVE_FECHADOS = 'safety-nexo:menu-fechados';
 

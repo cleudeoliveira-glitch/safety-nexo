@@ -20,6 +20,7 @@ export const MENU: GrupoMenu[] = [
       { nome: 'Visão geral das empresas', icone: 'grade', rota: '/geral', geral: true, soConsultoria: true },
       { nome: 'Comercial', icone: 'cifrao', rota: '/comercial', geral: true, soConsultoria: true },
       { nome: 'Mudanças nas normas', icone: 'sino', rota: '/normas', geral: true, soConsultoria: true },
+      { nome: 'Meu plano', icone: 'coroa', rota: '/plano', geral: true, soConsultoria: true },
     ],
   },
   {

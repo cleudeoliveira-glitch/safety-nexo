@@ -1,5 +1,6 @@
 // Planos do Safety Nexo (valores do PROMPT do projeto: Essencial R$67, Profissional R$127, Premium R$197, Enterprise R$397).
-// limiteEmpresas null = ilimitado.
+// limiteEmpresas null = ilimitado. Todos os planos têm todos os módulos: o que muda é quantas empresas clientes cabem.
+// A página de planos do site (apps/web/lib/planos.ts) mostra estes mesmos valores: ao mudar aqui, mude lá também.
 export const PLANOS = [
   { codigo: 'FREE', nome: 'Free', precoMensal: 0, limiteEmpresas: 1 },
   { codigo: 'ESSENCIAL', nome: 'Essencial', precoMensal: 67, limiteEmpresas: 3 },
