@@ -42,6 +42,7 @@ import {
 } from '@/lib/api';
 import { EscolhaTabela } from '@/components/EscolhaTabela';
 import { ehEmpresa } from '@/lib/sessao';
+import { rolarParaAncora } from '@/lib/abaDoEndereco';
 
 const TIPOS_RISCO = [
   ['FISICO', 'Físico'],
@@ -98,6 +99,15 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     setCliente(ehEmpresa());
     recarregar();
   }, [recarregar]);
+
+  // O menu lateral leva direto a uma parte desta tela (ex.: #colaboradores).
+  const carregou = !!empresa;
+  useEffect(() => {
+    if (!carregou) return;
+    const t = setTimeout(rolarParaAncora, 80);
+    window.addEventListener('hashchange', rolarParaAncora);
+    return () => { clearTimeout(t); window.removeEventListener('hashchange', rolarParaAncora); };
+  }, [carregou]);
 
   // Envolve cada formulário: lê os campos, chama a API, limpa o formulário e recarrega.
   function enviar(acao: (dados: FormData) => Promise<unknown>, sucesso: string) {
@@ -165,7 +175,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       {cliente && <Aviso tipo="info">Aqui você cadastra os colaboradores e abre o ASO e o EPI de cada um. Os programas e documentos são feitos pela sua consultoria.</Aviso>}
 
       {!cliente && (<>
-      <Cartao titulo="1. Dados da empresa">
+      <Cartao titulo="1. Dados da empresa" id="dados">
         <form
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar(async (d) => {
@@ -200,7 +210,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
         </form>
       </Cartao>
 
-      <Cartao titulo="2. GHEs, riscos e exames" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
+      <Cartao titulo="2. GHEs, riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
         <form
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar((d) => criarGhe(empresaId, { nome: texto(d, 'nome'), descricao: texto(d, 'descricao') || undefined }), 'GHE cadastrado.')}
@@ -323,7 +333,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       </Cartao>
       </>)}
 
-      <Cartao titulo="3. Colaboradores">
+      <Cartao titulo="3. Colaboradores" id="colaboradores">
         <form
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar(
@@ -372,7 +382,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       </Cartao>
 
       {!cliente && (
-      <Cartao titulo="4. Médico responsável pelo PCMSO">
+      <Cartao titulo="4. Médico responsável pelo PCMSO" id="medico">
         <form
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar((d) => definirMedico(empresaId, { nome: texto(d, 'nome'), crm: texto(d, 'crm') }), 'Médico salvo.')}

@@ -5,7 +5,7 @@ module.exports = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
   theme: {
     extend: {
-      colors: tokens.colors,
+      colors: { ...tokens.colors, menta: '#6CF0C2', 'primary-escuro': '#082F3A' },
       fontFamily: tokens.fontFamily,
       borderRadius: tokens.radius,
     },

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
@@ -263,6 +264,7 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
 export default function SaudePage({ params }: { params: { id: string } }) {
   const empresaId = params.id;
   const [aba, setAba] = useState<Aba>('aet');
+  useAbaDoEndereco<Aba>(['aet', 'cat', 'afast'], setAba, { afastamentos: 'afast' });
   const [cliente, setCliente] = useState(false);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);

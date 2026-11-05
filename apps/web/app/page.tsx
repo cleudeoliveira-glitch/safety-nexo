@@ -1,57 +1,74 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CampoAjuda } from '@/components/CampoAjuda';
-import { Dicionario, Painel as PainelLateral } from '@/components/Dicionario';
+import { Painel as PainelLateral } from '@/components/Dicionario';
+import { Icone, NomeIcone } from '@/components/Icone';
 import { PassoTour, Tour, useTourPrimeiraVez } from '@/components/Tour';
-import { carregarPainel, Empresa, listarEmpresas, Painel } from '@/lib/api';
-import { ehAdminPlataforma, ehEmpresa, lerToken, sair } from '@/lib/sessao';
-
-// Cada segmento abre a parte do cadastro da empresa em foco; sem rota, ainda está em construção.
-const segments: [nome: string, rota: string | null][] = [
-  ['Admissão e Base', ''],
-  ['Operação Diária', '/operacao'],
-  ['Pessoas e Cultura', '/treinamentos'],
-  ['Saúde Ocupacional', '/saude'],
-  ['Emergência', '/emergencia'],
-  ['Governança', '/esocial'],
-  ['Conectores', '/conectores'],
-  ['Documentos', '/arquivo'],
-  ['Psicossocial', '/psicossocial'],
-];
+import { carregarPainel, Empresa, Painel } from '@/lib/api';
+import { aoMudarFoco, empresasDaConta, escolherFoco, salvarFoco } from '@/lib/empresaFoco';
+import { ehEmpresa, lerToken, lerUsuario } from '@/lib/sessao';
 
 const passosTour: PassoTour[] = [
-  { alvo: 'empresa', titulo: 'Escolha a empresa', texto: 'Cada empresa cliente tem seus dados e documentos. Troque aqui para ver outra.' },
+  { alvo: 'empresa', titulo: 'Escolha a empresa', texto: 'Cada empresa cliente tem seus dados e documentos. Troque aqui para ver outra. Todos os módulos ficam no menu da esquerda.' },
   { alvo: 'hoje', titulo: 'O que fazer hoje', texto: 'Aqui aparece o que falta para os documentos ficarem completos e o que está vencendo.' },
   { alvo: 'saude', titulo: 'Saúde da Empresa', texto: 'Mostra quanto da empresa já está preenchido. A meta é 100%.' },
   { alvo: 'gerar', titulo: 'Gere o documento', texto: 'Com os dados completos, o PGR sai em PDF com a logo da empresa cliente.' },
-  { alvo: 'ajuda', titulo: 'Ajuda sempre à mão', texto: 'Use "Como usar?" para o passo a passo desta tela e o Dicionário SST para entender qualquer sigla.' },
+  { alvo: 'ajuda', titulo: 'Ajuda sempre à mão', texto: 'Use "Como usar?" para o passo a passo desta tela. O Dicionário SST fica no fim do menu.' },
 ];
 
 const comoUsar = [
-  'Escolha a empresa no menu da esquerda.',
+  'Escolha a empresa no alto do menu da esquerda. No celular, o menu abre pelo botão ☰.',
   'Veja em "O que fazer hoje" o que falta. Cada item diz o próximo passo.',
   'Complete os dados da empresa, cadastre os GHEs, os riscos e os colaboradores.',
   'Quando a Saúde da Empresa chegar a 100%, gere o PGR e depois o PCMSO.',
-  'Acompanhe os vencimentos no quadro da direita.',
+  'Todos os outros módulos (DDS, APR, CIPA, treinamentos, eSocial e mais) ficam no menu.',
 ];
 
 const tonsPorNivel = {
-  vencido: { ponto: 'bg-danger', selo: 'bg-danger text-white', rotulo: 'Vencido' },
-  pendente: { ponto: 'bg-warning', selo: 'bg-warning text-text', rotulo: 'Pendente' },
-  'em-dia': { ponto: 'bg-success', selo: 'bg-success text-white', rotulo: 'Em dia' },
+  vencido: { ponto: 'bg-danger', selo: 'bg-danger/10 text-danger', rotulo: 'Vencido' },
+  pendente: { ponto: 'bg-warning', selo: 'bg-warning/15 text-[#c2410c]', rotulo: 'Pendente' },
+  'em-dia': { ponto: 'bg-success', selo: 'bg-success/10 text-success', rotulo: 'Em dia' },
 } as const;
 
+// Atalhos do painel: os módulos mais usados no dia a dia.
+const atalhos: { nome: string; texto: string; icone: NomeIcone; rota: string; soConsultoria?: boolean }[] = [
+  { nome: 'PGR e PCMSO', texto: 'Gerar programas e laudos', icone: 'documento', rota: '#documentos', soConsultoria: true },
+  { nome: 'Colaboradores', texto: 'ASO, EPI e ordem de serviço', icone: 'pessoas', rota: '#colaboradores' },
+  { nome: 'DDS', texto: '150 temas prontos', icone: 'fala', rota: '/operacao#dds' },
+  { nome: 'APR e PT', texto: 'Análise de risco e permissões', icone: 'escudo', rota: '/operacao#apr' },
+  { nome: 'Treinamentos', texto: '28 NRs com certificado', icone: 'formatura', rota: '/treinamentos' },
+  { nome: 'CIPA', texto: 'Dimensionamento e eleição', icone: 'votar', rota: '/cipa', soConsultoria: true },
+  { nome: 'EPI', texto: 'Almoxarifado e entregas', icone: 'caixa', rota: '/almoxarifado' },
+  { nome: 'eSocial', texto: 'S-2210, S-2220, S-2240', icone: 'nuvem', rota: '/esocial', soConsultoria: true },
+  { nome: 'Emergência', texto: 'Brigada, AVCB e extintores', icone: 'fogo', rota: '/emergencia' },
+  { nome: 'Indicadores', texto: 'Painel SSMA', icone: 'grafico', rota: '/ssma' },
+];
+
 export default function Home() {
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [empresas, setEmpresas] = useState<Empresa[] | null>(null);
   const [empresaId, setEmpresaId] = useState<string>('');
   const [painel, setPainel] = useState<Painel | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [painelAjuda, setPainelAjuda] = useState<'como-usar' | 'dicionario' | null>(null);
+  const [comoUsarAberto, setComoUsarAberto] = useState(false);
   const tour = useTourPrimeiraVez();
   const [empresaCliente, setEmpresaCliente] = useState(false);
-  const [adminPlataforma, setAdminPlataforma] = useState(false);
+  const [nome, setNome] = useState('');
+
+  const carregarEmpresas = useCallback((recarregar = false) => {
+    setErro(null);
+    // A visão geral abre uma empresa específica pelo endereço (?empresa=...).
+    const pedida = new URLSearchParams(window.location.search).get('empresa') ?? lerUsuario()?.empresaId;
+    empresasDaConta(recarregar)
+      .then((lista) => {
+        setEmpresas(lista);
+        const id = escolherFoco(lista, pedida);
+        setEmpresaId(id);
+        if (id) salvarFoco(id);
+      })
+      .catch((e: Error) => setErro(e.message));
+  }, []);
 
   useEffect(() => {
     if (!lerToken()) {
@@ -59,17 +76,10 @@ export default function Home() {
       return;
     }
     setEmpresaCliente(ehEmpresa());
-    setAdminPlataforma(ehAdminPlataforma());
-    // A visão geral abre uma empresa específica pelo endereço (?empresa=...).
-    const pedida = new URLSearchParams(window.location.search).get('empresa');
-    listarEmpresas()
-      .then((lista) => {
-        setEmpresas(lista);
-        const escolhida = lista.find((e) => e.id === pedida) ?? lista[0];
-        if (escolhida) setEmpresaId(escolhida.id);
-      })
-      .catch((e: Error) => setErro(e.message));
-  }, []);
+    setNome((lerUsuario()?.nome ?? '').split(' ')[0]);
+    carregarEmpresas();
+    return aoMudarFoco(setEmpresaId);
+  }, [carregarEmpresas]);
 
   useEffect(() => {
     if (!empresaId) return;
@@ -79,178 +89,173 @@ export default function Home() {
       .catch((e: Error) => setErro(e.message));
   }, [empresaId]);
 
+  const base = `/empresas/${empresaId}`;
+  const semEmpresa = empresas !== null && empresas.length === 0;
+  const percentual = painel?.percentual ?? 0;
+  const saudacao = (() => {
+    const h = new Date().getHours();
+    return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  })();
+
   return (
-    <div className="flex min-h-screen">
-      <aside className="hidden w-64 shrink-0 border-r border-border bg-white p-6 md:block">
-        <img src="/logo.png" alt="Safety Nexo" className="h-10 w-auto" />
-        <label htmlFor="empresa" className="mt-6 block text-xs text-text/60">
-          Empresa em foco
-          <CampoAjuda
-            titulo="Empresa em foco"
-            ajuda={{
-              oQueE: 'A empresa cliente com que você está trabalhando agora.',
-              ondeAcho: 'As empresas cadastradas aparecem nesta lista.',
-              exemplo: 'Padaria Pão Quente Ltda',
-            }}
-          />
-        </label>
-        <select
-          data-tour="empresa"
-          id="empresa"
-          value={empresaId}
-          onChange={(e) => setEmpresaId(e.target.value)}
-          className="mt-1 w-full rounded-card border border-border bg-background px-3 py-2 text-sm"
-        >
-          {empresas.map((empresa) => (
-            <option key={empresa.id} value={empresa.id}>
-              {empresa.razaoSocial}
-            </option>
-          ))}
-        </select>
-        <div className="mt-3 grid gap-2">
-          {empresaId && <Link href={`/empresas/${empresaId}/ssma`} className="rounded-card bg-primary px-3 py-2 text-center text-sm font-semibold text-white">Painel SSMA (indicadores)</Link>}
-          <Link href="/campo" className="rounded-card border border-primary px-3 py-2 text-center text-sm font-semibold text-primary">
-            Campo (funciona sem internet)
-          </Link>
-          {!empresaCliente && (
-            <>
-              <Link href="/geral" className="rounded-card border border-primary px-3 py-2 text-center text-sm font-semibold text-primary">
-                Visão geral das empresas
-              </Link>
-              <Link href="/comercial" className="rounded-card border border-primary px-3 py-2 text-center text-sm font-semibold text-primary">
-                Comercial
-              </Link>
-              <Link href="/empresas/nova" className="rounded-card bg-primary px-3 py-2 text-center text-sm font-semibold text-white">
-                + Nova empresa
-              </Link>
-              {adminPlataforma && (
-                <Link href="/admin" className="rounded-card border border-dashed border-primary px-3 py-2 text-center text-sm font-semibold text-primary">
-                  Painel ADM da plataforma
-                </Link>
-              )}
-            </>
-          )}
-          {empresaId && (
-            <Link href={`/empresas/${empresaId}`} className="rounded-card border border-border px-3 py-2 text-center text-sm font-medium">
-              Abrir cadastro da empresa
-            </Link>
-          )}
-        </div>
-        <div data-tour="ajuda" className="mt-6 grid gap-2">
-          <button type="button" onClick={() => setPainelAjuda('como-usar')} className="rounded-card border border-border px-3 py-2 text-left text-sm font-medium">
-            Como usar?
+    <main className="mx-auto max-w-6xl p-4 md:p-8">
+      <div data-tour="ajuda" className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-text/60">
+          {saudacao}
+          {nome ? `, ${nome}` : ''}! Que bom te ver por aqui.
+        </p>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setComoUsarAberto(true)} className="flex items-center gap-1.5 rounded-full border border-border bg-white px-3.5 py-1.5 text-sm font-medium text-text/80 shadow-sm hover:border-primary hover:text-primary">
+            <Icone nome="interrogacao" className="h-4 w-4" /> Como usar?
           </button>
-          <button type="button" onClick={() => setPainelAjuda('dicionario')} className="rounded-card border border-border px-3 py-2 text-left text-sm font-medium">
-            Dicionário SST
-          </button>
-          <button type="button" onClick={tour.abrir} className="rounded-card border border-border px-3 py-2 text-left text-sm font-medium">
+          <button type="button" onClick={tour.abrir} className="rounded-full border border-border bg-white px-3.5 py-1.5 text-sm font-medium text-text/80 shadow-sm hover:border-primary hover:text-primary">
             Rever o tour
           </button>
-          <button type="button" onClick={sair} className="px-3 py-2 text-left text-sm text-text/60">
-            Sair
+        </div>
+      </div>
+
+      {erro && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-danger/30 bg-white p-4 shadow-sm">
+          <div>
+            <p className="font-semibold text-danger">Não consegui carregar os dados.</p>
+            <p className="text-sm text-text/60">
+              O servidor pode estar acordando depois de um tempo parado. Isso leva até 1 minuto. ({erro})
+            </p>
+          </div>
+          <button type="button" onClick={() => carregarEmpresas(true)} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
+            Tentar de novo
           </button>
         </div>
-        <nav className="mt-8 space-y-3">
-          {segments.filter(([nome]) => !(empresaCliente && (nome === 'Governança' || nome === 'Psicossocial'))).map(([nome, rota]) =>
-            rota !== null && empresaId ? (
-              <Link key={nome} href={`/empresas/${empresaId}${rota}`} className="block text-sm font-medium hover:text-primary">
-                {nome}
-              </Link>
-            ) : (
-              <p key={nome} className="text-sm font-medium text-text/40">
-                {nome} <span className="text-xs">· em breve</span>
-              </p>
-            ),
-          )}
-        </nav>
-      </aside>
+      )}
 
-      <main className="flex-1 p-6 md:p-10">
-        {erro && <p className="rounded-card border border-danger bg-white p-4 text-danger">{erro}</p>}
-
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-text/60">{painel?.empresa.razaoSocial ?? 'Carregando empresa…'}</p>
-            <h1 className="text-3xl font-semibold text-primary">
-              Você completou {painel ? `${painel.percentual}%` : '…'} da empresa
-            </h1>
-          </div>
-          {!empresaCliente && (
-            <Link
-              href={empresaId ? `/empresas/${empresaId}#documentos` : '/empresas/nova'}
-              data-tour="gerar"
-              className="rounded-card bg-primary px-6 py-4 text-lg font-semibold text-white shadow-sm transition hover:opacity-90"
-            >
-              Gerar PGR em 3 minutos
-            </Link>
-          )}
-        </header>
-
-        <section className="mt-8 grid gap-6 lg:grid-cols-3">
-          <div data-tour="hoje" className="rounded-card border border-border bg-white p-6 shadow-sm lg:col-span-2">
-            <h2 className="text-lg font-semibold">O que fazer hoje</h2>
-            {painel && painel.pendencias.length === 0 && (
-              <p className="mt-4 text-text/60">Tudo em dia nesta empresa.</p>
-            )}
-            <ul className="mt-4 divide-y divide-border">
-              {painel?.pendencias.map((pendencia) => {
-                const tom = tonsPorNivel[pendencia.nivel];
-                return (
-                  <li key={pendencia.titulo} className="flex items-center gap-3 py-3">
-                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tom.ponto}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">{pendencia.titulo}</p>
-                      <p className="text-sm text-text/60">{pendencia.detalhe}</p>
-                    </div>
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${tom.selo}`}>{tom.rotulo}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          <div data-tour="saude" className="rounded-card border border-border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">
-              Saúde da Empresa
-              <CampoAjuda
-                alinhar="direita"
-                titulo="Saúde da Empresa"
-                ajuda={{
-                  oQueE: 'Percentual dos itens já preenchidos: dados da empresa, GHEs, riscos, colaboradores e PGR em dia.',
-                  exemplo: '80% quer dizer que falta um dos cinco itens. Veja qual em "O que fazer hoje".',
-                }}
-              />
-            </h2>
-            <div className="mt-6 flex items-center justify-center">
-              <div
-                className="flex h-40 w-40 items-center justify-center rounded-full"
-                style={{ background: `conic-gradient(#10b981 ${painel?.percentual ?? 0}%, #e5e7eb 0)` }}
-              >
-                <div className="flex h-28 w-28 items-center justify-center rounded-full bg-white">
-                  <span className="text-3xl font-semibold text-primary">{painel?.percentual ?? 0}%</span>
+      {semEmpresa ? (
+        <BoasVindas cliente={empresaCliente} />
+      ) : (
+        <>
+          <section className="fundo-destaque relative overflow-hidden rounded-3xl p-6 text-white shadow-lg shadow-primary/20 md:p-8">
+            <div className="relative flex flex-wrap items-center justify-between gap-6">
+              <div className="min-w-0">
+                <p className="text-sm font-medium uppercase tracking-wider text-white/70">Empresa em foco</p>
+                <h1 className="mt-1 text-2xl font-bold md:text-3xl">{painel?.empresa.razaoSocial ?? (empresas ? 'Carregando empresa…' : 'Carregando…')}</h1>
+                <p className="mt-2 max-w-xl text-white/80">
+                  {painel
+                    ? percentual === 100
+                      ? 'Tudo preenchido. Os documentos já podem sair em PDF.'
+                      : `Você completou ${percentual}% do cadastro desta empresa. Veja abaixo o que falta.`
+                    : 'Buscando os dados da empresa…'}
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  {!empresaCliente && (
+                    <Link href={empresaId ? `${base}#documentos` : '/empresas/nova'} data-tour="gerar" className="rounded-xl bg-white px-5 py-3 font-semibold text-primary shadow-sm transition hover:bg-menta">
+                      Gerar PGR em 3 minutos
+                    </Link>
+                  )}
+                  {empresaId && (
+                    <Link href={base} className="rounded-xl border border-white/40 px-5 py-3 font-semibold text-white transition hover:bg-white/10">
+                      Abrir cadastro da empresa
+                    </Link>
+                  )}
+                </div>
+              </div>
+              <div data-tour="saude" className="flex items-center gap-4 rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur">
+                <div className="flex h-28 w-28 items-center justify-center rounded-full" style={{ background: `conic-gradient(#6CF0C2 ${percentual}%, rgba(255,255,255,0.18) 0)` }}>
+                  <div className="flex h-[88px] w-[88px] items-center justify-center rounded-full bg-primary">
+                    <span className="text-2xl font-bold">{percentual}%</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="font-semibold">
+                    Saúde da Empresa
+                    <CampoAjuda
+                      alinhar="direita"
+                      titulo="Saúde da Empresa"
+                      ajuda={{
+                        oQueE: 'Percentual dos itens já preenchidos: dados da empresa, GHEs, riscos, colaboradores e PGR em dia.',
+                        exemplo: '80% quer dizer que falta um dos cinco itens. Veja qual em "O que fazer hoje".',
+                      }}
+                    />
+                  </p>
+                  <p className="text-sm text-white/70">Meta: 100%</p>
                 </div>
               </div>
             </div>
-            <h3 className="mt-6 text-sm font-semibold">Vencimentos</h3>
-            {painel && painel.vencimentos.length === 0 && <p className="mt-2 text-sm text-text/60">Nenhum documento emitido.</p>}
-            <ul className="mt-2 space-y-1 text-sm">
-              {painel?.vencimentos.map((v) => (
-                <li key={v.tipo} className="flex justify-between">
-                  <span>
-                    {v.tipo} v{v.versao}
-                  </span>
-                  <span className={v.dias < 0 ? 'text-danger' : v.dias <= 30 ? 'text-warning' : 'text-text/60'}>
-                    {new Date(v.vencimento).toLocaleDateString('pt-BR')}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      </main>
+          </section>
 
-      {painelAjuda === 'como-usar' && (
-        <PainelLateral titulo="Como usar esta tela" onFechar={() => setPainelAjuda(null)}>
+          <section className="mt-6 grid gap-6 lg:grid-cols-3">
+            <div data-tour="hoje" className="rounded-2xl border border-border bg-white p-6 shadow-sm lg:col-span-2">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icone nome="lista" className="h-4 w-4" /></span>
+                O que fazer hoje
+              </h2>
+              {!painel && <Esqueleto linhas={3} />}
+              {painel && painel.pendencias.length === 0 && (
+                <p className="mt-4 rounded-xl bg-success/10 px-4 py-3 text-success">Tudo em dia nesta empresa. 🎉</p>
+              )}
+              <ul className="mt-3 divide-y divide-border">
+                {painel?.pendencias.map((pendencia) => {
+                  const tom = tonsPorNivel[pendencia.nivel];
+                  return (
+                    <li key={pendencia.titulo} className="flex items-center gap-3 py-3">
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tom.ponto}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">{pendencia.titulo}</p>
+                        <p className="text-sm text-text/60">{pendencia.detalhe}</p>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${tom.selo}`}>{tom.rotulo}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/15 text-[#c2410c]"><Icone nome="calendario" className="h-4 w-4" /></span>
+                Vencimentos
+              </h2>
+              {!painel && <Esqueleto linhas={2} />}
+              {painel && painel.vencimentos.length === 0 && <p className="mt-4 text-sm text-text/60">Nenhum documento emitido ainda.</p>}
+              <ul className="mt-3 space-y-2 text-sm">
+                {painel?.vencimentos.map((v) => (
+                  <li key={v.tipo} className="flex items-center justify-between rounded-lg bg-background px-3 py-2">
+                    <span className="font-medium">
+                      {v.tipo} <span className="text-text/50">v{v.versao}</span>
+                    </span>
+                    <span className={v.dias < 0 ? 'font-semibold text-danger' : v.dias <= 30 ? 'font-semibold text-[#c2410c]' : 'text-text/60'}>
+                      {new Date(v.vencimento).toLocaleDateString('pt-BR')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          <section className="mt-8">
+            <h2 className="text-lg font-semibold">Acesso rápido</h2>
+            <p className="text-sm text-text/60">Os módulos mais usados. Todos os outros ficam no menu da esquerda.</p>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {atalhos
+                .filter((a) => !(empresaCliente && a.soConsultoria))
+                .map((a) => (
+                  <Link
+                    key={a.nome}
+                    href={empresaId ? `${base}${a.rota}` : '/empresas/nova'}
+                    className="group rounded-2xl border border-border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#168a7f] text-white shadow-sm">
+                      <Icone nome={a.icone} className="h-5 w-5" />
+                    </span>
+                    <p className="mt-3 font-semibold text-text group-hover:text-primary">{a.nome}</p>
+                    <p className="text-xs text-text/60">{a.texto}</p>
+                  </Link>
+                ))}
+            </div>
+          </section>
+        </>
+      )}
+
+      {comoUsarAberto && (
+        <PainelLateral titulo="Como usar esta tela" onFechar={() => setComoUsarAberto(false)}>
           <ol className="list-decimal space-y-3 pl-5 text-sm">
             {comoUsar.map((passo) => (
               <li key={passo}>{passo}</li>
@@ -258,8 +263,59 @@ export default function Home() {
           </ol>
         </PainelLateral>
       )}
-      {painelAjuda === 'dicionario' && <Dicionario onFechar={() => setPainelAjuda(null)} />}
-      {tour.aberto && <Tour passos={passosTour} onFechar={tour.fechar} />}
+      {tour.aberto && !semEmpresa && <Tour passos={passosTour} onFechar={tour.fechar} />}
+    </main>
+  );
+}
+
+function Esqueleto({ linhas }: { linhas: number }) {
+  return (
+    <div className="mt-4 space-y-3">
+      {Array.from({ length: linhas }, (_, i) => (
+        <div key={i} className="h-10 animate-pulse rounded-lg bg-background" />
+      ))}
     </div>
+  );
+}
+
+// Primeira vez: ainda não há empresa cadastrada.
+function BoasVindas({ cliente }: { cliente: boolean }) {
+  const passos = [
+    { titulo: 'Cadastre a empresa cliente', texto: 'CNPJ, CNAE e logo. O grau de risco sai sozinho.' },
+    { titulo: 'Monte os GHEs e os riscos', texto: 'Ou traga um PGR antigo em PDF e a IA preenche para você.' },
+    { titulo: 'Inclua os colaboradores', texto: 'Um por um ou pela planilha do RH.' },
+    { titulo: 'Gere o PGR e o PCMSO', texto: 'Em PDF, com a logo da empresa e a da sua consultoria.' },
+  ];
+  return (
+    <section className="fundo-destaque overflow-hidden rounded-3xl p-6 text-white shadow-lg shadow-primary/20 md:p-10">
+      <div className="flex flex-wrap items-center gap-4">
+        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-md">
+          <img src="/logo.png" alt="Safety Nexo" className="h-10 w-auto" />
+        </span>
+        <div>
+          <h1 className="text-2xl font-bold md:text-3xl">Boas-vindas ao Safety Nexo</h1>
+          <p className="text-white/80">
+            {cliente ? 'Sua consultoria ainda não liberou a empresa para este acesso.' : 'Comece cadastrando a primeira empresa cliente. Leva 2 minutos.'}
+          </p>
+        </div>
+      </div>
+      {!cliente && (
+        <>
+          <ol className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {passos.map((p, i) => (
+              <li key={p.titulo} className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-menta font-bold text-primary-escuro">{i + 1}</span>
+                <p className="mt-3 font-semibold">{p.titulo}</p>
+                <p className="text-sm text-white/75">{p.texto}</p>
+              </li>
+            ))}
+          </ol>
+          <Link href="/empresas/nova" className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-lg font-semibold text-primary shadow-sm transition hover:bg-menta">
+            <Icone nome="mais" /> Cadastrar a primeira empresa
+          </Link>
+          <p className="mt-3 text-sm text-white/70">Depois disso, todos os módulos do menu ficam liberados para ela.</p>
+        </>
+      )}
+    </section>
   );
 }

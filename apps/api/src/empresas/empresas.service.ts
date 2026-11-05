@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CnaeService } from '../cnae/cnae.service';
+import { ehAdminPlataforma } from '../admin/admin-plataforma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 
@@ -20,10 +21,12 @@ export class EmpresasService {
   async criar(consultoriaId: string, dto: CreateEmpresaDto) {
     const consultoria = await this.prisma.consultoria.findUnique({
       where: { id: consultoriaId },
-      include: { _count: { select: { empresas: true } } },
+      include: { _count: { select: { empresas: true } }, usuarios: { select: { email: true } } },
     });
     if (!consultoria) throw new NotFoundException('Consultoria não encontrada');
-    if (consultoria._count.empresas >= consultoria.limiteEmpresas) {
+    // A consultoria do dono da plataforma usa o sistema inteiro, sem plano e sem limite.
+    const doDono = consultoria.usuarios.some((u) => ehAdminPlataforma(u.email));
+    if (!doDono && consultoria._count.empresas >= consultoria.limiteEmpresas) {
       throw new ForbiddenException('Limite de empresas do plano atingido. Faça upgrade para continuar.');
     }
 
