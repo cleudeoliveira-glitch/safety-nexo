@@ -4,7 +4,7 @@ import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CriarInspecaoDto } from './dto';
 import { ehModelo } from './modelos';
-import { conformidade, inspecaoHtml, ItemInspecao } from './templates';
+import { inspecaoHtml, ItemInspecao, resumoInspecao } from './templates';
 
 @Injectable()
 export class InspecoesService {
@@ -21,17 +21,22 @@ export class InspecoesService {
   }
 
   async listar(consultoriaId: string, empresaId: string) {
-    await this.empresa(consultoriaId, empresaId);
+    const empresa = await this.empresa(consultoriaId, empresaId);
     const lista = await this.prisma.inspecao.findMany({ where: { empresaId }, orderBy: [{ data: 'desc' }, { createdAt: 'desc' }] });
-    return lista.map((i) => ({ ...i, resumo: conformidade(i.itens as unknown as ItemInspecao[]) }));
+    return lista.map((i) => ({ ...i, resumo: resumoInspecao(i.modelo, i.itens as unknown as ItemInspecao[], empresa.numFuncionarios) }));
   }
 
   async criar(consultoriaId: string, empresaId: string, dto: CriarInspecaoDto) {
-    await this.empresa(consultoriaId, empresaId);
+    const empresa = await this.empresa(consultoriaId, empresaId);
     if (!ehModelo(dto.modelo)) throw new BadRequestException('Modelo de checklist desconhecido.');
-    const itens = dto.itens.map((i) => ({ texto: i.texto.trim(), resposta: i.resposta, ...(i.observacao?.trim() ? { observacao: i.observacao.trim() } : {}) }));
+    const itens = dto.itens.map((i) => ({
+      texto: i.texto.trim(),
+      resposta: i.resposta,
+      ...(i.observacao?.trim() ? { observacao: i.observacao.trim() } : {}),
+      ...(i.grau ? { grau: i.grau } : {}),
+    }));
     const criada = await this.prisma.inspecao.create({ data: { ...dto, itens, empresaId, data: new Date(dto.data) } });
-    return { ...criada, resumo: conformidade(itens as unknown as ItemInspecao[]) };
+    return { ...criada, resumo: resumoInspecao(dto.modelo, itens as unknown as ItemInspecao[], empresa.numFuncionarios) };
   }
 
   async gerarPdf(consultoriaId: string, empresaId: string, id: string) {
@@ -48,6 +53,7 @@ export class InspecoesService {
           aviso: 'Documento gerado pelo Safety Nexo. As não conformidades devem ser corrigidas e acompanhadas no plano de ação.',
         },
         { ...i, itens: i.itens as unknown as ItemInspecao[] },
+        empresa.numFuncionarios,
       ),
     );
   }

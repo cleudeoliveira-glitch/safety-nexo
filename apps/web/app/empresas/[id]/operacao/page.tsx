@@ -388,6 +388,9 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
   );
 }
 
+const GRAUS: [number, string][] = [[1, 'Multa leve (I1)'], [2, 'Multa média (I2)'], [3, 'Multa grave (I3)'], [4, 'Multa gravíssima (I4)']];
+const reais = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+
 const RESPOSTAS: [ItemInspecao['resposta'], string, string][] = [
   ['C', 'Conforme', 'bg-success text-white'],
   ['NC', 'Não conforme', 'bg-danger text-white'],
@@ -405,7 +408,7 @@ function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: {
   function escolher(valor: string) {
     setModelo(valor);
     const m = modelos.find((x) => x.modelo === valor);
-    setItens((m?.itens ?? []).map((texto) => ({ texto, resposta: '' })));
+    setItens((m?.itens ?? []).map((texto, i) => ({ texto, resposta: '', grau: m?.graus?.[i] })));
   }
   const mudar = (i: number, campos: Partial<ItemInspecao>) => setItens((x) => x.map((it, j) => (j === i ? { ...it, ...campos } : it)));
 
@@ -420,7 +423,7 @@ function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: {
         modelo: modelo || 'LIVRE',
         titulo: modelos.find((m) => m.modelo === modelo)?.titulo ?? t('titulo'),
         local: t('local'), data: t('data'), inspetor: t('inspetor'),
-        itens: itens.map((i) => ({ texto: i.texto, resposta: i.resposta as ItemInspecao['resposta'], ...(i.observacao?.trim() ? { observacao: i.observacao.trim() } : {}) })),
+        itens: itens.map((i) => ({ texto: i.texto, resposta: i.resposta as ItemInspecao['resposta'], ...(i.observacao?.trim() ? { observacao: i.observacao.trim() } : {}), ...(i.grau ? { grau: i.grau } : {}) })),
       });
       setModelo(''); setItens([]); setChave((k) => k + 1);
       avisar('ok', 'Inspeção salva. Baixe o relatório: as não conformidades já saem no plano de ação.');
@@ -438,7 +441,11 @@ function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: {
             <Selecao id="ck-modelo" rotulo="Checklist" value={modelo} onChange={(e) => escolher(e.target.value)} className="md:col-span-3"
               ajuda={{ oQueE: 'Escolha a norma para carregar os itens prontos. Você pode reescrever, tirar ou incluir itens antes de salvar.' }}>
               <option value="">Checklist livre (montar do zero)</option>
-              {modelos.map((m) => <option key={m.modelo} value={m.modelo}>{m.titulo}</option>)}
+              {Array.from(new Set(modelos.map((m) => m.grupo ?? 'Modelos'))).map((g) => (
+                <optgroup key={g} label={g}>
+                  {modelos.filter((m) => (m.grupo ?? 'Modelos') === g).map((m) => <option key={m.modelo} value={m.modelo}>{m.titulo}</option>)}
+                </optgroup>
+              ))}
             </Selecao>
             {!modelo && <Campo id="ck-titulo" name="titulo" rotulo="Nome do checklist" required placeholder="Ex.: Inspeção do almoxarifado" className="md:col-span-3" />}
             <Campo id="ck-local" name="local" rotulo="Local inspecionado" required placeholder="Ex.: Produção" />
@@ -462,8 +469,16 @@ function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: {
                     </div>
                   </div>
                   {it.resposta === 'NC' && (
-                    <input aria-label={`Observação ${i + 1}`} value={it.observacao ?? ''} onChange={(e) => mudar(i, { observacao: e.target.value })}
-                      placeholder="O que está errado? Ex.: caixas bloqueando a saída dos fundos" className={caixaTexto} />
+                    <div className="flex flex-wrap gap-2">
+                      <input aria-label={`Observação ${i + 1}`} value={it.observacao ?? ''} onChange={(e) => mudar(i, { observacao: e.target.value })}
+                        placeholder="O que está errado? Ex.: caixas bloqueando a saída dos fundos" className={`${caixaTexto} min-w-64 flex-1`} />
+                      <select aria-label={`Gravidade da multa do item ${i + 1}`} value={it.grau ?? ''} onChange={(e) => mudar(i, { grau: e.target.value ? Number(e.target.value) : undefined })}
+                        title="Gravidade da infração na NR-28. Usada para estimar a multa no relatório."
+                        className="rounded-card border border-border bg-white px-2 py-1 text-xs">
+                        <option value="">Sem multa</option>
+                        {GRAUS.map(([g, nome]) => <option key={g} value={g}>{nome}</option>)}
+                      </select>
+                    </div>
                   )}
                 </li>
               ))}
@@ -486,6 +501,7 @@ function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: {
                   <strong>{i.titulo}</strong> · {i.local} · {data(i.data)} ·{' '}
                   <span className={`font-semibold ${i.resumo.percentual >= 80 ? 'text-success' : 'text-danger'}`}>{i.resumo.percentual}% conforme</span>
                   {i.resumo.naoConformes > 0 && <span className="text-text/60"> · {i.resumo.naoConformes} não conformidade(s)</span>}
+                  {!!i.resumo.multa?.maximo && <span className="text-danger"> · multa estimada de {reais(i.resumo.multa.minimo)} a {reais(i.resumo.multa.maximo)}</span>}
                 </span>
                 <span className="flex flex-wrap gap-2">
                   {i.resumo.naoConformes > 0 && <Botao variante="secundario" onClick={async () => {

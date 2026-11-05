@@ -323,11 +323,11 @@ export const definirPericulosidade = (empresaId: string, gheId: string, dados: {
 export const gerarOs = (empresaId: string, colaboradorId: string) =>
   baixarPdf(`/empresas/${empresaId}/colaboradores/${colaboradorId}/os`, 'ordem de serviço');
 
-export type ModeloChecklist = { modelo: string; titulo: string; itens: string[] };
-export type ItemInspecao = { texto: string; resposta: 'C' | 'NC' | 'NA'; observacao?: string };
+export type ModeloChecklist = { modelo: string; titulo: string; grupo?: string; tipo?: 'S' | 'M'; itens: string[]; graus?: number[] };
+export type ItemInspecao = { texto: string; resposta: 'C' | 'NC' | 'NA'; observacao?: string; grau?: number };
 export type Inspecao = {
   id: string; modelo: string; titulo: string; local: string; data: string; inspetor: string; itens: ItemInspecao[];
-  resumo: { aplicaveis: number; conformes: number; naoConformes: number; percentual: number };
+  resumo: { aplicaveis: number; conformes: number; naoConformes: number; percentual: number; multa?: { minimo: number; maximo: number } };
 };
 export const buscarModelosChecklist = () => chamar<ModeloChecklist[]>('GET', '/inspecoes/modelos');
 export const listarInspecoes = (empresaId: string) => chamar<Inspecao[]>('GET', `/empresas/${empresaId}/inspecoes`);
