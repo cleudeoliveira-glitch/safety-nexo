@@ -103,7 +103,9 @@ async function chamar<T>(metodo: string, caminho: string, corpo?: unknown): Prom
     const mensagem = Array.isArray(erro?.message) ? erro.message.join('; ') : erro?.message;
     throw new Error(mensagem ?? `Não foi possível concluir a operação (${res.status}).`);
   }
-  return res.json() as Promise<T>;
+  // Resposta vazia (ex.: "ainda não há certificado") vira null em vez de erro.
+  const corpoTexto = await res.text();
+  return (corpoTexto ? JSON.parse(corpoTexto) : null) as T;
 }
 
 export const listarEmpresas = () => chamar<Empresa[]>('GET', '/empresas');
