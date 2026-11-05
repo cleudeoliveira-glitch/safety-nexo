@@ -1,11 +1,12 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { ehAdminPlataforma } from '../admin/admin-plataforma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CadastroDto, EntrarDto } from './dto';
 
 export type Sessao = { sub: string; consultoriaId: string };
-type UsuarioEmitido = { id: string; nome: string; consultoriaId: string; papel: string; empresaId: string | null };
+type UsuarioEmitido = { id: string; nome: string; email: string; consultoriaId: string; papel: string; empresaId: string | null };
 
 @Injectable()
 export class AuthService {
@@ -33,10 +34,17 @@ export class AuthService {
   }
 
   async entrar(dto: EntrarDto) {
-    const usuario = await this.prisma.usuario.findUnique({ where: { email: dto.email.toLowerCase() } });
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { email: dto.email.toLowerCase() },
+      include: { consultoria: { select: { bloqueada: true } } },
+    });
     if (!usuario || !(await bcrypt.compare(dto.senha, usuario.senhaHash))) {
       throw new UnauthorizedException('E-mail ou senha incorretos.');
     }
+    if (usuario.consultoria.bloqueada && !this.ehAdmin(usuario)) {
+      throw new ForbiddenException('Este acesso está suspenso. Fale com o suporte do Safety Nexo.');
+    }
+    await this.prisma.usuario.update({ where: { id: usuario.id }, data: { ultimoAcesso: new Date() } });
     return this.emitir(usuario);
   }
 
@@ -46,6 +54,13 @@ export class AuthService {
 
   private emitir(usuario: UsuarioEmitido) {
     const sessao: Sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId };
-    return { token: this.jwt.sign(sessao), usuario: { nome: usuario.nome, papel: usuario.papel, empresaId: usuario.empresaId } };
+    return {
+      token: this.jwt.sign(sessao),
+      usuario: { nome: usuario.nome, papel: usuario.papel, empresaId: usuario.empresaId, adminPlataforma: this.ehAdmin(usuario) },
+    };
+  }
+
+  private ehAdmin(usuario: Pick<UsuarioEmitido, 'papel' | 'email'>) {
+    return usuario.papel === 'CONSULTORIA' && ehAdminPlataforma(usuario.email);
   }
 }

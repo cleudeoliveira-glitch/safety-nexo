@@ -19,6 +19,11 @@ model Consultoria {
   cidade    String?
   pixChave  String?
   pixNome   String?   // nome do recebedor, como no banco (até 25 letras no QR)
+  // Controle do dono da plataforma (painel ADM): conta bloqueada não entra no sistema.
+  bloqueada       Boolean   @default(false)
+  motivoBloqueio  String?
+  bloqueadaEm     DateTime?
+  observacaoAdm   String?   // anotação interna do dono da plataforma (ex.: combinado de pagamento)
   createdAt DateTime  @default(now())
   empresas  Empresa[]
   usuarios  Usuario[]
@@ -218,6 +223,7 @@ model Usuario {
   papel         String      @default("CONSULTORIA") // CONSULTORIA (todas as empresas) | EMPRESA (só a dela)
   empresaId     String?
   empresa       Empresa?    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  ultimoAcesso  DateTime?   // atualizado ao entrar e no uso (no máximo 1 vez por hora)
   createdAt     DateTime    @default(now())
 
   @@index([consultoriaId])
