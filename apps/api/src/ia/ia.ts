@@ -28,6 +28,15 @@ export const AnaliseFoto = z.object({
 });
 export type AnaliseFoto = z.infer<typeof AnaliseFoto>;
 
+// Relatório de inspeção feito sobre várias fotos do mesmo local.
+export const RelatorioInspecaoIa = z.object({
+  resumo: z.string(),
+  perigos: z.array(Perigo.extend({ foto: z.number().int().nullable() })),
+  boasPraticas: z.array(z.string()),
+  prazoSugeridoDias: z.number().int().min(7).max(365),
+});
+export type RelatorioInspecaoIa = z.infer<typeof RelatorioInspecaoIa>;
+
 export const AprSugerida = z.object({
   etapas: z.array(z.object({ etapa: z.string(), riscos: z.string(), medidas: z.string(), epis: z.string() })),
   permissoes: z.array(z.string()),
@@ -46,14 +55,16 @@ export type InvestigacaoSugerida = z.infer<typeof InvestigacaoSugerida>;
 export type Imagem = { dados: Buffer; tipo: string };
 const TIPOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
 
-async function perguntar<T>(esquema: z.ZodType<T>, instrucoes: string, texto: string, imagem?: Imagem): Promise<T> {
+async function perguntar<T>(esquema: z.ZodType<T>, instrucoes: string, texto: string, imagem?: Imagem | Imagem[]): Promise<T> {
   if (!iaConfigurada()) throw new ServiceUnavailableException(SEM_IA);
   const client = new Anthropic({ timeout: 5 * 60 * 1000, maxRetries: 2 });
   const conteudo: Anthropic.Beta.BetaContentBlockParam[] = [];
-  if (imagem) {
-    if (!TIPOS.includes(imagem.tipo as (typeof TIPOS)[number])) throw new Error('Envie a foto em JPG, PNG ou WEBP.');
-    conteudo.push({ type: 'image', source: { type: 'base64', media_type: imagem.tipo as (typeof TIPOS)[number], data: imagem.dados.toString('base64') } });
-  }
+  const imagens = imagem ? (Array.isArray(imagem) ? imagem : [imagem]) : [];
+  imagens.forEach((img, i) => {
+    if (!TIPOS.includes(img.tipo as (typeof TIPOS)[number])) throw new Error('Envie a foto em JPG, PNG ou WEBP.');
+    if (imagens.length > 1) conteudo.push({ type: 'text', text: `Foto ${i + 1}:` });
+    conteudo.push({ type: 'image', source: { type: 'base64', media_type: img.tipo as (typeof TIPOS)[number], data: img.dados.toString('base64') } });
+  });
   conteudo.push({ type: 'text', text: texto });
   const msg = await client.beta.messages.stream({
     model: process.env.IA_MODELO || 'claude-opus-5-5',
@@ -90,3 +101,12 @@ export const sugerirInvestigacao = (descricao: string) => perguntar(Investigacao
 Monte os 5 porquês (cada um respondendo ao anterior, até a causa de gestão), as causas por categoria (método, máquina, material, pessoas, ambiente, gestão) e medidas para evitar que se repita.
 Não culpe a vítima: procure causas no sistema de trabalho. Se faltar informação, diga em "observacao" o que perguntar às testemunhas.`,
   `O que aconteceu: ${descricao}`);
+
+export const relatorioDeInspecao = (imagens: Imagem[], contexto: string) => perguntar(RelatorioInspecaoIa,
+  `Você recebe de 1 a 5 fotos do mesmo local de trabalho, tiradas numa inspeção de segurança.
+Escreva um resumo curto do que a inspeção mostra (2 a 4 frases).
+Liste os perigos que dá para VER nas fotos. Para cada um: o que está errado, a NR relacionada, o tipo de risco, a probabilidade e a severidade de 1 a 5 (matriz 5x5), ações corretivas práticas e o número da foto onde aparece (null se aparece em várias).
+Liste o que está certo (boas práticas), se houver.
+Em prazoSugeridoDias, sugira em quantos dias inspecionar o local de novo: menos dias quando há risco alto.
+Se uma foto não mostra um ambiente de trabalho, ignore essa foto e diga isso no resumo.`,
+  `Contexto informado pela técnica: ${contexto || 'nenhum'}.`, imagens);

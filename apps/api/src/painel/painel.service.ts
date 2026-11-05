@@ -129,6 +129,8 @@ export class PainelService {
       else if (i.quantidade <= i.minimo) pendencias.push({ titulo: `Comprar ${i.epi}`, detalhe: `Restam ${i.quantidade} no almoxarifado (mínimo ${i.minimo})`, nivel: 'pendente' });
     }
 
+    pendencias.push(...(await this.pendenciasDeReinspecao(empresaId, hoje)));
+
     // Relatos novos do QR code e ações do plano com prazo vencido.
     const [relatosNovos, acoesAtrasadas] = await Promise.all([
       this.prisma.relato.count({ where: { empresaId, status: 'NOVO' } }),
@@ -159,6 +161,50 @@ export class PainelService {
       pendencias,
       vencimentos,
     };
+  }
+
+  // Resumo de emissões: os últimos PDFs gerados e quantos de cada tipo saíram no mês.
+  async emissoes(consultoriaId: string, empresaId: string, hoje = new Date()) {
+    const empresa = await this.prisma.empresa.findFirst({ where: { id: empresaId, consultoriaId }, select: { id: true } });
+    if (!empresa) throw new NotFoundException('Empresa não encontrada');
+    const inicioMes = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), 1));
+    const onde = { empresaId, origem: 'GERADO' };
+    const [total, ultimas, doMes] = await Promise.all([
+      this.prisma.arquivo.count({ where: onde }),
+      this.prisma.arquivo.findMany({ where: onde, orderBy: { criadoEm: 'desc' }, take: 6, select: { id: true, titulo: true, categoria: true, versao: true, criadoEm: true, criadoPorNome: true } }),
+      this.prisma.arquivo.findMany({ where: { ...onde, criadoEm: { gte: inicioMes } }, select: { titulo: true } }),
+    ]);
+    const NOMES: Record<string, string> = { Inspecao: 'Inspeção', Permissao: 'PT', Ordem: 'OS', Ficha: 'Ficha EPI', Lista: 'Lista de presença', Cedula: 'Cédula', Comprovante: 'Comprovante facial', Proposta: 'Proposta', Cobranca: 'Cobrança' };
+    const tipo = (titulo: string) => { const t = titulo.split(/[\s·]/)[0] || 'Outros'; return NOMES[t] ?? t; };
+    const contagem = new Map<string, number>();
+    for (const a of doMes) contagem.set(tipo(a.titulo), (contagem.get(tipo(a.titulo)) ?? 0) + 1);
+    return {
+      total,
+      noMes: doMes.length,
+      porTipo: [...contagem.entries()].map(([nome, quantidade]) => ({ nome, quantidade })).sort((a, b) => b.quantidade - a.quantidade),
+      ultimas: ultimas.map((a) => { const t = a.titulo.split(/[\s·]/)[0]; return { ...a, titulo: NOMES[t] ? NOMES[t] + a.titulo.slice(t.length) : a.titulo, tipo: tipo(a.titulo) }; }),
+    };
+  }
+
+  // Vale a inspeção mais recente de cada local: inspecionar de novo resolve o aviso.
+  private async pendenciasDeReinspecao(empresaId: string, hoje: Date): Promise<Pendencia[]> {
+    const lista = await this.prisma.inspecao.findMany({
+      where: { empresaId }, orderBy: [{ data: 'desc' }, { createdAt: 'desc' }],
+      select: { local: true, titulo: true, proximaInspecao: true },
+    });
+    const vistos = new Set<string>();
+    const out: Pendencia[] = [];
+    for (const i of lista) {
+      const chave = i.local.trim().toLowerCase();
+      if (vistos.has(chave)) continue;
+      vistos.add(chave);
+      if (!i.proximaInspecao) continue;
+      const dias = Math.ceil((i.proximaInspecao.getTime() - hoje.getTime()) / DIA_MS);
+      const quando = i.proximaInspecao.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      if (dias < 0) out.push({ titulo: `Inspeção atrasada: ${i.local}`, detalhe: `Devia ser refeita até ${quando} (${i.titulo})`, nivel: 'vencido' });
+      else if (dias <= 15) out.push({ titulo: `Inspecionar de novo: ${i.local}`, detalhe: `Prazo: ${quando} (${i.titulo})`, nivel: 'pendente' });
+    }
+    return out;
   }
 
   // Vale o treinamento mais recente de cada tipo: uma reciclagem resolve o vencido.

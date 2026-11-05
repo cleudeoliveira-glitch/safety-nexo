@@ -247,10 +247,10 @@ function Menu({ caminho }: { caminho: string }) {
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-menta text-sm font-bold text-primary-escuro">
             {(usuario?.nome ?? '?').trim().charAt(0).toUpperCase()}
           </span>
-          <div className="min-w-0 flex-1">
+          <Link href="/perfil" className="min-w-0 flex-1 rounded hover:opacity-90" title="Meu perfil">
             <p className="truncate text-sm font-semibold text-white">{usuario?.nome ?? 'Minha conta'}</p>
-            <p className="text-xs text-white/50">{cliente ? 'Empresa cliente' : 'Consultoria'}</p>
-          </div>
+            <p className="text-xs text-white/50">{cliente ? 'Empresa cliente' : 'Consultoria'} · meu perfil</p>
+          </Link>
           <button type="button" onClick={sair} className="rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white" title="Sair" aria-label="Sair">
             <Icone nome="sair" className="h-[18px] w-[18px]" />
           </button>
