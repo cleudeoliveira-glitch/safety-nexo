@@ -129,6 +129,14 @@ export class PainelService {
       else if (i.quantidade <= i.minimo) pendencias.push({ titulo: `Comprar ${i.epi}`, detalhe: `Restam ${i.quantidade} no almoxarifado (mínimo ${i.minimo})`, nivel: 'pendente' });
     }
 
+    // Relatos novos do QR code e ações do plano com prazo vencido.
+    const [relatosNovos, acoesAtrasadas] = await Promise.all([
+      this.prisma.relato.count({ where: { empresaId, status: 'NOVO' } }),
+      this.prisma.acaoCorretiva.count({ where: { empresaId, status: 'ABERTA', prazo: { lt: hoje } } }),
+    ]);
+    if (relatosNovos) pendencias.unshift({ titulo: `${relatosNovos} relato(s) novo(s) pelo QR code`, detalhe: 'Veja o que os trabalhadores relataram em Prevenção > Relatos', nivel: 'pendente' });
+    if (acoesAtrasadas) pendencias.unshift({ titulo: `${acoesAtrasadas} ação(ões) do plano atrasada(s)`, detalhe: 'Passou do prazo no Plano de ação', nivel: 'vencido' });
+
     const vencimentos = [...ultimos.values()]
       .filter((doc) => doc.vencimento)
       .map((doc) => {

@@ -24,7 +24,9 @@ model Consultoria {
   motivoBloqueio  String?
   bloqueadaEm     DateTime?
   observacaoAdm   String?   // anotação interna do dono da plataforma (ex.: combinado de pagamento)
+  avisosEmail     Boolean   @default(true) // resumo semanal de vencimentos por e-mail
   createdAt DateTime  @default(now())
+  normasLidas AvisoNormaLido[]
   empresas  Empresa[]
   usuarios  Usuario[]
   propostas Proposta[]
@@ -94,6 +96,10 @@ model Empresa {
   estoqueEpi     EstoqueEpi[]
   // Brigada e plano de emergência: divisão de ocupação (IT-17 SP), risco, população por pavimento, ponto de encontro e contatos.
   emergencia     Json?
+  relatoToken    String?  @unique // QR code de relato de quase acidente (página pública, sem login)
+  relatos        Relato[]
+  acoesCorretivas AcaoCorretiva[]
+  investigacoes  Investigacao[]
 
   @@unique([consultoriaId, cnpj])
   @@index([consultoriaId])
@@ -125,6 +131,8 @@ model Colaborador {
   foto          FotoColaborador?
   assinaturasPresenca AssinaturaPresenca[]
   presencasFaciais PresencaFacial[]
+  portalToken   String?  @unique // espaço do trabalhador: link pessoal (confere o CPF ao abrir)
+  eleitorCipa   CipaEleitor[]
 
   @@index([empresaId])
 }
@@ -282,8 +290,15 @@ model CipaEleicao {
   treinamentoInicio DateTime?
   treinamentoFim    DateTime?
   instrutor         String?
+  // Votação pelo celular: cada eleitor recebe um código; o voto não guarda quem votou (NR-05, 5.5.3).
+  votacaoInicio     DateTime?
+  votacaoFim        DateTime?
+  votosBrancoOnline Int          @default(0)
+  votosNuloOnline   Int          @default(0)
+  apuradaEm         DateTime?
   createdAt         DateTime     @default(now())
   membros           CipaMembro[]
+  eleitores         CipaEleitor[]
 
   @@index([empresaId])
 }
@@ -300,6 +315,7 @@ model CipaMembro {
   titular       Boolean     @default(true) // só para indicados da organização
   presidente    Boolean     @default(false) // indicado pela organização (5.4.5)
   vice          Boolean     @default(false) // escolhido entre os titulares eleitos (5.4.5)
+  votosOnline   Int         @default(0)
   createdAt     DateTime    @default(now())
 
   @@unique([eleicaoId, colaboradorId])
@@ -1047,4 +1063,108 @@ model AssinaturaPresenca {
 
   @@unique([tipo, refId, colaboradorId])
   @@index([tipo, refId])
+}
+
+// Aviso de mudança nas normas, escrito pelo dono da plataforma (painel ADM) e mostrado às consultorias.
+// Os filtros dizem quais empresas clientes são afetadas; vazio = todas.
+model AvisoNorma {
+  id              String   @id @default(cuid())
+  titulo          String
+  normas          String[] // Ex.: ["NR-01"]
+  resumo          String   // o que mudou, em linguagem simples
+  oQueFazer       String?  // o que a consultora precisa fazer nas empresas
+  linkOficial     String?
+  publicadaEm     DateTime? @db.Date // data da portaria
+  vigenciaEm      DateTime? @db.Date // quando passa a valer
+  cnaePrefixos    String[] // Ex.: ["41", "42", "43"] = construção
+  grauRiscoMin    Int?
+  funcionariosMin Int?
+  criadoEm        DateTime @default(now())
+  lidos           AvisoNormaLido[]
+}
+
+model AvisoNormaLido {
+  avisoId       String
+  aviso         AvisoNorma  @relation(fields: [avisoId], references: [id], onDelete: Cascade)
+  consultoriaId String
+  consultoria   Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  lidoEm        DateTime    @default(now())
+
+  @@id([avisoId, consultoriaId])
+}
+
+// Relato de quase acidente, condição insegura ou sugestão, feito por qualquer pessoa pelo QR code.
+model Relato {
+  id          String   @id @default(cuid())
+  empresaId   String
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  numero      Int
+  tipo        String   // QUASE_ACIDENTE | CONDICAO_INSEGURA | ATO_INSEGURO | SUGESTAO
+  descricao   String
+  local       String?
+  nome        String?  // vazio = anônimo
+  fotoPath    String?
+  status      String   @default("NOVO") // NOVO | EM_ANALISE | ENCERRADO
+  resposta    String?  // o que foi feito, para registro
+  analiseIa   Json?
+  criadoEm    DateTime @default(now())
+
+  @@unique([empresaId, numero])
+}
+
+// Plano de ação único da empresa: junta o que vem de relatos, inspeções, investigações, APR e IA.
+model AcaoCorretiva {
+  id            String    @id @default(cuid())
+  empresaId     String
+  empresa       Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  origem        String    // MANUAL | RELATO | INSPECAO | INVESTIGACAO | IA
+  origemId      String?
+  origemTexto   String?   // ex.: "Relato nº 3", "Inspeção NR-12 de 04/11"
+  descricao     String
+  local         String?
+  responsavel   String?
+  prazo         DateTime? @db.Date
+  prioridade    String    @default("MEDIA") // ALTA | MEDIA | BAIXA (impacto no risco)
+  esforco       String    @default("MEDIO") // RAPIDO | MEDIO | DEMORADO
+  status        String    @default("ABERTA") // ABERTA | FEITA
+  feitaEm       DateTime?
+  feitaPor      String?
+  observacao    String?
+  evidenciaPath String?   // foto de "resolvido"
+  criadoEm      DateTime  @default(now())
+
+  @@index([empresaId])
+}
+
+// Investigação de acidente ou quase acidente: 5 porquês e causas por categoria (6M).
+model Investigacao {
+  id             String   @id @default(cuid())
+  empresaId      String
+  empresa        Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  catId          String?
+  relatoId       String?
+  titulo         String
+  dataOcorrencia DateTime
+  local          String
+  descricao      String
+  equipe         String   // quem investigou
+  porques        String[]
+  causas         Json     // [{ categoria, texto }]
+  conclusao      String?
+  criadoEm       DateTime @default(now())
+
+  @@index([empresaId])
+}
+
+// Eleitor da CIPA na votação pelo celular. Guarda só SE votou, nunca em quem.
+model CipaEleitor {
+  id            String      @id @default(cuid())
+  eleicaoId     String
+  eleicao       CipaEleicao @relation(fields: [eleicaoId], references: [id], onDelete: Cascade)
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  codigo        String      @unique
+  votou         Boolean     @default(false)
+
+  @@unique([eleicaoId, colaboradorId])
 }

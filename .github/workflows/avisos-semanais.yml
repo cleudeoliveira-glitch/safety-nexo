@@ -1,0 +1,23 @@
+# Toda segunda-feira às 8h (Brasília) pede ao servidor para mandar o resumo semanal por e-mail.
+# Precisa do segredo TAREFAS_SEGREDO no GitHub (Settings > Secrets and variables > Actions),
+# igual ao do servidor no Render. O primeiro pedido também acorda o servidor gratuito.
+name: Avisos semanais por e-mail
+
+on:
+  schedule:
+    - cron: '0 11 * * 1'
+  workflow_dispatch:
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acordar o servidor
+        run: curl -s --max-time 120 https://safety-nexo-api.onrender.com/health || true
+      - name: Enviar os avisos
+        env:
+          SEGREDO: ${{ secrets.TAREFAS_SEGREDO }}
+        run: |
+          curl -sS --fail-with-body --max-time 600 --retry 3 --retry-delay 30 \
+            -X POST -H "x-tarefa-segredo: $SEGREDO" \
+            https://safety-nexo-api.onrender.com/tarefas/avisos-semanais
