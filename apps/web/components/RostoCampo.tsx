@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { rosto } from '@/lib/api';
 import type { BaseRosto } from '@/lib/campo';
-import { CapturaGuardada, enviarCapturas, guardarCaptura, listarCapturas, removerCaptura, tentarDeNovo } from '@/lib/rosto-offline';
+import { CapturaGuardada, conferirNoAparelho, enviarCapturas, guardarCaptura, listarCapturas, removerCaptura, tentarDeNovo } from '@/lib/rosto-offline';
 import { configRosto } from '@/lib/rosto';
 import { CameraRosto, CapturaRosto } from './CameraRosto';
 import { Aviso, Botao, Campo, Cartao, Selecao } from './ui';
@@ -11,6 +11,7 @@ import { Aviso, Botao, Campo, Cartao, Selecao } from './ui';
 const MOTIVOS = [['ENTREGA_INICIAL', 'Entrega inicial'], ['DESGASTE', 'Troca por desgaste'], ['PERDA', 'Perda'], ['DANO', 'Dano']] as const;
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 const GUARDADO = 'Sem internet: guardado no aparelho. Será conferido e enviado quando a internet voltar.';
+const CONFERIDO = 'Rosto conferido neste aparelho. Entrega guardada e será enviada sozinha quando a internet voltar.';
 const captura = (c: CapturaRosto) => ({ descritor: c.descritor, foto: c.foto, ...(c.fotoItem ? { fotoItem: c.fotoItem } : {}), latitude: c.latitude, longitude: c.longitude, precisao: c.precisao, provaDeVida: c.provaDeVida });
 // Sem sinal, nem tenta a internet: vai direto para o aparelho.
 const semRede = () => { if (!navigator.onLine) throw new TypeError('sem internet'); };
@@ -49,7 +50,7 @@ export function RostoCampo({ empresaId, base }: { empresaId: string; base: BaseR
             {daEmpresa.map((c) => (
               <li key={c.id} className="py-2">
                 <p><strong>{c.tipo === 'EPI' ? 'Entrega de EPI' : c.tipo === 'DDS' ? 'Presença no DDS' : c.tipo === 'TOQUE' ? 'Assinatura na lista' : 'Presença no treinamento'}</strong> · {c.titulo}</p>
-                <p className="text-xs text-text/60">Capturado em {quando(c.criadoEm)}</p>
+                <p className="text-xs text-text/60">Capturado em {quando(c.criadoEm)}{c.conferido ? ' · rosto já conferido no aparelho' : ''}</p>
                 {c.erro && (
                   <p className="text-xs text-danger">O sistema recusou: {c.erro}{' '}
                     <button className="underline" onClick={async () => { await tentarDeNovo(c.id); enviar(); }}>Tentar de novo</button>{' '}
@@ -114,7 +115,13 @@ export function RostoCampo({ empresaId, base }: { empresaId: string; base: BaseR
             return r.repetido ? `${r.nome} já estava com presença` : `${r.nome}: presença registrada`;
           }}
           guardarOffline={async (c) => {
-            if (acao === 'epi') await guardarCaptura({ tipo: 'EPI', empresaId, refId: colab, titulo: `${pessoa?.nome ?? ''}`, dados: { ...camera.dados, ...captura(c) } });
+            if (acao === 'epi') {
+              // Sem internet, o rosto é conferido aqui mesmo, com o cadastro guardado no aparelho.
+              const r = await conferirNoAparelho(empresaId, colab, c.descritor);
+              if (r === 'nao-confere') throw new Error(`O rosto não confere com o cadastro de ${pessoa?.nome ?? 'este funcionário'}. Tente de novo com boa luz, ou registre a entrega com assinatura.`);
+              await guardarCaptura({ tipo: 'EPI', empresaId, refId: colab, titulo: `${pessoa?.nome ?? ''}`, dados: { ...camera.dados, ...captura(c) }, conferido: r === 'confere' });
+              return r === 'confere' ? CONFERIDO : GUARDADO;
+            }
             else await guardarCaptura({ tipo: acao === 'dds' ? 'DDS' : 'TREINAMENTO', empresaId, refId: ref, titulo: camera.titulo.replace('Presença: ', ''), dados: captura(c) });
             return GUARDADO;
           }} />

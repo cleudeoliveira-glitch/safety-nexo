@@ -35,10 +35,13 @@ export default function CampoPage() {
 
   useEffect(() => {
     setLogado(!!lerToken()); setOnline(navigator.onLine); setBase(lerBase()); atualizar();
+    if (new URLSearchParams(window.location.search).get('aba') === 'epi') setAba('rosto'); // vindo do menu "Entrega de EPI"
+    // Com uma empresa só, já deixa escolhida.
+    const b = lerBase(); if (b?.empresas.length === 1) setEmpresaId(b.empresas[0].id);
     const ligar = () => { setOnline(true); sincronizar(); }; const desligar = () => setOnline(false);
     window.addEventListener('online', ligar); window.addEventListener('offline', desligar);
     if (navigator.onLine && lerToken()) {
-      prepararCampo().then(setBase).catch(() => undefined);
+      prepararCampo().then((b) => { setBase(b); if (b.empresas.length === 1) setEmpresaId(b.empresas[0].id); }).catch(() => undefined);
       sincronizar();
     }
     return () => { window.removeEventListener('online', ligar); window.removeEventListener('offline', desligar); };
@@ -68,7 +71,7 @@ export default function CampoPage() {
 
       {!logado && <Aviso tipo="erro">Entre no sistema uma vez com internet para usar o campo neste aparelho. <Link href="/entrar" className="underline">Entrar</Link></Aviso>}
       {logado && !base && <Aviso tipo="info">Abra esta tela uma vez com internet para guardar as empresas e os checklists no aparelho.</Aviso>}
-      {base && <p className="text-xs text-text/60">Empresas e checklists guardados em {quando(base.atualizadoEm)}. Dica: no celular, use &quot;Adicionar à tela inicial&quot; para abrir o Safety Nexo como aplicativo.</p>}
+      {base && <p className="text-xs text-text/60">Empresas, checklists e rostos dos funcionários guardados em {quando(base.atualizadoEm)}. Dica: no celular, use &quot;Adicionar à tela inicial&quot; para abrir o Safety Nexo como aplicativo.</p>}
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 
       {pendentes.length > 0 && (
@@ -96,7 +99,7 @@ export default function CampoPage() {
         </Selecao>
         <ListasGuardadas empresaId={empresaId} />
         <div role="tablist" className="flex flex-wrap gap-2">
-          {([['inspecao', 'Inspeção (checklist)'], ['apr', 'APR'], ['rosto', 'Pelo rosto']] as [Aba, string][]).map(([v, n]) => (
+          {([['rosto', 'Entrega de EPI (rosto)'], ['inspecao', 'Inspeção (checklist)'], ['apr', 'APR']] as [Aba, string][]).map(([v, n]) => (
             <button key={v} role="tab" aria-selected={aba === v} onClick={() => setAba(v)} className={`rounded-card px-4 py-2 text-sm font-semibold ${aba === v ? 'bg-primary text-white' : 'border border-border bg-white'}`}>{n}</button>
           ))}
         </div>

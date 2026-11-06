@@ -1,6 +1,7 @@
 // Trabalho de campo sem internet: o que a tela /campo precisa fica guardado no aparelho.
 import { buscarModelosChecklist, criarApr, criarInspecao, estoque, listarDds, listarEmpresas, listarTurmas, ModeloChecklist, rosto } from './api';
 import { carregarFaceApi, configRosto } from './rosto';
+import { guardarRostosCampo } from './rosto-offline';
 
 const BASE = 'safety-nexo:campo';
 const PENDENTES = 'safety-nexo:campo-pendentes';
@@ -38,6 +39,8 @@ export async function prepararCampo(): Promise<BaseCampo> {
         dds: dds.slice(0, 20).map((d) => ({ id: d.id, tema: d.tema, data: d.data })),
         turmas: turmas.slice(0, 20).map((t) => ({ id: t.id, nome: t.nome, norma: t.norma ?? null })),
       };
+      // Código do rosto de cada funcionário, para conferir a entrega de EPI sem internet.
+      if (cols.some((c) => c.cadastrado)) await rosto.baseCampo(e.id).then((b) => guardarRostosCampo(e.id, b)).catch(() => undefined);
     } catch { /* empresa sem acesso ao rosto */ }
   }));
   const base = { empresas: empresas.map((e) => ({ id: e.id, razaoSocial: e.razaoSocial })), modelos, rosto: rostoBase, atualizadoEm: new Date().toISOString() };

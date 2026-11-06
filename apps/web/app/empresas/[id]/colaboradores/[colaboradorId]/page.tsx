@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
-import { guardarCaptura } from '@/lib/rosto-offline';
+import { conferirNoAparelho, guardarCaptura } from '@/lib/rosto-offline';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto } from '@/lib/api';
 
@@ -228,6 +228,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
           )
         }
       >
+        <p className="mb-3 text-sm text-text/70">Vai entregar EPI em campo, onde pode faltar internet? Use a tela <Link href="/campo?aba=epi" className="font-semibold text-primary underline">Entrega de EPI no campo</Link>: funciona sem sinal, confere o rosto no próprio celular e envia sozinha quando a internet voltar.</p>
         <form
           ref={formEpi}
           className="grid gap-4 md:grid-cols-3"
@@ -293,7 +294,13 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
       )}
       {camera === 'epi' && (
         <CameraRosto titulo={`Entrega de EPI para ${colaborador.nome}`} modo="unico" pedirFotoItem onFechar={() => setCamera(null)}
-          guardarOffline={async (c) => { await guardarCaptura({ tipo: 'EPI', empresaId, refId: colaboradorId, titulo: colaborador.nome, dados: { ...dadosEpi(), descritor: c.descritor, foto: c.foto, ...(c.fotoItem ? { fotoItem: c.fotoItem } : {}), latitude: c.latitude, longitude: c.longitude, precisao: c.precisao, provaDeVida: c.provaDeVida } }); formEpi.current?.reset(); setItemId(''); return 'Sem internet: guardado no aparelho. Será conferido e enviado quando a internet voltar.'; }}
+          guardarOffline={async (c) => {
+            const conf = await conferirNoAparelho(empresaId, colaboradorId, c.descritor);
+            if (conf === 'nao-confere') throw new Error(`O rosto não confere com o cadastro de ${colaborador.nome}. Tente de novo com boa luz, ou registre a entrega com assinatura.`);
+            await guardarCaptura({ tipo: 'EPI', empresaId, refId: colaboradorId, titulo: colaborador.nome, conferido: conf === 'confere', dados: { ...dadosEpi(), descritor: c.descritor, foto: c.foto, ...(c.fotoItem ? { fotoItem: c.fotoItem } : {}), latitude: c.latitude, longitude: c.longitude, precisao: c.precisao, provaDeVida: c.provaDeVida } });
+            formEpi.current?.reset(); setItemId('');
+            return conf === 'confere' ? 'Rosto conferido neste aparelho. Entrega guardada e será enviada sozinha quando a internet voltar.' : 'Sem internet: guardado no aparelho. Será conferido e enviado quando a internet voltar.';
+          }}
           onCaptura={async (c) => {
             const r = await rosto.entregarEpi(empresaId, colaboradorId, { ...dadosEpi(), descritor: c.descritor, foto: c.foto, ...(c.fotoItem ? { fotoItem: c.fotoItem } : {}), latitude: c.latitude, longitude: c.longitude, precisao: c.precisao, provaDeVida: c.provaDeVida });
             setComprovante(r.codigo); formEpi.current?.reset(); setItemId(''); await recarregar();

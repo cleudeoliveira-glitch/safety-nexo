@@ -27,6 +27,9 @@ export class RostoController {
   @Get('empresas/:e/rosto')
   listar(@ConsultoriaId() c: string, @Param('e') e: string) { return this.rosto.listar(c, e); }
 
+  @Get('empresas/:e/rosto/campo')
+  baseCampo(@ConsultoriaId() c: string, @Param('e') e: string) { return this.rosto.baseCampo(c, e); }
+
   @Post('empresas/:e/rosto/identificar')
   identificar(@ConsultoriaId() c: string, @Param('e') e: string, @Body() dto: IdentificarDto) { return this.rosto.identificar(c, e, dto.descritor); }
 

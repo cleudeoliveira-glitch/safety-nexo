@@ -753,6 +753,7 @@ export type PresencaRosto = { colaboradorId: string; nome: string; codigo: strin
 export const rosto = {
   config: () => chamar<ConfigRosto>('GET', '/rosto/config'),
   listar: (e: string) => chamar<{ id: string; nome: string; cargo: string; cadastrado: boolean }[]>('GET', `/empresas/${e}/rosto`),
+  baseCampo: (e: string) => chamar<{ limiar: number; rostos: { colaboradorId: string; amostras: number[][] }[] }>('GET', `/empresas/${e}/rosto/campo`),
   status: (e: string, c: string) => chamar<StatusRosto>('GET', `/empresas/${e}/colaboradores/${c}/rosto`),
   cadastrar: (e: string, c: string, descritores: number[][], consentimento: boolean) => chamar<StatusRosto>('PUT', `/empresas/${e}/colaboradores/${c}/rosto`, { descritores, consentimento }),
   remover: (e: string, c: string) => chamar<StatusRosto>('DELETE', `/empresas/${e}/colaboradores/${c}/rosto`),
