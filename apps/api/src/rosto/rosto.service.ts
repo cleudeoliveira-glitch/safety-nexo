@@ -84,6 +84,15 @@ export class RostoService {
     return { cadastrado: false };
   }
 
+  // Para conferir o rosto no próprio aparelho quando não houver internet (entrega de EPI no campo).
+  // Vai só o código numérico do rosto (nunca foto). O servidor confere de novo quando a entrega chega.
+  async baseCampo(c: string, e: string) {
+    this.ativo('EPI');
+    await this.empresa(c, e);
+    const rostos = await this.prisma.rostoColaborador.findMany({ where: { colaborador: { empresaId: e } }, select: { colaboradorId: true, descritores: true } });
+    return { limiar: configFacial().limiar, rostos: rostos.map((r) => ({ colaboradorId: r.colaboradorId, amostras: this.amostras(r.descritores) })) };
+  }
+
   // Procura o rosto entre os funcionários cadastrados da empresa.
   private async melhor(empresaId: string, d: number[], exceto?: string) {
     const rostos = await this.prisma.rostoColaborador.findMany({ where: { colaborador: { empresaId }, ...(exceto ? { colaboradorId: { not: exceto } } : {}) }, include: { colaborador: { select: { nome: true, cargo: true, cpf: true } } } });
