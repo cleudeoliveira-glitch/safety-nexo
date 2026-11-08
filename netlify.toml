@@ -6,3 +6,17 @@
 
 [build.environment]
   NODE_VERSION = "22"
+
+# Proteção do site: o navegador recebe estas regras em toda página.
+# - ninguém consegue colocar o Safety Nexo dentro de outro site para enganar quem clica (frame-ancestors / X-Frame-Options);
+# - o navegador não "adivinha" tipo de arquivo; o endereço completo não vaza para outros sites;
+# - câmera só no próprio Safety Nexo (rosto na entrega de EPI e fotos); microfone e localização também só aqui.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    Content-Security-Policy = "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"

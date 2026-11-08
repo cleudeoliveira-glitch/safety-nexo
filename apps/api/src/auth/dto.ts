@@ -24,6 +24,7 @@ export class EntrarDto {
   email!: string;
 
   @IsString()
+  @Length(1, 100, { message: 'Digite a sua senha.' })
   senha!: string;
 }
 
