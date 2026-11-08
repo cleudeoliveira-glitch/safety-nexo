@@ -24,7 +24,8 @@ const STATUS_RELATO: Record<Relato['status'], [string, string]> = { NOVO: ['Novo
 const PRIORIDADE: Record<Prioridade, string> = { ALTA: 'Alta', MEDIA: 'Média', BAIXA: 'Baixa' };
 const ESFORCO: Record<Esforco, string> = { RAPIDO: 'Rápido de fazer', MEDIO: 'Médio', DEMORADO: 'Demorado' };
 type Coluna = AcaoCorretiva['status'];
-const COLUNAS: [Coluna, string, string][] = [['ABERTA', 'A fazer', 'card-pendente'], ['ANDAMENTO', 'Em andamento', 'card-total'], ['FEITA', 'Concluída', 'card-ok']];
+// Colunas em tom neutro; só uma faixa fina no topo diz a etapa (âmbar, petróleo, menta).
+const COLUNAS: [Coluna, string, string][] = [['ABERTA', 'A fazer', 'bg-[#f59e0b]'], ['ANDAMENTO', 'Em andamento', 'bg-primary'], ['FEITA', 'Concluída', 'bg-success']];
 const mini = (v?: 'primario') => `rounded-lg px-2.5 py-1.5 text-xs font-semibold ${v ? 'bg-primary text-white' : 'border border-border bg-white hover:border-primary'}`;
 
 // ---------- Relatos ----------
@@ -281,11 +282,12 @@ function AbaAcoes({ empresaId, empresa, consultoria, iaLigada, avisar, aoMudar }
                   onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (sobre !== c) setSobre(c); }}
                   onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSobre(null); }}
                   onDrop={(e) => { e.preventDefault(); setSobre(null); setArrastando(null); const x = acoes.find((y) => y.id === e.dataTransfer.getData('text/plain')); if (x) mover(x, c); }}
-                  className={`min-h-[140px] rounded-card p-3 transition ${fundo} ${sobre === c ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                  className={`relative min-h-[140px] overflow-hidden rounded-card border border-border bg-background p-3 pt-4 transition ${sobre === c ? 'border-success bg-success/5 ring-2 ring-success/30' : ''}`}
                   aria-label={`Coluna ${nome}`}
                 >
-                  <p className="mb-2 flex items-center justify-between text-sm font-bold"><span>{nome}</span><span className="rounded-full bg-white/70 px-2 py-0.5 text-xs">{lista.length}</span></p>
-                  {lista.length === 0 ? <p className="rounded-card border-2 border-dashed border-text/15 p-4 text-center text-xs text-text/50">{c === 'ABERTA' ? 'Nada a fazer. 🎉' : 'Solte um card aqui'}</p>
+                  <span className={`absolute inset-x-0 top-0 h-1 ${fundo}`} aria-hidden />
+                  <p className="mb-3 flex items-center justify-between text-sm font-semibold text-primary"><span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${fundo}`} aria-hidden />{nome}</span><span className="rounded-full border border-border bg-white px-2 py-0.5 text-xs text-text/70">{lista.length}</span></p>
+                  {lista.length === 0 ? <p className="rounded-card border border-dashed border-border bg-white/60 p-4 text-center text-xs text-text/50">{c === 'ABERTA' ? 'Nada a fazer. 🎉' : 'Solte um card aqui'}</p>
                     : <ul className="space-y-2">{lista.map(card)}</ul>}
                 </div>
               );

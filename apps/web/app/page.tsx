@@ -444,33 +444,44 @@ function Indicadores({ empresaId }: { empresaId: string }) {
   );
 }
 
-// No celular, a primeira coisa da tela: botões grandes para o que se faz em campo.
-// No computador some, porque lá o menu da esquerda e o acesso rápido já cumprem esse papel.
-const botoesCampo: { nome: string; icone: NomeIcone; rota: string; geral?: boolean; cor: string; soConsultoria?: boolean }[] = [
-  { nome: 'Inspeção', icone: 'lupa', rota: '/campo?aba=inspecao', geral: true, cor: 'from-primary to-[#168a7f]' },
-  { nome: 'Checklist', icone: 'lista', rota: '/operacao#checklist', cor: 'from-[#0f766e] to-[#14b8a6]' },
-  { nome: 'DDS', icone: 'fala', rota: '/campo?aba=dds', geral: true, cor: 'from-[#1d4ed8] to-[#3b82f6]' },
-  { nome: 'Entrega de EPI', icone: 'cracha', rota: '/campo?aba=epi', geral: true, cor: 'from-[#7c3aed] to-[#a78bfa]' },
-  { nome: 'APR', icone: 'escudo', rota: '/campo?aba=apr', geral: true, cor: 'from-[#c2410c] to-[#f97316]' },
-  { nome: 'Riscos', icone: 'alerta', rota: '#ghes', cor: 'from-[#b91c1c] to-[#ef4444]', soConsultoria: true },
-  { nome: 'Plano de ação', icone: 'check', rota: '/prevencao#acoes', cor: 'from-[#15803d] to-[#22c55e]' },
-  { nome: 'Vencimentos', icone: 'calendario', rota: '#vencimentos', geral: true, cor: 'from-[#a16207] to-[#eab308]' },
-  { nome: 'Calculadoras', icone: 'numero', rota: '/calculadoras', geral: true, cor: 'from-[#334155] to-[#64748b]' },
-  { nome: 'Slides', icone: 'livro', rota: '/material', geral: true, cor: 'from-[#0e4a5b] to-[#0891b2]' },
+const botoesCampo: { nome: string; texto: string; icone: NomeIcone; rota: string; geral?: boolean; soConsultoria?: boolean }[] = [
+  { nome: 'Inspeção', texto: 'Com foto, até sem internet', icone: 'lupa', rota: '/campo?aba=inspecao', geral: true },
+  { nome: 'Checklist', texto: 'NRs e AEP', icone: 'lista', rota: '/operacao#checklist' },
+  { nome: 'DDS', texto: 'Tema e presença', icone: 'fala', rota: '/campo?aba=dds', geral: true },
+  { nome: 'Entrega de EPI', texto: 'Com o rosto', icone: 'cracha', rota: '/campo?aba=epi', geral: true },
+  { nome: 'APR', texto: 'Análise de risco', icone: 'escudo', rota: '/campo?aba=apr', geral: true },
+  { nome: 'Riscos', texto: 'GHEs e agentes', icone: 'alerta', rota: '#ghes', soConsultoria: true },
+  { nome: 'Plano de ação', texto: 'Quadro 5W2H', icone: 'check', rota: '/prevencao#acoes' },
+  { nome: 'Vencimentos', texto: 'O que vence', icone: 'calendario', rota: '#vencimentos', geral: true },
+  { nome: 'Calculadoras', texto: 'CIPA, SESMT e mais', icone: 'numero', rota: '/calculadoras', geral: true },
+  { nome: 'Slides', texto: 'Treinamentos prontos', icone: 'livro', rota: '/material', geral: true },
 ];
 
+// No celular, a primeira coisa da tela: botões grandes para o que se faz em campo, nas cores da marca.
+// O primeiro (Inspeção) vem em destaque; os outros seguem o mesmo cartão branco do resto do sistema.
+// No computador some, porque lá o menu da esquerda e o acesso rápido já cumprem esse papel.
 function BotoesDoCampo({ base, cliente }: { base: string; cliente: boolean }) {
+  const lista = botoesCampo.filter((b) => !(cliente && b.soConsultoria));
+  const href = (b: (typeof botoesCampo)[number]) => (b.geral ? b.rota : base ? `${base}${b.rota}` : '/empresas/nova');
+  const [primeiro, ...resto] = lista;
   return (
     <section className="mb-5 md:hidden" aria-label="Atalhos do campo">
-      <div className="grid grid-cols-2 gap-3">
-        {botoesCampo.filter((b) => !(cliente && b.soConsultoria)).map((b) => (
-          <Link
-            key={b.nome}
-            href={b.geral ? b.rota : base ? `${base}${b.rota}` : '/empresas/nova'}
-            className={`flex min-h-[96px] flex-col justify-between rounded-2xl bg-gradient-to-br ${b.cor} p-4 text-white shadow-md active:scale-[0.98]`}
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20"><Icone nome={b.icone} className="h-6 w-6" /></span>
-            <span className="text-base font-bold leading-tight">{b.nome}</span>
+      <Link href={href(primeiro)} className="fundo-destaque flex items-center gap-4 rounded-2xl p-5 text-white shadow-lg shadow-primary/20 active:scale-[0.99]">
+        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20"><Icone nome={primeiro.icone} className="h-6 w-6" /></span>
+        <span className="flex-1">
+          <span className="block text-lg font-bold">{primeiro.nome}</span>
+          <span className="block text-sm text-white/75">{primeiro.texto}</span>
+        </span>
+        <Icone nome="seta" className="h-5 w-5 text-menta" />
+      </Link>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        {resto.map((b) => (
+          <Link key={b.nome} href={href(b)} className="flex min-h-[104px] flex-col justify-between rounded-2xl border border-border bg-white p-4 shadow-sm active:scale-[0.98] active:border-primary/40">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#168a7f] text-white shadow-sm"><Icone nome={b.icone} className="h-5 w-5" /></span>
+            <span>
+              <span className="block font-semibold leading-tight text-primary">{b.nome}</span>
+              <span className="block text-xs text-text/55">{b.texto}</span>
+            </span>
           </Link>
         ))}
       </div>
@@ -496,10 +507,10 @@ function NumerosDoTopo({ n, base, cliente }: { n: NumerosPainel; base: string; c
   return (
     <section className="mt-6 grid gap-4 lg:grid-cols-[1fr_340px]">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Link href={`${base}#colaboradores`}><CardNumero tom="total" rotulo="Colaboradores" valor={<span className="text-3xl">{n.colaboradores}</span>} detalhe="cadastrados" icone="pessoas" /></Link>
-        <Link href={`${base}/prevencao#acoes`}><CardNumero tom={n.acoesAtrasadas ? 'nao' : n.acoesAbertas ? 'pendente' : 'ok'} rotulo="Ações em aberto" valor={<span className="text-3xl">{n.acoesAbertas}</span>} detalhe={n.acoesAtrasadas ? `${n.acoesAtrasadas} atrasada(s)` : 'nenhuma atrasada'} icone="check" /></Link>
-        <a href="#hoje"><CardNumero tom={n.pendenciasVencidas ? 'nao' : 'ok'} rotulo="Urgentes" valor={<span className="text-3xl">{n.pendenciasVencidas}</span>} detalhe={n.pendenciasVencidas ? 'vencidos: resolver já' : 'nada vencido'} icone="calendario" /></a>
-        <Link href={`${base}/prevencao#relatos`}><CardNumero tom={n.relatosNovos ? 'pendente' : 'ok'} rotulo="Relatos novos" valor={<span className="text-3xl">{n.relatosNovos}</span>} detalhe="pelo QR code" icone="qr" /></Link>
+        <Numero href={`${base}#colaboradores`} rotulo="Colaboradores" valor={n.colaboradores} detalhe="cadastrados" icone="pessoas" />
+        <Numero href={`${base}/prevencao#acoes`} rotulo="Ações abertas" valor={n.acoesAbertas} detalhe={n.acoesAtrasadas ? `${n.acoesAtrasadas} atrasada(s)` : 'nenhuma atrasada'} icone="check" alerta={n.acoesAtrasadas > 0} />
+        <Numero href="#hoje" rotulo="Urgentes" valor={n.pendenciasVencidas} detalhe={n.pendenciasVencidas ? 'vencidos: resolver já' : 'nada vencido'} icone="calendario" alerta={n.pendenciasVencidas > 0} />
+        <Numero href={`${base}/prevencao#relatos`} rotulo="Relatos novos" valor={n.relatosNovos} detalhe="pelo QR code" icone="qr" />
       </div>
       <div className="flex items-center gap-4 rounded-2xl border border-border bg-white p-4 shadow-sm">
         <div className="relative h-28 w-28 shrink-0 rounded-full" style={{ background: total ? `conic-gradient(${gradiente})` : '#e5e7eb' }} aria-hidden>
@@ -521,5 +532,19 @@ function NumerosDoTopo({ n, base, cliente }: { n: NumerosPainel; base: string; c
         </div>
       </div>
     </section>
+  );
+}
+
+// Cartão de número no padrão da marca: branco, ícone petróleo e só o vermelho quando algo pede atenção.
+function Numero({ href, rotulo, valor, detalhe, icone, alerta }: { href: string; rotulo: string; valor: number; detalhe: string; icone: NomeIcone; alerta?: boolean }) {
+  return (
+    <Link href={href} className="group flex flex-col justify-between rounded-2xl border border-border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+      <span className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-text/55">{rotulo}</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icone nome={icone} className="h-4 w-4" /></span>
+      </span>
+      <span className={`mt-2 text-3xl font-bold ${alerta ? 'text-danger' : 'text-primary'}`}>{valor}</span>
+      <span className={`text-xs ${alerta ? 'font-semibold text-danger' : 'text-text/55'}`}>{detalhe}</span>
+    </Link>
   );
 }

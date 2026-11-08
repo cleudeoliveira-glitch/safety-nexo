@@ -115,9 +115,9 @@ function CalcSesmt() {
               <p className="text-sm text-text/60">Faixa: {r.faixa} empregados</p>
               <ul className="grid gap-3 sm:grid-cols-2">
                 {r.equipe.map((p) => (
-                  <li key={p.profissional} className="card-total flex items-center justify-between rounded-card p-4">
+                  <li key={p.profissional} className="flex items-center justify-between rounded-card border border-border bg-background p-4">
                     <span className="text-sm font-semibold">{p.nome}{p.parcial && <span className="block text-xs font-normal text-text/60">tempo parcial (mín. 3 h por dia)</span>}</span>
-                    <span className="text-2xl font-bold">{p.quantidade}</span>
+                    <span className="text-2xl font-bold text-primary">{p.quantidade}</span>
                   </li>
                 ))}
               </ul>
