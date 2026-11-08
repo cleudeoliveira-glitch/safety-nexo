@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, Res } from '@nestjs/common';
+import { Recurso } from '../common/plano';
 import { Request, Response } from 'express';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 import { Publica } from '../auth/publica.decorator';
@@ -30,12 +31,14 @@ export class RostoController {
   @Get('empresas/:e/rosto/campo')
   baseCampo(@ConsultoriaId() c: string, @Param('e') e: string) { return this.rosto.baseCampo(c, e); }
 
+  @Recurso('rosto', 'O reconhecimento pelo rosto')
   @Post('empresas/:e/rosto/identificar')
   identificar(@ConsultoriaId() c: string, @Param('e') e: string, @Body() dto: IdentificarDto) { return this.rosto.identificar(c, e, dto.descritor); }
 
   @Get('empresas/:e/colaboradores/:id/rosto')
   status(@ConsultoriaId() c: string, @Param('e') e: string, @Param('id') id: string) { return this.rosto.status(c, e, id); }
 
+  @Recurso('rosto', 'O cadastro do rosto')
   @Put('empresas/:e/colaboradores/:id/rosto')
   cadastrar(@ConsultoriaId() c: string, @Param('e') e: string, @Param('id') id: string, @Body() dto: CadastrarRostoDto, @Req() req: Request) {
     return this.rosto.cadastrar(c, e, id, dto, origem(req));
@@ -44,16 +47,19 @@ export class RostoController {
   @Delete('empresas/:e/colaboradores/:id/rosto')
   remover(@ConsultoriaId() c: string, @Param('e') e: string, @Param('id') id: string) { return this.rosto.remover(c, e, id); }
 
+  @Recurso('rosto', 'A entrega de EPI pelo rosto')
   @Post('empresas/:e/colaboradores/:id/epis/rosto')
   entregar(@ConsultoriaId() c: string, @Param('e') e: string, @Param('id') id: string, @Body() dto: EntregaRostoDto, @Req() req: Request) {
     return this.rosto.entregarEpi(c, e, id, dto, origem(req));
   }
 
+  @Recurso('rosto', 'A presença pelo rosto')
   @Post('empresas/:e/dds/:ddsId/presenca-rosto')
   dds(@ConsultoriaId() c: string, @Param('e') e: string, @Param('ddsId') d: string, @Body() dto: CapturaDto, @Req() req: Request) {
     return this.rosto.presencaDds(c, e, d, dto, origem(req));
   }
 
+  @Recurso('rosto', 'A presença pelo rosto')
   @Post('empresas/:e/turmas/:turmaId/presenca-rosto')
   turma(@ConsultoriaId() c: string, @Param('e') e: string, @Param('turmaId') t: string, @Body() dto: CapturaDto, @Req() req: Request) {
     return this.rosto.presencaTurma(c, e, t, dto, origem(req));

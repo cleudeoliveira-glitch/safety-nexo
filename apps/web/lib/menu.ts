@@ -9,8 +9,8 @@ export type ItemMenu = {
   rota: string;
   geral?: boolean;
   soConsultoria?: boolean;
-  // Some na conta de empresa com técnico próprio (só tem uma empresa e não vende serviço).
-  soMultiEmpresa?: boolean;
+  // Recurso do plano que a tela usa: sem ele, o menu mostra um cadeado.
+  recurso?: string;
 };
 export type GrupoMenu = { titulo: string; itens: ItemMenu[] };
 
@@ -21,8 +21,8 @@ export const MENU: GrupoMenu[] = [
       { nome: 'Painel (dashboard)', icone: 'casa', rota: '/', geral: true },
       { nome: 'Dashboard de indicadores', icone: 'grafico', rota: '/ssma' },
       { nome: 'Emitir documento', icone: 'documento', rota: '/emitir', geral: true },
-      { nome: 'Visão geral das empresas', icone: 'grade', rota: '/geral', geral: true, soConsultoria: true, soMultiEmpresa: true },
-      { nome: 'Comercial', icone: 'cifrao', rota: '/comercial', geral: true, soConsultoria: true, soMultiEmpresa: true },
+      { nome: 'Visão geral das empresas', icone: 'grade', rota: '/geral', geral: true, soConsultoria: true },
+      { nome: 'Comercial', icone: 'cifrao', rota: '/comercial', geral: true, soConsultoria: true, recurso: 'proposta' },
       { nome: 'Mudanças nas normas', icone: 'sino', rota: '/normas', geral: true, soConsultoria: true },
       { nome: 'Meu plano', icone: 'coroa', rota: '/plano', geral: true, soConsultoria: true },
     ],
@@ -65,9 +65,9 @@ export const MENU: GrupoMenu[] = [
       { nome: 'DDS (registrar)', icone: 'fala', rota: '/operacao#dds' },
       { nome: 'Biblioteca de DDS (150 temas)', icone: 'livro', rota: '/dds', geral: true },
       { nome: 'Checklists de NRs', icone: 'lista', rota: '/operacao#checklist' },
-      { nome: 'Entrega de EPI (com ou sem internet)', icone: 'cracha', rota: '/campo?aba=epi', geral: true },
+      { nome: 'Entrega de EPI (com ou sem internet)', icone: 'cracha', rota: '/campo?aba=epi', geral: true, recurso: 'rosto' },
       { nome: 'Almoxarifado de EPI', icone: 'caixa', rota: '/almoxarifado' },
-      { nome: 'Campo (sem internet)', icone: 'sinal', rota: '/campo', geral: true },
+      { nome: 'Campo (sem internet)', icone: 'sinal', rota: '/campo', geral: true, recurso: 'offline' },
     ],
   },
   {
@@ -84,8 +84,8 @@ export const MENU: GrupoMenu[] = [
   {
     titulo: 'Governança',
     itens: [
-      { nome: 'eSocial', icone: 'nuvem', rota: '/esocial', soConsultoria: true },
-      { nome: 'eSocial de todas e multas', icone: 'nuvem', rota: '/esocial-geral', geral: true, soConsultoria: true, soMultiEmpresa: true },
+      { nome: 'eSocial', icone: 'nuvem', rota: '/esocial', soConsultoria: true, recurso: 'esocial' },
+      { nome: 'eSocial de todas e multas', icone: 'nuvem', rota: '/esocial-geral', geral: true, soConsultoria: true, recurso: 'esocial' },
       { nome: 'FAP e RAT', icone: 'porcento', rota: '/fap', soConsultoria: true },
       { nome: 'Terceirizadas', icone: 'aperto', rota: '/conectores#terceiros' },
       { nome: 'Atestados e faltas', icone: 'relogio', rota: '/conectores#faltas' },
@@ -95,7 +95,7 @@ export const MENU: GrupoMenu[] = [
     titulo: 'Documentos',
     itens: [
       { nome: 'Arquivo de documentos', icone: 'pasta', rota: '/arquivo' },
-      { nome: 'Assinaturas', icone: 'caneta', rota: '/assinaturas' },
+      { nome: 'Assinaturas', icone: 'caneta', rota: '/assinaturas', recurso: 'assinatura' },
       { nome: 'Histórico de alterações', icone: 'relogio', rota: '/historico', soConsultoria: true },
     ],
   },

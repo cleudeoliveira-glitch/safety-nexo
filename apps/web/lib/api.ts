@@ -303,7 +303,7 @@ export function salvarArquivo(pdf: Blob, nome: string) {
 
 export type Acesso = { token: string; usuario: Usuario };
 export const entrar = (dados: { email: string; senha: string }) => chamar<Acesso>('POST', '/auth/entrar', dados);
-export const cadastrar = (dados: { tipo: 'CONSULTORIA' | 'EMPRESA'; nomeConsultoria: string; cnpj?: string; nome: string; email: string; senha: string }) =>
+export const cadastrar = (dados: { nomeConsultoria: string; nome: string; email: string; senha: string }) =>
   chamar<Acesso>('POST', '/auth/cadastro', dados);
 export const esqueciSenha = (email: string) => chamar<{ ok: true; emailLigado: boolean }>('POST', '/auth/esqueci', { email });
 export const redefinirSenha = (token: string, senha: string) => chamar<Acesso>('POST', '/auth/redefinir', { token, senha });
@@ -837,7 +837,7 @@ export const admin = {
   detalhe: (id: string) => chamar<ConsultoriaAdmDetalhe>('GET', `/admin/consultorias/${id}`),
   atualizar: (id: string, dados: { plano?: string; limiteEmpresas?: number; bloqueada?: boolean; motivoBloqueio?: string; observacaoAdm?: string }) =>
     chamar<unknown>('PATCH', `/admin/consultorias/${id}`, dados),
-  convites: () => chamar<{ consultoria: string; empresa: string; whatsappConsultoria: string; whatsappEmpresa: string }>('GET', '/admin/convites'),
+  convites: () => chamar<{ link: string; whatsapp: string }>('GET', '/admin/convites'),
   linkSenha: (usuarioId: string) => chamar<{ link: string; whatsapp: string }>('POST', `/admin/usuarios/${usuarioId}/link-senha`),
 };
 
@@ -983,8 +983,18 @@ export const meuEspaco = {
 export type MeuPlano = {
   plano: string; nomePlano: string; limiteEmpresas: number | null; empresas: number; acessoTotal: boolean;
   pedidoPlano: string | null; pedidoPlanoEm: string | null;
+  emTeste?: boolean; testeAte?: string | null; recursos?: string[];
+  limites?: { funcionarios: number | null; psicossocialMes: number | null; equipe: number | null } | null;
+};
+export type RecursosPlano = { codigo: string; nome: string; emTeste: boolean; testeAte: string | null; recursos: string[]; limites: MeuPlano['limites'] };
+export type PessoaEquipe = { id: string; nome: string; email: string; createdAt: string; ultimoAcesso: string | null };
+export const equipe = {
+  listar: () => chamar<{ pessoas: PessoaEquipe[]; limite: number | null; eu: string }>('GET', '/equipe'),
+  convidar: (dados: { nome: string; email: string }) => chamar<{ id: string; nome: string } & LinkSenha>('POST', '/equipe', dados),
+  remover: (id: string) => chamar<{ ok: true }>('DELETE', `/equipe/${id}`),
 };
 export const meuPlano = {
+  recursos: () => chamar<RecursosPlano>('GET', '/meu-plano/recursos'),
   ver: () => chamar<MeuPlano>('GET', '/meu-plano'),
   pedir: (plano: string) => chamar<MeuPlano>('POST', '/meu-plano/pedido', { plano }),
 };

@@ -1,4 +1,6 @@
-import { Controller, Param, Post, Res } from '@nestjs/common';
+import { Controller, ForbiddenException, Param, Post, Res } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { mensagemUpgrade, planoAtual, Recurso, temRecurso } from '../common/plano';
 import { Response } from 'express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { LtcatService } from './ltcat.service';
@@ -11,8 +13,10 @@ export class DocumentosController {
     private readonly pgr: PgrService,
     private readonly pcmso: PcmsoService,
     private readonly ltcat: LtcatService,
+    private readonly prisma: PrismaService,
   ) {}
 
+  @Recurso('documentos', 'O LTCAT')
   @Post('ltcat')
   async gerarLtcat(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Res() res: Response) {
     const { pdf, versao } = await this.ltcat.gerarPdf(consultoriaId, empresaId);
@@ -21,10 +25,15 @@ export class DocumentosController {
 
   @Post('pgr')
   async gerarPgr(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Res() res: Response) {
+    // Grátis: 1 PGR para testar (com marca d'água).
+    if (!temRecurso(planoAtual(), 'documentos') && (await this.prisma.documento.count({ where: { empresaId, tipo: 'PGR' } })) >= 1) {
+      throw new ForbiddenException(mensagemUpgrade('documentos', 'Gerar mais de um PGR'));
+    }
     const { pdf, versao } = await this.pgr.gerarPdf(consultoriaId, empresaId);
     enviarPdf(res, pdf, `PGR-v${versao}.pdf`);
   }
 
+  @Recurso('documentos', 'O PCMSO')
   @Post('pcmso')
   async gerarPcmso(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Res() res: Response) {
     const { pdf, versao } = await this.pcmso.gerarPdf(consultoriaId, empresaId);

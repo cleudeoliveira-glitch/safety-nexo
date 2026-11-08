@@ -27,13 +27,11 @@ export class AdminController {
     private readonly auth: AuthService,
   ) {}
 
-  // Links de cadastro para mandar a quem vai testar como cliente (consultoria ou empresa).
+  // Link de cadastro para mandar a quem vai testar como cliente.
   @Get('convites')
   convites() {
-    const consultoria = `${WEB()}/cadastro`;
-    const empresa = `${WEB()}/cadastro?tipo=empresa`;
-    const msg = (link: string, quem: string) => `https://wa.me/?text=${encodeURIComponent(`Olá! Crie a sua conta ${quem} no Safety Nexo, o sistema de SST, por este link. São 14 dias com tudo liberado: ${link}`)}`;
-    return { consultoria, empresa, whatsappConsultoria: msg(consultoria, 'de consultoria'), whatsappEmpresa: msg(empresa, 'da sua empresa') };
+    const link = `${WEB()}/cadastro`;
+    return { link, whatsapp: `https://wa.me/?text=${encodeURIComponent(`Olá! Crie a sua conta no Safety Nexo, gestão inteligente de SST, por este link. São 14 dias com tudo liberado, sem cartão: ${link}`)}` };
   }
 
   // Senha esquecida sem e-mail funcionando: o ADM gera o link e manda por WhatsApp.

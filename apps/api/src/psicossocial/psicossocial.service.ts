@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { SessaoUsuario } from '../common/sessao.decorator';
 import { PrismaService } from '../prisma/prisma.service';
@@ -51,6 +51,17 @@ export class PsicossocialService {
     await this.empresa(sessao.consultoriaId, empresaId);
     const ghes = await this.prisma.ghe.count({ where: { empresaId } });
     if (!ghes) throw new BadRequestException('Cadastre os GHEs (setores) da empresa antes: cada pessoa escolhe o seu setor ao responder.');
+    // Pesquisas por mês conforme o plano (somando todas as empresas da consultoria).
+    const limite = sessao.plano?.limites.psicossocialMes;
+    if (limite != null) {
+      const inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
+      const feitas = await this.prisma.avaliacaoPsicossocial.count({ where: { empresa: { consultoriaId: sessao.consultoriaId }, criadoEm: { gte: inicioMes } } });
+      if (feitas >= limite) {
+        throw new ForbiddenException(limite === 0
+          ? 'A pesquisa psicossocial faz parte dos planos pagos. No Grátis você vê a demonstração. Abra "Meu plano" no menu para liberar.'
+          : `Seu plano inclui ${limite} pesquisa(s) psicossocial(is) por mês e este mês já foram ${feitas}. Abra "Meu plano" no menu para aumentar.`);
+      }
+    }
     const usuario = await this.prisma.usuario.findUnique({ where: { id: sessao.sub }, select: { nome: true } });
     return this.prisma.avaliacaoPsicossocial.create({ data: { empresaId, questionario: dto.questionario, titulo: dto.titulo, minimoGrupo: dto.minimoGrupo ?? 5, token: randomBytes(18).toString('base64url'), criadoPorNome: usuario?.nome ?? '—' } });
   }

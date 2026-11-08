@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { planoAtual, temRecurso } from '../common/plano';
 import { LogosService } from '../logos/logos.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -24,8 +25,10 @@ export class ContextoDocumentoService {
     if (!empresa) throw new NotFoundException('Empresa não encontrada');
 
     const versao = (await this.prisma.documento.count({ where: { empresaId, tipo } })) + 1;
-    const logoEmpresa = await this.logos.comoDataUri(empresa.logoPath);
-    const consultoria = { nome: empresa.consultoria.nome, logo: await this.logos.comoDataUri(empresa.consultoria.logoPath) };
+    // Logos conforme o plano: Grátis sem logos; Start só a da empresa; do Essencial para cima as duas.
+    const plano = planoAtual();
+    const logoEmpresa = temRecurso(plano, 'logoEmpresa') ? await this.logos.comoDataUri(empresa.logoPath) : null;
+    const consultoria = { nome: empresa.consultoria.nome, logo: temRecurso(plano, 'logoConsultoria') ? await this.logos.comoDataUri(empresa.consultoria.logoPath) : null };
 
     return { empresa, versao, logoEmpresa, consultoria, geradoEm: new Date() };
   }

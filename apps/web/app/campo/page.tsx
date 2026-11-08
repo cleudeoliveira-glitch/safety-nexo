@@ -6,6 +6,7 @@ import { RostoCampo } from '@/components/RostoCampo';
 import { ListasGuardadas } from '@/components/ListasGuardadas';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { EtapaApr, ItemInspecao } from '@/lib/api';
+import { libera, planoMinimo, usePlano } from '@/lib/plano';
 import { BaseCampo, enviarPendentes, guardarPendente, lerBase, lerPendentes, Pendente, prepararCampo, removerPendente, tirarErro } from '@/lib/campo';
 import { lerToken } from '@/lib/sessao';
 
@@ -57,6 +58,7 @@ export default function CampoPage() {
     setAviso({ tipo: 'ok', texto: navigator.onLine ? 'Guardado. Enviando agora…' : 'Guardado no aparelho. Será enviado sozinho quando a internet voltar.' });
     if (navigator.onLine) sincronizar();
   }
+  const plano = usePlano();
   const tentar = (f: () => void) => { try { f(); } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); } };
 
   return (
@@ -69,7 +71,13 @@ export default function CampoPage() {
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${online ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>{online ? 'Com internet' : 'Sem internet: guardando no aparelho'}</span>
       </div>
 
-      {!logado && <Aviso tipo="erro">Entre no sistema uma vez com internet para usar o campo neste aparelho. <Link href="/entrar" className="underline">Entrar</Link></Aviso>}
+      {!libera(plano, 'offline') && (
+        <div className="card-pendente rounded-card p-4 text-sm">
+          <p className="font-semibold">O uso no campo sem internet faz parte do plano {planoMinimo('offline')} ou maior.</p>
+          <p className="mt-1">No plano Grátis, preencha as inspeções e a APR com internet, em Operação diária. <Link href="/plano?recurso=offline" className="font-semibold text-primary">Ver os planos</Link></p>
+        </div>
+      )}
+      {libera(plano, 'offline') && !logado && <Aviso tipo="erro">Entre no sistema uma vez com internet para usar o campo neste aparelho. <Link href="/entrar" className="underline">Entrar</Link></Aviso>}
       {logado && !base && <Aviso tipo="info">Abra esta tela uma vez com internet para guardar as empresas e os checklists no aparelho.</Aviso>}
       {base && <p className="text-xs text-text/60">Empresas, checklists e rostos dos funcionários guardados em {quando(base.atualizadoEm)}. Dica: no celular, use &quot;Adicionar à tela inicial&quot; para abrir o Safety Nexo como aplicativo.</p>}
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
@@ -93,7 +101,7 @@ export default function CampoPage() {
         </Cartao>
       )}
 
-      {base && (<>
+      {base && libera(plano, 'offline') && (<>
         <Selecao id="cp-emp" rotulo="Empresa" value={empresaId} onChange={(e) => setEmpresaId(e.target.value)}>
           <option value="">Escolha</option>{base.empresas.map((e) => <option key={e.id} value={e.id}>{e.razaoSocial}</option>)}
         </Selecao>

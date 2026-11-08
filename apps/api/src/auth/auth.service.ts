@@ -22,15 +22,12 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  // Cadastro direto. Consultoria: cria a consultoria no plano Free. Empresa: cria a conta da empresa já com a empresa cadastrada.
-  // As duas ganham 14 dias com tudo liberado.
+  // Cadastro direto: cria a conta no plano Grátis, com 14 dias de tudo liberado. Não pede CNPJ.
   async cadastrar(dto: CadastroDto) {
     const email = dto.email.toLowerCase().trim();
     if (await this.prisma.usuario.findUnique({ where: { email } })) {
       throw new ConflictException('Já existe uma conta com este e-mail. Use "Entrar".');
     }
-    const ehEmpresa = dto.tipo === 'EMPRESA';
-    if (ehEmpresa && !dto.cnpj) throw new BadRequestException('Informe o CNPJ da empresa.');
     const senhaHash = await bcrypt.hash(dto.senha, 10);
     const testeAte = new Date(Date.now() + DIAS_TESTE * 86400_000);
     const usuario = await this.prisma.usuario.create({
@@ -43,10 +40,7 @@ export class AuthService {
             nome: dto.nomeConsultoria.trim(),
             plano: 'FREE',
             limiteEmpresas: 1,
-            tipo: ehEmpresa ? 'EMPRESA' : 'CONSULTORIA',
             testeAte,
-            cnpj: ehEmpresa ? dto.cnpj : undefined,
-            ...(ehEmpresa ? { empresas: { create: { razaoSocial: dto.nomeConsultoria.trim(), cnpj: dto.cnpj! } } } : {}),
           },
         },
       },
@@ -109,12 +103,11 @@ export class AuthService {
     return s;
   }
 
-  private async emitir(usuario: UsuarioEmitido) {
+  private emitir(usuario: UsuarioEmitido) {
     const sessao: Sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId };
-    const c = await this.prisma.consultoria.findUnique({ where: { id: usuario.consultoriaId }, select: { tipo: true } });
     return {
       token: this.jwt.sign(sessao),
-      usuario: { nome: usuario.nome, papel: usuario.papel, empresaId: usuario.empresaId, adminPlataforma: this.ehAdmin(usuario), tipoConta: c?.tipo ?? 'CONSULTORIA' },
+      usuario: { nome: usuario.nome, papel: usuario.papel, empresaId: usuario.empresaId, adminPlataforma: this.ehAdmin(usuario) },
     };
   }
 

@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Recurso } from '../common/plano';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
@@ -7,6 +8,7 @@ import { tabelasParaTela } from './codigos';
 import { ToxicologicoDto } from './dto';
 
 // eSocial: só a consultoria (dona do certificado) transmite.
+@Recurso('esocial', 'O eSocial')
 @Controller()
 export class EsocialController {
   constructor(private readonly esocial: EsocialService) {}

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao } from '@/components/ui';
-import { conta, MinhaConta } from '@/lib/api';
+import { conta, equipe, MinhaConta } from '@/lib/api';
 import { lerToken, lerUsuario, salvarUsuario } from '@/lib/sessao';
 
 // Meu perfil: nome, e-mail e senha de quem entrou; para a consultoria, também os dados e a logo
@@ -107,8 +107,69 @@ export default function MeuPerfil() {
               </form>
             </Cartao>
           )}
+          {consultoria && <Equipe />}
         </>
       )}
     </main>
+  );
+}
+
+// Equipe da consultoria: mais pessoas com o mesmo acesso. Convite por link, como o da empresa cliente.
+function Equipe() {
+  const [dados, setDados] = useState<Awaited<ReturnType<typeof equipe.listar>> | null>(null);
+  const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
+  const [link, setLink] = useState<{ nome: string; whatsapp: string; link: string } | null>(null);
+  const carregar = () => equipe.listar().then(setDados).catch(() => undefined);
+  useEffect(() => { carregar(); }, []);
+  if (!dados) return null;
+  const cheio = dados.limite != null && dados.pessoas.length >= dados.limite;
+  return (
+    <Cartao titulo="Minha equipe">
+      <p className="mb-4 text-sm text-text/60">
+        Pessoas da consultoria com o mesmo acesso que você.{' '}
+        {dados.limite == null ? 'Seu plano não tem limite de pessoas.' : `Seu plano permite ${dados.limite} pessoa${dados.limite === 1 ? '' : 's'}.`}
+      </p>
+      <ul className="mb-4 divide-y divide-border text-sm">
+        {dados.pessoas.map((p) => (
+          <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+            <span>{p.nome} · <span className="text-text/60">{p.email}</span>{p.id === dados.eu ? <span className="text-text/60"> (você)</span> : null}</span>
+            {p.id !== dados.eu && (
+              <button className="text-xs text-danger hover:underline" onClick={async () => {
+                try { await equipe.remover(p.id); await carregar(); setAviso({ tipo: 'ok', texto: 'Acesso removido.' }); }
+                catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+              }}>Remover</button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {aviso && <div className="mb-3"><Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso></div>}
+      {cheio ? (
+        <p className="card-pendente rounded-card p-3 text-sm">
+          Para pôr mais pessoas na equipe, <Link href="/plano?recurso=equipe" className="font-semibold text-primary">veja os planos</Link>.
+        </p>
+      ) : (
+        <form className="grid gap-4 md:grid-cols-2" onSubmit={async (ev) => {
+          ev.preventDefault();
+          const form = ev.currentTarget;
+          const d = new FormData(form);
+          try {
+            const r = await equipe.convidar({ nome: String(d.get('nome')), email: String(d.get('email')) });
+            setLink({ nome: r.nome, whatsapp: r.whatsapp, link: r.link });
+            form.reset(); await carregar();
+          } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+        }}>
+          <Campo id="equipe-nome" name="nome" rotulo="Nome" required placeholder="Ex.: Ana Lima" icone="cracha" />
+          <Campo id="equipe-email" name="email" type="email" rotulo="E-mail" required placeholder="Ex.: ana@consultoria.com.br" />
+          <div className="flex justify-end md:col-span-2"><Botao type="submit">Convidar para a equipe</Botao></div>
+        </form>
+      )}
+      {link && (
+        <div className="card-ok mt-4 space-y-2 rounded-card p-4 text-sm">
+          <p className="font-semibold">Link de {link.nome} pronto. Vale por 7 dias.</p>
+          <p className="break-all text-xs text-text/70">{link.link}</p>
+          <a href={link.whatsapp} target="_blank" rel="noreferrer" className="inline-block rounded-card bg-success px-4 py-2 text-sm font-semibold text-white">Mandar pelo WhatsApp</a>
+        </div>
+      )}
+    </Cartao>
   );
 }

@@ -1,20 +1,11 @@
-import { IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
+import { IsEmail, IsString, Length } from 'class-validator';
 
 export class CadastroDto {
-  // CONSULTORIA: atende várias empresas. EMPRESA: a própria empresa, com técnico dentro.
-  @IsOptional()
-  @IsIn(['CONSULTORIA', 'EMPRESA'])
-  tipo?: 'CONSULTORIA' | 'EMPRESA';
-
-  // Nome da consultoria, ou a razão social quando é empresa.
+  // Nome que sai nos documentos: da pessoa, da consultoria ou da empresa (não exige CNPJ).
   @IsString()
   @Length(2, 200)
   nomeConsultoria!: string;
 
-  @IsOptional()
-  @IsString()
-  @Length(14, 18, { message: 'Informe o CNPJ completo.' })
-  cnpj?: string;
 
   @IsString()
   @Length(2, 200)

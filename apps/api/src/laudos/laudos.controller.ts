@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Post, Res } from '@nestjs/common';
+import { Recurso } from '../common/plano';
 import { Response } from 'express';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 import { ConsultoriaId } from '../common/consultoria.decorator';
@@ -16,18 +17,21 @@ export class LaudosController {
     return { nr15: ANEXOS_NR15, nr16: ANEXOS_NR16, graus: GRAUS };
   }
 
+  @Recurso('documentos', 'O LIP')
   @Post('empresas/:empresaId/documentos/lip')
   async lip(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Res() res: Response) {
     const { pdf, versao } = await this.laudos.laudo(c, e, 'LIP');
     enviarPdf(res, pdf, `LIP-v${versao}.pdf`);
   }
 
+  @Recurso('documentos', 'O LPP')
   @Post('empresas/:empresaId/documentos/lpp')
   async lpp(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Res() res: Response) {
     const { pdf, versao } = await this.laudos.laudo(c, e, 'LPP');
     enviarPdf(res, pdf, `LPP-v${versao}.pdf`);
   }
 
+  @Recurso('documentos', 'O PGRTR')
   @Post('empresas/:empresaId/documentos/pgrtr')
   async pgrtr(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Res() res: Response) {
     const { pdf, versao } = await this.laudos.pgrtr(c, e);

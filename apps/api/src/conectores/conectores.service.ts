@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { conferirFuncionarios } from '../common/plano';
 import { Prisma } from '@prisma/client';
 import { cpfValido } from '../esocial/eventos';
 import { PrismaService } from '../prisma/prisma.service';
@@ -90,6 +91,7 @@ export class ConectoresService {
     if (!arquivo) throw new BadRequestException('Escolha a planilha.');
     const p = await this.planejar(empresaId, arquivo.buffer, arquivo.originalname);
     const validas = p.linhas.filter((l) => l.acao !== 'erro');
+    conferirFuncionarios(await this.prisma.colaborador.count({ where: { empresaId } }), validas.filter((l) => l.acao === 'novo').length);
     await this.prisma.$transaction(validas.map((l) => l.acao === 'atualizar'
       ? this.prisma.colaborador.update({ where: { id: l.colaboradorId! }, data: l.dados })
       : this.prisma.colaborador.create({ data: { cargo: 'A definir', ...l.dados, empresaId } })));

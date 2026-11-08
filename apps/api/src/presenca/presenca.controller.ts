@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, Req } from '@nestjs/common';
+import { Recurso } from '../common/plano';
 import { Request } from 'express';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 import { ConsultoriaId } from '../common/consultoria.decorator';
@@ -17,9 +18,11 @@ export class PresencaController {
   @Get('lista-toque/:tipo/:refId')
   lista(@ConsultoriaId() c: string, @Param('e') e: string, @Param('tipo') t: string, @Param('refId') r: string) { return this.presenca.lista(c, e, tipo(t), r); }
 
+  @Recurso('assinatura', 'A lista de presença com assinatura')
   @Post('lista-toque/:tipo/:refId/marcar-todos')
   marcarTodos(@ConsultoriaId() c: string, @Param('e') e: string, @Param('tipo') t: string, @Param('refId') r: string) { return this.presenca.marcarTodos(c, e, tipo(t), r); }
 
+  @Recurso('assinatura', 'A lista de presença com assinatura')
   @Post('lista-toque/:tipo/:refId/:colaboradorId')
   assinar(@ConsultoriaId() c: string, @Param('e') e: string, @Param('tipo') t: string, @Param('refId') r: string, @Param('colaboradorId') id: string, @Body() dto: AssinarPresencaDto, @Req() req: Request) {
     return this.presenca.assinar(c, e, tipo(t), r, id, dto, origem(req));

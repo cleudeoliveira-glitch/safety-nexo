@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Post, Req, Res } from '@nestjs/common';
+import { Recurso } from '../common/plano';
 import { Request, Response } from 'express';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 import { Publica } from '../auth/publica.decorator';
@@ -10,6 +11,7 @@ import { AssinarDto, CriarPedidoDto } from './dto';
 const ipDe = (req: Request) => (String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() || req.ip || null);
 
 @PermiteEmpresa()
+@Recurso('assinatura', 'A assinatura de documentos')
 @Controller('empresas/:empresaId/assinaturas')
 export class AssinaturasController {
   constructor(private readonly assinaturas: AssinaturasService) {}

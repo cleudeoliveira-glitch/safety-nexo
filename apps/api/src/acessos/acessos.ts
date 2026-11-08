@@ -1,4 +1,4 @@
-import { Body, ConflictException, Controller, Delete, Get, Injectable, Module, NotFoundException, Param, Post } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Delete, ForbiddenException, Get, Injectable, Module, NotFoundException, Param, Post } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { IsEmail, IsOptional, IsString, Length } from 'class-validator';
@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';
 import { emailLigado, emailMoldura, enviarEmail } from '../common/email';
 import { ConsultoriaId } from '../common/consultoria.decorator';
+import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 export class CriarAcessoDto {
@@ -113,5 +114,61 @@ export class AcessosController {
   }
 }
 
-@Module({ imports: [AuthModule], controllers: [AcessosController], providers: [AcessosService] })
+// Equipe da consultoria: mais pessoas com o mesmo acesso (todas as empresas). O número de pessoas depende do plano.
+class ConvidarEquipeDto {
+  @IsString()
+  @Length(2, 120)
+  nome!: string;
+
+  @IsEmail({}, { message: 'Informe um e-mail válido.' })
+  email!: string;
+}
+
+@Controller('equipe')
+export class EquipeController {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auth: AuthService,
+  ) {}
+
+  @Get()
+  async listar(@Sessao() s: SessaoUsuario) {
+    const pessoas = await this.prisma.usuario.findMany({ where: { consultoriaId: s.consultoriaId, papel: 'CONSULTORIA' }, select: { id: true, nome: true, email: true, createdAt: true, ultimoAcesso: true }, orderBy: { createdAt: 'asc' } });
+    return { pessoas, limite: s.plano?.limites.equipe ?? null, eu: s.sub };
+  }
+
+  @Post()
+  async convidar(@Sessao() s: SessaoUsuario, @Body() dto: ConvidarEquipeDto) {
+    const limite = s.plano?.limites.equipe ?? null;
+    const atuais = await this.prisma.usuario.count({ where: { consultoriaId: s.consultoriaId, papel: 'CONSULTORIA' } });
+    if (limite != null && atuais >= limite) {
+      throw new ForbiddenException(limite <= 1
+        ? 'A equipe com mais pessoas faz parte do plano Profissional ou maior. Abra "Meu plano" no menu para liberar.'
+        : `Seu plano permite ${limite} pessoas na equipe. Abra "Meu plano" no menu para aumentar.`);
+    }
+    const email = dto.email.toLowerCase().trim();
+    if (await this.prisma.usuario.findUnique({ where: { email } })) throw new ConflictException('Já existe um login com este e-mail.');
+    const u = await this.prisma.usuario.create({
+      data: { nome: dto.nome.trim(), email, senhaHash: await bcrypt.hash(randomBytes(24).toString('base64url'), 10), papel: 'CONSULTORIA', consultoriaId: s.consultoriaId },
+    });
+    const c = await this.prisma.consultoria.findUnique({ where: { id: s.consultoriaId }, select: { nome: true } });
+    const link = this.auth.linkSenha(u, 'convite');
+    const texto = `Olá, ${u.nome.split(' ')[0]}! Você entrou na equipe da ${c?.nome ?? 'consultoria'} no Safety Nexo. Crie a sua senha por este link (vale 7 dias): ${link}`;
+    let emailEnviado = false;
+    if (emailLigado()) {
+      emailEnviado = await enviarEmail([email], 'Seu acesso ao Safety Nexo', emailMoldura('Seu acesso ao Safety Nexo', `<p>${texto.replace(link, `<a href="${link}">criar minha senha</a>`)}</p>`)).then(() => true, () => false);
+    }
+    return { id: u.id, nome: u.nome, link, whatsapp: `https://wa.me/?text=${encodeURIComponent(texto)}`, emailEnviado };
+  }
+
+  @Delete(':id')
+  async remover(@Sessao() s: SessaoUsuario, @Param('id') id: string) {
+    if (id === s.sub) throw new BadRequestException('Você não pode remover o seu próprio acesso.');
+    const { count } = await this.prisma.usuario.deleteMany({ where: { id, consultoriaId: s.consultoriaId, papel: 'CONSULTORIA' } });
+    if (!count) throw new NotFoundException('Pessoa não encontrada.');
+    return { ok: true };
+  }
+}
+
+@Module({ imports: [AuthModule], controllers: [AcessosController, EquipeController], providers: [AcessosService] })
 export class AcessosModule {}
