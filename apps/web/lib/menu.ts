@@ -74,6 +74,7 @@ export const MENU: GrupoMenu[] = [
     titulo: 'Pessoas e treinamentos',
     itens: [
       { nome: 'Treinamentos das NRs', icone: 'formatura', rota: '/treinamentos' },
+      { nome: 'Slides dos treinamentos', icone: 'livro', rota: '/material', geral: true },
       { nome: 'Espaço do trabalhador', icone: 'cracha', rota: '/trabalhador' },
       { nome: 'Eleição da CIPA', icone: 'votar', rota: '/cipa', soConsultoria: true },
       { nome: 'SIPAT', icone: 'festa', rota: '/cultura#sipat' },

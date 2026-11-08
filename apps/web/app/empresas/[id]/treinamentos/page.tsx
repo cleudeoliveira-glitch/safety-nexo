@@ -1,5 +1,6 @@
 'use client';
 
+import { materialDa } from '@/lib/materiais';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
@@ -187,7 +188,9 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
                 <div key={t.id} className="rounded-card border border-border p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                      <p className="font-semibold">{t.norma ? `${t.norma} · ` : ''}{t.nome}</p>
+                      <p className="font-semibold">{t.norma ? `${t.norma} · ` : ''}{t.nome}
+                        {materialDa(t.norma) && <a href={`/material#${materialDa(t.norma)!.codigo}`} className="ml-2 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-semibold text-success hover:bg-success/25">Material: slides e prova</a>}
+                      </p>
                       <p className="text-sm text-text/60">
                         {data(t.inicio)}{t.fim !== t.inicio ? ` a ${data(t.fim)}` : ''} · {t.cargaHoraria} h · {t.participantes.length} participante(s) ·{' '}
                         <span className={`font-semibold ${cor}`}>{rotulo}</span>
