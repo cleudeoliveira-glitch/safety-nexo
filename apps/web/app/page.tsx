@@ -125,6 +125,8 @@ export default function Home() {
         </div>
       )}
 
+      {!semEmpresa && <BotoesDoCampo base={empresaId ? base : ''} cliente={empresaCliente} />}
+
       {semEmpresa ? (
         <BoasVindas cliente={empresaCliente} />
       ) : (
@@ -208,7 +210,7 @@ export default function Home() {
               </ul>
             </div>
 
-            <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+            <div id="vencimentos" className="scroll-mt-20 rounded-2xl border border-border bg-white p-6 shadow-sm">
               <h2 className="flex items-center gap-2 text-lg font-semibold">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/15 text-[#c2410c]"><Icone nome="calendario" className="h-4 w-4" /></span>
                 Vencimentos
@@ -436,6 +438,40 @@ function Indicadores({ empresaId }: { empresaId: string }) {
           </div>
         </>
       )}
+    </section>
+  );
+}
+
+// No celular, a primeira coisa da tela: botões grandes para o que se faz em campo.
+// No computador some, porque lá o menu da esquerda e o acesso rápido já cumprem esse papel.
+const botoesCampo: { nome: string; icone: NomeIcone; rota: string; geral?: boolean; cor: string; soConsultoria?: boolean }[] = [
+  { nome: 'Inspeção', icone: 'lupa', rota: '/campo?aba=inspecao', geral: true, cor: 'from-primary to-[#168a7f]' },
+  { nome: 'Checklist', icone: 'lista', rota: '/operacao#checklist', cor: 'from-[#0f766e] to-[#14b8a6]' },
+  { nome: 'DDS', icone: 'fala', rota: '/campo?aba=dds', geral: true, cor: 'from-[#1d4ed8] to-[#3b82f6]' },
+  { nome: 'Entrega de EPI', icone: 'cracha', rota: '/campo?aba=epi', geral: true, cor: 'from-[#7c3aed] to-[#a78bfa]' },
+  { nome: 'APR', icone: 'escudo', rota: '/campo?aba=apr', geral: true, cor: 'from-[#c2410c] to-[#f97316]' },
+  { nome: 'Riscos', icone: 'alerta', rota: '#ghes', cor: 'from-[#b91c1c] to-[#ef4444]', soConsultoria: true },
+  { nome: 'Plano de ação', icone: 'check', rota: '/prevencao#acoes', cor: 'from-[#15803d] to-[#22c55e]' },
+  { nome: 'Vencimentos', icone: 'calendario', rota: '#vencimentos', geral: true, cor: 'from-[#a16207] to-[#eab308]' },
+  { nome: 'Calculadoras', icone: 'numero', rota: '/calculadoras', geral: true, cor: 'from-[#334155] to-[#64748b]' },
+  { nome: 'Slides', icone: 'livro', rota: '/material', geral: true, cor: 'from-[#0e4a5b] to-[#0891b2]' },
+];
+
+function BotoesDoCampo({ base, cliente }: { base: string; cliente: boolean }) {
+  return (
+    <section className="mb-5 md:hidden" aria-label="Atalhos do campo">
+      <div className="grid grid-cols-2 gap-3">
+        {botoesCampo.filter((b) => !(cliente && b.soConsultoria)).map((b) => (
+          <Link
+            key={b.nome}
+            href={b.geral ? b.rota : base ? `${base}${b.rota}` : '/empresas/nova'}
+            className={`flex min-h-[96px] flex-col justify-between rounded-2xl bg-gradient-to-br ${b.cor} p-4 text-white shadow-md active:scale-[0.98]`}
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20"><Icone nome={b.icone} className="h-6 w-6" /></span>
+            <span className="text-base font-bold leading-tight">{b.nome}</span>
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }

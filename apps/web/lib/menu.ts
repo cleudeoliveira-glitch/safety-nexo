@@ -21,6 +21,7 @@ export const MENU: GrupoMenu[] = [
       { nome: 'Painel (dashboard)', icone: 'casa', rota: '/', geral: true },
       { nome: 'Dashboard de indicadores', icone: 'grafico', rota: '/ssma' },
       { nome: 'Emitir documento', icone: 'documento', rota: '/emitir', geral: true },
+      { nome: 'Calculadoras de SST', icone: 'numero', rota: '/calculadoras', geral: true },
       { nome: 'Visão geral das empresas', icone: 'grade', rota: '/geral', geral: true, soConsultoria: true },
       { nome: 'Comercial', icone: 'cifrao', rota: '/comercial', geral: true, soConsultoria: true, recurso: 'proposta' },
       { nome: 'Mudanças nas normas', icone: 'sino', rota: '/normas', geral: true, soConsultoria: true },

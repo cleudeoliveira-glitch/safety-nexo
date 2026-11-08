@@ -1145,7 +1145,7 @@ model AcaoCorretiva {
   prazo         DateTime? @db.Date
   prioridade    String    @default("MEDIA") // ALTA | MEDIA | BAIXA (impacto no risco)
   esforco       String    @default("MEDIO") // RAPIDO | MEDIO | DEMORADO
-  status        String    @default("ABERTA") // ABERTA | FEITA
+  status        String    @default("ABERTA") // ABERTA (a fazer) | ANDAMENTO | FEITA
   feitaEm       DateTime?
   feitaPor      String?
   observacao    String?

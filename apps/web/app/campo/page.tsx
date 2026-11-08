@@ -43,7 +43,8 @@ export default function CampoPage() {
 
   useEffect(() => {
     setLogado(!!lerToken()); setOnline(navigator.onLine); setBase(lerBase()); atualizar();
-    if (new URLSearchParams(window.location.search).get('aba') === 'epi') setAba('rosto'); // vindo do menu "Entrega de EPI"
+    const pedida = new URLSearchParams(window.location.search).get('aba'); // vindo do menu ou dos botões do painel
+    if (pedida === 'epi') setAba('rosto'); else if (pedida === 'dds' || pedida === 'apr' || pedida === 'inspecao') setAba(pedida);
     // Com uma empresa só, já deixa escolhida.
     const b = lerBase(); if (b?.empresas.length === 1) setEmpresaId(b.empresas[0].id);
     const ligar = () => { setOnline(true); sincronizar(); }; const desligar = () => setOnline(false);

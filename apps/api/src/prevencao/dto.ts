@@ -34,7 +34,7 @@ export class AtualizarAcaoDto {
   @IsOptional() @IsDateString() prazo?: string;
   @IsOptional() @IsIn(['ALTA', 'MEDIA', 'BAIXA']) prioridade?: string;
   @IsOptional() @IsIn(['RAPIDO', 'MEDIO', 'DEMORADO']) esforco?: string;
-  @IsOptional() @IsIn(['ABERTA', 'FEITA']) status?: string;
+  @IsOptional() @IsIn(['ABERTA', 'ANDAMENTO', 'FEITA']) status?: string;
   @IsOptional() @IsString() @MaxLength(2000) observacao?: string;
 }
 

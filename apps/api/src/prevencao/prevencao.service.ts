@@ -165,7 +165,7 @@ export class PrevencaoService {
   async atualizarAcao(consultoriaId: string, empresaId: string, id: string, quem: string, d: AtualizarAcaoDto) {
     const a = await this.acao(consultoriaId, empresaId, id);
     const fechando = d.status === 'FEITA' && a.status !== 'FEITA';
-    const reabrindo = d.status === 'ABERTA' && a.status === 'FEITA';
+    const reabrindo = !!d.status && d.status !== 'FEITA' && a.status === 'FEITA';
     return this.prisma.acaoCorretiva.update({
       where: { id },
       data: {

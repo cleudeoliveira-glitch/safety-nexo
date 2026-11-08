@@ -885,7 +885,7 @@ export type Prioridade = 'ALTA' | 'MEDIA' | 'BAIXA';
 export type Esforco = 'RAPIDO' | 'MEDIO' | 'DEMORADO';
 export type AcaoCorretiva = {
   id: string; origem: string; origemId: string | null; origemTexto: string | null; descricao: string; local: string | null; responsavel: string | null;
-  prazo: string | null; prioridade: Prioridade; esforco: Esforco; status: 'ABERTA' | 'FEITA'; feitaEm: string | null; feitaPor: string | null;
+  prazo: string | null; prioridade: Prioridade; esforco: Esforco; status: 'ABERTA' | 'ANDAMENTO' | 'FEITA'; feitaEm: string | null; feitaPor: string | null;
   observacao: string | null; temEvidencia: boolean; criadoEm: string; somenteLeitura: boolean;
 };
 export type NovaAcao = { descricao: string; local?: string; responsavel?: string; prazo?: string; prioridade?: Prioridade; esforco?: Esforco; origem?: string; origemId?: string; origemTexto?: string };
