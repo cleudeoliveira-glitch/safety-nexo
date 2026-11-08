@@ -14,5 +14,6 @@ if (!segredo || segredo.length < 32) {
   imports: [JwtModule.register({ secret: segredo, signOptions: { expiresIn: '7d' } })],
   controllers: [AuthController],
   providers: [AuthService, { provide: APP_GUARD, useClass: AuthGuard }],
+  exports: [AuthService],
 })
 export class AuthModule {}

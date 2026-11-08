@@ -96,12 +96,12 @@ export default function EmergenciaPage({ params }: { params: { id: string } }) {
 
         {sit.calculo && (
           <div className="mb-5 grid gap-3 md:grid-cols-3">
-            <div className="rounded-card border border-border p-4">
+            <div className="card-total rounded-card p-4">
               <p className="text-sm text-text/60">Brigadistas por turno</p>
               <p className="text-3xl font-semibold text-primary">{total ?? '—'}</p>
               {sit.calculo.porPavimento.length > 1 && <p className="text-xs text-text/60">{sit.calculo.porPavimento.map((n, i) => `pav. ${i + 1}: ${n}`).join(' · ')}</p>}
             </div>
-            <div className="rounded-card border border-border p-4">
+            <div className={`${faltam ? 'card-nao' : 'card-ok'} rounded-card p-4`}>
               <p className="text-sm text-text/60">Treinados e em dia</p>
               <p className={`text-3xl font-semibold ${faltam ? 'text-danger' : 'text-success'}`}>{sit.brigadistas.length}</p>
               {faltam ? <p className="text-xs text-danger">Faltam {faltam}</p> : null}

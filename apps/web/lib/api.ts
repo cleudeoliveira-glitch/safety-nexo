@@ -1,4 +1,4 @@
-import { lerToken, sair } from './sessao';
+import { lerToken, sair, type Usuario } from './sessao';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3101';
 
@@ -69,6 +69,7 @@ export type Colaborador = { id: string; nome: string; cpf?: string | null; matri
 export type Aso = {
   id: string; tipo: string; dataExame: string; resultado: 'APTO' | 'INAPTO';
   medicoExaminadorNome: string; medicoExaminadorCrm: string; exames: string[]; riscos: string[]; proximoExame: string | null;
+  arquivoPath?: string | null; // PDF do ASO feito pela clínica
 };
 export type EntregaEpi = { id: string; epi: string; ca: string; validadeCa: string | null; quantidade: number; motivo: string; dataEntrega: string };
 export type ColaboradorDetalhe = Colaborador & { ghe: Ghe | null; asos: Aso[]; entregasEpi: EntregaEpi[]; presencasFaciais?: { refId: string; codigo: string }[] };
@@ -244,8 +245,10 @@ export async function validarCertificado(codigo: string): Promise<CertificadoVal
 
 export type AcessoEmpresa = { id: string; nome: string; email: string; createdAt: string };
 export const listarAcessos = (empresaId: string) => chamar<AcessoEmpresa[]>('GET', `/empresas/${empresaId}/acessos`);
-export const criarAcesso = (empresaId: string, dados: { nome: string; email: string; senha: string }) =>
-  chamar<AcessoEmpresa>('POST', `/empresas/${empresaId}/acessos`, dados);
+export type LinkSenha = { link: string; whatsapp: string; emailEnviado: boolean };
+export const criarAcesso = (empresaId: string, dados: { nome: string; email: string; senha?: string }) =>
+  chamar<AcessoEmpresa & Partial<LinkSenha>>('POST', `/empresas/${empresaId}/acessos`, dados);
+export const reenviarConvite = (empresaId: string, id: string) => chamar<LinkSenha>('POST', `/empresas/${empresaId}/acessos/${id}/convite`);
 export const removerAcesso = (empresaId: string, id: string) => chamar<{ ok: true }>('DELETE', `/empresas/${empresaId}/acessos/${id}`);
 
 export type LinhaPainelGeral = {
@@ -269,6 +272,18 @@ export const registrarEpi = (empresaId: string, colaboradorId: string, dados: Re
   chamar<EntregaEpi>('POST', `${rotaColaborador(empresaId, colaboradorId)}/epis`, dados);
 export const gerarAso = (empresaId: string, colaboradorId: string, asoId: string) =>
   baixarPdf(`${rotaColaborador(empresaId, colaboradorId)}/asos/${asoId}/pdf`, 'ASO');
+// PDF do ASO feito pela clínica: o sistema só guarda e controla o vencimento.
+export function anexarAsoClinica(empresaId: string, colaboradorId: string, asoId: string, arquivo: File) {
+  const f = new FormData();
+  f.append('arquivo', arquivo);
+  return chamar<{ ok: true }>('POST', `${rotaColaborador(empresaId, colaboradorId)}/asos/${asoId}/arquivo`, f);
+}
+export async function abrirAsoClinica(empresaId: string, colaboradorId: string, asoId: string): Promise<Blob> {
+  const res = await fetch(`${API_URL}${rotaColaborador(empresaId, colaboradorId)}/asos/${asoId}/arquivo`, { headers: cabecalhos() });
+  verificarSessao(res);
+  if (!res.ok) throw new Error('Não consegui abrir o PDF da clínica.');
+  return res.blob();
+}
 export const gerarFichaEpi = (empresaId: string, colaboradorId: string) =>
   baixarPdf(`${rotaColaborador(empresaId, colaboradorId)}/ficha-epi`, 'ficha de EPI');
 
@@ -286,10 +301,12 @@ export function salvarArquivo(pdf: Blob, nome: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export type Acesso = { token: string; usuario: { nome: string; papel: 'CONSULTORIA' | 'EMPRESA'; empresaId: string | null; adminPlataforma?: boolean } };
+export type Acesso = { token: string; usuario: Usuario };
 export const entrar = (dados: { email: string; senha: string }) => chamar<Acesso>('POST', '/auth/entrar', dados);
-export const cadastrar = (dados: { nomeConsultoria: string; nome: string; email: string; senha: string }) =>
+export const cadastrar = (dados: { tipo: 'CONSULTORIA' | 'EMPRESA'; nomeConsultoria: string; cnpj?: string; nome: string; email: string; senha: string }) =>
   chamar<Acesso>('POST', '/auth/cadastro', dados);
+export const esqueciSenha = (email: string) => chamar<{ ok: true; emailLigado: boolean }>('POST', '/auth/esqueci', { email });
+export const redefinirSenha = (token: string, senha: string) => chamar<Acesso>('POST', '/auth/redefinir', { token, senha });
 
 // Saúde ocupacional: PPP, AET e CAT.
 export const gerarPpp = (empresaId: string, colaboradorId: string) =>
@@ -820,6 +837,8 @@ export const admin = {
   detalhe: (id: string) => chamar<ConsultoriaAdmDetalhe>('GET', `/admin/consultorias/${id}`),
   atualizar: (id: string, dados: { plano?: string; limiteEmpresas?: number; bloqueada?: boolean; motivoBloqueio?: string; observacaoAdm?: string }) =>
     chamar<unknown>('PATCH', `/admin/consultorias/${id}`, dados),
+  convites: () => chamar<{ consultoria: string; empresa: string; whatsappConsultoria: string; whatsappEmpresa: string }>('GET', '/admin/convites'),
+  linkSenha: (usuarioId: string) => chamar<{ link: string; whatsapp: string }>('POST', `/admin/usuarios/${usuarioId}/link-senha`),
 };
 
 // ---------- Novidades: normas, prevenção, IA, votação da CIPA, espaço do trabalhador, e-mail ----------

@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CadastroDto, EntrarDto } from './dto';
+import { CadastroDto, EntrarDto, EsqueciDto, RedefinirDto } from './dto';
 import { Publica } from './publica.decorator';
 
 @Publica()
@@ -17,5 +17,17 @@ export class AuthController {
   @HttpCode(200)
   entrar(@Body() dto: EntrarDto) {
     return this.auth.entrar(dto);
+  }
+
+  @Post('esqueci')
+  @HttpCode(200)
+  esqueci(@Body() dto: EsqueciDto) {
+    return this.auth.esqueci(dto.email);
+  }
+
+  @Post('redefinir')
+  @HttpCode(200)
+  redefinir(@Body() dto: RedefinirDto) {
+    return this.auth.redefinir(dto);
   }
 }

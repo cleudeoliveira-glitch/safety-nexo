@@ -98,6 +98,7 @@ export default function PainelAdmPage() {
         <p className="text-text/60">Todas as consultorias que usam o Safety Nexo: plano, uso e acesso. Só você vê esta tela.</p>
         <Link href="/admin/normas" className="mt-3 inline-block rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white">Publicar aviso de mudança nas normas</Link>
       </div>
+      <ConvidarCliente />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -106,7 +107,7 @@ export default function PainelAdmPage() {
           ['Clientes pagantes', String(t.pagantes), t.porPlano.filter((p) => p.total && p.codigo !== 'FREE').map((p) => `${p.nome} ${p.total}`).join(' · ') || 'Nenhum ainda'],
           ['Receita mensal pelos planos', reais(t.receitaMensal), 'Soma dos planos ativos'],
         ].map(([rotulo, valor, sub]) => (
-          <div key={rotulo} className="rounded-card border border-border bg-white p-5 shadow-sm">
+          <div key={rotulo} className="card-total rounded-card p-5 shadow-sm">
             <p className="text-sm text-text/60">{rotulo}</p>
             <p className="mt-1 text-3xl font-semibold text-primary">{valor}</p>
             <p className="mt-1 text-xs text-text/50">{sub}</p>
@@ -253,7 +254,11 @@ export default function PainelAdmPage() {
                                   <span className="font-medium">{u.nome}</span>
                                   <span className="text-xs text-text/60">
                                     {' '}· {u.email} · {u.papel === 'EMPRESA' ? `empresa ${u.empresa?.razaoSocial ?? ''}` : 'consultoria'} · {haQuanto(u.ultimoAcesso).toLowerCase()}
-                                  </span>
+                                  </span>{' '}
+                                  <button type="button" className="text-xs font-semibold text-primary hover:underline" onClick={async () => {
+                                    try { const r = await admin.linkSenha(u.id); window.open(r.whatsapp, '_blank', 'noopener'); }
+                                    catch (e) { setErro((e as Error).message); }
+                                  }}>Mandar link de senha (WhatsApp)</button>
                                 </li>
                               ))}
                             </ul>
@@ -273,5 +278,32 @@ export default function PainelAdmPage() {
         O plano é trocado aqui manualmente quando o cliente paga. Ao trocar, o limite de empresas acompanha o plano. Bloquear impede o login da consultoria e das empresas clientes dela; nada é apagado.
       </p>
     </main>
+  );
+}
+
+// Convidar alguém para testar como cliente: link de cadastro de consultoria ou de empresa, pronto para o WhatsApp.
+function ConvidarCliente() {
+  const [links, setLinks] = useState<Awaited<ReturnType<typeof admin.convites>> | null>(null);
+  const [copiado, setCopiado] = useState<string | null>(null);
+  useEffect(() => { admin.convites().then(setLinks).catch(() => undefined); }, []);
+  if (!links) return null;
+  const copiar = async (t: string) => { try { await navigator.clipboard.writeText(t); setCopiado(t); } catch { /* sem permissão */ } };
+  return (
+    <section className="rounded-card border border-border bg-white p-5 shadow-sm">
+      <h2 className="text-lg font-semibold">Convidar cliente</h2>
+      <p className="mt-1 text-sm text-text/60">Mande o link para quem vai testar. A pessoa cria a própria conta, com 14 dias de tudo liberado, e não vê este painel nem as outras contas.</p>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {([['Consultoria', links.consultoria, links.whatsappConsultoria], ['Empresa com técnico próprio', links.empresa, links.whatsappEmpresa]] as const).map(([nome, link, zap]) => (
+          <div key={nome} className="card-total rounded-card p-4 text-sm">
+            <p className="font-semibold">{nome}</p>
+            <p className="mt-1 break-all text-xs text-text/70">{link}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a href={zap} target="_blank" rel="noreferrer" className="rounded-card bg-success px-3 py-2 text-xs font-semibold text-white">Mandar pelo WhatsApp</a>
+              <button type="button" onClick={() => copiar(link)} className="rounded-card border border-border bg-white px-3 py-2 text-xs font-semibold">{copiado === link ? 'Copiado' : 'Copiar link'}</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

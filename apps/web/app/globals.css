@@ -35,3 +35,49 @@ body {
     radial-gradient(70% 120% at 100% 0%, rgba(108, 240, 194, 0.35), transparent 60%),
     linear-gradient(120deg, #0e4a5b 0%, #12627a 60%, #168a7f 100%);
 }
+
+/* Campos de preencher, em todo o sistema: fundo branco, borda azul petróleo de 2px e brilho verde-menta ao clicar.
+   Vale também para os campos que não usam o componente Campo. Campos "invisíveis" (border-0, border-transparent) ficam como estão. */
+.campo-sn,
+input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']):not([type='hidden']):not([type='submit']):not([type='button']):not(.border-0):not(.border-transparent),
+select:not(.border-0):not(.border-transparent),
+textarea:not(.border-0):not(.border-transparent) {
+  background-color: #ffffff;
+  border: 2px solid #0e4a5b;
+  border-radius: 12px;
+  color: #1f2937;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.campo-sn {
+  min-height: 48px;
+  padding: 0.7rem 0.9rem;
+  font-size: 16px; /* 16px também evita o zoom automático do iPhone ao tocar no campo */
+}
+.campo-sn.com-icone { padding-left: 2.75rem; }
+.campo-sn.com-olho { padding-right: 3rem; }
+.campo-sn::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+}
+.campo-sn:focus,
+input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.22);
+}
+.campo-sn:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* Cards com cor clarinha: OK, não OK, pendente e total. */
+.card-ok { background: #dcfce7; border: 1px solid #bbf7d0; }
+.card-nao { background: #fee2e2; border: 1px solid #fecaca; }
+.card-pendente { background: #fef3c7; border: 1px solid #fde68a; }
+.card-total { background: #dbeafe; border: 1px solid #bfdbfe; }

@@ -1,5 +1,7 @@
 import { registrarEntrega } from '../estoque/baixa';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { join } from 'path';
+import { Guarda } from '../common/guarda';
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,6 +10,9 @@ import { CreateAsoDto, CreateEntregaEpiDto } from './dto';
 import { renderFichaEpiHtml } from './ficha-epi.template';
 import { renderPppHtml } from './ppp.template';
 import { examesDoTipo, NOME_TIPO_ASO, proximoExame, TipoAso } from './regras';
+
+// PDF do ASO feito pela clínica (a consultoria só controla: não agenda exame).
+const guardaAso = new Guarda('asos', process.env.ASOS_DIR ?? join(__dirname, '..', '..', 'storage', 'asos'));
 
 const AVISO = 'Documento gerado pelo Safety Nexo. Deve ser conferido e assinado pelos responsáveis.';
 
@@ -57,6 +62,24 @@ export class ColaboradoresService {
       colaboradorId, estoqueId: dto.estoqueId, epi: dto.epi?.trim(), ca: dto.ca?.trim(), quantidade: dto.quantidade ?? 1, motivo: dto.motivo,
       dataEntrega: new Date(dto.dataEntrega), validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null,
     });
+  }
+
+  async anexarAso(consultoriaId: string, empresaId: string, colaboradorId: string, asoId: string, arquivo?: { buffer: Buffer; mimetype: string; size: number }) {
+    const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    if (!colaborador.asos.some((a) => a.id === asoId)) throw new NotFoundException('ASO não encontrado');
+    if (!arquivo?.buffer?.length) throw new BadRequestException('Escolha o PDF do ASO.');
+    if (arquivo.mimetype !== 'application/pdf' || arquivo.buffer.subarray(0, 4).toString() !== '%PDF') throw new BadRequestException('O arquivo precisa ser um PDF.');
+    const caminho = `${empresaId}/${asoId}.pdf`;
+    await guardaAso.gravar(caminho, arquivo.buffer, 'application/pdf');
+    await this.prisma.aso.update({ where: { id: asoId }, data: { arquivoPath: caminho } });
+    return { ok: true };
+  }
+
+  async arquivoAso(consultoriaId: string, empresaId: string, colaboradorId: string, asoId: string) {
+    const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    const aso = colaborador.asos.find((a) => a.id === asoId);
+    if (!aso?.arquivoPath) throw new NotFoundException('Este ASO ainda não tem o PDF da clínica.');
+    return guardaAso.ler(aso.arquivoPath);
   }
 
   async pdfAso(consultoriaId: string, empresaId: string, colaboradorId: string, asoId: string) {
