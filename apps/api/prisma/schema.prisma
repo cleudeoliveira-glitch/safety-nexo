@@ -28,6 +28,9 @@ model Consultoria {
   pedidoPlano     String?   // plano que a consultoria pediu na tela "Meu plano" (o ADM faz a troca)
   pedidoPlanoEm   DateTime?
   reguaCobranca   Boolean   @default(false) // avisos de cobrança por e-mail para as empresas clientes (antes e depois do vencimento)
+  // CONSULTORIA (atende várias empresas) | EMPRESA (empresa que se cadastrou sozinha, com técnico próprio: só a empresa dela)
+  tipo            String    @default("CONSULTORIA")
+  testeAte        DateTime? // até quando vale o teste com tudo liberado (14 dias depois do cadastro)
   createdAt DateTime  @default(now())
   normasLidas AvisoNormaLido[]
   empresas  Empresa[]
@@ -258,6 +261,7 @@ model Aso {
   riscos               String[]
   proximoExame         DateTime?
   observacoes          String?
+  arquivoPath          String?     // PDF do ASO feito pela clínica, quando a consultoria sobe o arquivo
   createdAt            DateTime    @default(now())
 
   @@index([colaboradorId])

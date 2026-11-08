@@ -5,7 +5,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Safety Nexo',
-  description: 'Segurança do trabalho sem complicação para consultorias SST.',
+  description: 'Gestão inteligente de SST para consultorias e empresas.',
   manifest: '/manifest.webmanifest',
   icons: { icon: '/icone-192.png', apple: '/icone-192.png' },
 };

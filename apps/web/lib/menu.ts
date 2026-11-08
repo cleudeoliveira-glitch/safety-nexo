@@ -9,6 +9,8 @@ export type ItemMenu = {
   rota: string;
   geral?: boolean;
   soConsultoria?: boolean;
+  // Some na conta de empresa com técnico próprio (só tem uma empresa e não vende serviço).
+  soMultiEmpresa?: boolean;
 };
 export type GrupoMenu = { titulo: string; itens: ItemMenu[] };
 
@@ -19,8 +21,8 @@ export const MENU: GrupoMenu[] = [
       { nome: 'Painel (dashboard)', icone: 'casa', rota: '/', geral: true },
       { nome: 'Dashboard de indicadores', icone: 'grafico', rota: '/ssma' },
       { nome: 'Emitir documento', icone: 'documento', rota: '/emitir', geral: true },
-      { nome: 'Visão geral das empresas', icone: 'grade', rota: '/geral', geral: true, soConsultoria: true },
-      { nome: 'Comercial', icone: 'cifrao', rota: '/comercial', geral: true, soConsultoria: true },
+      { nome: 'Visão geral das empresas', icone: 'grade', rota: '/geral', geral: true, soConsultoria: true, soMultiEmpresa: true },
+      { nome: 'Comercial', icone: 'cifrao', rota: '/comercial', geral: true, soConsultoria: true, soMultiEmpresa: true },
       { nome: 'Mudanças nas normas', icone: 'sino', rota: '/normas', geral: true, soConsultoria: true },
       { nome: 'Meu plano', icone: 'coroa', rota: '/plano', geral: true, soConsultoria: true },
     ],
@@ -83,7 +85,7 @@ export const MENU: GrupoMenu[] = [
     titulo: 'Governança',
     itens: [
       { nome: 'eSocial', icone: 'nuvem', rota: '/esocial', soConsultoria: true },
-      { nome: 'eSocial de todas e multas', icone: 'nuvem', rota: '/esocial-geral', geral: true, soConsultoria: true },
+      { nome: 'eSocial de todas e multas', icone: 'nuvem', rota: '/esocial-geral', geral: true, soConsultoria: true, soMultiEmpresa: true },
       { nome: 'FAP e RAT', icone: 'porcento', rota: '/fap', soConsultoria: true },
       { nome: 'Terceirizadas', icone: 'aperto', rota: '/conectores#terceiros' },
       { nome: 'Atestados e faltas', icone: 'relogio', rota: '/conectores#faltas' },

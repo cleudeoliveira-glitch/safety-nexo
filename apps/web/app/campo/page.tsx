@@ -129,12 +129,12 @@ export default function CampoPage() {
               {checklist && (
                 <ol className="space-y-3">
                   {checklist.itens.map((item, i) => (
-                    <li key={i} className="rounded-card border border-border p-3">
+                    <li key={i} className={`rounded-card p-3 ${respostas[i] === 'C' ? 'card-ok' : respostas[i] === 'NC' ? 'card-nao' : respostas[i] === 'NA' ? 'border border-border bg-background' : 'border border-border bg-white'}`}>
                       <p className="text-sm">{i + 1}. {item}</p>
                       <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label={`Item ${i + 1}`}>
                         {([['C', 'Conforme'], ['NC', 'Não conforme'], ['NA', 'Não se aplica']] as [ItemInspecao['resposta'], string][]).map(([v, n]) => (
                           <button key={v} type="button" role="radio" aria-checked={respostas[i] === v} onClick={() => setRespostas({ ...respostas, [i]: v })}
-                            className={`rounded-card px-3 py-1.5 text-xs font-semibold ${respostas[i] === v ? (v === 'NC' ? 'bg-danger text-white' : 'bg-primary text-white') : 'border border-border bg-white'}`}>{n}</button>
+                            className={`rounded-card px-3 py-1.5 text-xs font-semibold ${respostas[i] === v ? (v === 'NC' ? 'bg-danger text-white' : v === 'C' ? 'bg-success text-white' : 'bg-text/60 text-white') : 'border border-border bg-white'}`}>{n}</button>
                         ))}
                       </div>
                       {respostas[i] === 'NC' && <input name={`obs-${i}`} aria-label={`Observação do item ${i + 1}`} placeholder="O que está errado?" className="mt-2 w-full rounded-card border border-border bg-background px-3 py-2 text-sm" />}

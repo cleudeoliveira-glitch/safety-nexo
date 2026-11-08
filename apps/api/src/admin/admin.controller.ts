@@ -1,6 +1,8 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoundException, Param, Patch, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Req } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { AuthService } from '../auth/auth.service';
+import { WEB } from '../common/email';
 import { PrismaService } from '../prisma/prisma.service';
 import { ehAdminPlataforma, SomenteAdmin } from './admin-plataforma';
 import { ILIMITADO, PLANOS, planoPorCodigo } from './planos';
@@ -20,7 +22,28 @@ const mapa = (linhas: Contagem[]) => new Map(linhas.map((l) => [l.consultoriaId,
 @SomenteAdmin()
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auth: AuthService,
+  ) {}
+
+  // Links de cadastro para mandar a quem vai testar como cliente (consultoria ou empresa).
+  @Get('convites')
+  convites() {
+    const consultoria = `${WEB()}/cadastro`;
+    const empresa = `${WEB()}/cadastro?tipo=empresa`;
+    const msg = (link: string, quem: string) => `https://wa.me/?text=${encodeURIComponent(`Olá! Crie a sua conta ${quem} no Safety Nexo, o sistema de SST, por este link. São 14 dias com tudo liberado: ${link}`)}`;
+    return { consultoria, empresa, whatsappConsultoria: msg(consultoria, 'de consultoria'), whatsappEmpresa: msg(empresa, 'da sua empresa') };
+  }
+
+  // Senha esquecida sem e-mail funcionando: o ADM gera o link e manda por WhatsApp.
+  @Post('usuarios/:id/link-senha')
+  async linkSenha(@Param('id') id: string) {
+    const u = await this.prisma.usuario.findUnique({ where: { id } });
+    if (!u) throw new NotFoundException('Usuário não encontrado.');
+    const link = this.auth.linkSenha(u, 'convite');
+    return { link, whatsapp: `https://wa.me/?text=${encodeURIComponent(`Olá, ${u.nome.split(' ')[0]}! Crie uma senha nova do Safety Nexo por este link (vale 7 dias): ${link}`)}` };
+  }
 
   @Get('consultorias')
   async listar() {

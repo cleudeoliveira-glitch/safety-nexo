@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { reduzirFoto } from '@/components/Foto';
-import { Botao, Campo, Cartao, Selecao } from '@/components/ui';
+import { Botao, Campo, CardNumero, Cartao, Selecao } from '@/components/ui';
 import {
   analisarInspecaoIa,
   criarInspecao,
@@ -289,9 +289,17 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: 
           </div>
 
           {itens.length > 0 && (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <CardNumero tom="total" rotulo="Itens" valor={itens.length} icone="lista" />
+              <CardNumero tom="ok" rotulo="Conforme" valor={itens.filter((x) => x.resposta === 'C').length} />
+              <CardNumero tom="nao" rotulo="Não conforme" valor={itens.filter((x) => x.resposta === 'NC').length} />
+              <CardNumero tom="pendente" rotulo="Falta responder" valor={itens.filter((x) => !x.resposta).length} />
+            </div>
+          )}
+          {itens.length > 0 && (
             <ol className="divide-y divide-border rounded-card border border-border">
               {itens.map((it, i) => (
-                <li key={i} className="space-y-2 p-3 text-sm">
+                <li key={i} className={`space-y-2 p-3 text-sm ${it.resposta === 'C' ? 'card-ok' : it.resposta === 'NC' ? 'card-nao' : it.resposta === 'NA' ? 'bg-background' : ''}`}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <input aria-label={`Item ${i + 1}`} value={it.texto} onChange={(e) => mudar(i, { texto: e.target.value })}
                       className="min-w-64 flex-1 rounded-card border border-transparent bg-transparent px-1 py-1 hover:border-border" />

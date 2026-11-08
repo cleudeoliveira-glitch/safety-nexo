@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CampoAjuda } from '@/components/CampoAjuda';
 import { ABRIR_AJUDA } from '@/components/AjudaDaTela';
 import { Icone, NomeIcone } from '@/components/Icone';
+import { CardNumero, classeCard } from '@/components/ui';
 import { PassoTour, Tour, useTourPrimeiraVez } from '@/components/Tour';
 import { buscarEmissoes, carregarPainel, Emissoes, Empresa, Painel, PainelSsma, ssma } from '@/lib/api';
 import { aoMudarFoco, empresasDaConta, escolherFoco, salvarFoco } from '@/lib/empresaFoco';
@@ -282,14 +283,8 @@ function ResumoEmissoes({ dados, empresaId }: { dados: Emissoes | null; empresaI
       {!dados ? <Esqueleto linhas={2} /> : (
         <div className="mt-4 grid gap-6 lg:grid-cols-3">
           <div className="grid grid-cols-2 gap-3 lg:col-span-1 lg:grid-cols-1">
-            <div className="rounded-xl bg-background p-4">
-              <p className="text-3xl font-bold text-primary">{dados.noMes}</p>
-              <p className="text-sm text-text/60">em {mes}</p>
-            </div>
-            <div className="rounded-xl bg-background p-4">
-              <p className="text-3xl font-bold text-text">{dados.total}</p>
-              <p className="text-sm text-text/60">desde o começo</p>
-            </div>
+            <CardNumero tom="ok" rotulo="Neste mês" valor={dados.noMes} detalhe={`em ${mes}`} icone="documento" />
+            <CardNumero tom="total" rotulo="Total" valor={dados.total} detalhe="desde o começo" icone="pasta" />
           </div>
           <div>
             <p className="mb-2 text-sm font-semibold">Por tipo, neste mês</p>
@@ -405,8 +400,8 @@ function Indicadores({ empresaId }: { empresaId: string }) {
         <>
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             {dados.emDia.slice(0, 4).map((x) => (
-              <div key={x.item} className="rounded-xl bg-background p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-text/50">{x.item}</p>
+              <div key={x.item} className={`rounded-xl p-4 ${x.pct == null ? 'card-total' : classeCard(x.pct >= 90 ? 'ok' : x.pct >= 70 ? 'pendente' : 'nao')}`}>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text/60">{x.item}</p>
                 <p className="mt-1 text-2xl font-bold">{x.pct == null ? '—' : `${x.pct}%`}</p>
                 <div className="mt-2 h-1.5 rounded-full bg-border">
                   <div className={`h-1.5 rounded-full ${cor(x.pct)}`} style={{ width: `${x.pct ?? 0}%` }} />
@@ -429,11 +424,11 @@ function Indicadores({ empresaId }: { empresaId: string }) {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-1">
-              <div className="rounded-xl bg-background p-3">
+              <div className={`rounded-xl p-3 ${dados.atual.acidentes ? 'card-nao' : 'card-ok'}`}>
                 <p className="text-xs text-text/60">Acidentes este mês</p>
                 <p className="text-xl font-bold">{dados.atual.acidentes}</p>
               </div>
-              <div className="rounded-xl bg-background p-3">
+              <div className={`rounded-xl p-3 ${dados.atual.diasPerdidos ? 'card-pendente' : 'card-ok'}`}>
                 <p className="text-xs text-text/60">Dias perdidos este mês</p>
                 <p className="text-xl font-bold">{dados.atual.diasPerdidos}</p>
               </div>

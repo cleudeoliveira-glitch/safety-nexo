@@ -10,6 +10,7 @@ import {
   criarAcesso,
   listarAcessos,
   removerAcesso,
+  reenviarConvite,
   buscarEmpresa,
   Cipa,
   Colaborador,
@@ -69,6 +70,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   const [cipa, setCipa] = useState<Cipa | null>(null);
   const [cliente, setCliente] = useState(false);
   const [acessos, setAcessos] = useState<AcessoEmpresa[]>([]);
+  const [convite, setConvite] = useState<Convite | null>(null);
   const [anexos, setAnexos] = useState<AnexosLaudo | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
   useEffect(() => { const t = new URLSearchParams(window.location.search).get('aviso'); if (t) setAviso({ tipo: 'erro', texto: t }); }, []);
@@ -477,31 +479,43 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
 
       <Cartao titulo="7. Acesso da empresa ao sistema" id="acessos">
         <p className="mb-4 text-sm text-text/60">
-          Crie um login para a empresa cliente. Ela entra no Safety Nexo e vê só os dados dela: colaboradores, EPI, DDS, permissões de trabalho,
+          Convide a empresa cliente. Ela recebe um link, cria a própria senha e vê só os dados dela: colaboradores, EPI, DDS, permissões de trabalho,
           treinamentos e vencimentos. Programas e documentos continuam com você.
         </p>
         <form
-          className="grid gap-4 md:grid-cols-3"
-          onSubmit={enviar(
-            (d) => criarAcesso(empresaId, { nome: texto(d, 'nome'), email: texto(d, 'email'), senha: texto(d, 'senha') }),
-            'Login criado. Envie o e-mail e a senha para a empresa.',
-          )}
+          className="grid gap-4 md:grid-cols-2"
+          onSubmit={async (ev) => {
+            ev.preventDefault();
+            const form = ev.currentTarget;
+            const d = new FormData(form);
+            try {
+              const r = await criarAcesso(empresaId, { nome: texto(d, 'nome'), email: texto(d, 'email') });
+              setConvite({ nome: r.nome, link: r.link!, whatsapp: r.whatsapp!, emailEnviado: !!r.emailEnviado });
+              form.reset();
+              await recarregar();
+            } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+          }}
         >
-          <Campo id="acesso-nome" name="nome" rotulo="Nome de quem vai usar" required placeholder="Ex.: RH da Padaria" />
-          <Campo id="acesso-email" name="email" type="email" rotulo="E-mail" required placeholder="rh@empresa.com.br" />
-          <Campo id="acesso-senha" name="senha" type="text" rotulo="Senha inicial" required minLength={8} placeholder="Mínimo 8 caracteres"
-            ajuda={{ oQueE: 'Senha que você envia para a empresa. Use pelo menos 8 caracteres.' }} />
-          <div className="flex justify-end md:col-span-3"><Botao type="submit">Criar login</Botao></div>
+          <Campo id="acesso-nome" name="nome" rotulo="Nome de quem vai usar" required placeholder="Ex.: RH da Padaria" icone="cracha" />
+          <Campo id="acesso-email" name="email" type="email" rotulo="E-mail" required placeholder="Ex.: rh@empresa.com.br" />
+          <div className="flex justify-end md:col-span-2"><Botao type="submit">Convidar cliente</Botao></div>
         </form>
+        {convite && <LinkConvite convite={convite} fechar={() => setConvite(null)} />}
         {acessos.length > 0 && (
           <ul className="mt-4 divide-y divide-border text-sm">
             {acessos.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <span>{a.nome} · <span className="text-text/60">{a.email}</span></span>
-                <button className="text-xs text-danger hover:underline" onClick={async () => {
-                  try { await removerAcesso(empresaId, a.id); setAviso({ tipo: 'ok', texto: 'Acesso removido. Esse login para de funcionar na hora.' }); await recarregar(); }
-                  catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
-                }}>Remover acesso</button>
+                <span className="flex gap-3">
+                  <button className="text-xs font-semibold text-primary hover:underline" onClick={async () => {
+                    try { const r = await reenviarConvite(empresaId, a.id); setConvite({ nome: a.nome, ...r }); }
+                    catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+                  }}>Mandar link de senha</button>
+                  <button className="text-xs text-danger hover:underline" onClick={async () => {
+                    try { await removerAcesso(empresaId, a.id); setAviso({ tipo: 'ok', texto: 'Acesso removido. Esse login para de funcionar na hora.' }); await recarregar(); }
+                    catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+                  }}>Remover acesso</button>
+                </span>
               </li>
             ))}
           </ul>
@@ -737,5 +751,24 @@ function CodigoExame({ id, valor, salvar }: { id: string; valor: string; salvar:
         <EscolhaT27 id={`cod27-${id}`} valor={valor} aoEscolher={(c) => c && salvar(c)} />
       </div>
     </details>
+  );
+}
+
+type Convite = { nome: string; link: string; whatsapp: string; emailEnviado: boolean };
+
+// Link do convite pronto para mandar pelo WhatsApp ou copiar.
+function LinkConvite({ convite, fechar }: { convite: Convite; fechar: () => void }) {
+  const [copiado, setCopiado] = useState(false);
+  return (
+    <div className="card-ok mt-4 space-y-3 rounded-card p-4 text-sm">
+      <p className="font-semibold">Link de {convite.nome} pronto. {convite.emailEnviado ? 'Também mandamos por e-mail.' : 'Mande pelo WhatsApp ou copie e cole onde quiser.'}</p>
+      <p className="break-all rounded-lg bg-white px-3 py-2 text-xs text-text/70">{convite.link}</p>
+      <div className="flex flex-wrap gap-2">
+        <a href={convite.whatsapp} target="_blank" rel="noreferrer" className="rounded-card bg-success px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">Mandar pelo WhatsApp</a>
+        <Botao type="button" variante="secundario" onClick={async () => { try { await navigator.clipboard.writeText(convite.link); setCopiado(true); } catch { /* sem permissão */ } }}>{copiado ? 'Copiado' : 'Copiar link'}</Botao>
+        <Botao type="button" variante="secundario" onClick={fechar}>Fechar</Botao>
+      </div>
+      <p className="text-xs text-text/60">O link vale 7 dias. Depois disso, use "Mandar link de senha" de novo.</p>
+    </div>
   );
 }

@@ -12,7 +12,7 @@ import { enderecoDoItem, ItemMenu, MENU } from '@/lib/menu';
 import { lerToken, lerUsuario, sair, Usuario } from '@/lib/sessao';
 
 // Telas abertas por quem não entrou no sistema (ou de tela cheia) ficam sem o menu.
-const SEM_MENU = [/^\/relato\//, /^\/proposta\//, /^\/votar\//, /^\/meu\//, /^\/entrar/, /^\/cadastro/, /^\/planos/, /^\/assinar\//, /^\/assinatura\//, /^\/validar/, /^\/psicossocial\//, /^\/campo/, /\/lista\//];
+const SEM_MENU = [/^\/relato\//, /^\/proposta\//, /^\/votar\//, /^\/meu\//, /^\/entrar/, /^\/cadastro/, /^\/esqueci-senha/, /^\/redefinir-senha/, /^\/planos/, /^\/assinar\//, /^\/assinatura\//, /^\/validar/, /^\/psicossocial\//, /^\/campo/, /\/lista\//];
 
 const CHAVE_FECHADOS = 'safety-nexo:menu-fechados';
 
@@ -90,6 +90,7 @@ function Menu({ caminho }: { caminho: string }) {
   }, [caminho, ancora, empresaId, empresas]);
 
   const cliente = usuario?.papel === 'EMPRESA';
+  const contaEmpresa = usuario?.tipoConta === 'EMPRESA'; // empresa com técnico próprio
   const empresa = empresas?.find((e) => e.id === empresaId);
 
   function trocarEmpresa(id: string) {
@@ -130,7 +131,7 @@ function Menu({ caminho }: { caminho: string }) {
         </span>
         <div className="min-w-0">
           <p className="text-lg font-bold leading-tight tracking-tight text-white">Safety Nexo</p>
-          <p className="text-xs text-white/60">Segurança do trabalho</p>
+          <p className="text-xs text-white/60">Gestão inteligente de SST</p>
         </div>
         <button type="button" onClick={() => setAberto(false)} className="ml-auto rounded-lg p-1.5 text-white/70 hover:bg-white/10 md:hidden" aria-label="Fechar menu">
           <Icone nome="fechar" />
@@ -160,7 +161,7 @@ function Menu({ caminho }: { caminho: string }) {
             {erro ? 'Não consegui falar com o servidor. Tente de novo em instantes.' : empresas ? 'Nenhuma empresa cadastrada ainda.' : 'Carregando…'}
           </p>
         )}
-        {!cliente && (
+        {!cliente && !(contaEmpresa && empresas && empresas.length > 0) && (
           <Link
             href="/empresas/nova"
             className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-menta px-3 py-2 text-sm font-bold text-primary-escuro transition hover:brightness-105"
@@ -178,7 +179,7 @@ function Menu({ caminho }: { caminho: string }) {
 
       <nav className="menu-rolagem mt-3 flex-1 overflow-y-auto px-3 pb-4" aria-label="Menu principal">
         {MENU.map((grupo) => {
-          const itens = grupo.itens.filter((i) => !(cliente && i.soConsultoria));
+          const itens = grupo.itens.filter((i) => !(cliente && i.soConsultoria) && !(contaEmpresa && i.soMultiEmpresa));
           if (!itens.length) return null;
           const fechado = fechados.includes(grupo.titulo);
           return (
@@ -254,7 +255,7 @@ function Menu({ caminho }: { caminho: string }) {
           </span>
           <Link href="/perfil" className="min-w-0 flex-1 rounded hover:opacity-90" title="Meu perfil">
             <p className="truncate text-sm font-semibold text-white">{usuario?.nome ?? 'Minha conta'}</p>
-            <p className="text-xs text-white/50">{cliente ? 'Empresa cliente' : 'Consultoria'} · meu perfil</p>
+            <p className="text-xs text-white/50">{cliente ? 'Empresa cliente' : contaEmpresa ? 'Empresa' : 'Consultoria'} · meu perfil</p>
           </Link>
           <button type="button" onClick={sair} className="rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white" title="Sair" aria-label="Sair">
             <Icone nome="sair" className="h-[18px] w-[18px]" />

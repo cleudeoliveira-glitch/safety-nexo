@@ -16,7 +16,7 @@ export function salvarToken(token: string) {
 }
 
 // Quem entrou: a consultoria vê todas as empresas; a empresa cliente vê só a dela.
-export type Usuario = { nome: string; papel: 'CONSULTORIA' | 'EMPRESA'; empresaId: string | null; adminPlataforma?: boolean };
+export type Usuario = { nome: string; papel: 'CONSULTORIA' | 'EMPRESA'; empresaId: string | null; adminPlataforma?: boolean; tipoConta?: 'CONSULTORIA' | 'EMPRESA' };
 const CHAVE_USUARIO = 'safety-nexo:usuario';
 
 export function salvarUsuario(usuario: Usuario) {
@@ -46,4 +46,15 @@ export function sair() {
   } catch {}
   // Apaga também o código do rosto guardado para o campo.
   import('./rosto-offline').then((m) => m.esquecerRostosCampo()).catch(() => undefined).finally(() => { window.location.href = '/entrar'; });
+}
+
+// Conta de empresa com técnico próprio (cadastrou-se como "Sou Empresa"): só a empresa dela, sem área de consultoria.
+export const ehContaEmpresa = () => lerUsuario()?.tipoConta === 'EMPRESA';
+
+// Limpa a sessão sem sair da tela (usado quando alguém quer entrar com outra conta no mesmo navegador).
+export function esquecerSessao() {
+  try {
+    localStorage.removeItem(CHAVE);
+    localStorage.removeItem(CHAVE_USUARIO);
+  } catch {}
 }

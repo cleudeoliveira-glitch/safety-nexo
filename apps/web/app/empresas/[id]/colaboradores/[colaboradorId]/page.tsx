@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
 import { conferirNoAparelho, guardarCaptura } from '@/lib/rosto-offline';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto } from '@/lib/api';
+import { abrirAsoClinica, anexarAsoClinica, buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto } from '@/lib/api';
 
 const TIPOS_ASO = [
   ['ADMISSIONAL', 'Admissional'],
@@ -172,9 +172,26 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
                   <span className={a.resultado === 'APTO' ? 'text-success' : 'text-danger'}>{a.resultado === 'APTO' ? 'Apto' : 'Inapto'}</span>
                   {a.proximoExame && <span className="text-text/60"> · próximo em {data(a.proximoExame)}</span>}
                 </span>
-                <Botao variante="secundario" onClick={() => baixar(() => gerarAso(empresaId, colaboradorId, a.id), `ASO-${colaborador.nome}-${a.dataExame.slice(0, 10)}.pdf`)}>
-                  Baixar ASO
-                </Botao>
+                <span className="flex flex-wrap gap-2">
+                  {a.arquivoPath ? (
+                    <Botao variante="secundario" onClick={() => baixar(() => abrirAsoClinica(empresaId, colaboradorId, a.id), `ASO-clinica-${colaborador.nome}-${a.dataExame.slice(0, 10)}.pdf`)}>
+                      PDF da clínica
+                    </Botao>
+                  ) : null}
+                  <label className="cursor-pointer rounded-card border border-border bg-white px-4 py-2.5 text-sm font-semibold hover:border-primary">
+                    {a.arquivoPath ? 'Trocar PDF da clínica' : 'Subir PDF da clínica'}
+                    <input type="file" accept="application/pdf" className="hidden" onChange={async (ev) => {
+                      const arq = ev.target.files?.[0];
+                      ev.target.value = '';
+                      if (!arq) return;
+                      try { await anexarAsoClinica(empresaId, colaboradorId, a.id, arq); setAviso({ tipo: 'ok', texto: 'PDF do ASO guardado.' }); await recarregar(); }
+                      catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+                    }} />
+                  </label>
+                  <Botao variante="secundario" onClick={() => baixar(() => gerarAso(empresaId, colaboradorId, a.id), `ASO-${colaborador.nome}-${a.dataExame.slice(0, 10)}.pdf`)}>
+                    Baixar ASO
+                  </Botao>
+                </span>
               </li>
             ))}
           </ul>
