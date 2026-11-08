@@ -1,7 +1,7 @@
 {
   "name": "Safety Nexo",
   "short_name": "Safety Nexo",
-  "description": "Segurança do trabalho sem complicação para consultorias SST.",
+  "description": "Gestão inteligente de SST para consultorias e empresas.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F8F9FB",

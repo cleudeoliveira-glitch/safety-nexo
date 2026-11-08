@@ -131,7 +131,7 @@ function Menu({ caminho }: { caminho: string }) {
         </span>
         <div className="min-w-0">
           <p className="text-lg font-bold leading-tight tracking-tight text-white">Safety Nexo</p>
-          <p className="text-xs text-white/60">Segurança do trabalho</p>
+          <p className="text-xs text-white/60">Gestão inteligente de SST</p>
         </div>
         <button type="button" onClick={() => setAberto(false)} className="ml-auto rounded-lg p-1.5 text-white/70 hover:bg-white/10 md:hidden" aria-label="Fechar menu">
           <Icone nome="fechar" />
