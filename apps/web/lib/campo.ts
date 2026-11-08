@@ -1,5 +1,6 @@
 // Trabalho de campo sem internet: o que a tela /campo precisa fica guardado no aparelho.
-import { buscarModelosChecklist, criarApr, criarInspecao, estoque, listarDds, listarEmpresas, listarTurmas, ModeloChecklist, rosto } from './api';
+import { buscarConteudoOperacao, buscarModelosChecklist, criarApr, criarDds, criarInspecao, enviarFotosInspecao, estoque, listarColaboradores, listarDds, listarEmpresas, listarTurmas, ModeloChecklist, prevencao, rosto, TemaDds } from './api';
+import { apagarFotos, lerFotos } from './fotos-offline';
 import { carregarFaceApi, configRosto } from './rosto';
 import { guardarRostosCampo } from './rosto-offline';
 
@@ -12,9 +13,13 @@ export type BaseRosto = {
   dds: { id: string; tema: string; data: string }[];
   turmas: { id: string; nome: string; norma: string | null }[];
 };
-export type BaseCampo = { empresas: { id: string; razaoSocial: string }[]; modelos: ModeloChecklist[]; rosto?: Record<string, BaseRosto>; atualizadoEm: string };
+export type BaseCampo = {
+  empresas: { id: string; razaoSocial: string }[]; modelos: ModeloChecklist[]; rosto?: Record<string, BaseRosto>; atualizadoEm: string;
+  temasDds?: TemaDds[]; // biblioteca de DDS, para abrir o tema do dia sem internet
+  pessoas?: Record<string, { id: string; nome: string; cargo: string }[]>; // funcionários de cada empresa (lista de presença do DDS)
+};
 export type Pendente = {
-  id: string; tipo: 'inspecao' | 'apr'; empresaId: string; empresaNome: string; titulo: string; criadoEm: string;
+  id: string; tipo: 'inspecao' | 'apr' | 'dds'; empresaId: string; empresaNome: string; titulo: string; criadoEm: string;
   dados: Record<string, unknown>; erro?: string;
 };
 
@@ -27,7 +32,9 @@ export const esquecerBase = () => { try { localStorage.removeItem(BASE); } catch
 
 // Com internet: baixa empresas e checklists para usar depois sem sinal.
 export async function prepararCampo(): Promise<BaseCampo> {
-  const [empresas, modelos] = await Promise.all([listarEmpresas(), buscarModelosChecklist()]);
+  const [empresas, modelos, conteudo] = await Promise.all([listarEmpresas(), buscarModelosChecklist(), buscarConteudoOperacao().catch(() => null)]);
+  const pessoas: Record<string, { id: string; nome: string; cargo: string }[]> = {};
+  await Promise.all(empresas.map((e) => listarColaboradores(e.id).then((cs) => { pessoas[e.id] = cs.map((c) => ({ id: c.id, nome: c.nome, cargo: c.cargo })); }).catch(() => undefined)));
   // Para o rosto sem internet: quem tem rosto, almoxarifado e DDS/turmas recentes de cada empresa.
   const rostoBase: Record<string, BaseRosto> = {};
   await Promise.all(empresas.map(async (e) => {
@@ -43,7 +50,7 @@ export async function prepararCampo(): Promise<BaseCampo> {
       if (cols.some((c) => c.cadastrado)) await rosto.baseCampo(e.id).then((b) => guardarRostosCampo(e.id, b)).catch(() => undefined);
     } catch { /* empresa sem acesso ao rosto */ }
   }));
-  const base = { empresas: empresas.map((e) => ({ id: e.id, razaoSocial: e.razaoSocial })), modelos, rosto: rostoBase, atualizadoEm: new Date().toISOString() };
+  const base: BaseCampo = { empresas: empresas.map((e) => ({ id: e.id, razaoSocial: e.razaoSocial })), modelos, rosto: rostoBase, atualizadoEm: new Date().toISOString(), temasDds: conteudo?.temasDds, pessoas };
   // Deixa o reconhecimento facial guardado no aparelho (modelos e configuração).
   configRosto().then(() => carregarFaceApi()).catch(() => undefined);
   gravar(BASE, base);
@@ -69,7 +76,18 @@ export async function enviarPendentes(): Promise<{ enviados: number; falhas: num
     for (const p of lerPendentes()) {
       if (p.erro) { falhas++; continue; }
       try {
-        if (p.tipo === 'inspecao') await criarInspecao(p.empresaId, p.dados as Parameters<typeof criarInspecao>[1]);
+        if (p.tipo === 'inspecao') {
+          const { abrirAcoes, ...dados } = p.dados as Parameters<typeof criarInspecao>[1] & { abrirAcoes?: boolean };
+          const feita = await criarInspecao(p.empresaId, dados);
+          // A inspeção já está no sistema: daqui para frente nada a repete, mesmo se a foto ou a ação falharem.
+          removerPendente(p.id); enviados++;
+          const fotos = await lerFotos(p.id).catch(() => []);
+          if (fotos.length) await enviarFotosInspecao(p.empresaId, feita.id, fotos).catch(() => undefined);
+          await apagarFotos(p.id);
+          if (abrirAcoes && feita.itens.some((i) => i.resposta === 'NC')) await prevencao.acoesDaInspecao(p.empresaId, feita.id).catch(() => undefined);
+          continue;
+        }
+        if (p.tipo === 'dds') await criarDds(p.empresaId, p.dados as Parameters<typeof criarDds>[1]);
         else await criarApr(p.empresaId, p.dados as Parameters<typeof criarApr>[1]);
         removerPendente(p.id); enviados++;
       } catch (e) {

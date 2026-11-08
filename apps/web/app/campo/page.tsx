@@ -4,13 +4,15 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { RostoCampo } from '@/components/RostoCampo';
 import { ListasGuardadas } from '@/components/ListasGuardadas';
+import { reduzirFoto } from '@/components/Foto';
+import { FotoGuardada, guardarFotos } from '@/lib/fotos-offline';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { EtapaApr, ItemInspecao } from '@/lib/api';
 import { libera, planoMinimo, usePlano } from '@/lib/plano';
 import { BaseCampo, enviarPendentes, guardarPendente, lerBase, lerPendentes, Pendente, prepararCampo, removerPendente, tirarErro } from '@/lib/campo';
 import { lerToken } from '@/lib/sessao';
 
-type Aba = 'inspecao' | 'apr' | 'rosto';
+type Aba = 'inspecao' | 'apr' | 'dds' | 'rosto';
 const hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
@@ -27,6 +29,11 @@ export default function CampoPage() {
   const [chave, setChave] = useState(0);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok' | 'info'; texto: string } | null>(null);
   const [logado, setLogado] = useState(true);
+  const [fotos, setFotos] = useState<FotoGuardada[]>([]); // fotos da inspeção, guardadas no aparelho até enviar
+  const [abrirAcoes, setAbrirAcoes] = useState(true);
+  const [temaDds, setTemaDds] = useState('');
+  const [buscaDds, setBuscaDds] = useState('');
+  const [presentes, setPresentes] = useState<string[]>([]);
 
   const atualizar = useCallback(() => setPendentes(lerPendentes()), []);
   const sincronizar = useCallback(async () => {
@@ -51,10 +58,15 @@ export default function CampoPage() {
   const empresa = base?.empresas.find((e) => e.id === empresaId);
   const checklist = base?.modelos.find((m) => m.modelo === modelo);
 
+  const tema = base?.temasDds?.find((x) => x.tema === temaDds);
+  const pessoasEmpresa = (empresaId && base?.pessoas?.[empresaId]) || [];
+
   function salvar(tipo: Pendente['tipo'], titulo: string, dados: Record<string, unknown>) {
     if (!empresa) throw new Error('Escolha a empresa.');
-    guardarPendente({ tipo, empresaId: empresa.id, empresaNome: empresa.razaoSocial, titulo, dados });
+    const novo = guardarPendente({ tipo, empresaId: empresa.id, empresaNome: empresa.razaoSocial, titulo, dados });
+    if (tipo === 'inspecao' && fotos.length) guardarFotos(novo.id, fotos).catch(() => setAviso({ tipo: 'erro', texto: 'As fotos não couberam no aparelho. A inspeção foi guardada sem elas.' }));
     atualizar(); setChave((k) => k + 1); setRespostas({}); setEtapas([{ etapa: '', riscos: '', medidas: '', epis: '' }]);
+    setFotos([]); setTemaDds(''); setPresentes([]);
     setAviso({ tipo: 'ok', texto: navigator.onLine ? 'Guardado. Enviando agora…' : 'Guardado no aparelho. Será enviado sozinho quando a internet voltar.' });
     if (navigator.onLine) sincronizar();
   }
@@ -87,7 +99,7 @@ export default function CampoPage() {
           <ul className="divide-y divide-border text-sm">
             {pendentes.map((p) => (
               <li key={p.id} className="py-2">
-                <p><strong>{p.tipo === 'inspecao' ? 'Inspeção' : 'APR'}</strong> · {p.titulo} · {p.empresaNome}</p>
+                <p><strong>{p.tipo === 'inspecao' ? 'Inspeção' : p.tipo === 'dds' ? 'DDS' : 'APR'}</strong> · {p.titulo} · {p.empresaNome}</p>
                 <p className="text-xs text-text/60">Preenchida em {quando(p.criadoEm)}</p>
                 {p.erro && (
                   <p className="text-xs text-danger">O sistema recusou: {p.erro}{' '}
@@ -107,7 +119,7 @@ export default function CampoPage() {
         </Selecao>
         <ListasGuardadas empresaId={empresaId} />
         <div role="tablist" className="flex flex-wrap gap-2">
-          {([['rosto', 'Entrega de EPI (rosto)'], ['inspecao', 'Inspeção (checklist)'], ['apr', 'APR']] as [Aba, string][]).map(([v, n]) => (
+          {([['rosto', 'Entrega de EPI (rosto)'], ['inspecao', 'Inspeção (checklist)'], ['dds', 'DDS'], ['apr', 'APR']] as [Aba, string][]).map(([v, n]) => (
             <button key={v} role="tab" aria-selected={aba === v} onClick={() => setAba(v)} className={`rounded-card px-4 py-2 text-sm font-semibold ${aba === v ? 'bg-primary text-white' : 'border border-border bg-white'}`}>{n}</button>
           ))}
         </div>
@@ -123,7 +135,7 @@ export default function CampoPage() {
                 const faltam = checklist.itens.filter((_, i) => !respostas[i]).length;
                 if (faltam) throw new Error(`Responda todos os itens. Faltam ${faltam}.`);
                 const itens = checklist.itens.map((texto, i) => ({ texto, resposta: respostas[i], observacao: t(`obs-${i}`) || undefined, grau: checklist.graus?.[i] }));
-                salvar('inspecao', `${checklist.titulo} · ${t('local')}`, { modelo: checklist.modelo, titulo: checklist.titulo, local: t('local'), data: t('data'), inspetor: t('inspetor'), itens });
+                salvar('inspecao', `${checklist.titulo} · ${t('local')}${fotos.length ? ` · ${fotos.length} foto(s)` : ''}`, { modelo: checklist.modelo, titulo: checklist.titulo, local: t('local'), data: t('data'), inspetor: t('inspetor'), itens, abrirAcoes });
               });
             }}>
               <Selecao id="cp-mod" rotulo="Checklist" value={modelo} onChange={(e) => { setModelo(e.target.value); setRespostas({}); }}>
@@ -150,8 +162,91 @@ export default function CampoPage() {
                   ))}
                 </ol>
               )}
+              <div className="space-y-2 rounded-card border border-border bg-white p-3">
+                <p className="text-sm font-semibold text-primary">Fotos (até 5)</p>
+                <p className="text-xs text-text/60">Tire a foto da não conformidade. Ela fica no aparelho e sobe junto com a inspeção.</p>
+                {fotos.length > 0 && (
+                  <ul className="space-y-2">
+                    {fotos.map((f, i) => (
+                      <li key={i} className="flex items-center gap-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={URL.createObjectURL(f.foto)} alt="" className="h-14 w-14 rounded-lg object-cover" />
+                        <input aria-label={`Legenda da foto ${i + 1}`} value={f.legenda} placeholder="Ex.: Extintor sem lacre" onChange={(e) => setFotos(fotos.map((x, j) => (j === i ? { ...x, legenda: e.target.value } : x)))} className="flex-1 px-3 py-2 text-sm" />
+                        <button type="button" className="text-xs text-danger" onClick={() => setFotos(fotos.filter((_, j) => j !== i))}>Tirar</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {fotos.length < 5 && (
+                  <label className="inline-block cursor-pointer rounded-card border-2 border-dashed border-primary/40 px-4 py-2.5 text-sm font-semibold text-primary">
+                    📷 Tirar ou escolher foto
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={async (e) => {
+                      const arq = e.target.files?.[0]; e.target.value = '';
+                      if (arq) { const foto = await reduzirFoto(arq, 1280); setFotos((x) => [...x, { foto, legenda: '' }].slice(0, 5)); }
+                    }} />
+                  </label>
+                )}
+              </div>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" checked={abrirAcoes} onChange={(e) => setAbrirAcoes(e.target.checked)} className="mt-1 h-4 w-4" />
+                <span>Abrir uma ação (5W2H) no plano de ação para cada item não conforme, quando enviar.</span>
+              </label>
               <Botao type="submit" className="w-full">Guardar inspeção</Botao>
             </form>
+          </Cartao>
+        )}
+
+        {aba === 'dds' && (
+          <Cartao titulo="DDS do dia">
+            {!base.temasDds?.length ? <Aviso tipo="info">Abra esta tela uma vez com internet para guardar os 150 temas de DDS no aparelho.</Aviso> : (
+              <form key={chave} className="space-y-4" onSubmit={(ev) => {
+                ev.preventDefault(); const d = new FormData(ev.currentTarget); const t = (c: string) => String(d.get(c) ?? '').trim();
+                tentar(() => {
+                  if (!tema) throw new Error('Escolha o tema.');
+                  if (!presentes.length) throw new Error('Marque quem participou.');
+                  salvar('dds', `DDS: ${tema.tema}`, { tema: tema.tema, conteudo: tema.conteudo, data: t('data'), duracaoMin: Number(t('duracao')) || 10, ministrante: t('ministrante'), participantes: presentes });
+                });
+              }}>
+                <Campo id="cd-busca" rotulo="Procurar tema" type="search" value={buscaDds} onChange={(e) => setBuscaDds(e.target.value)} placeholder="Ex.: cinto, altura, calor" />
+                <Selecao id="cd-tema" rotulo="Tema" value={temaDds} onChange={(e) => setTemaDds(e.target.value)}>
+                  <option value="">Escolha</option>
+                  {base.temasDds.filter((x) => !buscaDds || `${x.tema} ${x.categoria}`.toLowerCase().includes(buscaDds.toLowerCase())).map((x) => <option key={x.tema} value={x.tema}>{x.categoria} · {x.tema}</option>)}
+                </Selecao>
+                {tema && (
+                  <div className="card-total space-y-2 rounded-card p-4 text-sm">
+                    <p>{tema.conteudo}</p>
+                    <p><strong>Pergunte à equipe:</strong> {tema.pergunta}</p>
+                    <p><strong>Conte este caso:</strong> {tema.situacao}</p>
+                    <p><strong>Dinâmica:</strong> {tema.dinamica}</p>
+                  </div>
+                )}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Campo id="cd-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
+                  <Campo id="cd-dur" name="duracao" type="number" rotulo="Minutos" defaultValue={10} min={1} />
+                  <Campo id="cd-min" name="ministrante" rotulo="Quem conduziu" required placeholder="Ex.: Técnico João" />
+                </div>
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-primary">Quem participou ({presentes.length})</p>
+                  {pessoasEmpresa.length === 0 ? <p className="text-xs text-text/60">Nenhum funcionário guardado desta empresa.</p> : (
+                    <ul className="grid gap-2 sm:grid-cols-2">
+                      {pessoasEmpresa.map((p) => {
+                        const marcado = presentes.includes(p.id);
+                        return (
+                          <li key={p.id}>
+                            <button type="button" onClick={() => setPresentes(marcado ? presentes.filter((n) => n !== p.id) : [...presentes, p.id])}
+                              className={`w-full rounded-card px-3 py-3 text-left text-sm ${marcado ? 'card-ok font-semibold' : 'border border-border bg-white'}`}>
+                              {marcado ? '✓ ' : ''}{p.nome} <span className="text-xs text-text/60">· {p.cargo}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  <p className="mt-2 text-xs text-text/60">A assinatura de cada um (lista de toque) é feita depois que o DDS chega ao sistema, em Listas guardadas.</p>
+                </div>
+                <Botao type="submit" className="w-full">Guardar DDS</Botao>
+              </form>
+            )}
           </Cartao>
         )}
 
