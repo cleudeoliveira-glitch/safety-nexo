@@ -167,6 +167,29 @@ const MODELOS: Record<string, Modelo> = {
       ['Trabalho em pé com possibilidade de alternar com sentado', 2],
     ],
   },
+  // AEP: a avaliação ergonômica preliminar do item 17.3.1. Cada "não conforme" vira ação no plano;
+  // quando ela não basta (queixas, afastamentos, PCMSO), parte-se para a AET.
+  'NR-17-AEP': {
+    titulo: 'Avaliação ergonômica preliminar - AEP (NR-17)',
+    grupo: 'Pessoas e proteção',
+    tipo: 'S',
+    itens: [
+      ['Tronco: a tarefa não exige ficar inclinado ou torcido por muito tempo', 2],
+      ['Braços: não trabalha com as mãos acima dos ombros com frequência', 2],
+      ['Repetição: movimentos repetitivos têm pausas ou rodízio de tarefa', 2],
+      ['Cargas: levantar e carregar com peso seguro e boa pega, ou com ajuda mecânica', 3],
+      ['Empurrar e puxar: carrinhos e paleteiras em bom estado e piso sem buracos', 2],
+      ['Em pé: dá para alternar com sentado ou há assento para descanso', 2],
+      ['Sentado: cadeira regulável, com encosto e apoio para os pés quando preciso', 2],
+      ['Computador: monitor na altura dos olhos, teclado e mouse na altura dos cotovelos', 1],
+      ['Bancada ou máquina na altura certa para a tarefa e para quem trabalha', 2],
+      ['Ferramentas leves, com boa pega e sem vibração excessiva', 2],
+      ['Iluminação, temperatura e ruído confortáveis para a tarefa', 2],
+      ['Ritmo, metas e jornada permitem pausas, sem pressão excessiva', 2],
+      ['Sem queixas de dor ou afastamentos ligados a esta tarefa', 2],
+      ['Trabalhadores ouvidos sobre as dificuldades da tarefa', 1],
+    ],
+  },
   'NR-18': {
     titulo: 'Obras e construção civil (NR-18)',
     grupo: 'Atividades de risco',

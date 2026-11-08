@@ -78,6 +78,10 @@ function AbaAet({ empresaId, lista, cliente, recarregar, avisar, baixar }: {
 
   return (
     <div className="space-y-6">
+      <div className="card-total flex flex-wrap items-center justify-between gap-3 rounded-card p-4">
+        <p className="text-sm"><strong>Comece pela AEP.</strong> A avaliação ergonômica preliminar (NR-17, item 17.3.1) é um checklist rápido do posto. O que der &quot;não conforme&quot; vira ação no plano. A AET é para quando a AEP não basta.</p>
+        <Link href={`/empresas/${empresaId}/operacao#checklist`} className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white">Fazer a AEP</Link>
+      </div>
       {!cliente && (
         <Cartao titulo="Nova Análise Ergonômica do Trabalho">
           <p className="mb-4 text-sm text-text/60">

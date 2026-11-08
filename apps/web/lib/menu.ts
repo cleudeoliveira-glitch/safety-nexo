@@ -43,7 +43,7 @@ export const MENU: GrupoMenu[] = [
     itens: [
       { nome: 'PGR, PCMSO, LTCAT, LIP, LPP', icone: 'documento', rota: '#documentos', soConsultoria: true },
       { nome: 'CIPA', icone: 'votar', rota: '#cipa', soConsultoria: true },
-      { nome: 'Ergonomia (AET)', icone: 'cadeira', rota: '/saude#aet' },
+      { nome: 'Ergonomia (AEP e AET)', icone: 'cadeira', rota: '/saude#aet' },
       { nome: 'Acidentes (CAT)', icone: 'cruz', rota: '/saude#cat' },
       { nome: 'Afastamentos', icone: 'calendario', rota: '/saude#afastamentos' },
       { nome: 'Prontuário de saúde', icone: 'coracao', rota: '/prontuario', soConsultoria: true },
@@ -53,7 +53,7 @@ export const MENU: GrupoMenu[] = [
   {
     titulo: 'Prevenção',
     itens: [
-      { nome: 'Relatos pelo QR code', icone: 'qr', rota: '/prevencao#relatos' },
+      { nome: 'Relatos e denúncias (QR code)', icone: 'qr', rota: '/prevencao#relatos' },
       { nome: 'Plano de ação', icone: 'check', rota: '/prevencao#acoes' },
       { nome: 'Investigação de acidentes', icone: 'lupa', rota: '/prevencao#investigacao', soConsultoria: true },
     ],

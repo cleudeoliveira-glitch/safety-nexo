@@ -43,7 +43,7 @@ export const PLANOS_SITE: PlanoSite[] = [
 export const INCLUSO_EM_TODOS: { grupo: string; itens: string[] }[] = [
   { grupo: 'Programas e laudos', itens: ['PGR, PCMSO, LTCAT, LIP e LPP em PDF', 'PPP, AET (ergonomia) e CAT', 'Ordem de serviço e ficha de EPI', 'Dimensionamento e eleição da CIPA'] },
   { grupo: 'Dia a dia', itens: ['APR e permissão de trabalho', 'DDS com 150 temas prontos', 'Checklists das NRs', 'Almoxarifado de EPI', 'Uso em campo sem internet'] },
-  { grupo: 'Pessoas e saúde', itens: ['Treinamentos das NRs com slides, certificado e QR code', 'Prontuário de saúde, ASO e afastamentos', 'SIPAT, 5S, emergência e brigada', 'Relatos pelo QR code e plano de ação'] },
+  { grupo: 'Pessoas e saúde', itens: ['Treinamentos das NRs com slides, certificado e QR code', 'Prontuário de saúde, ASO e afastamentos', 'SIPAT, 5S, emergência e brigada', 'Relatos e canal de denúncia anônima pelo QR code, plano de ação em quadro'] },
   { grupo: 'Para a empresa cliente', itens: ['Login para cada empresa cliente ver a própria área', 'Convite por WhatsApp', 'Avisos de mudanças nas normas', 'Arquivo de documentos com busca dentro do PDF'] },
 ];
 

@@ -75,7 +75,8 @@ export type EntregaEpi = { id: string; epi: string; ca: string; validadeCa: stri
 export type ColaboradorDetalhe = Colaborador & { ghe: Ghe | null; asos: Aso[]; entregasEpi: EntregaEpi[]; presencasFaciais?: { refId: string; codigo: string }[] };
 export type Pendencia = { titulo: string; detalhe: string; nivel: 'vencido' | 'pendente' | 'em-dia' };
 export type Vencimento = { tipo: string; versao: number; vencimento: string; dias: number };
-export type Painel = { empresa: Pick<Empresa, 'id' | 'razaoSocial' | 'cnpj'>; percentual: number; pendencias: Pendencia[]; vencimentos: Vencimento[] };
+export type NumerosPainel = { colaboradores: number; acoesAbertas: number; acoesAtrasadas: number; relatosNovos: number; pendenciasVencidas: number; riscosPorTipo: Record<string, number>; riscosAltos: number };
+export type Painel = { empresa: Pick<Empresa, 'id' | 'razaoSocial' | 'cnpj'>; percentual: number; pendencias: Pendencia[]; vencimentos: Vencimento[]; numeros?: NumerosPainel };
 export type Cipa = {
   grauRisco: number | null;
   numFuncionarios: number;
@@ -873,8 +874,8 @@ export const avisosEmail = {
   preferencia: (avisosEmail: boolean) => chamar<{ avisosEmail: boolean }>('PUT', '/avisos/preferencia', { avisosEmail }),
 };
 
-export type TipoRelato = 'QUASE_ACIDENTE' | 'CONDICAO_INSEGURA' | 'ATO_INSEGURO' | 'SUGESTAO';
-export const TIPOS_RELATO: Record<TipoRelato, string> = { QUASE_ACIDENTE: 'Quase acidente', CONDICAO_INSEGURA: 'Algo perigoso no local', ATO_INSEGURO: 'Alguém fazendo algo arriscado', SUGESTAO: 'Ideia para melhorar' };
+export type TipoRelato = 'QUASE_ACIDENTE' | 'CONDICAO_INSEGURA' | 'ATO_INSEGURO' | 'SUGESTAO' | 'DENUNCIA';
+export const TIPOS_RELATO: Record<TipoRelato, string> = { QUASE_ACIDENTE: 'Quase acidente', CONDICAO_INSEGURA: 'Algo perigoso no local', ATO_INSEGURO: 'Alguém fazendo algo arriscado', SUGESTAO: 'Ideia para melhorar', DENUNCIA: 'Denúncia de assédio ou abuso' };
 export type PerigoIa = { descricao: string; nr: string | null; tipo: string; probabilidade: number; severidade: number; acoes: string[] };
 export type AnaliseFotoIa = { resumo: string; imagemUtil: boolean; perigos: PerigoIa[]; boasPraticas: string[] };
 export type Relato = {

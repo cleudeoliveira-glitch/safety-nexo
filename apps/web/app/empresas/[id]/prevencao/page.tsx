@@ -12,7 +12,7 @@ import {
 import { ehEmpresa } from '@/lib/sessao';
 
 type Aba = 'relatos' | 'acoes' | 'investigacao';
-const ABAS: [Aba, string][] = [['relatos', 'Relatos pelo QR code'], ['acoes', 'Plano de ação'], ['investigacao', 'Investigação de acidentes']];
+const ABAS: [Aba, string][] = [['relatos', 'Relatos e denúncias'], ['acoes', 'Plano de ação'], ['investigacao', 'Investigação de acidentes']];
 type Avisar = (tipo: 'erro' | 'ok', texto: string) => void;
 
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—');
@@ -106,7 +106,7 @@ function AbaRelatos({ empresaId, empresa, consultoria, iaLigada, avisar, irParaI
                 <div className="flex flex-wrap items-center gap-2">
                   <strong>Nº {r.numero}</strong>
                   <Etiqueta cor={STATUS_RELATO[r.status][1]}>{STATUS_RELATO[r.status][0]}</Etiqueta>
-                  <Etiqueta cor="bg-background">{TIPOS_RELATO[r.tipo]}</Etiqueta>
+                  <Etiqueta cor={r.tipo === 'DENUNCIA' ? 'bg-danger text-white' : 'bg-background'}>{TIPOS_RELATO[r.tipo]}{r.tipo === 'DENUNCIA' ? ' · só a consultoria vê' : ''}</Etiqueta>
                   <span className="text-text/60">{dataHora(r.criadoEm)} · {r.local || 'local não informado'} · {r.nome || 'anônimo'}</span>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap">{r.descricao}</p>

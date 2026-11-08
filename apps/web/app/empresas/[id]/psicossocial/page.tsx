@@ -114,6 +114,14 @@ export default function PsicossocialPage({ params }: { params: { id: string } })
         <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">Avaliação psicossocial</h1>
         <p className="text-text/60">{empresa.razaoSocial} · questionário anônimo pelo celular, resultado por setor e plano de ação</p>
+        {/* O nome do método à vista passa confiança: só aparecem questionários validados, com a fonte conferida. */}
+        {qs.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-text/50">Método validado</span>
+            {qs.map((q) => <span key={q.id} title={q.fonte} className="rounded-full bg-success/10 px-3 py-1 text-sm font-semibold text-success">✓ {q.nome}</span>)}
+            <span className="text-xs text-text/50">Questionário validado no Brasil, com a fonte citada no relatório.</span>
+          </div>
+        )}
       </div>
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 
