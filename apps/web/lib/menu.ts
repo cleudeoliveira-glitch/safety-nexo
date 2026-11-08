@@ -63,6 +63,7 @@ export const MENU: GrupoMenu[] = [
       { nome: 'DDS (registrar)', icone: 'fala', rota: '/operacao#dds' },
       { nome: 'Biblioteca de DDS (150 temas)', icone: 'livro', rota: '/dds', geral: true },
       { nome: 'Checklists de NRs', icone: 'lista', rota: '/operacao#checklist' },
+      { nome: 'Entrega de EPI (com ou sem internet)', icone: 'cracha', rota: '/campo?aba=epi', geral: true },
       { nome: 'Almoxarifado de EPI', icone: 'caixa', rota: '/almoxarifado' },
       { nome: 'Campo (sem internet)', icone: 'sinal', rota: '/campo', geral: true },
     ],

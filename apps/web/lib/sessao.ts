@@ -44,5 +44,6 @@ export function sair() {
     localStorage.removeItem(CHAVE_USUARIO);
     localStorage.removeItem('safety-nexo:campo'); // lista de empresas guardada para o campo (o que falta enviar fica)
   } catch {}
-  window.location.href = '/entrar';
+  // Apaga também o código do rosto guardado para o campo.
+  import('./rosto-offline').then((m) => m.esquecerRostosCampo()).catch(() => undefined).finally(() => { window.location.href = '/entrar'; });
 }
