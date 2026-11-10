@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ContextoDocumentoService } from './contexto.service';
 import { ehAgenteLtcat, renderLtcatHtml } from './ltcat.template';
 import { PdfService } from './pdf.service';
+import { descricaoGhe } from '../empresas/ghe-ambiente';
 
 @Injectable()
 export class LtcatService {
@@ -31,7 +32,7 @@ export class LtcatService {
       },
       empresa.ghes.map((g) => ({
         nome: g.nome,
-        descricao: g.descricao,
+        descricao: descricaoGhe(g),
         colaboradores: g._count.colaboradores,
         cargos: [...new Set(colaboradores.filter((c) => c.gheId === g.id).map((c) => c.cargo))].sort(),
         agentes: g.riscos.filter((r) => ehAgenteLtcat(r.tipo)),

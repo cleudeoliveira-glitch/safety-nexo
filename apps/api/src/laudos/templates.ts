@@ -79,7 +79,7 @@ export function laudoHtml(moldura: Moldura, ghes: GheLaudo[], partes: { insalubr
       (g) => `
       <section class="ghe">
         <h2>${escape(g.nome)} <span class="meta">${g.colaboradores} colaborador(es)</span></h2>
-        ${g.descricao ? `<p>${escape(g.descricao)}</p>` : ''}
+        ${g.descricao ? `<p>${escape(g.descricao).replace(/\n/g, '<br>')}</p>` : ''}
         <p><strong>Cargos:</strong> ${g.cargos.length ? g.cargos.map(escape).join(', ') : 'nenhum colaborador vinculado'}</p>
         ${partes.insalubridade ? blocoInsalubridade(g) : ''}
         ${partes.periculosidade ? blocoPericulosidade(g) : ''}
@@ -131,7 +131,7 @@ export function pgrtrHtml(moldura: Moldura, ghes: { nome: string; descricao: str
       (g) => `
       <section class="ghe">
         <h2>${escape(g.nome)} <span class="meta">${g.colaboradores} trabalhador(es)</span></h2>
-        ${g.descricao ? `<p>${escape(g.descricao)}</p>` : ''}
+        ${g.descricao ? `<p>${escape(g.descricao).replace(/\n/g, '<br>')}</p>` : ''}
         <table>
           <thead><tr><th>Tipo</th><th>Agente / perigo</th><th>Fonte geradora</th><th>Medidas de prevenção</th><th>Severidade</th></tr></thead>
           <tbody>${g.riscos
@@ -194,7 +194,7 @@ function paginaOs(d: DadosOs): string {
         <tr><th>Cargo</th><td>${escape(d.colaborador.cargo)}${d.colaborador.cbo ? ` (CBO ${escape(d.colaborador.cbo)})` : ''}</td></tr>
         <tr><th>Setor / GHE</th><td>${escape(d.ghe?.nome)}</td></tr>
       </tbody></table>
-      ${d.ghe?.descricao ? `<h2>Atividades</h2><p>${escape(d.ghe.descricao)}</p>` : ''}
+      ${d.ghe?.descricao ? `<h2>Atividades</h2><p>${escape(d.ghe.descricao).replace(/\n/g, '<br>')}</p>` : ''}
       <h2>Riscos da atividade e medidas de prevenção</h2>
       ${
         d.riscos.length

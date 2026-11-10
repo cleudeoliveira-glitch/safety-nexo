@@ -4,6 +4,7 @@ import { ehAdminPlataforma } from '../admin/admin-plataforma';
 import { conferirFuncionarios } from '../common/plano';
 import { PrismaService } from '../prisma/prisma.service';
 import { CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CopiarDadosDto, CreateGheDto, CreateGheRiscoDto, UpdateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
+import { chaveFuncao, FuncaoGhe, lerFuncoes } from './ghe-ambiente';
 
 @Injectable()
 export class EmpresasService {
@@ -63,8 +64,10 @@ export class EmpresasService {
       const ghe = await this.prisma.ghe.findFirst({ where: { id: dto.gheId, empresaId } });
       if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
     }
+    // Sem GHE escolhido, entra no GHE da sua função.
+    const gheId = dto.gheId || (await this.gheDaFuncao(empresaId, dto.cargo)) || undefined;
     return this.prisma.colaborador.create({
-      data: { ...dto, empresaId, dataAdmissao: dto.dataAdmissao ? new Date(dto.dataAdmissao) : undefined },
+      data: { ...dto, gheId, empresaId, dataAdmissao: dto.dataAdmissao ? new Date(dto.dataAdmissao) : undefined },
     });
   }
 
@@ -112,7 +115,7 @@ export class EmpresasService {
       if (existentes.has(g.nome.trim().toLowerCase())) { pulados.push(g.nome); continue; }
       await this.prisma.ghe.create({
         data: {
-          empresaId: destinoId, nome: g.nome, descricao: g.descricao, periculosidadeAnexo: g.periculosidadeAnexo, periculosidadeJustificativa: g.periculosidadeJustificativa,
+          empresaId: destinoId, nome: g.nome, descricao: g.descricao, setor: g.setor, funcoes: g.funcoes ?? undefined, ambiente: g.ambiente ?? undefined, periculosidadeAnexo: g.periculosidadeAnexo, periculosidadeJustificativa: g.periculosidadeJustificativa,
           riscos: { create: g.riscos.map(({ id: _i, gheId: _g, esocial, ...r }) => ({ ...r, esocial: esocial ?? undefined })) },
           exames: { create: g.exames.map(({ id: _i, gheId: _g, ...e }) => e) },
         },
@@ -132,9 +135,75 @@ export class EmpresasService {
     return { copiados, pulados, responsaveis: !!dto.responsaveis };
   }
 
+  // GHE por setor e função. O nome sai no padrão "GHE 01 · Setor" quando não vem pronto.
   async criarGhe(consultoriaId: string, empresaId: string, dto: CreateGheDto) {
     await this.buscar(consultoriaId, empresaId);
-    return this.prisma.ghe.create({ data: { ...dto, empresaId } });
+    const funcoes = this.funcoesSemRepetir(dto.funcoes);
+    const nome = dto.nome?.trim() || `GHE ${String((await this.prisma.ghe.count({ where: { empresaId } })) + 1).padStart(2, '0')} · ${dto.setor.trim()}`;
+    if (await this.prisma.ghe.findFirst({ where: { empresaId, nome } })) throw new BadRequestException(`Já existe um GHE com o nome "${nome}".`);
+    const ghe = await this.prisma.ghe.create({
+      data: { empresaId, nome, setor: dto.setor.trim(), funcoes, ambiente: (dto.ambiente ?? {}) as object, descricao: dto.descricao?.trim() || null },
+    });
+    await this.vincularPorFuncao(empresaId, ghe.id, funcoes);
+    return ghe;
+  }
+
+  // Apaga o GHE com os riscos e exames dele. Os colaboradores ficam sem GHE, nada mais é apagado.
+  async excluirGhe(consultoriaId: string, empresaId: string, gheId: string) {
+    await this.buscar(consultoriaId, empresaId);
+    const ghe = await this.prisma.ghe.findFirst({ where: { id: gheId, empresaId }, select: { id: true, nome: true } });
+    if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
+    await this.prisma.ghe.delete({ where: { id: ghe.id } });
+    return { ok: true, nome: ghe.nome };
+  }
+
+  // Apaga a empresa e tudo o que é dela. Só com o nome digitado igual, para não apagar por engano.
+  async excluir(consultoriaId: string, empresaId: string, confirmacao: string) {
+    const empresa = await this.buscar(consultoriaId, empresaId);
+    const limpo = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (limpo(confirmacao) !== limpo(empresa.razaoSocial)) throw new BadRequestException('Para excluir, digite o nome da empresa exatamente como está no cadastro.');
+    await this.prisma.empresa.delete({ where: { id: empresaId } });
+    return { ok: true };
+  }
+
+  async atualizarGhe(consultoriaId: string, empresaId: string, gheId: string, dto: CreateGheDto) {
+    await this.buscar(consultoriaId, empresaId);
+    const atual = await this.prisma.ghe.findFirst({ where: { id: gheId, empresaId } });
+    if (!atual) throw new NotFoundException('GHE não encontrado nesta empresa');
+    const funcoes = this.funcoesSemRepetir(dto.funcoes);
+    const nome = dto.nome?.trim() || atual.nome;
+    if (nome !== atual.nome) {
+      if (await this.prisma.ghe.findFirst({ where: { empresaId, nome, NOT: { id: gheId } } })) throw new BadRequestException(`Já existe um GHE com o nome "${nome}".`);
+      // O psicossocial guarda o setor pelo nome do GHE: acompanha a troca para não perder respostas.
+      await this.prisma.respostaPsicossocial.updateMany({ where: { setor: atual.nome, avaliacao: { empresaId } }, data: { setor: nome } });
+      await this.prisma.acaoPsicossocial.updateMany({ where: { setor: atual.nome, avaliacao: { empresaId } }, data: { setor: nome } });
+    }
+    const ghe = await this.prisma.ghe.update({
+      where: { id: gheId },
+      data: { nome, setor: dto.setor.trim(), funcoes, ambiente: (dto.ambiente ?? {}) as object, descricao: dto.descricao?.trim() || null },
+    });
+    await this.vincularPorFuncao(empresaId, ghe.id, funcoes);
+    return ghe;
+  }
+
+  private funcoesSemRepetir(lista: FuncaoGhe[]): FuncaoGhe[] {
+    const vistas = new Set<string>();
+    return lerFuncoes(lista).filter((f) => !vistas.has(chaveFuncao(f.nome)) && vistas.add(chaveFuncao(f.nome)));
+  }
+
+  // Quem ainda não tem GHE e tem a mesma função entra no GHE sozinho. Quem já tem GHE fica onde está.
+  private async vincularPorFuncao(empresaId: string, gheId: string, funcoes: FuncaoGhe[]) {
+    const chaves = new Set(funcoes.map((f) => chaveFuncao(f.nome)));
+    const sem = await this.prisma.colaborador.findMany({ where: { empresaId, gheId: null }, select: { id: true, cargo: true } });
+    const ids = sem.filter((c) => chaves.has(chaveFuncao(c.cargo))).map((c) => c.id);
+    if (ids.length) await this.prisma.colaborador.updateMany({ where: { id: { in: ids } }, data: { gheId } });
+  }
+
+  // GHE cuja lista de funções tem o cargo do colaborador.
+  private async gheDaFuncao(empresaId: string, cargo: string): Promise<string | null> {
+    const chave = chaveFuncao(cargo);
+    const ghes = await this.prisma.ghe.findMany({ where: { empresaId }, select: { id: true, funcoes: true }, orderBy: { nome: 'asc' } });
+    return ghes.find((g) => lerFuncoes(g.funcoes).some((f) => chaveFuncao(f.nome) === chave))?.id ?? null;
   }
 
   async criarRisco(consultoriaId: string, empresaId: string, gheId: string, dto: CreateGheRiscoDto) {

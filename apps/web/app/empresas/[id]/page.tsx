@@ -17,6 +17,10 @@ import {
   criarColaborador,
   criarExame,
   criarGhe,
+  atualizarGhe,
+  excluirGhe,
+  excluirEmpresa,
+  DadosGhe,
   criarRisco,
   avaliarRisco,
   ajustarRisco,
@@ -46,6 +50,7 @@ import {
 import { EscolhaTabela } from '@/components/EscolhaTabela';
 import { ehEmpresa } from '@/lib/sessao';
 import { CopiarDados } from '@/components/CopiarDados';
+import { FormGhe } from '@/components/FormGhe';
 import { rolarParaAncora } from '@/lib/abaDoEndereco';
 
 const TIPOS_RISCO = [
@@ -162,6 +167,20 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     }
   }
 
+  // Salva o GHE e diz se deu certo, para o formulário saber se limpa os campos.
+  async function salvarGhe(acao: () => Promise<unknown>, sucesso: string): Promise<boolean> {
+    try {
+      await acao();
+      setAviso({ tipo: 'ok', texto: sucesso });
+      await recarregar();
+      return true;
+    } catch (e) {
+      setAviso({ tipo: 'erro', texto: (e as Error).message });
+      return false;
+    }
+  }
+  const cargos = [...new Set(colaboradores.map((c) => c.cargo).filter(Boolean))].sort();
+
   if (!empresa) {
     return <main className="p-10">{aviso ? <Aviso tipo="erro">{aviso.texto}</Aviso> : 'Carregando empresa…'}</main>;
   }
@@ -209,22 +228,33 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Campo id="rtNome" name="rtNome" rotulo="Responsável técnico" defaultValue={empresa.responsavelTecnicoNome ?? ''} placeholder="Ex.: Cleude Oliveira" />
           <Campo id="rtRegistro" name="rtRegistro" rotulo="Registro profissional" defaultValue={empresa.responsavelTecnicoRegistro ?? ''} placeholder="Ex.: CREA-SP 123456" />
           <Campo id="representante" name="representante" rotulo="Representante legal" defaultValue={empresa.representanteLegalNome ?? ''} placeholder="Quem assina o PPP pela empresa" />
-          <Campo id="processos" name="processos" rotulo="Processos e ambientes de trabalho (vai no PGR)" className="md:col-span-3" defaultValue={empresa.descricaoProcessos ?? ''}
-            placeholder="Ex.: Padaria com área de produção (forno, masseira, cilindro), estoque e loja. Turno único, 8 h." />
+          <Campo id="processos" name="processos" rotulo="Visão geral da empresa (opcional, vai no PGR)" className="md:col-span-3" defaultValue={empresa.descricaoProcessos ?? ''}
+            placeholder="Ex.: Padaria com produção, estoque e loja. Turno único, 8 h."
+            dica="Só um resumo. O ambiente de cada setor é descrito no próprio GHE, logo abaixo." />
           <div className="flex items-end justify-end md:col-span-3"><Botao type="submit">Salvar dados</Botao></div>
         </form>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          <p className="text-xs text-text/60">Excluir apaga a empresa e tudo dela: GHEs, colaboradores, ASOs, documentos e registros. Não dá para desfazer. Antes, baixe o que precisa guardar (prontuários e laudos ficam guardados por 20 anos).</p>
+          <button type="button" className="rounded-card border border-danger px-4 py-2 text-sm font-semibold text-danger hover:bg-danger hover:text-white"
+            onClick={async () => {
+              const nome = prompt(`Para excluir de vez, digite o nome da empresa:\n${empresa.razaoSocial}`);
+              if (!nome) return;
+              try { await excluirEmpresa(empresaId, nome); alert(`Empresa ${empresa.razaoSocial} excluída.`); window.location.href = '/'; }
+              catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+            }}>Excluir empresa</button>
+        </div>
       </Cartao>
 
       <Cartao titulo="2. GHEs, riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
         {!cliente && <div className="mb-4"><CopiarDados empresaId={empresaId} aoCopiar={(t, erro) => { setAviso({ tipo: erro ? 'erro' : 'ok', texto: t }); if (!erro) recarregar(); }} /></div>}
-        <form
-          className="grid gap-4 md:grid-cols-3"
-          onSubmit={enviar((d) => criarGhe(empresaId, { nome: texto(d, 'nome'), descricao: texto(d, 'descricao') || undefined }), 'GHE cadastrado.')}
-        >
-          <Campo id="ghe-nome" name="nome" rotulo="Nome do GHE" required placeholder="Ex.: Produção" />
-          <Campo id="ghe-descricao" name="descricao" rotulo="Descrição" placeholder="Ex.: Operadores de forno e masseiros" />
-          <div className="flex items-end justify-end"><Botao type="submit">Adicionar GHE</Botao></div>
-        </form>
+        <FuncoesDaEmpresa ghes={ghes} colaboradores={colaboradores} />
+        <details className="rounded-card border border-primary/30 bg-primary/5 p-4" open={ghes.length === 0}>
+          <summary className="cursor-pointer font-semibold text-primary">+ Novo GHE (por setor e função)</summary>
+          <div className="mt-4">
+            <FormGhe chave="novo" cargos={cargos} textoBotao="Adicionar GHE"
+              salvar={(dados) => salvarGhe(() => criarGhe(empresaId, dados), `GHE do setor ${dados.setor} cadastrado.`)} />
+          </div>
+        </details>
 
         <div className="mt-6 space-y-6">
           {ghes.length === 0 && <p className="text-sm text-text/60">Nenhum GHE ainda. Comece pelo primeiro acima.</p>}
@@ -233,6 +263,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
               <h3 className="font-semibold text-primary">
                 {ghe.nome} <span className="text-sm font-normal text-text/60">· {ghe._count.colaboradores} colaborador(es)</span>
               </h3>
+              <ResumoGhe ghe={ghe} cargos={cargos} salvar={(dados) => salvarGhe(() => atualizarGhe(empresaId, ghe.id, dados), `${ghe.nome} atualizado.`)}
+                excluir={() => confirm(`Excluir ${ghe.nome}? Os riscos e exames dele saem junto. Os colaboradores continuam cadastrados, só ficam sem GHE.`) && agir(() => excluirGhe(empresaId, ghe.id), `${ghe.nome} excluído.`)} />
 
               <h4 className="mt-3 text-sm font-semibold">Riscos</h4>
               {ghe.riscos.length === 0 ? (
@@ -820,6 +852,70 @@ function LinkConvite({ convite, fechar }: { convite: Convite; fechar: () => void
         <Botao type="button" variante="secundario" onClick={fechar}>Fechar</Botao>
       </div>
       <p className="text-xs text-text/60">O link vale 7 dias. Depois disso, use "Mandar link de senha" de novo.</p>
+    </div>
+  );
+}
+
+// Setor, funções e ambiente do GHE, com o botão para editar.
+function ResumoGhe({ ghe, cargos, salvar, excluir }: { ghe: Ghe; cargos: string[]; salvar: (dados: DadosGhe) => Promise<boolean>; excluir: () => void }) {
+  const [editando, setEditando] = useState(false);
+  const funcoes = ghe.funcoes ?? [];
+  const amb = ghe.ambiente ?? {};
+  const temAmbiente = Object.values(amb).some((v) => v === true || (typeof v === 'string' && v.trim()));
+  if (editando) {
+    return (
+      <div className="mt-3 rounded-card border border-border bg-background/60 p-4">
+        <FormGhe chave={ghe.id} cargos={cargos} textoBotao="Salvar GHE" cancelar={() => setEditando(false)}
+          inicial={{ setor: ghe.setor ?? '', nome: ghe.nome, funcoes, ambiente: amb, descricao: ghe.descricao ?? undefined }}
+          salvar={async (dados) => { const ok = await salvar(dados); if (ok) setEditando(false); return ok; }} />
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 space-y-1 text-sm">
+      {!ghe.setor || !funcoes.length ? (
+        <p className="text-warning">Complete o setor e as funções deste GHE. O PGR e o eSocial pedem isso.</p>
+      ) : (
+        <p><strong>Setor:</strong> {ghe.setor} · <strong>Funções:</strong> {funcoes.map((f) => f.nome).join(', ')}</p>
+      )}
+      {!temAmbiente && <p className="text-warning">Falta descrever o ambiente deste setor (edificação, piso, iluminação, ventilação, máquinas).</p>}
+      <div className="flex flex-wrap gap-4">
+        <button type="button" className="font-semibold text-primary hover:underline" onClick={() => setEditando(true)}>Editar setor, funções e ambiente</button>
+        <button type="button" className="text-danger hover:underline" onClick={excluir}>Excluir GHE</button>
+      </div>
+    </div>
+  );
+}
+
+// Todas as funções da empresa num lugar só: em que GHE cada uma está e quantas pessoas têm essa função.
+function FuncoesDaEmpresa({ ghes, colaboradores }: { ghes: Ghe[]; colaboradores: Colaborador[] }) {
+  const chave = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const ativos = colaboradores.filter((c) => !c.dataDesligamento);
+  const linhas = ghes.flatMap((g) => (g.funcoes ?? []).map((f) => ({ funcao: f.nome, cbo: f.cbo, ghe: g.nome, pessoas: ativos.filter((c) => chave(c.cargo) === chave(f.nome)).length })));
+  const conhecidas = new Set(linhas.map((l) => chave(l.funcao)));
+  const soltas = [...new Set(ativos.map((c) => c.cargo).filter((c) => c && !conhecidas.has(chave(c))))].sort();
+  return (
+    <div className="mb-4 space-y-3">
+      <div className="flex flex-wrap gap-6">
+        <p><span className="text-2xl font-bold text-primary">{ghes.length}</span> <span className="text-sm text-text/60">GHEs</span></p>
+        <p><span className="text-2xl font-bold text-primary">{linhas.length}</span> <span className="text-sm text-text/60">Funções</span></p>
+      </div>
+      {(linhas.length > 0 || soltas.length > 0) && (
+        <details className="rounded-card border border-border p-4">
+          <summary className="cursor-pointer font-semibold text-primary">Funções da empresa</summary>
+          {linhas.length > 0 && (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="text-left text-text/60"><th className="py-1 pr-3">Função</th><th className="py-1 pr-3">CBO</th><th className="py-1 pr-3">GHE</th><th className="py-1">Pessoas</th></tr></thead>
+                <tbody>{linhas.map((l, i) => <tr key={i} className="border-t border-border"><td className="py-1 pr-3">{l.funcao}</td><td className="py-1 pr-3">{l.cbo || '—'}</td><td className="py-1 pr-3">{l.ghe}</td><td className="py-1">{l.pessoas}</td></tr>)}</tbody>
+              </table>
+            </div>
+          )}
+          {soltas.length > 0 && (
+            <p className="mt-3 text-sm text-warning">Funções de colaboradores que ainda não estão em nenhum GHE: {soltas.join(', ')}. Inclua cada uma no GHE certo.</p>
+          )}
+        </details>
+      )}
     </div>
   );
 }

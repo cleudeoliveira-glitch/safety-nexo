@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsDateString, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsDateString, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
 
 export class CreateEmpresaDto {
   @IsString()
@@ -126,14 +126,35 @@ export class CodigoExameDto {
   @Matches(/^(\d{4})?$/, { message: 'O código da Tabela 27 tem 4 dígitos.' }) codigoEsocial!: string;
 }
 
-export class CreateGheDto {
-  @IsString()
-  @Length(2, 200)
-  nome!: string;
+export class FuncaoGheDto {
+  @IsString() @Length(2, 120, { message: 'Escreva o nome da função (ex.: Soldador).' }) nome!: string;
+  @IsOptional() @Matches(/^(\d{4}-?\d{2})?$/, { message: 'O CBO tem 6 números (ex.: 7243-15).' }) cbo?: string;
+  @IsOptional() @IsString() @Length(0, 2000) atividades?: string;
+}
 
-  @IsOptional()
-  @IsString()
-  descricao?: string;
+export class AmbienteGheDto {
+  @IsOptional() @IsString() @Length(0, 200) edificacao?: string;
+  @IsOptional() @IsString() @Length(0, 120) piso?: string;
+  @IsOptional() @IsString() @Length(0, 120) paredes?: string;
+  @IsOptional() @IsString() @Length(0, 120) cobertura?: string;
+  @IsOptional() @IsString() @Length(0, 40) peDireito?: string;
+  @IsOptional() @IsIn(['', 'NATURAL', 'ARTIFICIAL', 'MISTA']) iluminacao?: string;
+  @IsOptional() @IsIn(['', 'NATURAL', 'ARTIFICIAL', 'MISTA', 'CLIMATIZADA']) ventilacao?: string;
+  @IsOptional() @IsBoolean() ceuAberto?: boolean;
+  @IsOptional() @IsBoolean() confinado?: boolean;
+  @IsOptional() @IsString() @Length(0, 500) maquinas?: string;
+  @IsOptional() @IsString() @Length(0, 200) ruidoFundo?: string;
+  @IsOptional() @IsString() @Length(0, 2000) observacoes?: string;
+}
+
+// GHE é criado por setor e função (NR-01, 1.5.7.3.2), nunca por pessoa.
+export class CreateGheDto {
+  @IsOptional() @IsString() @Length(2, 200) nome?: string;
+  @IsString() @Length(2, 120, { message: 'Informe o setor do GHE (ex.: Administrativo).' }) setor!: string;
+  @IsArray() @ArrayMinSize(1, { message: 'Inclua pelo menos uma função no GHE. O GHE é formado por funções, não por pessoas.' })
+  @ValidateNested({ each: true }) @Type(() => FuncaoGheDto) funcoes!: FuncaoGheDto[];
+  @IsOptional() @ValidateNested() @Type(() => AmbienteGheDto) ambiente?: AmbienteGheDto;
+  @IsOptional() @IsString() descricao?: string;
 }
 
 export class CreateGheRiscoDto {
@@ -259,4 +280,8 @@ export class CopiarDadosDto {
   // Vazio copia todos os GHEs da empresa de origem.
   @IsOptional() @IsArray() @IsString({ each: true }) gheIds?: string[];
   @IsOptional() @IsBoolean() responsaveis?: boolean;
+}
+
+export class ExcluirEmpresaDto {
+  @IsString() @Length(1, 300) confirmacao!: string;
 }
