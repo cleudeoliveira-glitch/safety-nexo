@@ -70,7 +70,7 @@ jobs:
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
             echo "Sem SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY: arquivos não copiados."; exit 0
           fi
-          node scripts/backup-arquivos.mjs arquivos
+          node scripts/backup-arquivos.mjs arquivos arquivos
           tar -czf arquivos.tar.gz arquivos && rm -rf arquivos
           gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --symmetric --cipher-algo AES256 \
             -o "arquivos-$DIA.tar.gz.gpg" arquivos.tar.gz <<< "$SENHA"
