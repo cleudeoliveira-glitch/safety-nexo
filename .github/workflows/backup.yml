@@ -1,5 +1,5 @@
 # Cópia de segurança dos dados, todo dia às 3h (Brasília).
-#
+#h
 # O que faz:
 #  - copia o banco inteiro (pg_dump) e tranca a cópia com senha (AES-256) antes de sair daqui;
 #  - guarda a cópia do dia por 90 dias aqui no GitHub (aba Actions > Backup > Artifacts);
@@ -38,6 +38,7 @@ jobs:
       - name: Conferir os segredos
         env:
           BANCO: ${{ secrets.BACKUP_DATABASE_URL }}
+          SENHA: ${{ secrets.BACKUP_SENHA }}
         run: |
           [ -n "$BANCO" ] || { echo "Falta o segredo BACKUP_DATABASE_URL."; exit 1; }
           [ ${#SENHA} -ge 16 ] || { echo "Falta o segredo BACKUP_SENHA (mínimo 16 caracteres)."; exit 1; }
