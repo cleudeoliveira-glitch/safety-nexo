@@ -31,6 +31,7 @@ import {
   enviarLogoEmpresa,
   gerarCipa,
   gerarDocumento,
+  gerarRelatorioPcmso,
   Ghe,
   listarColaboradores,
   listarGhes,
@@ -139,6 +140,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     os: ['Ordens-de-servico', 'Ordens de serviço geradas, uma página por colaborador.'],
     cipa: ['CIPA', 'Dimensionamento da CIPA gerado.'],
   };
+  const [anoRelatorio, setAnoRelatorio] = useState(new Date().getFullYear() - 1);
   async function baixar(tipo: TipoDocumento | 'cipa') {
     try {
       const pdf = tipo === 'cipa' ? await gerarCipa(empresaId) : await gerarDocumento(empresaId, tipo);
@@ -455,6 +457,16 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
         <div className="flex flex-wrap gap-3">
           <Botao onClick={() => baixar('pgr')}>Gerar PGR</Botao>
           <Botao onClick={() => baixar('pcmso')}>Gerar PCMSO</Botao>
+          <span className="flex items-center gap-1">
+            <select aria-label="Ano do relatório do PCMSO" value={anoRelatorio} onChange={(e) => setAnoRelatorio(Number(e.target.value))}
+              className="rounded-card border border-border bg-white px-2 py-2 text-sm">
+              {[0, 1, 2].map((n) => <option key={n} value={new Date().getFullYear() - n}>{new Date().getFullYear() - n}</option>)}
+            </select>
+            <Botao variante="secundario" title="Resumo do ano: exames feitos, resultados alterados, CATs e comparação com o ano anterior (NR-07)" onClick={async () => {
+              try { salvarArquivo(await gerarRelatorioPcmso(empresaId, anoRelatorio), `Relatorio-PCMSO-${anoRelatorio}-${empresa?.razaoSocial ?? 'empresa'}.pdf`); setAviso({ tipo: 'ok', texto: `Relatório do PCMSO de ${anoRelatorio} gerado. Falta o médico escrever a análise e assinar.` }); }
+              catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+            }}>Relatório anual do PCMSO</Botao>
+          </span>
           <Botao onClick={() => baixar('ltcat')}>Gerar LTCAT</Botao>
           <Botao onClick={() => baixar('lip')}>Gerar LIP</Botao>
           <Botao onClick={() => baixar('lpp')}>Gerar LPP</Botao>

@@ -1,0 +1,1 @@
+ALTER TABLE "RegistroSaude" ADD COLUMN "alterado" BOOLEAN NOT NULL DEFAULT false;

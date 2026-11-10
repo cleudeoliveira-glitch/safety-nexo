@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Param, Post, Res } from '@nestjs/common';
+import { BadRequestException, Controller, ForbiddenException, Param, ParseIntPipe, Post, Res } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { mensagemUpgrade, planoAtual, Recurso, temRecurso } from '../common/plano';
 import { Response } from 'express';
@@ -38,6 +38,13 @@ export class DocumentosController {
   async gerarPcmso(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Res() res: Response) {
     const { pdf, versao } = await this.pcmso.gerarPdf(consultoriaId, empresaId);
     enviarPdf(res, pdf, `PCMSO-v${versao}.pdf`);
+  }
+
+  @Recurso('documentos', 'O relatório analítico do PCMSO')
+  @Post('pcmso/relatorio/:ano')
+  async relatorioPcmso(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('ano', ParseIntPipe) ano: number, @Res() res: Response) {
+    if (ano < 2000 || ano > new Date().getFullYear()) throw new BadRequestException('Ano inválido.');
+    enviarPdf(res, await this.pcmso.relatorioAnalitico(c, e, ano), `Relatorio-analitico-PCMSO-${ano}.pdf`);
   }
 }
 

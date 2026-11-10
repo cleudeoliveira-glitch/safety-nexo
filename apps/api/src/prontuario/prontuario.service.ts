@@ -40,6 +40,7 @@ export class ProntuarioService {
       empresaId: e, colaboradorId: dto.colaboradorId, tipo: dto.tipo, data: dia(dto.data), titulo: dto.titulo.trim(), resultado: dto.resultado?.trim() || null,
       dados, profissional: dto.profissional?.trim() || null, lote: dto.tipo === 'VACINA' ? dto.lote?.trim() || null : null,
       proximaData: dto.proximaData ? dia(dto.proximaData) : null, observacao: dto.observacao?.trim() || null,
+      alterado: dto.tipo !== 'VACINA' && !!dto.alterado,
     } });
   }
 
