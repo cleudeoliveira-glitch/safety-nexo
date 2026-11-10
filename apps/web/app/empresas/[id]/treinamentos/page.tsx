@@ -156,16 +156,14 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
           <div className="grid gap-4 md:grid-cols-3">
             <Campo id="tr-nome" name="nome" rotulo="Treinamento" required defaultValue={modelo.nome} className="md:col-span-2" />
             <Campo id="tr-norma" name="norma" rotulo="Norma" defaultValue={modelo.norma ?? ''} placeholder="Ex.: NR-35" />
-            <Campo id="tr-carga" name="cargaHoraria" type="number" min={1} rotulo="Carga horária (horas)" required defaultValue={modelo.cargaHoraria ?? ''}
-              ajuda={{ oQueE: 'Total de horas da turma. Algumas NRs definem o mínimo; outras deixam para o programa da empresa.' }} />
-            <Campo id="tr-validade" name="validadeMeses" type="number" min={1} rotulo="Validade (meses)" defaultValue={modelo.validadeMeses ?? ''}
-              ajuda={{ oQueE: 'Em quanto tempo precisa reciclar. Deixe em branco se não houver prazo fixo. O painel avisa 30 dias antes de vencer.' }} />
+            <Campo id="tr-carga" name="cargaHoraria" type="number" min={1} rotulo="Carga horária (horas)" required defaultValue={modelo.cargaHoraria ?? ''} />
+            <Campo id="tr-validade" name="validadeMeses" type="number" min={1} rotulo="Validade (meses)" defaultValue={modelo.validadeMeses ?? ''} />
             <Campo id="tr-local" name="local" rotulo="Local" required placeholder="Ex.: Sala de treinamento" />
             <Campo id="tr-inicio" name="inicio" type="date" rotulo="Início" required defaultValue={hoje()} />
             <Campo id="tr-fim" name="fim" type="date" rotulo="Fim" required defaultValue={hoje()} />
             <Campo id="tr-instrutor" name="instrutor" rotulo="Instrutor(a)" required placeholder="Ex.: Cleude Oliveira" />
             <Campo id="tr-qualificacao" name="qualificacao" rotulo="Qualificação do instrutor" required placeholder="Ex.: Engenheira de Segurança do Trabalho"
-              className="md:col-span-2" ajuda={{ oQueE: 'Formação ou habilitação de quem ministrou. Sai no certificado.', baseLegal: 'NR-01, capacitação e treinamento' }} />
+              className="md:col-span-2" />
             <Campo id="tr-rt" name="responsavelTecnico" rotulo="Responsável técnico" required placeholder="Quem assina pelo treinamento" />
           </div>
           <div>

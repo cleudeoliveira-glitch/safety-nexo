@@ -315,8 +315,7 @@ function AbaContratos({ empresas, propostas, lista, agir, baixar }: { empresas: 
           <Selecao id="ct-prop" rotulo="A partir da proposta (opcional)" value={proposta} onChange={(e) => { setProposta(e.target.value); const p = abertas.find((x) => x.id === e.target.value); if (p?.empresaId) setEmpresa(p.empresaId); }}>
             <option value="">Sem proposta</option>{abertas.map((p) => <option key={p.id} value={p.id}>Nº {p.numero} · {p.clienteNome}</option>)}
           </Selecao>
-          <Selecao id="ct-emp" rotulo="Empresa" required value={empresa} onChange={(e) => setEmpresa(e.target.value)}
-            ajuda={{ oQueE: 'O contrato precisa de uma empresa cadastrada. Se o cliente for novo, cadastre a empresa antes em "+ Nova empresa".' }}>
+          <Selecao id="ct-emp" rotulo="Empresa" required value={empresa} onChange={(e) => setEmpresa(e.target.value)}>
             <option value="">Escolha</option>{empresas.map((e) => <option key={e.id} value={e.id}>{e.razaoSocial}</option>)}
           </Selecao>
           <Campo id="ct-ini" name="inicio" type="date" rotulo="Início" required defaultValue={hoje()} />
@@ -404,8 +403,7 @@ function AbaConfig({ config, agir }: { config: ConfigComercial; agir: Agir }) {
       }}>
         <Campo id="cf-cnpj" name="cnpj" rotulo="CNPJ da consultoria" defaultValue={config.cnpj ?? ''} />
         <Campo id="cf-cidade" name="cidade" rotulo="Cidade" defaultValue={config.cidade ?? ''} placeholder="Ex.: São Paulo" />
-        <Campo id="cf-chave" name="chave" rotulo="Chave Pix" defaultValue={config.pixChave ?? ''}
-          ajuda={{ oQueE: 'A chave onde você quer receber: CPF, CNPJ, e-mail, celular com +55 ou a chave aleatória.', ondeAcho: 'No app do seu banco, na área Pix.' }} />
+        <Campo id="cf-chave" name="chave" rotulo="Chave Pix" defaultValue={config.pixChave ?? ''} />
         <Campo id="cf-nome" name="nome" rotulo="Nome do recebedor" defaultValue={config.pixNome ?? ''} placeholder="Como aparece no banco" />
         <div className="flex justify-end md:col-span-2"><Botao type="submit">Salvar</Botao></div>
       </form>

@@ -56,8 +56,7 @@ export function DadosEmpresaEsocial({ empresaId, o, agir }: { empresaId: string;
           return 'Dados do eSocial salvos.';
         });
       }}>
-        <Selecao id="es-amb" name="ambiente" rotulo="Para onde enviar" defaultValue={o.esocialAmbiente} className="md:col-span-3"
-          ajuda={{ oQueE: 'Comece pelo ambiente de testes. Ele não vale para o governo e serve para conferir se está tudo certo. Depois troque para "valendo".' }}>
+        <Selecao id="es-amb" name="ambiente" rotulo="Para onde enviar" defaultValue={o.esocialAmbiente} className="md:col-span-3">
           <option value="PRODUCAO_RESTRITA">Ambiente de testes do eSocial (não vale para o governo)</option>
           <option value="PRODUCAO">Valendo (produção)</option>
         </Selecao>
@@ -103,8 +102,7 @@ export function EventosColaboradores({ empresaId, o, agir }: { empresaId: string
             }}>
               <Campo id={`cpf-${c.id}`} name="cpf" rotulo="CPF" defaultValue={c.cpf ?? ''} placeholder="000.000.000-00" />
               <Campo id={`mat-${c.id}`} name="matricula" rotulo="Matrícula no eSocial" defaultValue={c.matricula ?? ''} />
-              <Campo id={`cat-${c.id}`} name="codCateg" rotulo="Categoria" defaultValue={c.codCateg ?? ''} placeholder="Só sem matrícula"
-                ajuda={{ oQueE: 'Preencha só para quem não tem matrícula, como estagiário (901) ou diretor sem vínculo. Código da Tabela 01 do eSocial.' }} />
+              <Campo id={`cat-${c.id}`} name="codCateg" rotulo="Categoria" defaultValue={c.codCateg ?? ''} placeholder="Só sem matrícula" />
               <Botao type="submit" variante="secundario">Salvar</Botao>
             </form>
             <div className="mt-3 divide-y divide-border text-sm">
@@ -186,8 +184,7 @@ export function EventosCat({ empresaId, o, agir }: { empresaId: string; o: Orige
                   <Campo id={`num-${c.id}`} name="numero" rotulo="Número" defaultValue={e.numero ?? ''} placeholder="Ou S/N" />
                   <Campo id={`bai-${c.id}`} name="bairro" rotulo="Bairro" defaultValue={e.bairro ?? ''} />
                   <Campo id={`cep-${c.id}`} name="cep" rotulo="CEP" defaultValue={e.cep ?? ''} placeholder="00000-000" />
-                  <Campo id={`mun-${c.id}`} name="codMunic" rotulo="Código IBGE do município" defaultValue={e.codMunic ?? ''} maxLength={7}
-                    ajuda={{ oQueE: 'Código de 7 dígitos do município.', ondeAcho: 'No site do IBGE (cidades.ibge.gov.br), ao abrir a cidade.' }} />
+                  <Campo id={`mun-${c.id}`} name="codMunic" rotulo="Código IBGE do município" defaultValue={e.codMunic ?? ''} maxLength={7} />
                   <Selecao id={`uf-${c.id}`} name="uf" rotulo="UF" defaultValue={e.uf ?? ''}>
                     <option value="">Escolha</option>{UFS.map((u) => <option key={u}>{u}</option>)}
                   </Selecao>
@@ -270,8 +267,7 @@ export function EventosToxicologico({ empresaId, o, agir }: { empresaId: string;
           </Selecao>
           <Campo id="tx-data" name="data" type="date" rotulo="Data da coleta" required />
           <Campo id="tx-cnpj" name="cnpj" rotulo="CNPJ do laboratório" required placeholder="00.000.000/0000-00" />
-          <Campo id="tx-cod" name="codigo" rotulo="Código do exame" required placeholder="AB123456789"
-            ajuda={{ oQueE: 'Número do exame que vem no laudo: 2 letras e 9 números.', ondeAcho: 'No laudo do exame toxicológico, emitido pelo laboratório.' }} />
+          <Campo id="tx-cod" name="codigo" rotulo="Código do exame" required placeholder="AB123456789" />
           <Campo id="tx-med" name="medico" rotulo="Médico que assinou o laudo" required />
           <Campo id="tx-crm" name="crm" rotulo="CRM do médico" placeholder="Ex.: 12345" />
           <Selecao id="tx-uf" name="uf" rotulo="UF do CRM"><option value="">—</option>{UFS.map((u) => <option key={u}>{u}</option>)}</Selecao>

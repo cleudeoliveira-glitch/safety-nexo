@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { GuiaCompleto } from '@/components/AjudaDaTela';
 import { GUIAS } from '@/lib/ajudaTelas';
+import { BaseConhecimento } from '@/components/Dicionario';
 
 // Central de ajuda: o passo a passo de todas as telas num lugar só.
 const semAcento = (x: string) => x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -40,6 +41,11 @@ export default function CentralDeAjuda() {
         ))}
         {guias.length === 0 && <p className="text-text/60">Nada encontrado para “{busca}”.</p>}
       </div>
+      <section id="campos" className="mt-10">
+        <h2 className="text-xl font-bold text-primary">Base de Conhecimento: o que preencher em cada campo</h2>
+        <p className="mt-1 text-sm text-text/70">O que é, onde achar, exemplo e base legal de cada campo. É o mesmo texto do <b>?</b> que aparece ao lado do campo na tela.</p>
+        <div className="mt-4"><BaseConhecimento /></div>
+      </section>
     </main>
   );
 }

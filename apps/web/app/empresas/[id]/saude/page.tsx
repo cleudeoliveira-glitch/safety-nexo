@@ -202,7 +202,7 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
             {colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome} · {c.cargo}</option>)}
           </Selecao>
           <Campo id="cat-data" name="dataHora" type="datetime-local" rotulo="Data e hora do acidente" required />
-          <Selecao id="cat-tipo" name="tipoCat" rotulo="Tipo de CAT" ajuda={{ oQueE: 'Inicial para o primeiro registro. Reabertura quando a lesão volta a afastar. Óbito quando a morte acontece depois da CAT inicial.' }}>
+          <Selecao id="cat-tipo" name="tipoCat" rotulo="Tipo de CAT">
             {TIPOS_CAT.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
           </Selecao>
           <Selecao id="cat-acidente" name="tipoAcidente" rotulo="Tipo de acidente">

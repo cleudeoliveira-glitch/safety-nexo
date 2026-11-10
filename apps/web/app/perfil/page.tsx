@@ -98,7 +98,7 @@ export default function MeuPerfil() {
                       // eslint-disable-next-line @next/next/no-img-element
                       ? <img src={dados.consultoria.logo} alt="Logo da consultoria" className="h-16 max-w-40 rounded-card border border-border bg-white object-contain p-1" />
                       : <span className="flex h-16 w-28 items-center justify-center rounded-card border border-dashed border-border text-xs text-text/50">sem logo</span>}
-                    <Campo id="logo" name="logo" type="file" accept="image/png,image/jpeg" rotulo="Logo da consultoria" className="min-w-60 flex-1"
+                    <Campo id="logo-consultoria" name="logo" type="file" accept="image/png,image/jpeg" rotulo="Logo da consultoria" className="min-w-60 flex-1"
                       dica="PNG ou JPG, até 2 MB. Sai no rodapé de todos os documentos." />
                   </div>
                 </div>

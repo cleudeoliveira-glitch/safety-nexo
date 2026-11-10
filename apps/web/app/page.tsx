@@ -16,7 +16,7 @@ const passosTour: PassoTour[] = [
   { alvo: 'hoje', titulo: 'O que fazer hoje', texto: 'Aqui aparece o que falta para os documentos ficarem completos e o que está vencendo.' },
   { alvo: 'saude', titulo: 'Saúde da Empresa', texto: 'Mostra quanto da empresa já está preenchido. A meta é 100%.' },
   { alvo: 'gerar', titulo: 'Gere o documento', texto: 'Com os dados completos, o PGR sai em PDF com a logo da empresa cliente.' },
-  { alvo: 'ajuda', titulo: 'Ajuda sempre à mão', texto: 'Toda tela tem o botão "Como usar esta tela?" no canto de baixo. A Central de ajuda e o Dicionário SST ficam no fim do menu.' },
+  { alvo: 'ajuda', titulo: 'Ajuda sempre à mão', texto: 'Toda tela tem o botão "Como usar esta tela?" no canto de baixo. A Central de ajuda e a Base de Conhecimento ficam no fim do menu. E o "?" do lado de cada campo explica o que preencher.' },
 ];
 
 

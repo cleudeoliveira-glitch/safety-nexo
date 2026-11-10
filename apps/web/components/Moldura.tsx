@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AjudaDaTela } from '@/components/AjudaDaTela';
+import { WhatsAppDuvidas } from '@/components/WhatsAppDuvidas';
 import { Dicionario } from '@/components/Dicionario';
 import { libera, planoMinimo, usePlano } from '@/lib/plano';
 import { Icone } from '@/components/Icone';
@@ -30,13 +31,14 @@ export function Moldura({ children }: { children: React.ReactNode }) {
     setLogado(!!lerToken());
   }, [caminho]);
 
-  if (SEM_MENU.some((r) => r.test(caminho)) || !logado) return <>{children}</>;
+  if (SEM_MENU.some((r) => r.test(caminho)) || !logado) return <>{children}<WhatsAppDuvidas caminho={caminho} acimaDaAjuda={false} /></>;
 
   return (
     <div className="min-h-screen md:pl-72">
       <Menu caminho={caminho} />
       <div className="min-w-0 pb-20">{children}</div>
       <AjudaDaTela caminho={caminho} />
+      <WhatsAppDuvidas caminho={caminho} acimaDaAjuda />
     </div>
   );
 }
@@ -250,7 +252,7 @@ function Menu({ caminho }: { caminho: string }) {
           <Icone nome="interrogacao" className="h-[18px] w-[18px] text-menta/80" /> Central de ajuda
         </Link>
         <button type="button" onClick={() => setDicionario(true)} className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-white/85 hover:bg-white/10">
-          <Icone nome="livro" className="h-[18px] w-[18px] text-menta/80" /> Dicionário SST
+          <Icone nome="livro" className="h-[18px] w-[18px] text-menta/80" /> Base de Conhecimento
         </button>
         <div className="mt-2 flex items-center gap-3 rounded-lg bg-black/15 px-2.5 py-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-menta text-sm font-bold text-primary-escuro">

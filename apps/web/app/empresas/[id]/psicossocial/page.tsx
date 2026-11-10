@@ -132,8 +132,7 @@ export default function PsicossocialPage({ params }: { params: { id: string } })
         }}>
           <Selecao id="ps-q" name="q" rotulo="Questionário" required>{qs.map((q) => <option key={q.id} value={q.id}>{q.sigla} · {q.totalItens} perguntas</option>)}</Selecao>
           <Campo id="ps-titulo" name="titulo" rotulo="Nome" required placeholder="Ex.: Pesquisa de bem-estar 2026" />
-          <Campo id="ps-min" name="minimo" type="number" min={3} max={50} defaultValue={5} rotulo="Mínimo de respostas por setor"
-            ajuda={{ oQueE: 'Setor com menos respostas que isso não aparece no resultado, para ninguém ser identificado.' }} />
+          <Campo id="ps-min" name="minimo" type="number" min={3} max={50} defaultValue={5} rotulo="Mínimo de respostas por setor" />
           <p className="text-xs text-text/60 md:col-span-3">{qs.map((q) => `${q.sigla}: ${q.descricao}`).join(' ')} Os outros questionários (COPSOQ, HSE-IT) entram quando a versão validada em português for conferida.</p>
           <div className="flex justify-end md:col-span-3"><Botao type="submit">Abrir avaliação</Botao></div>
         </form>

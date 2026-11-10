@@ -114,8 +114,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar }: 
       <Cartao titulo="Nova APR">
         <form className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-2">
-            <Campo id="apr-atividade" name="atividade" rotulo="Atividade" required placeholder="Ex.: Troca de telhas do galpão"
-              ajuda={{ oQueE: 'O serviço que será analisado. Faça uma APR para cada atividade fora da rotina ou com risco relevante.' }} />
+            <Campo id="apr-atividade" name="atividade" rotulo="Atividade" required placeholder="Ex.: Troca de telhas do galpão" />
             <Campo id="apr-local" name="local" rotulo="Local" required placeholder="Ex.: Galpão de estoque" />
             <Campo id="apr-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
             <Campo id="apr-responsavel" name="responsavel" rotulo="Responsável" required placeholder="Ex.: Cleude Oliveira" />
@@ -215,8 +214,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
       <Cartao titulo="Nova permissão de trabalho">
         <form className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-2">
-            <Selecao id="pt-tipo" rotulo="Tipo de trabalho" value={tipo} onChange={(e) => { setTipo(e.target.value as TipoPt); setMarcados([]); }}
-              ajuda={{ oQueE: 'A permissão autoriza um trabalho de risco por um período curto (normalmente um turno), depois de conferir as condições de segurança.' }}>
+            <Selecao id="pt-tipo" rotulo="Tipo de trabalho" value={tipo} onChange={(e) => { setTipo(e.target.value as TipoPt); setMarcados([]); }}>
               {Object.entries(conteudo.tiposPt).map(([valor, t]) => <option key={valor} value={valor}>{t.nome} ({t.norma})</option>)}
             </Selecao>
             <Selecao id="pt-apr" name="aprId" rotulo="APR da atividade">
@@ -348,8 +346,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
               {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
             </Selecao>
             <Campo id="dds-busca" rotulo="Procurar tema" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Ex.: forno, escada, extintor" />
-            <Selecao id="dds-pronto" rotulo="Tema pronto" value={conteudo.temasDds.some((t) => t.tema === tema) ? tema : ''} onChange={(e) => escolherTema(e.target.value)}
-              ajuda={{ oQueE: 'Conversa curta de segurança no início do turno. Cada tema traz um caso para contar, o texto, uma dinâmica vivencial de 3 minutos e uma pergunta para a equipe. Os marcados com ✓ já foram feitos nesta empresa.' }}>
+            <Selecao id="dds-pronto" rotulo="Tema pronto" value={conteudo.temasDds.some((t) => t.tema === tema) ? tema : ''} onChange={(e) => escolherTema(e.target.value)}>
               <option value="">Escolher da biblioteca ({filtrados.length} de {conteudo.temasDds.length} temas)</option>
               {categorias.filter((c) => filtrados.some((t) => t.categoria === c)).map((c) => (
                 <optgroup key={c} label={c}>
