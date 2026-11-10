@@ -79,6 +79,11 @@ export class TreinamentosService {
     const inicio = new Date(dto.inicio);
     const fim = new Date(dto.fim);
     if (fim < inicio) throw new BadRequestException('O fim do treinamento precisa ser no mesmo dia ou depois do início.');
+    // Treinamento do catálogo com carga mínima na norma: abaixo dela o certificado não vale.
+    const modelo = CATALOGO.find((m) => m.nome === dto.nome.trim() && m.norma && m.cargaHoraria);
+    if (modelo && dto.cargaHoraria < modelo.cargaHoraria!) {
+      throw new BadRequestException(`A ${modelo.norma} pede pelo menos ${modelo.cargaHoraria} horas para "${modelo.nome}". Com menos que isso o certificado não vale.`);
+    }
     const turma = await this.prisma.turma.create({
       data: {
         empresaId,
