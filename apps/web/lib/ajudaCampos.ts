@@ -16,7 +16,7 @@ export type ItemAjuda = { campo: string; area: string; ids?: string[]; prefixos?
 
 export const AREAS = [
   'Empresa', 'Funcionários', 'PGR: GHE e riscos', 'Laudos: LTCAT, insalubridade e periculosidade', 'Saúde: ASO e PCMSO',
-  'Prontuário de saúde', 'EPI e almoxarifado', 'Treinamentos', 'CIPA', 'DDS', 'APR e Permissão de Trabalho', 'Inspeções e checklists',
+  'Prontuário de saúde', 'EPI e almoxarifado', 'Treinamentos', 'CIPA', 'DDS', 'APR e Permissão de Trabalho', 'Inspeções',
   'Plano de ação e investigação', 'CAT e afastamentos', 'eSocial', 'Emergência e brigada', 'Psicossocial', 'Ergonomia (AET)',
   'Terceiros e atestados', 'FAP e RAT', 'Calculadoras', 'SIPAT e 5S', 'Comercial', 'Sua conta', 'Normas (administração)',
 ] as const;
@@ -239,13 +239,13 @@ export const AJUDA_CAMPOS: ItemAjuda[] = [
     ajuda: { oQueE: 'Quem confere as condições e autoriza o trabalho. Precisa ser alguém capacitado e autorizado pela empresa.' } },
 
   // ───────── Inspeções ─────────
-  { campo: 'Checklist', area: 'Inspeções e checklists', ids: ['ck-modelo', 'cp-mod'],
+  { campo: 'Modelo de inspeção', area: 'Inspeções', ids: ['ck-modelo', 'cp-mod'],
     ajuda: { oQueE: 'Escolha a norma para carregar os itens prontos. Você pode reescrever, tirar ou incluir itens antes de salvar.', exemplo: 'NR-12 Máquinas; NR-10 Eletricidade' } },
-  { campo: 'Local inspecionado', area: 'Inspeções e checklists', ids: ['ck-local', 'cp-local'],
+  { campo: 'Local inspecionado', area: 'Inspeções', ids: ['ck-local', 'cp-local'],
     ajuda: { oQueE: 'Use sempre o mesmo nome para o mesmo local: assim a linha do tempo junta as inspeções e mostra se melhorou.', exemplo: 'Galpão 1 - Produção' } },
-  { campo: 'Inspetor(a)', area: 'Inspeções e checklists', ids: ['ck-inspetor', 'cp-insp'],
+  { campo: 'Inspetor(a)', area: 'Inspeções', ids: ['ck-inspetor', 'cp-insp'],
     ajuda: { oQueE: 'Quem fez a inspeção. O nome aparece no relatório em PDF.' } },
-  { campo: 'Inspecionar de novo em', area: 'Inspeções e checklists', prefixos: ['prox-'],
+  { campo: 'Inspecionar de novo em', area: 'Inspeções', prefixos: ['prox-'],
     ajuda: { oQueE: 'Quando você quer voltar a esse local. O painel te lembra na data.' } },
 
   // ───────── Plano de ação e investigação ─────────

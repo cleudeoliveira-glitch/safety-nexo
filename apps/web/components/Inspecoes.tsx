@@ -271,15 +271,15 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: 
       <Cartao titulo="Nova inspeção">
         <form key={chave} className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-3">
-            <Selecao id="ck-modelo" rotulo="Checklist" value={modelo} onChange={(e) => escolher(e.target.value)} className="md:col-span-3">
-              <option value="">Checklist livre (montar do zero)</option>
+            <Selecao id="ck-modelo" rotulo="Modelo de inspeção" value={modelo} onChange={(e) => escolher(e.target.value)} className="md:col-span-3">
+              <option value="">Inspeção livre (montar do zero)</option>
               {Array.from(new Set(modelos.map((m) => m.grupo ?? 'Modelos'))).map((g) => (
                 <optgroup key={g} label={g}>
                   {modelos.filter((m) => (m.grupo ?? 'Modelos') === g).map((m) => <option key={m.modelo} value={m.modelo}>{m.titulo}</option>)}
                 </optgroup>
               ))}
             </Selecao>
-            {!modelo && <Campo id="ck-titulo" name="titulo" rotulo="Nome do checklist" required placeholder="Ex.: Inspeção do almoxarifado" className="md:col-span-3" />}
+            {!modelo && <Campo id="ck-titulo" name="titulo" rotulo="Nome da inspeção" required placeholder="Ex.: Inspeção do almoxarifado" className="md:col-span-3" />}
             <Campo id="ck-local" name="local" rotulo="Local inspecionado" required placeholder="Ex.: Produção" list="ck-locais" />
             <datalist id="ck-locais">{locais.map((l) => <option key={l[0].local} value={l[l.length - 1].local} />)}</datalist>
             <Campo id="ck-data" type="date" rotulo="Data" required value={dataInsp} onChange={(e) => setDataInsp(e.target.value)} />

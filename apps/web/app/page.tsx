@@ -349,7 +349,8 @@ function BoasVindas({ cliente }: { cliente: boolean }) {
         </span>
         <div>
           <h1 className="text-2xl font-bold md:text-3xl">Boas-vindas ao Safety Nexo</h1>
-          <p className="text-white/80">
+          <p className="max-w-2xl text-white/90">Safety Nexo é gestão inteligente de SST. Você elabora PGR, PCMSO, LTCAT e os demais documentos, todos ligados entre si, com foto, assinatura e reconhecimento facial como prova, até no campo sem internet.</p>
+          <p className="mt-1 text-white/80">
             {cliente ? 'Sua consultoria ainda não liberou a empresa para este acesso.' : 'Comece cadastrando a primeira empresa cliente. Leva 2 minutos.'}
           </p>
         </div>
@@ -446,7 +447,7 @@ function Indicadores({ empresaId }: { empresaId: string }) {
 
 const botoesCampo: { nome: string; texto: string; icone: NomeIcone; rota: string; geral?: boolean; soConsultoria?: boolean }[] = [
   { nome: 'Inspeção', texto: 'Com foto, até sem internet', icone: 'lupa', rota: '/campo?aba=inspecao', geral: true },
-  { nome: 'Checklist', texto: 'NRs e AEP', icone: 'lista', rota: '/operacao#checklist' },
+  { nome: 'Inspeção', texto: 'NRs e AEP', icone: 'lista', rota: '/operacao#checklist' },
   { nome: 'DDS', texto: 'Tema e presença', icone: 'fala', rota: '/campo?aba=dds', geral: true },
   { nome: 'Entrega de EPI', texto: 'Com o rosto', icone: 'cracha', rota: '/campo?aba=epi', geral: true },
   { nome: 'APR', texto: 'Análise de risco', icone: 'escudo', rota: '/campo?aba=apr', geral: true },

@@ -91,7 +91,7 @@ export const GUIAS: GuiaTela[] = [
       { titulo: '4. Médico do PCMSO', passos: ['Informe o nome e o CRM do médico responsável. Ele sai no PCMSO.'] },
       { titulo: '5. CIPA', aba: 'cipa', passos: ['O sistema calcula quantos membros a empresa precisa pela NR-05.', 'Informe o início do mandato para receber os avisos de prazo.', 'A eleição completa fica em "Eleição da CIPA" no menu.'] },
       { titulo: '6. Documentos', aba: 'documentos', passos: ['Com os dados completos, clique para gerar o PGR, PCMSO, LTCAT, LIP, LPP e os outros.', 'O PDF sai com a logo da empresa no cabeçalho e a da consultoria no rodapé.', 'Cada documento gerado fica guardado com a versão e a data de vencimento.'] },
-      { titulo: '7. Acesso da empresa', passos: ['Crie um login para a empresa cliente usar o sistema no dia a dia (DDS, EPI, checklists).', 'Ela vê só os dados dela.'] },
+      { titulo: '7. Acesso da empresa', passos: ['Crie um login para a empresa cliente usar o sistema no dia a dia (DDS, EPI, inspeções).', 'Ela vê só os dados dela.'] },
     ],
   },
   {
@@ -109,10 +109,10 @@ export const GUIAS: GuiaTela[] = [
     id: 'operacao',
     endereco: rota('/operacao'),
     titulo: 'Operação diária',
-    paraQue: 'O dia a dia no campo: análise de risco (APR), permissão de trabalho (PT), DDS e checklists de NRs.',
+    paraQue: 'O dia a dia no campo: análise de risco (APR), permissão de trabalho (PT), DDS e inspeções das NRs.',
     partes: [
       { titulo: 'APR (análise de risco)', aba: 'apr', passos: ['Descreva a atividade, o local, a data e o responsável.', 'Divida o serviço em etapas. Para cada etapa, escreva os riscos e as medidas de controle.', 'Se quiser, envie uma foto do local.', 'Salve e baixe o PDF para a equipe assinar.'] },
-      { titulo: 'Permissão de trabalho', aba: 'pt', passos: ['Escolha o tipo: altura, espaço confinado, quente ou elétrico. O checklist da NR aparece pronto.', 'Ligue a PT a uma APR da mesma atividade.', 'Informe de quando até quando ela vale e quem emitiu.', 'Marque os itens do checklist conferidos no local. Ao terminar o serviço, encerre a PT.'] },
+      { titulo: 'Permissão de trabalho', aba: 'pt', passos: ['Escolha o tipo: altura, espaço confinado, quente ou elétrico. Os itens de verificação da NR aparecem prontos.', 'Ligue a PT a uma APR da mesma atividade.', 'Informe de quando até quando ela vale e quem emitiu.', 'Marque os itens conferidos no local. Ao terminar o serviço, encerre a PT.'] },
       {
         titulo: 'DDS',
         aba: 'dds',
@@ -151,11 +151,11 @@ export const GUIAS: GuiaTela[] = [
     id: 'campo',
     endereco: /^\/campo$/,
     titulo: 'Campo sem internet',
-    paraQue: 'Para entregar EPI com o rosto, fazer inspeção (checklist), DDS e APR em lugares sem sinal. Tudo fica guardado no aparelho e é enviado quando a internet voltar.',
+    paraQue: 'Para entregar EPI com o rosto, fazer inspeção, DDS e APR em lugares sem sinal. Tudo fica guardado no aparelho e é enviado quando a internet voltar.',
     partes: [
-      { titulo: 'Antes de ir ao campo', passos: ['Abra esta tela uma vez com internet, para o aparelho guardar as empresas, os checklists e os rostos dos funcionários.', 'No celular, use "Adicionar à tela inicial" para abrir o Safety Nexo como aplicativo.', 'Escolha a empresa no alto da tela.'] },
+      { titulo: 'Antes de ir ao campo', passos: ['Abra esta tela uma vez com internet, para o aparelho guardar as empresas, os modelos de inspeção e os rostos dos funcionários.', 'No celular, use "Adicionar à tela inicial" para abrir o Safety Nexo como aplicativo.', 'Escolha a empresa no alto da tela.'] },
       { titulo: 'Entrega de EPI pelo rosto', aba: 'rosto', passos: ['Escolha o funcionário.', 'Escolha o EPI do almoxarifado (nome, CA e validade vêm prontos) ou digite o EPI e o CA.', 'Informe a quantidade e o motivo.', 'Aponte a câmera para o rosto do funcionário e peça para ele piscar: isso confirma que é a pessoa de verdade.', 'Pronto: a entrega fica registrada com o comprovante facial, mesmo sem internet.'] },
-      { titulo: 'Inspeção (checklist)', aba: 'inspecao', passos: ['Escolha o checklist da norma e o local.', 'Marque cada item como conforme, não conforme ou não se aplica.', 'Nos itens não conformes, tire foto e escreva a ação de correção.', 'Salve. O relatório em PDF sai quando a internet voltar.'] },
+      { titulo: 'Inspeção', aba: 'inspecao', passos: ['Escolha o modelo de inspeção da norma e o local.', 'Marque cada item como conforme, não conforme ou não se aplica.', 'Nos itens não conformes, tire foto e escreva a ação de correção.', 'Salve. O relatório em PDF sai quando a internet voltar.'] },
       { titulo: 'DDS', aba: 'dds', passos: ['Procure o tema ou use o DDS do dia.', 'Leia o caso e faça a dinâmica com a equipe.', 'Colha a presença na lista de toque ou pelo rosto.', 'Salve.'] },
       { titulo: 'APR', aba: 'apr', passos: ['Escreva a atividade, o local, o responsável e a equipe.', 'Para cada passo do serviço, anote os riscos e as medidas de controle.', 'Salve e mostre a APR para a equipe antes de começar.'] },
       { titulo: 'Quando a internet voltar', passos: ['O envio é automático. No alto aparece quantos registros ainda estão esperando.', 'Se o sistema recusar algum, aparece o motivo e o botão "Tentar de novo".'] },

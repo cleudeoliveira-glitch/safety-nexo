@@ -54,7 +54,7 @@ export function inspecaoHtml(moldura: Moldura, d: { modelo: string; titulo: stri
     moldura,
     `
     <section>
-      <p><strong>Checklist:</strong> ${escape(d.titulo)} · <strong>Local:</strong> ${escape(d.local)} · <strong>Data:</strong> ${d.data.toLocaleDateString('pt-BR', { timeZone: 'UTC' })} · <strong>Inspetor(a):</strong> ${escape(d.inspetor)}${d.proximaInspecao ? ` · <strong>Próxima inspeção:</strong> ${d.proximaInspecao.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}` : ''}</p>
+      <p><strong>Inspeção:</strong> ${escape(d.titulo)} · <strong>Local:</strong> ${escape(d.local)} · <strong>Data:</strong> ${d.data.toLocaleDateString('pt-BR', { timeZone: 'UTC' })} · <strong>Inspetor(a):</strong> ${escape(d.inspetor)}${d.proximaInspecao ? ` · <strong>Próxima inspeção:</strong> ${d.proximaInspecao.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}` : ''}</p>
       <p class="resumo ${c.percentual >= 80 ? 'bom' : 'ruim'}"><strong>${c.percentual}% de conformidade</strong> · ${c.conformes} conforme(s), ${c.naoConformes} não conforme(s), ${d.itens.length - c.aplicaveis} não se aplica</p>
       <table class="itens">
         <thead><tr><th>Nº</th><th>Item verificado</th><th>Resultado</th><th>Observação</th></tr></thead>

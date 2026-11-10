@@ -33,7 +33,7 @@ export default function Entrar() {
         <img src="/logo.png" alt="Safety Nexo" className="h-12 w-auto" />
         <div>
           <h1 className="text-2xl font-semibold text-primary">Entrar</h1>
-          <p className="text-sm text-text/60">Acesse as suas empresas, documentos, treinamentos e vencimentos.</p>
+          <p className="text-sm text-text/60">Safety Nexo é gestão inteligente de SST. Você elabora PGR, PCMSO, LTCAT e os demais documentos, todos ligados entre si, com foto, assinatura e reconhecimento facial como prova, até no campo sem internet.</p>
         </div>
         <JaConectado />
         <Campo id="email" name="email" type="email" rotulo="E-mail" required autoComplete="email" placeholder="Ex.: voce@empresa.com.br" />
