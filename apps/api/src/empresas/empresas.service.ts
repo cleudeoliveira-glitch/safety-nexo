@@ -148,6 +148,24 @@ export class EmpresasService {
     return ghe;
   }
 
+  // Apaga o GHE com os riscos e exames dele. Os colaboradores ficam sem GHE, nada mais é apagado.
+  async excluirGhe(consultoriaId: string, empresaId: string, gheId: string) {
+    await this.buscar(consultoriaId, empresaId);
+    const ghe = await this.prisma.ghe.findFirst({ where: { id: gheId, empresaId }, select: { id: true, nome: true } });
+    if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
+    await this.prisma.ghe.delete({ where: { id: ghe.id } });
+    return { ok: true, nome: ghe.nome };
+  }
+
+  // Apaga a empresa e tudo o que é dela. Só com o nome digitado igual, para não apagar por engano.
+  async excluir(consultoriaId: string, empresaId: string, confirmacao: string) {
+    const empresa = await this.buscar(consultoriaId, empresaId);
+    const limpo = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (limpo(confirmacao) !== limpo(empresa.razaoSocial)) throw new BadRequestException('Para excluir, digite o nome da empresa exatamente como está no cadastro.');
+    await this.prisma.empresa.delete({ where: { id: empresaId } });
+    return { ok: true };
+  }
+
   async atualizarGhe(consultoriaId: string, empresaId: string, gheId: string, dto: CreateGheDto) {
     await this.buscar(consultoriaId, empresaId);
     const atual = await this.prisma.ghe.findFirst({ where: { id: gheId, empresaId } });

@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ConsultoriaId } from '../common/consultoria.decorator';
-import { CopiarDadosDto, CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, UpdateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
+import { ExcluirEmpresaDto, CopiarDadosDto, CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, UpdateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 import { EmpresasService } from './empresas.service';
 import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
@@ -63,6 +63,17 @@ export class EmpresasController {
   @Post(':empresaId/ghes')
   criarGhe(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Body() dto: CreateGheDto) {
     return this.empresas.criarGhe(consultoriaId, empresaId, dto);
+  }
+
+  // Só a consultoria exclui (a empresa cliente não tem acesso). Pede o nome da empresa como confirmação.
+  @Post(':empresaId/excluir')
+  excluir(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Body() dto: ExcluirEmpresaDto) {
+    return this.empresas.excluir(consultoriaId, empresaId, dto.confirmacao);
+  }
+
+  @Delete(':empresaId/ghes/:gheId')
+  excluirGhe(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Param('gheId') gheId: string) {
+    return this.empresas.excluirGhe(consultoriaId, empresaId, gheId);
   }
 
   @Put(':empresaId/ghes/:gheId')

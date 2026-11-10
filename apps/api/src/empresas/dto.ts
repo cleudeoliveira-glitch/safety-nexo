@@ -281,3 +281,7 @@ export class CopiarDadosDto {
   @IsOptional() @IsArray() @IsString({ each: true }) gheIds?: string[];
   @IsOptional() @IsBoolean() responsaveis?: boolean;
 }
+
+export class ExcluirEmpresaDto {
+  @IsString() @Length(1, 300) confirmacao!: string;
+}

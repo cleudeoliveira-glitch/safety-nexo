@@ -132,6 +132,8 @@ export const listarGhes = (empresaId: string) => chamar<Ghe[]>('GET', `/empresas
 export const copiarDadosDe = (empresaId: string, d: { origemId: string; gheIds?: string[]; responsaveis?: boolean }) =>
   chamar<{ copiados: string[]; pulados: string[]; responsaveis: boolean }>('POST', `/empresas/${empresaId}/copiar-de`, d);
 export const atualizarGhe = (empresaId: string, gheId: string, dados: DadosGhe) => chamar<Ghe>('PUT', `/empresas/${empresaId}/ghes/${gheId}`, dados);
+export const excluirGhe = (empresaId: string, gheId: string) => chamar<{ ok: boolean; nome: string }>('DELETE', `/empresas/${empresaId}/ghes/${gheId}`);
+export const excluirEmpresa = (empresaId: string, confirmacao: string) => chamar<{ ok: boolean }>('POST', `/empresas/${empresaId}/excluir`, { confirmacao });
 export const criarGhe = (empresaId: string, dados: DadosGhe) =>
   chamar<Ghe>('POST', `/empresas/${empresaId}/ghes`, dados);
 export const criarRisco = (empresaId: string, gheId: string, dados: Omit<Risco, 'id'>) =>
