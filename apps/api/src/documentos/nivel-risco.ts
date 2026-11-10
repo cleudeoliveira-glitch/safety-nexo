@@ -18,10 +18,10 @@ export const NOME_NIVEL: Record<Nivel, string> = { BAIXO: 'Baixo', MODERADO: 'Mo
 
 // O que fazer em cada nível: base para priorizar o plano de ação (NR-01).
 export const DECISAO_NIVEL: Record<Nivel, string> = {
-  BAIXO: 'Manter as medidas atuais e acompanhar nas inspeções.',
-  MODERADO: 'Incluir no plano de ação, com responsável e prazo.',
-  ALTO: 'Ação prioritária no plano de ação, com prazo curto.',
-  CRITICO: 'Ação imediata. Avaliar a interrupção da atividade até o controle do risco.',
+  BAIXO: 'Manter o que já existe e acompanhar.',
+  MODERADO: 'Entra no plano de ação, com responsável e prazo.',
+  ALTO: 'Resolver com prioridade, em prazo curto.',
+  CRITICO: 'Resolver já. Se não der, parar a atividade até controlar o risco.',
 };
 
 export const NOME_GRAU: Record<string, string> = { BAIXA: 'Baixa', MEDIA: 'Média', ALTA: 'Alta' };

@@ -51,6 +51,9 @@ export default function Entrar() {
         <p className="text-center text-sm">
           <Link href="/planos" className="font-semibold text-primary">Ver os planos e o que tem em cada um</Link>
         </p>
+        <p className="text-center text-xs text-text/60">
+          <Link href="/privacidade" className="hover:underline">Privacidade</Link> · <Link href="/termos" className="hover:underline">Termos de uso</Link>
+        </p>
       </form>
     </main>
   );

@@ -1,6 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
+import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
+
+// LGPD (dado de saúde) e sigilo médico: o login da empresa cliente lança o atestado, mas não vê o CID.
+// A consultoria continua vendo, para o aviso do INSS e o ranking de doenças.
+const semCid = <T extends { cid: string | null }>(x: T): T => ({ ...x, cid: null });
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { TIPOS_ATESTADO } from './absenteismo';
 import { DOCUMENTOS_TERCEIRO, ConectoresService } from './conectores.service';
@@ -61,7 +66,9 @@ export class ConectoresController {
   tipos() { return TIPOS_ATESTADO; }
 
   @Get('atestados')
-  atestados(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Query('ano') ano?: string) { return this.conectores.listarAtestados(c, e, anoDe(ano)); }
+  atestados(@ConsultoriaId() c: string, @Sessao() s: SessaoUsuario, @Param('empresaId') e: string, @Query('ano') ano?: string) {
+    return this.conectores.listarAtestados(c, e, anoDe(ano)).then((l) => (s.papel === 'EMPRESA' ? l.map(semCid) : l));
+  }
 
   @Post('atestados')
   criarAtestado(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Body() dto: AtestadoDto) { return this.conectores.criarAtestado(c, e, dto); }
@@ -70,7 +77,11 @@ export class ConectoresController {
   removerAtestado(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.conectores.removerAtestado(c, e, id); }
 
   @Get('absenteismo')
-  absenteismo(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Query('ano') ano?: string) { return this.conectores.absenteismo(c, e, anoDe(ano)); }
+  absenteismo(@ConsultoriaId() c: string, @Sessao() s: SessaoUsuario, @Param('empresaId') e: string, @Query('ano') ano?: string) {
+    return this.conectores.absenteismo(c, e, anoDe(ano)).then((r) =>
+      s.papel === 'EMPRESA' ? { ...r, porCid: [], alertasInss: r.alertasInss.map(semCid) } : r,
+    );
+  }
 
   @Put('absenteismo/jornada')
   jornada(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Body() dto: JornadaDto) { return this.conectores.salvarJornada(c, e, dto.jornadaDiariaHoras); }

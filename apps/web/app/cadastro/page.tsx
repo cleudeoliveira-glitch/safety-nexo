@@ -7,6 +7,7 @@ import { Aviso, Botao, Campo } from '@/components/ui';
 import { cadastrar, meuPlano } from '@/lib/api';
 import { PLANOS_SITE, reais, textoLimite } from '@/lib/planos';
 import { salvarToken, salvarUsuario } from '@/lib/sessao';
+import { PLATAFORMA } from '@/lib/plataforma';
 
 export default function Cadastro() {
   const [erro, setErro] = useState<string | null>(null);
@@ -30,6 +31,8 @@ export default function Cadastro() {
         nome: String(dados.get('nome')),
         email: String(dados.get('email')),
         senha: String(dados.get('senha')),
+        aceiteTermos: dados.get('aceite') === 'on',
+        versaoTermos: PLATAFORMA.versaoTermos,
       });
       salvarToken(acesso.token);
       salvarUsuario(acesso.usuario);
@@ -64,6 +67,13 @@ export default function Cadastro() {
         <Campo id="nome" name="nome" rotulo="Seu nome" required autoComplete="name" placeholder="Ex.: Maria Souza" icone="cracha" />
         <Campo id="email" name="email" type="email" rotulo="E-mail" required autoComplete="email" placeholder="Ex.: voce@empresa.com.br" />
         <Campo id="senha" name="senha" type="password" rotulo="Senha" required minLength={8} autoComplete="new-password" dica="Pelo menos 8 caracteres." />
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="aceite" required className="mt-1" />
+          <span>
+            Li e aceito os <Link href="/termos" target="_blank" className="font-semibold text-primary">termos de uso</Link> e a{' '}
+            <Link href="/privacidade" target="_blank" className="font-semibold text-primary">política de privacidade</Link>.
+          </span>
+        </label>
         {erro && <Aviso tipo="erro">{erro}</Aviso>}
         <Botao type="submit" disabled={enviando} className="w-full">{enviando ? 'Criando conta…' : 'Criar conta'}</Botao>
         <p className="text-center text-sm">

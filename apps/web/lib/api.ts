@@ -307,7 +307,7 @@ export function salvarArquivo(pdf: Blob, nome: string) {
 
 export type Acesso = { token: string; usuario: Usuario };
 export const entrar = (dados: { email: string; senha: string }) => chamar<Acesso>('POST', '/auth/entrar', dados);
-export const cadastrar = (dados: { nomeConsultoria: string; nome: string; email: string; senha: string }) =>
+export const cadastrar = (dados: { nomeConsultoria: string; nome: string; email: string; senha: string; aceiteTermos: boolean; versaoTermos?: string }) =>
   chamar<Acesso>('POST', '/auth/cadastro', dados);
 export const esqueciSenha = (email: string) => chamar<{ ok: true; emailLigado: boolean }>('POST', '/auth/esqueci', { email });
 export const redefinirSenha = (token: string, senha: string) => chamar<Acesso>('POST', '/auth/redefinir', { token, senha });
