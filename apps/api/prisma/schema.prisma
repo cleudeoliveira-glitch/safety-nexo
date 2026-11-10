@@ -54,6 +54,7 @@ model Empresa {
   responsavelTecnicoNome     String? // assina LTCAT e registros ambientais do PPP
   responsavelTecnicoRegistro String? // CREA ou CRM
   representanteLegalNome     String? // assina o PPP pela empresa
+  descricaoProcessos         String? // NR-01, 1.5.7.3.2, a: processos e ambientes de trabalho (vai no PGR)
   // eSocial: dados extras dos responsáveis (S-2220 respMonit, S-2240 respReg) e ambiente de envio.
   medicoPcmsoCpf             String?
   medicoPcmsoUf              String?
@@ -170,6 +171,9 @@ model GheRisco {
   fonteGeradora String
   medidasControle String?
   severidade  String  @default("MEDIA") // BAIXA, MEDIA, ALTA
+  // NR-01, 1.5.4.4.2: o nível de risco combina severidade e probabilidade.
+  probabilidade   String  @default("MEDIA") // BAIXA, MEDIA, ALTA
+  possiveisLesoes String? // NR-01, 1.5.7.3.2, c: possíveis lesões ou agravos à saúde
   // Avaliação do agente: base do LTCAT e do PPP (registros ambientais / S-2240).
   tipoAvaliacao       String?  // QUALITATIVA | QUANTITATIVA
   intensidade         String?  // resultado medido, com unidade. Ex.: 88 dB(A)

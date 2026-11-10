@@ -24,6 +24,7 @@ export type Empresa = {
   medicoPcmsoNome: string | null;
   medicoPcmsoCrm: string | null;
   responsavelTecnicoNome?: string | null;
+  descricaoProcessos?: string | null;
   responsavelTecnicoRegistro?: string | null;
   representanteLegalNome?: string | null;
   medicoPcmsoCpf?: string | null;
@@ -51,7 +52,7 @@ export type RiscoEsocial = {
   codAgNoc?: string; unMed?: number; utilizEPC?: number; utilizEPI?: number;
   epiCompl?: { medProtecao: boolean; condFuncto: boolean; usoInint: boolean; przValid: boolean; periodicTroca: boolean; higienizacao: boolean };
 };
-export type Risco = { id: string; tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; severidade: string } & Partial<AvaliacaoRisco>;
+export type Risco = { id: string; tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; severidade: string; probabilidade?: string; possiveisLesoes?: string | null } & Partial<AvaliacaoRisco>;
 export type Exame = {
   id: string;
   nome: string;
@@ -124,6 +125,8 @@ export const criarGhe = (empresaId: string, dados: { nome: string; descricao?: s
   chamar<Ghe>('POST', `/empresas/${empresaId}/ghes`, dados);
 export const criarRisco = (empresaId: string, gheId: string, dados: Omit<Risco, 'id'>) =>
   chamar<Risco>('POST', `/empresas/${empresaId}/ghes/${gheId}/riscos`, dados);
+export const ajustarRisco = (empresaId: string, gheId: string, riscoId: string, dados: { severidade?: string; probabilidade?: string; possiveisLesoes?: string; medidasControle?: string }) =>
+  chamar<Risco>('PATCH', `/empresas/${empresaId}/ghes/${gheId}/riscos/${riscoId}`, dados);
 export const avaliarRisco = (empresaId: string, gheId: string, riscoId: string, dados: AvaliacaoRisco) =>
   chamar<Risco>('PUT', `/empresas/${empresaId}/ghes/${gheId}/riscos/${riscoId}/avaliacao`, dados);
 export const criarExame = (empresaId: string, gheId: string, dados: Omit<Exame, 'id'>) =>
