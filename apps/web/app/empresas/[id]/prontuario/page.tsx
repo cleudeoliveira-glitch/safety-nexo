@@ -91,7 +91,7 @@ export default function ProntuarioPage({ params }: { params: { id: string } }) {
               <li key={r.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                 <div>
                   <p className="text-sm"><strong>{NOME[r.tipo]}</strong> · {r.titulo} · {data(r.data)}{!pessoa ? ` · ${r.colaborador.nome}` : ''}</p>
-                  <p className="text-xs text-text/60">{[r.lote && `Lote ${r.lote}`, r.profissional, r.resultado].filter(Boolean).join(' · ')}</p>
+                  <p className="text-xs text-text/60">{[r.lote && `Lote ${r.lote}`, r.profissional, r.resultado, r.alterado && 'alterado'].filter(Boolean).join(' · ')}</p>
                   <Resumo r={r} />
                   <Situacao r={r} superado={maisRecente.get(chaveReg(r))?.id !== r.id} />
                 </div>
@@ -110,7 +110,7 @@ export default function ProntuarioPage({ params }: { params: { id: string } }) {
           <form key={`${aba}-${chave}`} className="grid gap-4 md:grid-cols-3" onSubmit={(ev) => {
             ev.preventDefault(); const d = new FormData(ev.currentTarget); const t = (c: string) => String(d.get(c) ?? '').trim();
             agir(async () => {
-              const corpo: Record<string, unknown> = { colaboradorId: pessoa.id, tipo: aba, data: t('data'), titulo: t('titulo'), resultado: t('resultado') || undefined, profissional: t('prof') || undefined, proximaData: t('proxima') || undefined, observacao: t('obs') || undefined };
+              const corpo: Record<string, unknown> = { colaboradorId: pessoa.id, tipo: aba, data: t('data'), titulo: t('titulo'), resultado: t('resultado') || undefined, alterado: aba !== 'VACINA' && d.get('alterado') === 'on', profissional: t('prof') || undefined, proximaData: t('proxima') || undefined, observacao: t('obs') || undefined };
               if (aba === 'VACINA') corpo.lote = t('lote') || undefined;
               if (aba === 'AUDIOMETRIA') corpo.dados = { od: Object.fromEntries(FREQ.map((f) => [f, aud.od[f] ?? ''])), oe: Object.fromEntries(FREQ.map((f) => [f, aud.oe[f] ?? ''])) };
               if (aba === 'ESPIROMETRIA') corpo.dados = { cvf: t('cvf'), cvfPct: t('cvfPct'), vef1: t('vef1'), vef1Pct: t('vef1Pct'), relacao: t('relacao') };
@@ -147,6 +147,11 @@ export default function ProntuarioPage({ params }: { params: { id: string } }) {
               <Campo id="pr-rel" name="relacao" rotulo="VEF1/CVF (%)" inputMode="decimal" />
             </>)}
             {aba !== 'VACINA' && <Campo id="pr-res" name="resultado" rotulo="Resultado ou conclusão do laudo" className="md:col-span-2" />}
+            {aba !== 'VACINA' && (
+              <label className="flex items-center gap-2 self-end pb-2 text-sm">
+                <input type="checkbox" name="alterado" className="h-4 w-4 accent-primary" /> Resultado alterado
+              </label>
+            )}
             <Campo id="pr-prox" name="proxima" type="date" rotulo={aba === 'VACINA' ? 'Próxima dose' : 'Próximo exame'} />
             <Campo id="pr-obs" name="obs" rotulo="Observação" className="md:col-span-2" />
             <div className="flex items-end justify-end"><Botao type="submit">Registrar</Botao></div>

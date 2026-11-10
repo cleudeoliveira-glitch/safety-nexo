@@ -973,6 +973,7 @@ model RegistroSaude {
   dados         Json?       // audiometria: limiares por orelha e frequência; espirometria: CVF, VEF1, VEF1/CVF
   profissional  String?     // quem aplicou ou examinou, com registro
   lote          String?     // vacina
+  alterado      Boolean     @default(false) // resultado fora do normal: entra no relatório analítico do PCMSO
   proximaData   DateTime?   @db.Date // próxima dose ou próximo exame, informada pela consultora ou pelo médico
   observacao    String?
   arquivoId     String?     // laudo ou carteira de vacinação guardada no arquivo

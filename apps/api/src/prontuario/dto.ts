@@ -1,4 +1,4 @@
-import { IsDateString, IsIn, IsObject, IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsIn, IsObject, IsOptional, IsString, Length, MaxLength } from 'class-validator';
 
 export class RegistroSaudeDto {
   @IsString() colaboradorId!: string;
@@ -11,4 +11,5 @@ export class RegistroSaudeDto {
   @IsOptional() @IsString() @MaxLength(60) lote?: string;
   @IsOptional() @IsDateString() proximaData?: string;
   @IsOptional() @IsString() @MaxLength(2000) observacao?: string;
+  @IsOptional() @IsBoolean() alterado?: boolean;
 }

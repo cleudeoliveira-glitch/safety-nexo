@@ -159,6 +159,10 @@ export type TipoDocumento = 'pgr' | 'pcmso' | 'ltcat' | 'lip' | 'lpp' | 'pgrtr' 
 export const gerarDocumento = (empresaId: string, tipo: TipoDocumento) =>
   baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo === 'os' ? 'as ordens de serviço' : tipo.toUpperCase());
 
+// Relatório analítico anual do PCMSO (NR-07).
+export const gerarRelatorioPcmso = (empresaId: string, ano: number) =>
+  baixarPdf(`/empresas/${empresaId}/documentos/pcmso/relatorio/${ano}`, 'relatório analítico do PCMSO');
+
 export const buscarCipa = (empresaId: string) => chamar<Cipa>('GET', `/empresas/${empresaId}/cipa`);
 export const salvarCipa = (empresaId: string, dados: { atendidaSesmt?: boolean; inicioMandato?: string; representante?: string }) =>
   chamar<Cipa>('PUT', `/empresas/${empresaId}/cipa`, dados);
@@ -749,7 +753,7 @@ export const importarPdf = {
 
 // ---------- Prontuário de saúde ----------
 export type TipoRegistro = 'VACINA' | 'AUDIOMETRIA' | 'ESPIROMETRIA' | 'OUTRO';
-export type RegistroSaude = { id: string; colaboradorId: string; colaborador: { nome: string }; tipo: TipoRegistro; data: string; titulo: string; resultado: string | null; dados: Record<string, unknown> | null; profissional: string | null; lote: string | null; proximaData: string | null; observacao: string | null };
+export type RegistroSaude = { id: string; colaboradorId: string; colaborador: { nome: string }; tipo: TipoRegistro; data: string; titulo: string; resultado: string | null; dados: Record<string, unknown> | null; profissional: string | null; lote: string | null; proximaData: string | null; observacao: string | null; alterado?: boolean };
 export const prontuario = {
   listar: (e: string, colaboradorId?: string) => chamar<RegistroSaude[]>('GET', `/empresas/${e}/prontuario${colaboradorId ? `?colaboradorId=${colaboradorId}` : ''}`),
   criar: (e: string, d: Record<string, unknown>) => chamar<RegistroSaude>('POST', `/empresas/${e}/prontuario`, d),
