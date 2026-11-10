@@ -39,6 +39,11 @@ export class CreateEmpresaDto {
   @IsString()
   @Length(2, 120)
   representanteLegalNome?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 4000)
+  descricaoProcessos?: string;
 }
 
 export class EpiComplDto {
@@ -150,6 +155,23 @@ export class CreateGheRiscoDto {
   @IsOptional()
   @IsIn(['BAIXA', 'MEDIA', 'ALTA'])
   severidade?: string;
+
+  @IsOptional()
+  @IsIn(['BAIXA', 'MEDIA', 'ALTA'])
+  probabilidade?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 500)
+  possiveisLesoes?: string;
+}
+
+// Ajuste de um risco já cadastrado: classificação (NR-01, 1.5.4.4.2), lesões e medidas.
+export class UpdateGheRiscoDto {
+  @IsOptional() @IsIn(['BAIXA', 'MEDIA', 'ALTA']) severidade?: string;
+  @IsOptional() @IsIn(['BAIXA', 'MEDIA', 'ALTA']) probabilidade?: string;
+  @IsOptional() @IsString() @Length(0, 500) possiveisLesoes?: string;
+  @IsOptional() @IsString() @Length(0, 2000) medidasControle?: string;
 }
 
 export class CreateExameGheDto {

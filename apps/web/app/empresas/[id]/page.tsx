@@ -19,6 +19,7 @@ import {
   criarGhe,
   criarRisco,
   avaliarRisco,
+  ajustarRisco,
   Risco,
   AvaliacaoRisco,
   AnexosLaudo,
@@ -189,6 +190,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
               responsavelTecnicoNome: texto(d, 'rtNome') || undefined,
               responsavelTecnicoRegistro: texto(d, 'rtRegistro') || undefined,
               representanteLegalNome: texto(d, 'representante') || undefined,
+              descricaoProcessos: texto(d, 'processos'),
             });
             const logo = d.get('logo');
             if (logo instanceof File && logo.size > 0) await enviarLogoEmpresa(empresaId, logo);
@@ -205,6 +207,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Campo id="rtNome" name="rtNome" rotulo="Responsável técnico" defaultValue={empresa.responsavelTecnicoNome ?? ''} placeholder="Ex.: Cleude Oliveira" />
           <Campo id="rtRegistro" name="rtRegistro" rotulo="Registro profissional" defaultValue={empresa.responsavelTecnicoRegistro ?? ''} placeholder="Ex.: CREA-SP 123456" />
           <Campo id="representante" name="representante" rotulo="Representante legal" defaultValue={empresa.representanteLegalNome ?? ''} placeholder="Quem assina o PPP pela empresa" />
+          <Campo id="processos" name="processos" rotulo="Processos e ambientes de trabalho (vai no PGR)" className="md:col-span-3" defaultValue={empresa.descricaoProcessos ?? ''}
+            placeholder="Ex.: Padaria com área de produção (forno, masseira, cilindro), estoque e loja. Turno único, 8 h." />
           <div className="flex items-end justify-end md:col-span-3"><Botao type="submit">Salvar dados</Botao></div>
         </form>
       </Cartao>
@@ -235,7 +239,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                 <ul className="mt-1 space-y-1 text-sm">
                   {ghe.riscos.map((r) => (
                     <li key={r.id}>
-                      {r.agente} · {r.fonteGeradora} · severidade {r.severidade.toLowerCase()}
+                      {r.agente} · {r.fonteGeradora} · <SeloNivel severidade={r.severidade} probabilidade={r.probabilidade ?? 'MEDIA'} />
+                      {!cliente && <AjustarRisco risco={r} salvar={(dados) => agir(() => ajustarRisco(empresaId, ghe.id, r.id, dados), `Classificação de ${r.agente} salva.`)} />}
                       {AGENTES_LTCAT.includes(r.tipo) && (
                         <AvaliarRisco risco={r} anexos={anexos} salvar={(dados) => agir(() => avaliarRisco(empresaId, ghe.id, r.id, dados), `Avaliação de ${r.agente} salva.`)} />
                       )}
@@ -253,6 +258,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                       fonteGeradora: texto(d, 'fonte'),
                       medidasControle: texto(d, 'medidas') || null,
                       severidade: texto(d, 'severidade'),
+                      probabilidade: texto(d, 'probabilidade'),
+                      possiveisLesoes: texto(d, 'lesoes') || null,
                     }),
                   'Risco adicionado.',
                 )}
@@ -267,6 +274,12 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                   <option value="MEDIA">Média</option>
                   <option value="ALTA">Alta</option>
                 </Selecao>
+                <Selecao id={`prob-${ghe.id}`} name="probabilidade" rotulo="Probabilidade" defaultValue="MEDIA">
+                  <option value="BAIXA">Baixa</option>
+                  <option value="MEDIA">Média</option>
+                  <option value="ALTA">Alta</option>
+                </Selecao>
+                <Campo id={`lesoes-${ghe.id}`} name="lesoes" rotulo="Possíveis lesões ou agravos" className="md:col-span-3" placeholder="Ex.: Perda auditiva, zumbido" />
                 <Campo id={`medidas-${ghe.id}`} name="medidas" rotulo="Medidas de controle" className="md:col-span-3" placeholder="Ex.: Protetor auricular tipo plug" />
                 <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Adicionar risco</Botao></div>
               </form>
@@ -559,6 +572,47 @@ function ResumoCipa({ cipa }: { cipa: Cipa }) {
 const AGENTES_LTCAT: string[] = ['FISICO', 'QUIMICO', 'BIOLOGICO'];
 
 // Avaliação do agente para o LTCAT e o PPP. Fica fechada até a consultoria abrir.
+// NR-01, 1.5.4.4.2: o nível de risco combina severidade e probabilidade (mesma matriz do PDF do PGR).
+const PESO_GRAU: Record<string, number> = { BAIXA: 1, MEDIA: 2, ALTA: 3 };
+function nivelDoRisco(severidade: string, probabilidade: string) {
+  const p = (PESO_GRAU[severidade] ?? 2) * (PESO_GRAU[probabilidade] ?? 2);
+  if (p >= 9) return { nome: 'Crítico', cor: 'bg-red-900 text-white' };
+  if (p >= 6) return { nome: 'Alto', cor: 'bg-danger text-white' };
+  if (p >= 3) return { nome: 'Moderado', cor: 'bg-warning text-white' };
+  return { nome: 'Baixo', cor: 'bg-success text-white' };
+}
+
+function SeloNivel({ severidade, probabilidade }: { severidade: string; probabilidade: string }) {
+  const n = nivelDoRisco(severidade, probabilidade);
+  return <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${n.cor}`} title="Nível de risco = severidade x probabilidade">Risco {n.nome.toLowerCase()}</span>;
+}
+
+function AjustarRisco({ risco, salvar }: { risco: Risco; salvar: (dados: { severidade: string; probabilidade: string; possiveisLesoes: string; medidasControle: string }) => void }) {
+  return (
+    <details className="ml-1 inline-block align-top">
+      <summary className="cursor-pointer text-xs font-semibold text-primary hover:underline">Classificar</summary>
+      <form
+        className="mt-2 grid gap-2 rounded-card border border-border p-3 md:grid-cols-2"
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          const d = new FormData(ev.currentTarget);
+          salvar({ severidade: String(d.get('severidade')), probabilidade: String(d.get('probabilidade')), possiveisLesoes: String(d.get('lesoes') ?? ''), medidasControle: String(d.get('medidas') ?? '') });
+        }}
+      >
+        <Selecao id={`aj-sev-${risco.id}`} name="severidade" rotulo="Severidade" defaultValue={risco.severidade}>
+          <option value="BAIXA">Baixa</option><option value="MEDIA">Média</option><option value="ALTA">Alta</option>
+        </Selecao>
+        <Selecao id={`aj-prob-${risco.id}`} name="probabilidade" rotulo="Probabilidade" defaultValue={risco.probabilidade ?? 'MEDIA'}>
+          <option value="BAIXA">Baixa</option><option value="MEDIA">Média</option><option value="ALTA">Alta</option>
+        </Selecao>
+        <Campo id={`aj-les-${risco.id}`} name="lesoes" rotulo="Possíveis lesões ou agravos" className="md:col-span-2" defaultValue={risco.possiveisLesoes ?? ''} />
+        <Campo id={`aj-med-${risco.id}`} name="medidas" rotulo="Medidas de controle" className="md:col-span-2" defaultValue={risco.medidasControle ?? ''} />
+        <div className="flex justify-end md:col-span-2"><Botao type="submit" variante="secundario">Salvar classificação</Botao></div>
+      </form>
+    </details>
+  );
+}
+
 function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosLaudo | null; salvar: (dados: AvaliacaoRisco) => void }) {
   const avaliado = Boolean(risco.tipoAvaliacao);
   const [tipo, setTipo] = useState(risco.tipoAvaliacao ?? 'QUANTITATIVA');

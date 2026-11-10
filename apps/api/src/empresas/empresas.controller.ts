@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ConsultoriaId } from '../common/consultoria.decorator';
-import { CopiarDadosDto, CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
+import { CopiarDadosDto, CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, UpdateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 import { EmpresasService } from './empresas.service';
 import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
@@ -103,6 +103,17 @@ export class EmpresasController {
     @Body() dto: PericulosidadeDto,
   ) {
     return this.empresas.definirPericulosidade(consultoriaId, empresaId, gheId, dto);
+  }
+
+  @Patch(':empresaId/ghes/:gheId/riscos/:riscoId')
+  ajustarRisco(
+    @ConsultoriaId() consultoriaId: string,
+    @Param('empresaId') empresaId: string,
+    @Param('gheId') gheId: string,
+    @Param('riscoId') riscoId: string,
+    @Body() dto: UpdateGheRiscoDto,
+  ) {
+    return this.empresas.ajustarRisco(consultoriaId, empresaId, gheId, riscoId, dto);
   }
 
   @Put(':empresaId/ghes/:gheId/riscos/:riscoId/avaliacao')
