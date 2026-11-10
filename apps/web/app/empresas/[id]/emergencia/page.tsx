@@ -126,8 +126,7 @@ export default function EmergenciaPage({ params }: { params: { id: string } }) {
               pontoEncontro: t('pontoEncontro'), rotasFuga: t('rotasFuga'), contatos: t('contatos'), coordenador: t('coordenador'),
             }), 'Dados da brigada salvos.');
           }}>
-            <Selecao id="em-divisao" rotulo="Ocupação e risco de incêndio" value={linha} onChange={(e) => setLinha(e.target.value)} required className="md:col-span-3"
-              ajuda={{ oQueE: 'A divisão de ocupação da edificação, como está no projeto ou no AVCB. O risco depende da carga de incêndio.', ondeAcho: 'No AVCB, no CLCB ou no projeto técnico aprovado pelos Bombeiros.', baseLegal: 'IT 17/2025, Tabela A.1' }}>
+            <Selecao id="em-divisao" rotulo="Ocupação e risco de incêndio" value={linha} onChange={(e) => setLinha(e.target.value)} required className="md:col-span-3">
               <option value="">Escolha</option>
               {divisoes.map((d) => <option key={`${d.divisao}|${d.risco}`} value={`${d.divisao}|${d.risco}`}>{d.divisao} · {d.descricao} · risco {RISCO[d.risco].toLowerCase()}</option>)}
             </Selecao>

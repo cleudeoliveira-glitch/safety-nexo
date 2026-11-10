@@ -32,9 +32,9 @@ export class PrevencaoEmpresaController {
 
   @Get('relatos/qr') qr(@ConsultoriaId() c: string, @Param('empresaId') e: string) { return this.p.qr(c, e); }
   @Post('relatos/cartaz') async cartaz(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Res() res: Response) { enviarPdf(res, await this.p.cartaz(c, e), 'Cartaz-QR-relato.pdf'); }
-  @Get('relatos') relatos(@ConsultoriaId() c: string, @Param('empresaId') e: string) { return this.p.relatos(c, e); }
-  @Get('relatos/:id/foto') async fotoRelato(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Res() res: Response) { enviarImagem(res, await this.p.fotoRelato(c, e, id)); }
-  @Put('relatos/:id') tratar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() d: TratarRelatoDto) { return this.p.tratar(c, e, id, d); }
+  @Get('relatos') relatos(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Sessao() s: SessaoUsuario) { return this.p.relatos(c, e, s.papel === 'EMPRESA'); }
+  @Get('relatos/:id/foto') async fotoRelato(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Sessao() s: SessaoUsuario, @Res() res: Response) { enviarImagem(res, await this.p.fotoRelato(c, e, id, s.papel === 'EMPRESA')); }
+  @Put('relatos/:id') tratar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() d: TratarRelatoDto, @Sessao() s: SessaoUsuario) { return this.p.tratar(c, e, id, d, s.papel === 'EMPRESA'); }
 
   @Get('acoes') acoes(@ConsultoriaId() c: string, @Param('empresaId') e: string) { return this.p.acoes(c, e); }
   @Post('acoes') criar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Body() d: AcaoDto) { return this.p.criarAcao(c, e, d); }

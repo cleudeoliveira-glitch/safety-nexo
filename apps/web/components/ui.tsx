@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { CampoAjuda, Ajuda } from './CampoAjuda';
 import { Icone, NomeIcone } from './Icone';
+import { ajudaDoCampo } from '@/lib/ajudaCampos';
 
 export function Cartao({ titulo, children, id, acao }: { titulo: string; children: React.ReactNode; id?: string; acao?: React.ReactNode }) {
   return (
@@ -29,11 +30,13 @@ function iconePadrao(type?: string): NomeIcone {
   return 'caneta';
 }
 
+// O "?" usa a ajuda da tela, se houver; senão busca o mesmo texto da Base de Conhecimento (lib/ajudaCampos.ts).
 export function Rotulo({ htmlFor, rotulo, ajuda }: { htmlFor: string; rotulo: string; ajuda?: Ajuda }) {
+  const texto = ajuda ?? ajudaDoCampo(htmlFor, rotulo);
   return (
     <label htmlFor={htmlFor} className="mb-1.5 block text-[15px] font-semibold text-primary">
       {rotulo}
-      {ajuda && <CampoAjuda titulo={rotulo} ajuda={ajuda} />}
+      {texto && <CampoAjuda titulo={rotulo} ajuda={texto} />}
     </label>
   );
 }
@@ -46,7 +49,7 @@ export function Campo({ id, rotulo, ajuda, dica, className, icone, type, ...inpu
   if (type === 'file') {
     return (
       <div className={className}>
-        <Rotulo htmlFor={id} rotulo={rotulo} ajuda={ajuda} />
+        <Rotulo htmlFor={id} rotulo={rotulo} />
         <input id={id} type="file" className="block w-full rounded-card border-2 border-dashed border-primary/40 bg-white p-3 text-sm" {...input} />
         {dica && <p className="mt-1 text-xs text-text/60">{dica}</p>}
       </div>
@@ -54,7 +57,7 @@ export function Campo({ id, rotulo, ajuda, dica, className, icone, type, ...inpu
   }
   return (
     <div className={className}>
-      <Rotulo htmlFor={id} rotulo={rotulo} ajuda={ajuda} />
+      <Rotulo htmlFor={id} rotulo={rotulo} />
       <div className="relative">
         <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-primary/70">
           <Icone nome={icone ?? iconePadrao(type)} className="h-5 w-5" />
@@ -77,7 +80,7 @@ type SelecaoProps = React.SelectHTMLAttributes<HTMLSelectElement> & { id: string
 export function Selecao({ id, rotulo, ajuda, className, children, ...select }: SelecaoProps) {
   return (
     <div className={className}>
-      <Rotulo htmlFor={id} rotulo={rotulo} ajuda={ajuda} />
+      <Rotulo htmlFor={id} rotulo={rotulo} />
       <select id={id} className="campo-sn w-full" {...select}>
         {children}
       </select>

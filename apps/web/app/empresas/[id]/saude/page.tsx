@@ -78,6 +78,10 @@ function AbaAet({ empresaId, lista, cliente, recarregar, avisar, baixar }: {
 
   return (
     <div className="space-y-6">
+      <div className="card-total flex flex-wrap items-center justify-between gap-3 rounded-card p-4">
+        <p className="text-sm"><strong>Comece pela AEP.</strong> A avaliação ergonômica preliminar (NR-17, item 17.3.1) é um checklist rápido do posto. O que der &quot;não conforme&quot; vira ação no plano. A AET é para quando a AEP não basta.</p>
+        <Link href={`/empresas/${empresaId}/operacao#checklist`} className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white">Fazer a AEP</Link>
+      </div>
       {!cliente && (
         <Cartao titulo="Nova Análise Ergonômica do Trabalho">
           <p className="mb-4 text-sm text-text/60">
@@ -198,7 +202,7 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
             {colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome} · {c.cargo}</option>)}
           </Selecao>
           <Campo id="cat-data" name="dataHora" type="datetime-local" rotulo="Data e hora do acidente" required />
-          <Selecao id="cat-tipo" name="tipoCat" rotulo="Tipo de CAT" ajuda={{ oQueE: 'Inicial para o primeiro registro. Reabertura quando a lesão volta a afastar. Óbito quando a morte acontece depois da CAT inicial.' }}>
+          <Selecao id="cat-tipo" name="tipoCat" rotulo="Tipo de CAT">
             {TIPOS_CAT.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
           </Selecao>
           <Selecao id="cat-acidente" name="tipoAcidente" rotulo="Tipo de acidente">

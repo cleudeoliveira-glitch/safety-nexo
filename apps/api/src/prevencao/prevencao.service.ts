@@ -82,7 +82,7 @@ export class PrevencaoService {
     const e = await this.porToken(token);
     const relato = await this.prisma.$transaction(async (tx) => {
       const ultimo = await tx.relato.findFirst({ where: { empresaId: e.id }, orderBy: { numero: 'desc' }, select: { numero: true } });
-      return tx.relato.create({ data: { empresaId: e.id, numero: (ultimo?.numero ?? 0) + 1, tipo: d.tipo, descricao: d.descricao.trim(), local: d.local?.trim() || null, nome: d.nome?.trim() || null } });
+      return tx.relato.create({ data: { empresaId: e.id, numero: (ultimo?.numero ?? 0) + 1, tipo: d.tipo, descricao: d.descricao.trim(), local: d.local?.trim() || null, nome: d.tipo === 'DENUNCIA' ? null : d.nome?.trim() || null } });
     });
     if (foto) {
       const caminho = `relatos/${e.id}/${relato.id}.${ext(foto.mimetype)}`;
@@ -92,29 +92,30 @@ export class PrevencaoService {
     return { ok: true, numero: relato.numero };
   }
 
-  async relatos(consultoriaId: string, empresaId: string) {
+  // A empresa cliente não vê as denúncias: elas podem envolver a própria chefia.
+  async relatos(consultoriaId: string, empresaId: string, ehEmpresa = false) {
     await this.empresa(consultoriaId, empresaId);
-    const lista = await this.prisma.relato.findMany({ where: { empresaId }, orderBy: { numero: 'desc' } });
+    const lista = await this.prisma.relato.findMany({ where: { empresaId, ...(ehEmpresa ? { tipo: { not: 'DENUNCIA' } } : {}) }, orderBy: { numero: 'desc' } });
     const acoes = await this.prisma.acaoCorretiva.findMany({ where: { empresaId, origem: 'RELATO' }, select: { origemId: true } });
     const comAcao = new Set(acoes.map((a) => a.origemId));
     return lista.map(({ fotoPath, ...r }) => ({ ...r, temFoto: !!fotoPath, acoes: comAcao.has(r.id) }));
   }
 
-  private async relato(consultoriaId: string, empresaId: string, id: string) {
+  private async relato(consultoriaId: string, empresaId: string, id: string, ehEmpresa = false) {
     await this.empresa(consultoriaId, empresaId);
-    const r = await this.prisma.relato.findFirst({ where: { id, empresaId } });
+    const r = await this.prisma.relato.findFirst({ where: { id, empresaId, ...(ehEmpresa ? { tipo: { not: 'DENUNCIA' } } : {}) } });
     if (!r) throw new NotFoundException('Relato não encontrado');
     return r;
   }
 
-  async fotoRelato(consultoriaId: string, empresaId: string, id: string) {
-    const r = await this.relato(consultoriaId, empresaId, id);
+  async fotoRelato(consultoriaId: string, empresaId: string, id: string, ehEmpresa = false) {
+    const r = await this.relato(consultoriaId, empresaId, id, ehEmpresa);
     if (!r.fotoPath) throw new NotFoundException('Este relato não tem foto');
     return { dados: await guarda.ler(r.fotoPath), tipo: r.fotoPath.endsWith('.png') ? 'image/png' : r.fotoPath.endsWith('.webp') ? 'image/webp' : 'image/jpeg' };
   }
 
-  async tratar(consultoriaId: string, empresaId: string, id: string, d: TratarRelatoDto) {
-    await this.relato(consultoriaId, empresaId, id);
+  async tratar(consultoriaId: string, empresaId: string, id: string, d: TratarRelatoDto, ehEmpresa = false) {
+    await this.relato(consultoriaId, empresaId, id, ehEmpresa);
     return this.prisma.relato.update({ where: { id }, data: { status: d.status, resposta: d.resposta?.trim() || null } });
   }
 
@@ -165,7 +166,7 @@ export class PrevencaoService {
   async atualizarAcao(consultoriaId: string, empresaId: string, id: string, quem: string, d: AtualizarAcaoDto) {
     const a = await this.acao(consultoriaId, empresaId, id);
     const fechando = d.status === 'FEITA' && a.status !== 'FEITA';
-    const reabrindo = d.status === 'ABERTA' && a.status === 'FEITA';
+    const reabrindo = !!d.status && d.status !== 'FEITA' && a.status === 'FEITA';
     return this.prisma.acaoCorretiva.update({
       where: { id },
       data: {

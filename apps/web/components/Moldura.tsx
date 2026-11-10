@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AjudaDaTela } from '@/components/AjudaDaTela';
+import { WhatsAppDuvidas } from '@/components/WhatsAppDuvidas';
 import { Dicionario } from '@/components/Dicionario';
+import { libera, planoMinimo, usePlano } from '@/lib/plano';
 import { Icone } from '@/components/Icone';
 import type { Empresa } from '@/lib/api';
 import { aoMudarFoco, empresasDaConta, escolherFoco, salvarFoco } from '@/lib/empresaFoco';
@@ -29,13 +31,14 @@ export function Moldura({ children }: { children: React.ReactNode }) {
     setLogado(!!lerToken());
   }, [caminho]);
 
-  if (SEM_MENU.some((r) => r.test(caminho)) || !logado) return <>{children}</>;
+  if (SEM_MENU.some((r) => r.test(caminho)) || !logado) return <>{children}<WhatsAppDuvidas caminho={caminho} acimaDaAjuda={false} /></>;
 
   return (
     <div className="min-h-screen md:pl-72">
       <Menu caminho={caminho} />
       <div className="min-w-0 pb-20">{children}</div>
       <AjudaDaTela caminho={caminho} />
+      <WhatsAppDuvidas caminho={caminho} acimaDaAjuda />
     </div>
   );
 }
@@ -90,7 +93,7 @@ function Menu({ caminho }: { caminho: string }) {
   }, [caminho, ancora, empresaId, empresas]);
 
   const cliente = usuario?.papel === 'EMPRESA';
-  const contaEmpresa = usuario?.tipoConta === 'EMPRESA'; // empresa com técnico próprio
+  const plano = usePlano();
   const empresa = empresas?.find((e) => e.id === empresaId);
 
   function trocarEmpresa(id: string) {
@@ -161,7 +164,7 @@ function Menu({ caminho }: { caminho: string }) {
             {erro ? 'Não consegui falar com o servidor. Tente de novo em instantes.' : empresas ? 'Nenhuma empresa cadastrada ainda.' : 'Carregando…'}
           </p>
         )}
-        {!cliente && !(contaEmpresa && empresas && empresas.length > 0) && (
+        {!cliente && (
           <Link
             href="/empresas/nova"
             className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-menta px-3 py-2 text-sm font-bold text-primary-escuro transition hover:brightness-105"
@@ -179,7 +182,7 @@ function Menu({ caminho }: { caminho: string }) {
 
       <nav className="menu-rolagem mt-3 flex-1 overflow-y-auto px-3 pb-4" aria-label="Menu principal">
         {MENU.map((grupo) => {
-          const itens = grupo.itens.filter((i) => !(cliente && i.soConsultoria) && !(contaEmpresa && i.soMultiEmpresa));
+          const itens = grupo.itens.filter((i) => !(cliente && i.soConsultoria));
           if (!itens.length) return null;
           const fechado = fechados.includes(grupo.titulo);
           return (
@@ -198,11 +201,12 @@ function Menu({ caminho }: { caminho: string }) {
                   {itens.map((item) => {
                     const marcado = ativo(item);
                     const travado = !empresaId && !item.geral;
+                    const doPlano = !libera(plano, item.recurso); // o plano não libera: abre "Meu plano"
                     return (
                       <li key={item.nome}>
                         <Link
-                          href={enderecoDoItem(item, empresaId)}
-                          title={travado ? 'Cadastre uma empresa para abrir' : undefined}
+                          href={doPlano ? `/plano?recurso=${item.recurso}` : enderecoDoItem(item, empresaId)}
+                          title={doPlano ? `Faz parte do plano ${planoMinimo(item.recurso!)} ou maior` : travado ? 'Cadastre uma empresa para abrir' : undefined}
                           onClick={() => {
                             // Mesma tela, outra aba: avisa a tela para trocar de aba.
                             setTimeout(() => {
@@ -221,6 +225,7 @@ function Menu({ caminho }: { caminho: string }) {
                         >
                           <Icone nome={item.icone} className={`h-[18px] w-[18px] shrink-0 ${marcado ? 'text-success' : 'text-menta/80 group-hover:text-menta'}`} />
                           <span className="truncate font-medium">{item.nome}</span>
+                          {doPlano && <Icone nome="cadeado" className="ml-auto h-4 w-4 shrink-0 text-white/50" />}
                         </Link>
                       </li>
                     );
@@ -247,7 +252,7 @@ function Menu({ caminho }: { caminho: string }) {
           <Icone nome="interrogacao" className="h-[18px] w-[18px] text-menta/80" /> Central de ajuda
         </Link>
         <button type="button" onClick={() => setDicionario(true)} className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-white/85 hover:bg-white/10">
-          <Icone nome="livro" className="h-[18px] w-[18px] text-menta/80" /> Dicionário SST
+          <Icone nome="livro" className="h-[18px] w-[18px] text-menta/80" /> Base de Conhecimento
         </button>
         <div className="mt-2 flex items-center gap-3 rounded-lg bg-black/15 px-2.5 py-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-menta text-sm font-bold text-primary-escuro">
@@ -255,7 +260,7 @@ function Menu({ caminho }: { caminho: string }) {
           </span>
           <Link href="/perfil" className="min-w-0 flex-1 rounded hover:opacity-90" title="Meu perfil">
             <p className="truncate text-sm font-semibold text-white">{usuario?.nome ?? 'Minha conta'}</p>
-            <p className="text-xs text-white/50">{cliente ? 'Empresa cliente' : contaEmpresa ? 'Empresa' : 'Consultoria'} · meu perfil</p>
+            <p className="text-xs text-white/50">{cliente ? 'Empresa cliente' : 'Consultoria'} · meu perfil</p>
           </Link>
           <button type="button" onClick={sair} className="rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white" title="Sair" aria-label="Sair">
             <Icone nome="sair" className="h-[18px] w-[18px]" />

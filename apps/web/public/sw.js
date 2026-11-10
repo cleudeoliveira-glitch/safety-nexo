@@ -1,8 +1,8 @@
 // Service worker do Safety Nexo: guarda as telas e os arquivos do site para abrir sem internet.
 // Os dados (empresas, checklists e o que foi preenchido no campo) ficam no próprio aparelho, pela tela /campo.
 // Os modelos do reconhecimento facial também ficam guardados, para usar o rosto sem internet.
-const VERSAO = 'sn-v2';
-const ESSENCIAIS = ['/campo', '/manifest.webmanifest', '/logo.png', '/icone-192.png'];
+const VERSAO = 'sn-v4';
+const ESSENCIAIS = ['/campo', '/material', '/calculadoras', '/manifest.webmanifest', '/logo.png', '/icone-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(ESSENCIAIS)).then(() => self.skipWaiting()));

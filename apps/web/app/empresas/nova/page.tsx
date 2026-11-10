@@ -60,28 +60,18 @@ export default function NovaEmpresa() {
       <form onSubmit={salvar} className="mt-8">
         <Cartao titulo="Dados da empresa">
           <div className="grid gap-5">
-            <Campo id="razaoSocial" name="razaoSocial" rotulo="Razão social" required placeholder="Ex.: Padaria Pão Quente Ltda"
-              ajuda={{ oQueE: 'Nome oficial da empresa.', ondeAcho: 'No cartão do CNPJ, campo "Nome empresarial".' }} />
-            <Campo id="cnpj" name="cnpj" rotulo="CNPJ" required placeholder="00.000.000/0000-00"
-              ajuda={{ oQueE: 'Número de inscrição da empresa na Receita Federal.', ondeAcho: 'No cartão do CNPJ.', exemplo: '12.345.678/0001-90' }} />
+            <Campo id="razaoSocial" name="razaoSocial" rotulo="Razão social" required placeholder="Ex.: Padaria Pão Quente Ltda" />
+            <Campo id="cnpj" name="cnpj" rotulo="CNPJ" required placeholder="00.000.000/0000-00" />
             <div>
-              <Campo id="cnae" name="cnae" rotulo="CNAE principal" placeholder="Ex.: 10.91-1-01" onBlur={(e) => consultarCnae(e.target.value)}
-                ajuda={{
-                  oQueE: 'Código da atividade principal. Define o grau de risco.',
-                  ondeAcho: 'No cartão do CNPJ, campo "Código e descrição da atividade econômica principal".',
-                  exemplo: '10.91-1-01 (fabricação de produtos de panificação)',
-                  baseLegal: 'NR-04, Anexo I',
-                }} />
+              <Campo id="cnae" name="cnae" rotulo="CNAE principal" placeholder="Ex.: 10.91-1-01" onBlur={(e) => consultarCnae(e.target.value)} />
               {cnaeInfo && <p className="mt-2 text-sm text-success">{cnaeInfo.denominacao} · grau de risco {cnaeInfo.grauRisco}</p>}
               {cnaeAviso && <p className="mt-2 text-sm text-warning">{cnaeAviso}</p>}
             </div>
-            <Selecao id="grauRisco" rotulo="Grau de risco" value={grau} onChange={(e) => setGrau(e.target.value)}
-              ajuda={{ oQueE: 'De 1 a 4. Preenchido pelo CNAE; altere só se o seu caso for diferente.', baseLegal: 'NR-04, Anexo I' }}>
+            <Selecao id="grauRisco" rotulo="Grau de risco" value={grau} onChange={(e) => setGrau(e.target.value)}>
               <option value="">Selecione</option>
               {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{g}</option>)}
             </Selecao>
-            <Campo id="numFuncionarios" name="numFuncionarios" type="number" min={0} rotulo="Número de funcionários" placeholder="Ex.: 25"
-              ajuda={{ oQueE: 'Total de empregados da empresa.', ondeAcho: 'Com o RH ou na folha de pagamento.' }} />
+            <Campo id="numFuncionarios" name="numFuncionarios" type="number" min={0} rotulo="Número de funcionários" placeholder="Ex.: 25" />
             <Campo id="logo" name="logo" type="file" accept="image/png,image/jpeg" rotulo="Logo da empresa (opcional)" dica="PNG ou JPG, até 2 MB." />
           </div>
         </Cartao>

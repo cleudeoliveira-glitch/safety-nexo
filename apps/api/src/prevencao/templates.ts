@@ -13,7 +13,7 @@ function tabelaAcoes(acoes: AcaoPdf[]) {
     <thead><tr><th>Nº</th><th>Ação</th><th>Origem</th><th>Responsável</th><th>Prazo</th><th>Prioridade</th><th>Situação</th></tr></thead>
     <tbody>${acoes.map((a, i) => {
       const atrasada = a.status !== 'FEITA' && a.prazo && new Date(a.prazo) < hoje;
-      const sit = a.status === 'FEITA' ? `<span class="ok">Feita ${data(a.feitaEm)}</span>` : atrasada ? '<span class="atraso">Atrasada</span>' : 'Aberta';
+      const sit = a.status === 'FEITA' ? `<span class="ok">Feita ${data(a.feitaEm)}</span>` : atrasada ? '<span class="atraso">Atrasada</span>' : a.status === 'ANDAMENTO' ? 'Em andamento' : 'A fazer';
       return `<tr><td>${i + 1}</td><td>${escape(a.descricao)}${a.local ? `<br/><span class="meta">${escape(a.local)}</span>` : ''}</td><td>${escape(a.origemTexto || 'Manual')}</td><td>${escape(a.responsavel)}</td><td>${data(a.prazo)}</td><td>${PRIORIDADE[a.prioridade] ?? a.prioridade} · ${ESFORCO[a.esforco] ?? ''}</td><td>${sit}</td></tr>`;
     }).join('')}</tbody></table>`;
 }

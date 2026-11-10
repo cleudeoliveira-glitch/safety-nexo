@@ -148,8 +148,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
             'ASO registrado. Clique em "Baixar ASO" para gerar o PDF.',
           )}
         >
-          <Selecao id="aso-tipo" name="tipo" rotulo="Tipo de exame" required
-            ajuda={{ oQueE: 'O momento do exame: ao contratar, de tempos em tempos, ao voltar de afastamento, ao mudar de risco ou ao desligar.', baseLegal: 'NR-07, item 7.5.6' }}>
+          <Selecao id="aso-tipo" name="tipo" rotulo="Tipo de exame" required>
             {TIPOS_ASO.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
           </Selecao>
           <Campo id="aso-data" name="dataExame" type="date" rotulo="Data do exame" required defaultValue={hoje()} />
@@ -158,7 +157,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
             <option value="INAPTO">Inapto</option>
           </Selecao>
           <Campo id="aso-medico" name="medicoNome" rotulo="Médico examinador" required placeholder="Ex.: Dr. João Souza"
-            className="md:col-span-2" ajuda={{ oQueE: 'Médico que fez o exame. Pode ser diferente do responsável pelo PCMSO.' }} />
+            className="md:col-span-2" />
           <Campo id="aso-crm" name="medicoCrm" rotulo="CRM" required placeholder="Ex.: 123456-SP" />
           <div className="flex justify-end md:col-span-3"><Botao type="submit">Registrar ASO</Botao></div>
         </form>
@@ -263,10 +262,8 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
           )}
           {!itemId && (<>
           <Campo id="epi-nome" name="epi" rotulo="EPI" required placeholder="Ex.: Luva térmica" />
-          <Campo id="epi-ca" name="ca" rotulo="Número do CA" required placeholder="Ex.: 12345"
-            ajuda={{ oQueE: 'Certificado de Aprovação: número que prova que o EPI foi aprovado pelo Ministério do Trabalho.', ondeAcho: 'Gravado no próprio EPI ou na embalagem.', baseLegal: 'NR-06' }} />
-          <Campo id="epi-validade" name="validadeCa" type="date" rotulo="Validade do CA"
-            ajuda={{ oQueE: 'Até quando o CA vale. Com o CA vencido, o EPI não deve ser entregue.', ondeAcho: 'Na consulta de CA do Ministério do Trabalho.' }} />
+          <Campo id="epi-ca" name="ca" rotulo="Número do CA" required placeholder="Ex.: 12345" />
+          <Campo id="epi-validade" name="validadeCa" type="date" rotulo="Validade do CA" />
           </>)}
           <Campo id="epi-qtd" name="quantidade" type="number" min={1} rotulo="Quantidade" required defaultValue={1} />
           <Selecao id="epi-motivo" name="motivo" rotulo="Motivo" required>

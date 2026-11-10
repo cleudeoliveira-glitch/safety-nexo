@@ -114,6 +114,14 @@ export default function PsicossocialPage({ params }: { params: { id: string } })
         <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">Avaliação psicossocial</h1>
         <p className="text-text/60">{empresa.razaoSocial} · questionário anônimo pelo celular, resultado por setor e plano de ação</p>
+        {/* O nome do método à vista passa confiança: só aparecem questionários validados, com a fonte conferida. */}
+        {qs.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-text/50">Método validado</span>
+            {qs.map((q) => <span key={q.id} title={q.fonte} className="rounded-full bg-success/10 px-3 py-1 text-sm font-semibold text-success">✓ {q.nome}</span>)}
+            <span className="text-xs text-text/50">Questionário validado no Brasil, com a fonte citada no relatório.</span>
+          </div>
+        )}
       </div>
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 
@@ -124,8 +132,7 @@ export default function PsicossocialPage({ params }: { params: { id: string } })
         }}>
           <Selecao id="ps-q" name="q" rotulo="Questionário" required>{qs.map((q) => <option key={q.id} value={q.id}>{q.sigla} · {q.totalItens} perguntas</option>)}</Selecao>
           <Campo id="ps-titulo" name="titulo" rotulo="Nome" required placeholder="Ex.: Pesquisa de bem-estar 2026" />
-          <Campo id="ps-min" name="minimo" type="number" min={3} max={50} defaultValue={5} rotulo="Mínimo de respostas por setor"
-            ajuda={{ oQueE: 'Setor com menos respostas que isso não aparece no resultado, para ninguém ser identificado.' }} />
+          <Campo id="ps-min" name="minimo" type="number" min={3} max={50} defaultValue={5} rotulo="Mínimo de respostas por setor" />
           <p className="text-xs text-text/60 md:col-span-3">{qs.map((q) => `${q.sigla}: ${q.descricao}`).join(' ')} Os outros questionários (COPSOQ, HSE-IT) entram quando a versão validada em português for conferida.</p>
           <div className="flex justify-end md:col-span-3"><Botao type="submit">Abrir avaliação</Botao></div>
         </form>

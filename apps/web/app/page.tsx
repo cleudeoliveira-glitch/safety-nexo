@@ -7,7 +7,7 @@ import { ABRIR_AJUDA } from '@/components/AjudaDaTela';
 import { Icone, NomeIcone } from '@/components/Icone';
 import { CardNumero, classeCard } from '@/components/ui';
 import { PassoTour, Tour, useTourPrimeiraVez } from '@/components/Tour';
-import { buscarEmissoes, carregarPainel, Emissoes, Empresa, Painel, PainelSsma, ssma } from '@/lib/api';
+import { buscarEmissoes, carregarPainel, Emissoes, Empresa, NumerosPainel, Painel, PainelSsma, ssma } from '@/lib/api';
 import { aoMudarFoco, empresasDaConta, escolherFoco, salvarFoco } from '@/lib/empresaFoco';
 import { ehEmpresa, lerToken, lerUsuario } from '@/lib/sessao';
 
@@ -16,7 +16,7 @@ const passosTour: PassoTour[] = [
   { alvo: 'hoje', titulo: 'O que fazer hoje', texto: 'Aqui aparece o que falta para os documentos ficarem completos e o que está vencendo.' },
   { alvo: 'saude', titulo: 'Saúde da Empresa', texto: 'Mostra quanto da empresa já está preenchido. A meta é 100%.' },
   { alvo: 'gerar', titulo: 'Gere o documento', texto: 'Com os dados completos, o PGR sai em PDF com a logo da empresa cliente.' },
-  { alvo: 'ajuda', titulo: 'Ajuda sempre à mão', texto: 'Toda tela tem o botão "Como usar esta tela?" no canto de baixo. A Central de ajuda e o Dicionário SST ficam no fim do menu.' },
+  { alvo: 'ajuda', titulo: 'Ajuda sempre à mão', texto: 'Toda tela tem o botão "Como usar esta tela?" no canto de baixo. A Central de ajuda e a Base de Conhecimento ficam no fim do menu. E o "?" do lado de cada campo explica o que preencher.' },
 ];
 
 
@@ -125,6 +125,8 @@ export default function Home() {
         </div>
       )}
 
+      {!semEmpresa && <BotoesDoCampo base={empresaId ? base : ''} cliente={empresaCliente} />}
+
       {semEmpresa ? (
         <BoasVindas cliente={empresaCliente} />
       ) : (
@@ -181,8 +183,10 @@ export default function Home() {
             </div>
           </section>
 
+          {painel?.numeros && empresaId && <NumerosDoTopo n={painel.numeros} base={base} cliente={empresaCliente} />}
+
           <section className="mt-6 grid gap-6 lg:grid-cols-3">
-            <div data-tour="hoje" className="rounded-2xl border border-border bg-white p-6 shadow-sm lg:col-span-2">
+            <div id="hoje" data-tour="hoje" className="scroll-mt-20 rounded-2xl border border-border bg-white p-6 shadow-sm lg:col-span-2">
               <h2 className="flex items-center gap-2 text-lg font-semibold">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icone nome="lista" className="h-4 w-4" /></span>
                 O que fazer hoje
@@ -208,7 +212,7 @@ export default function Home() {
               </ul>
             </div>
 
-            <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+            <div id="vencimentos" className="scroll-mt-20 rounded-2xl border border-border bg-white p-6 shadow-sm">
               <h2 className="flex items-center gap-2 text-lg font-semibold">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/15 text-[#c2410c]"><Icone nome="calendario" className="h-4 w-4" /></span>
                 Vencimentos
@@ -437,5 +441,110 @@ function Indicadores({ empresaId }: { empresaId: string }) {
         </>
       )}
     </section>
+  );
+}
+
+const botoesCampo: { nome: string; texto: string; icone: NomeIcone; rota: string; geral?: boolean; soConsultoria?: boolean }[] = [
+  { nome: 'Inspeção', texto: 'Com foto, até sem internet', icone: 'lupa', rota: '/campo?aba=inspecao', geral: true },
+  { nome: 'Checklist', texto: 'NRs e AEP', icone: 'lista', rota: '/operacao#checklist' },
+  { nome: 'DDS', texto: 'Tema e presença', icone: 'fala', rota: '/campo?aba=dds', geral: true },
+  { nome: 'Entrega de EPI', texto: 'Com o rosto', icone: 'cracha', rota: '/campo?aba=epi', geral: true },
+  { nome: 'APR', texto: 'Análise de risco', icone: 'escudo', rota: '/campo?aba=apr', geral: true },
+  { nome: 'Riscos', texto: 'GHEs e agentes', icone: 'alerta', rota: '#ghes', soConsultoria: true },
+  { nome: 'Plano de ação', texto: 'Quadro 5W2H', icone: 'check', rota: '/prevencao#acoes' },
+  { nome: 'Vencimentos', texto: 'O que vence', icone: 'calendario', rota: '#vencimentos', geral: true },
+  { nome: 'Calculadoras', texto: 'CIPA, SESMT e mais', icone: 'numero', rota: '/calculadoras', geral: true },
+  { nome: 'Slides', texto: 'Treinamentos prontos', icone: 'livro', rota: '/material', geral: true },
+];
+
+// No celular, a primeira coisa da tela: botões grandes para o que se faz em campo, nas cores da marca.
+// O primeiro (Inspeção) vem em destaque; os outros seguem o mesmo cartão branco do resto do sistema.
+// No computador some, porque lá o menu da esquerda e o acesso rápido já cumprem esse papel.
+function BotoesDoCampo({ base, cliente }: { base: string; cliente: boolean }) {
+  const lista = botoesCampo.filter((b) => !(cliente && b.soConsultoria));
+  const href = (b: (typeof botoesCampo)[number]) => (b.geral ? b.rota : base ? `${base}${b.rota}` : '/empresas/nova');
+  const [primeiro, ...resto] = lista;
+  return (
+    <section className="mb-5 md:hidden" aria-label="Atalhos do campo">
+      <Link href={href(primeiro)} className="fundo-destaque flex items-center gap-4 rounded-2xl p-5 text-white shadow-lg shadow-primary/20 active:scale-[0.99]">
+        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20"><Icone nome={primeiro.icone} className="h-6 w-6" /></span>
+        <span className="flex-1">
+          <span className="block text-lg font-bold">{primeiro.nome}</span>
+          <span className="block text-sm text-white/75">{primeiro.texto}</span>
+        </span>
+        <Icone nome="seta" className="h-5 w-5 text-menta" />
+      </Link>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        {resto.map((b) => (
+          <Link key={b.nome} href={href(b)} className="flex min-h-[104px] flex-col justify-between rounded-2xl border border-border bg-white p-4 shadow-sm active:scale-[0.98] active:border-primary/40">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#168a7f] text-white shadow-sm"><Icone nome={b.icone} className="h-5 w-5" /></span>
+            <span>
+              <span className="block font-semibold leading-tight text-primary">{b.nome}</span>
+              <span className="block text-xs text-text/55">{b.texto}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// Cores do mapa de risco (NR-05): verde físico, vermelho químico, marrom biológico, amarelo ergonômico, azul acidente.
+const TIPOS_RISCO: { tipo: string; nome: string; cor: string }[] = [
+  { tipo: 'FISICO', nome: 'Físico', cor: '#16a34a' },
+  { tipo: 'QUIMICO', nome: 'Químico', cor: '#dc2626' },
+  { tipo: 'BIOLOGICO', nome: 'Biológico', cor: '#92400e' },
+  { tipo: 'ERGONOMICO', nome: 'Ergonômico', cor: '#eab308' },
+  { tipo: 'ACIDENTE', nome: 'Acidente', cor: '#2563eb' },
+];
+
+// Quatro números grandes e a rosquinha dos riscos: o retrato da empresa num olhar.
+function NumerosDoTopo({ n, base, cliente }: { n: NumerosPainel; base: string; cliente: boolean }) {
+  const fatias = TIPOS_RISCO.map((t) => ({ ...t, qtd: n.riscosPorTipo[t.tipo] ?? 0 })).filter((t) => t.qtd > 0);
+  const total = fatias.reduce((s, f) => s + f.qtd, 0);
+  let acum = 0;
+  const gradiente = fatias.map((f) => { const ini = (acum / total) * 100; acum += f.qtd; return `${f.cor} ${ini}% ${(acum / total) * 100}%`; }).join(', ');
+  return (
+    <section className="mt-6 grid gap-4 lg:grid-cols-[1fr_340px]">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Numero href={`${base}#colaboradores`} rotulo="Colaboradores" valor={n.colaboradores} detalhe="cadastrados" icone="pessoas" />
+        <Numero href={`${base}/prevencao#acoes`} rotulo="Ações abertas" valor={n.acoesAbertas} detalhe={n.acoesAtrasadas ? `${n.acoesAtrasadas} atrasada(s)` : 'nenhuma atrasada'} icone="check" alerta={n.acoesAtrasadas > 0} />
+        <Numero href="#hoje" rotulo="Urgentes" valor={n.pendenciasVencidas} detalhe={n.pendenciasVencidas ? 'vencidos: resolver já' : 'nada vencido'} icone="calendario" alerta={n.pendenciasVencidas > 0} />
+        <Numero href={`${base}/prevencao#relatos`} rotulo="Relatos novos" valor={n.relatosNovos} detalhe="pelo QR code" icone="qr" />
+      </div>
+      <div className="flex items-center gap-4 rounded-2xl border border-border bg-white p-4 shadow-sm">
+        <div className="relative h-28 w-28 shrink-0 rounded-full" style={{ background: total ? `conic-gradient(${gradiente})` : '#e5e7eb' }} aria-hidden>
+          <div className="absolute inset-[18px] flex flex-col items-center justify-center rounded-full bg-white">
+            <span className="text-2xl font-bold leading-none">{total}</span>
+            <span className="text-[10px] text-text/60">riscos</span>
+          </div>
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">Riscos por tipo</p>
+          {total === 0 ? (
+            <p className="mt-1 text-xs text-text/60">{cliente ? 'A consultoria ainda não lançou os riscos.' : <>Nenhum risco lançado. <Link href={`${base}#ghes`} className="font-semibold text-primary">Lançar riscos</Link></>}</p>
+          ) : (
+            <ul className="mt-1 space-y-0.5 text-xs">
+              {fatias.map((f) => <li key={f.tipo} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: f.cor }} />{f.nome} <span className="text-text/50">{f.qtd}</span></li>)}
+              {n.riscosAltos > 0 && <li className="pt-1 font-semibold text-danger">{n.riscosAltos} de severidade alta</li>}
+            </ul>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Cartão de número no padrão da marca: branco, ícone petróleo e só o vermelho quando algo pede atenção.
+function Numero({ href, rotulo, valor, detalhe, icone, alerta }: { href: string; rotulo: string; valor: number; detalhe: string; icone: NomeIcone; alerta?: boolean }) {
+  return (
+    <Link href={href} className="group flex flex-col justify-between rounded-2xl border border-border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+      <span className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-text/55">{rotulo}</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icone nome={icone} className="h-4 w-4" /></span>
+      </span>
+      <span className={`mt-2 text-3xl font-bold ${alerta ? 'text-danger' : 'text-primary'}`}>{valor}</span>
+      <span className={`text-xs ${alerta ? 'font-semibold text-danger' : 'text-text/55'}`}>{detalhe}</span>
+    </Link>
   );
 }

@@ -75,7 +75,8 @@ export type EntregaEpi = { id: string; epi: string; ca: string; validadeCa: stri
 export type ColaboradorDetalhe = Colaborador & { ghe: Ghe | null; asos: Aso[]; entregasEpi: EntregaEpi[]; presencasFaciais?: { refId: string; codigo: string }[] };
 export type Pendencia = { titulo: string; detalhe: string; nivel: 'vencido' | 'pendente' | 'em-dia' };
 export type Vencimento = { tipo: string; versao: number; vencimento: string; dias: number };
-export type Painel = { empresa: Pick<Empresa, 'id' | 'razaoSocial' | 'cnpj'>; percentual: number; pendencias: Pendencia[]; vencimentos: Vencimento[] };
+export type NumerosPainel = { colaboradores: number; acoesAbertas: number; acoesAtrasadas: number; relatosNovos: number; pendenciasVencidas: number; riscosPorTipo: Record<string, number>; riscosAltos: number };
+export type Painel = { empresa: Pick<Empresa, 'id' | 'razaoSocial' | 'cnpj'>; percentual: number; pendencias: Pendencia[]; vencimentos: Vencimento[]; numeros?: NumerosPainel };
 export type Cipa = {
   grauRisco: number | null;
   numFuncionarios: number;
@@ -303,7 +304,7 @@ export function salvarArquivo(pdf: Blob, nome: string) {
 
 export type Acesso = { token: string; usuario: Usuario };
 export const entrar = (dados: { email: string; senha: string }) => chamar<Acesso>('POST', '/auth/entrar', dados);
-export const cadastrar = (dados: { tipo: 'CONSULTORIA' | 'EMPRESA'; nomeConsultoria: string; cnpj?: string; nome: string; email: string; senha: string }) =>
+export const cadastrar = (dados: { nomeConsultoria: string; nome: string; email: string; senha: string }) =>
   chamar<Acesso>('POST', '/auth/cadastro', dados);
 export const esqueciSenha = (email: string) => chamar<{ ok: true; emailLigado: boolean }>('POST', '/auth/esqueci', { email });
 export const redefinirSenha = (token: string, senha: string) => chamar<Acesso>('POST', '/auth/redefinir', { token, senha });
@@ -837,7 +838,7 @@ export const admin = {
   detalhe: (id: string) => chamar<ConsultoriaAdmDetalhe>('GET', `/admin/consultorias/${id}`),
   atualizar: (id: string, dados: { plano?: string; limiteEmpresas?: number; bloqueada?: boolean; motivoBloqueio?: string; observacaoAdm?: string }) =>
     chamar<unknown>('PATCH', `/admin/consultorias/${id}`, dados),
-  convites: () => chamar<{ consultoria: string; empresa: string; whatsappConsultoria: string; whatsappEmpresa: string }>('GET', '/admin/convites'),
+  convites: () => chamar<{ link: string; whatsapp: string }>('GET', '/admin/convites'),
   linkSenha: (usuarioId: string) => chamar<{ link: string; whatsapp: string }>('POST', `/admin/usuarios/${usuarioId}/link-senha`),
 };
 
@@ -873,8 +874,8 @@ export const avisosEmail = {
   preferencia: (avisosEmail: boolean) => chamar<{ avisosEmail: boolean }>('PUT', '/avisos/preferencia', { avisosEmail }),
 };
 
-export type TipoRelato = 'QUASE_ACIDENTE' | 'CONDICAO_INSEGURA' | 'ATO_INSEGURO' | 'SUGESTAO';
-export const TIPOS_RELATO: Record<TipoRelato, string> = { QUASE_ACIDENTE: 'Quase acidente', CONDICAO_INSEGURA: 'Algo perigoso no local', ATO_INSEGURO: 'Alguém fazendo algo arriscado', SUGESTAO: 'Ideia para melhorar' };
+export type TipoRelato = 'QUASE_ACIDENTE' | 'CONDICAO_INSEGURA' | 'ATO_INSEGURO' | 'SUGESTAO' | 'DENUNCIA';
+export const TIPOS_RELATO: Record<TipoRelato, string> = { QUASE_ACIDENTE: 'Quase acidente', CONDICAO_INSEGURA: 'Algo perigoso no local', ATO_INSEGURO: 'Alguém fazendo algo arriscado', SUGESTAO: 'Ideia para melhorar', DENUNCIA: 'Denúncia de assédio ou abuso' };
 export type PerigoIa = { descricao: string; nr: string | null; tipo: string; probabilidade: number; severidade: number; acoes: string[] };
 export type AnaliseFotoIa = { resumo: string; imagemUtil: boolean; perigos: PerigoIa[]; boasPraticas: string[] };
 export type Relato = {
@@ -885,7 +886,7 @@ export type Prioridade = 'ALTA' | 'MEDIA' | 'BAIXA';
 export type Esforco = 'RAPIDO' | 'MEDIO' | 'DEMORADO';
 export type AcaoCorretiva = {
   id: string; origem: string; origemId: string | null; origemTexto: string | null; descricao: string; local: string | null; responsavel: string | null;
-  prazo: string | null; prioridade: Prioridade; esforco: Esforco; status: 'ABERTA' | 'FEITA'; feitaEm: string | null; feitaPor: string | null;
+  prazo: string | null; prioridade: Prioridade; esforco: Esforco; status: 'ABERTA' | 'ANDAMENTO' | 'FEITA'; feitaEm: string | null; feitaPor: string | null;
   observacao: string | null; temEvidencia: boolean; criadoEm: string; somenteLeitura: boolean;
 };
 export type NovaAcao = { descricao: string; local?: string; responsavel?: string; prazo?: string; prioridade?: Prioridade; esforco?: Esforco; origem?: string; origemId?: string; origemTexto?: string };
@@ -983,8 +984,18 @@ export const meuEspaco = {
 export type MeuPlano = {
   plano: string; nomePlano: string; limiteEmpresas: number | null; empresas: number; acessoTotal: boolean;
   pedidoPlano: string | null; pedidoPlanoEm: string | null;
+  emTeste?: boolean; testeAte?: string | null; recursos?: string[];
+  limites?: { funcionarios: number | null; psicossocialMes: number | null; equipe: number | null } | null;
+};
+export type RecursosPlano = { codigo: string; nome: string; emTeste: boolean; testeAte: string | null; recursos: string[]; limites: MeuPlano['limites'] };
+export type PessoaEquipe = { id: string; nome: string; email: string; createdAt: string; ultimoAcesso: string | null };
+export const equipe = {
+  listar: () => chamar<{ pessoas: PessoaEquipe[]; limite: number | null; eu: string }>('GET', '/equipe'),
+  convidar: (dados: { nome: string; email: string }) => chamar<{ id: string; nome: string } & LinkSenha>('POST', '/equipe', dados),
+  remover: (id: string) => chamar<{ ok: true }>('DELETE', `/equipe/${id}`),
 };
 export const meuPlano = {
+  recursos: () => chamar<RecursosPlano>('GET', '/meu-plano/recursos'),
   ver: () => chamar<MeuPlano>('GET', '/meu-plano'),
   pedir: (plano: string) => chamar<MeuPlano>('POST', '/meu-plano/pedido', { plano }),
 };

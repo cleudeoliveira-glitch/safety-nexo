@@ -271,8 +271,7 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: 
       <Cartao titulo="Nova inspeção">
         <form key={chave} className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-3">
-            <Selecao id="ck-modelo" rotulo="Checklist" value={modelo} onChange={(e) => escolher(e.target.value)} className="md:col-span-3"
-              ajuda={{ oQueE: 'Escolha a norma para carregar os itens prontos. Você pode reescrever, tirar ou incluir itens antes de salvar.' }}>
+            <Selecao id="ck-modelo" rotulo="Checklist" value={modelo} onChange={(e) => escolher(e.target.value)} className="md:col-span-3">
               <option value="">Checklist livre (montar do zero)</option>
               {Array.from(new Set(modelos.map((m) => m.grupo ?? 'Modelos'))).map((g) => (
                 <optgroup key={g} label={g}>
@@ -281,8 +280,7 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: 
               ))}
             </Selecao>
             {!modelo && <Campo id="ck-titulo" name="titulo" rotulo="Nome do checklist" required placeholder="Ex.: Inspeção do almoxarifado" className="md:col-span-3" />}
-            <Campo id="ck-local" name="local" rotulo="Local inspecionado" required placeholder="Ex.: Produção" list="ck-locais"
-              ajuda={{ oQueE: 'Use sempre o mesmo nome para o mesmo local: assim a linha do tempo junta as inspeções e mostra se melhorou.' }} />
+            <Campo id="ck-local" name="local" rotulo="Local inspecionado" required placeholder="Ex.: Produção" list="ck-locais" />
             <datalist id="ck-locais">{locais.map((l) => <option key={l[0].local} value={l[l.length - 1].local} />)}</datalist>
             <Campo id="ck-data" type="date" rotulo="Data" required value={dataInsp} onChange={(e) => setDataInsp(e.target.value)} />
             <Campo id="ck-inspetor" name="inspetor" rotulo="Inspetor(a)" required placeholder="Quem fez a inspeção" />

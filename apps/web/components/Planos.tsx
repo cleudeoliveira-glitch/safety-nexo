@@ -17,13 +17,18 @@ export function GradePlanos({ atual, acao }: { atual?: string; acao: (p: PlanoSi
             </div>
             <h3 className="text-lg font-semibold text-primary">{p.nome}</h3>
             <p className="mt-1">
-              <span className="text-3xl font-bold">{reais(p.precoMensal)}</span>
+              <span className="text-3xl font-bold">{p.precoMensal ? reais(p.precoMensal) : "R$ 0"}</span>
               {p.precoMensal > 0 && <span className="text-sm text-text/60"> por mês</span>}
             </p>
             <p className="mt-3 font-semibold">{textoLimite(p.limiteEmpresas)}</p>
-            <p className="mt-1 text-sm text-text/60">Funcionários sem limite em cada empresa</p>
-            <p className="mt-1 text-sm text-text/60">Todos os módulos do sistema</p>
-            <p className="mt-3 flex-1 text-sm text-text/70">{p.paraQuem}</p>
+            <p className="mt-2 text-sm text-text/70">{p.paraQuem}</p>
+            <ul className="mt-3 flex-1 space-y-1.5 text-sm">
+              {p.base && <li className="font-semibold text-primary">{p.base}, mais:</li>}
+              {p.inclui.map((i) => (
+                <li key={i} className="flex gap-2"><span className={p.precoMensal ? 'text-success' : 'text-text/40'} aria-hidden>✓</span><span>{i}</span></li>
+              ))}
+            </ul>
+            {p.precoMensal > 0 && <p className="mt-3 text-xs text-text/60">No plano anual, 2 meses grátis.</p>}
             <div className="mt-4">{acao(p)}</div>
           </div>
         );
@@ -35,8 +40,8 @@ export function GradePlanos({ atual, acao }: { atual?: string; acao: (p: PlanoSi
 export function InclusoEmTodos() {
   return (
     <div>
-      <h2 className="text-xl font-semibold">O que vem em todos os planos</h2>
-      <p className="mt-1 text-sm text-text/60">Nenhum módulo fica de fora. O que muda de um plano para outro é só quantas empresas clientes você atende.</p>
+      <h2 className="text-xl font-semibold">O que vem em todos os planos pagos</h2>
+      <p className="mt-1 text-sm text-text/60">Do Start para cima, todos os documentos e módulos do dia a dia estão liberados. Cada degrau acrescenta mais empresas e mais recursos.</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {INCLUSO_EM_TODOS.map((g) => (
           <div key={g.grupo} className="rounded-card border border-border bg-white p-5">

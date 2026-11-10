@@ -292,17 +292,12 @@ function ConvidarCliente() {
     <section className="rounded-card border border-border bg-white p-5 shadow-sm">
       <h2 className="text-lg font-semibold">Convidar cliente</h2>
       <p className="mt-1 text-sm text-text/60">Mande o link para quem vai testar. A pessoa cria a própria conta, com 14 dias de tudo liberado, e não vê este painel nem as outras contas.</p>
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        {([['Consultoria', links.consultoria, links.whatsappConsultoria], ['Empresa com técnico próprio', links.empresa, links.whatsappEmpresa]] as const).map(([nome, link, zap]) => (
-          <div key={nome} className="card-total rounded-card p-4 text-sm">
-            <p className="font-semibold">{nome}</p>
-            <p className="mt-1 break-all text-xs text-text/70">{link}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <a href={zap} target="_blank" rel="noreferrer" className="rounded-card bg-success px-3 py-2 text-xs font-semibold text-white">Mandar pelo WhatsApp</a>
-              <button type="button" onClick={() => copiar(link)} className="rounded-card border border-border bg-white px-3 py-2 text-xs font-semibold">{copiado === link ? 'Copiado' : 'Copiar link'}</button>
-            </div>
-          </div>
-        ))}
+      <div className="card-total mt-4 rounded-card p-4 text-sm">
+        <p className="break-all text-xs text-text/70">{links.link}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a href={links.whatsapp} target="_blank" rel="noreferrer" className="rounded-card bg-success px-3 py-2 text-xs font-semibold text-white">Mandar pelo WhatsApp</a>
+          <button type="button" onClick={() => copiar(links.link)} className="rounded-card border border-border bg-white px-3 py-2 text-xs font-semibold">{copiado === links.link ? 'Copiado' : 'Copiar link'}</button>
+        </div>
       </div>
     </section>
   );

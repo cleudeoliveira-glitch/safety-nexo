@@ -132,9 +132,11 @@ export class PainelService {
     pendencias.push(...(await this.pendenciasDeReinspecao(empresaId, hoje)));
 
     // Relatos novos do QR code e ações do plano com prazo vencido.
-    const [relatosNovos, acoesAtrasadas] = await Promise.all([
+    const [relatosNovos, acoesAtrasadas, acoesAbertas, riscos] = await Promise.all([
       this.prisma.relato.count({ where: { empresaId, status: 'NOVO' } }),
-      this.prisma.acaoCorretiva.count({ where: { empresaId, status: 'ABERTA', prazo: { lt: hoje } } }),
+      this.prisma.acaoCorretiva.count({ where: { empresaId, status: { not: 'FEITA' }, prazo: { lt: hoje } } }),
+      this.prisma.acaoCorretiva.count({ where: { empresaId, status: { not: 'FEITA' } } }),
+      this.prisma.gheRisco.groupBy({ by: ['tipo', 'severidade'], where: { ghe: { empresaId } }, _count: { _all: true } }),
     ]);
     if (relatosNovos) pendencias.unshift({ titulo: `${relatosNovos} relato(s) novo(s) pelo QR code`, detalhe: 'Veja o que os trabalhadores relataram em Prevenção > Relatos', nivel: 'pendente' });
     if (acoesAtrasadas) pendencias.unshift({ titulo: `${acoesAtrasadas} ação(ões) do plano atrasada(s)`, detalhe: 'Passou do prazo no Plano de ação', nivel: 'vencido' });
@@ -160,6 +162,16 @@ export class PainelService {
       percentual,
       pendencias,
       vencimentos,
+      // Números grandes do topo do painel e a rosquinha dos riscos por tipo (cores do mapa de risco).
+      numeros: {
+        colaboradores: empresa.colaboradores.length,
+        acoesAbertas,
+        acoesAtrasadas,
+        relatosNovos,
+        pendenciasVencidas: pendencias.filter((p) => p.nivel === 'vencido').length,
+        riscosPorTipo: riscos.reduce<Record<string, number>>((m, r) => ({ ...m, [r.tipo]: (m[r.tipo] ?? 0) + r._count._all }), {}),
+        riscosAltos: riscos.filter((r) => r.severidade === 'ALTA').reduce((t, r) => t + r._count._all, 0),
+      },
     };
   }
 

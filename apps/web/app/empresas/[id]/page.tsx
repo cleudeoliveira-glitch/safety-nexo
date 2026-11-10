@@ -194,21 +194,17 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
             if (logo instanceof File && logo.size > 0) await enviarLogoEmpresa(empresaId, logo);
           }, 'Dados da empresa salvos.')}
         >
-          <Campo id="cnae" name="cnae" rotulo="CNAE" defaultValue={empresa.cnae ?? ''} placeholder="Ex.: 10.91-1-01"
-            ajuda={{ oQueE: 'Código da atividade principal.', ondeAcho: 'No cartão do CNPJ.', baseLegal: 'NR-04, Anexo I' }} />
-          <Selecao id="grauRisco" name="grauRisco" rotulo="Grau de risco" defaultValue={empresa.grauRisco ?? ''}
-            ajuda={{ oQueE: 'Deixe em branco para o sistema preencher pelo CNAE.', baseLegal: 'NR-04, Anexo I' }}>
+          <Campo id="cnae" name="cnae" rotulo="CNAE" defaultValue={empresa.cnae ?? ''} placeholder="Ex.: 10.91-1-01" />
+          <Selecao id="grauRisco" name="grauRisco" rotulo="Grau de risco" defaultValue={empresa.grauRisco ?? ''}>
             <option value="">Pelo CNAE</option>
             {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{g}</option>)}
           </Selecao>
           <Campo id="numFuncionarios" name="numFuncionarios" type="number" min={0} rotulo="Funcionários" defaultValue={empresa.numFuncionarios} />
           <Campo id="logo" name="logo" type="file" accept="image/png,image/jpeg" rotulo="Logo da empresa" className="md:col-span-2"
             dica={empresa.logoPath ? 'Logo já enviada. Envie outra para trocar.' : 'PNG ou JPG, até 2 MB. Sai no cabeçalho dos documentos.'} />
-          <Campo id="rtNome" name="rtNome" rotulo="Responsável técnico" defaultValue={empresa.responsavelTecnicoNome ?? ''} placeholder="Ex.: Cleude Oliveira"
-            ajuda={{ oQueE: 'Engenheiro(a) de segurança ou médico(a) do trabalho que assina o LTCAT e os registros ambientais do PPP.', baseLegal: 'Lei 8.213/91, art. 58' }} />
+          <Campo id="rtNome" name="rtNome" rotulo="Responsável técnico" defaultValue={empresa.responsavelTecnicoNome ?? ''} placeholder="Ex.: Cleude Oliveira" />
           <Campo id="rtRegistro" name="rtRegistro" rotulo="Registro profissional" defaultValue={empresa.responsavelTecnicoRegistro ?? ''} placeholder="Ex.: CREA-SP 123456" />
-          <Campo id="representante" name="representante" rotulo="Representante legal" defaultValue={empresa.representanteLegalNome ?? ''} placeholder="Quem assina o PPP pela empresa"
-            ajuda={{ oQueE: 'Sócio, diretor ou procurador que assina o PPP em nome da empresa.' }} />
+          <Campo id="representante" name="representante" rotulo="Representante legal" defaultValue={empresa.representanteLegalNome ?? ''} placeholder="Quem assina o PPP pela empresa" />
           <div className="flex items-end justify-end md:col-span-3"><Botao type="submit">Salvar dados</Botao></div>
         </form>
       </Cartao>
@@ -219,8 +215,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar((d) => criarGhe(empresaId, { nome: texto(d, 'nome'), descricao: texto(d, 'descricao') || undefined }), 'GHE cadastrado.')}
         >
-          <Campo id="ghe-nome" name="nome" rotulo="Nome do GHE" required placeholder="Ex.: Produção"
-            ajuda={{ oQueE: 'Grupo de trabalhadores expostos aos mesmos riscos, do mesmo jeito.', exemplo: 'Produção, Escritório, Manutenção' }} />
+          <Campo id="ghe-nome" name="nome" rotulo="Nome do GHE" required placeholder="Ex.: Produção" />
           <Campo id="ghe-descricao" name="descricao" rotulo="Descrição" placeholder="Ex.: Operadores de forno e masseiros" />
           <div className="flex items-end justify-end"><Botao type="submit">Adicionar GHE</Botao></div>
         </form>
@@ -355,15 +350,11 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           )}
         >
           <Campo id="colab-nome" name="nome" rotulo="Nome" required placeholder="Ex.: Maria Silva" />
-          <Campo id="colab-cpf" name="cpf" rotulo="CPF" placeholder="Ex.: 123.456.789-00"
-            ajuda={{ oQueE: 'CPF do trabalhador. Sai no ASO e na ficha de EPI.', ondeAcho: 'No documento do trabalhador ou com o RH.' }} />
+          <Campo id="colab-cpf" name="cpf" rotulo="CPF" placeholder="Ex.: 123.456.789-00" />
           <Campo id="colab-cargo" name="cargo" rotulo="Cargo" required placeholder="Ex.: Padeira" />
-          <Campo id="colab-admissao" name="dataAdmissao" type="date" rotulo="Admissão"
-            ajuda={{ oQueE: 'Data em que o colaborador foi contratado. Desempata a eleição da CIPA (tempo de casa).', ondeAcho: 'Na carteira de trabalho ou com o RH.' }} />
-          <Campo id="colab-cbo" name="cbo" rotulo="CBO" placeholder="Ex.: 8483-05"
-            ajuda={{ oQueE: 'Código Brasileiro de Ocupações do cargo.', ondeAcho: 'Na carteira de trabalho ou com o RH.' }} />
-          <Campo id="colab-matricula" name="matricula" rotulo="Matrícula no eSocial" placeholder="Ex.: 000123"
-            ajuda={{ oQueE: 'A matrícula que o RH usou no evento de admissão do eSocial. É obrigatória para enviar ASO, riscos e CAT.', ondeAcho: 'Com o RH ou a contabilidade.' }} />
+          <Campo id="colab-admissao" name="dataAdmissao" type="date" rotulo="Admissão" />
+          <Campo id="colab-cbo" name="cbo" rotulo="CBO" placeholder="Ex.: 8483-05" />
+          <Campo id="colab-matricula" name="matricula" rotulo="Matrícula no eSocial" placeholder="Ex.: 000123" />
           <Selecao id="colab-ghe" name="gheId" rotulo="GHE">
             <option value="">Sem GHE</option>
             {ghes.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
@@ -428,16 +419,10 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
               )}
             >
               <Campo id="cipa-inicio" name="inicioMandato" type="date" rotulo="Início do mandato atual"
-                defaultValue={cipa.calendario?.inicioMandato.slice(0, 10) ?? ''}
-                ajuda={{
-                  oQueE: 'Data da posse da gestão atual. Com ela o sistema calcula o fim do mandato e os prazos da próxima eleição.',
-                  ondeAcho: 'Na ata de posse da CIPA.',
-                  baseLegal: 'NR-05, itens 5.4.6, 5.5.1 e 5.5.3',
-                }} />
+                defaultValue={cipa.calendario?.inicioMandato.slice(0, 10) ?? ''} />
               {cipa.dimensionamento.situacao === 'REPRESENTANTE' && (
                 <Campo id="cipa-representante" name="representante" rotulo="Representante nomeado" placeholder="Ex.: João Lima"
-                  defaultValue={cipa.representante ?? ''}
-                  ajuda={{ oQueE: 'Empregado nomeado para ajudar nas ações de prevenção quando a empresa não precisa de CIPA.', baseLegal: 'NR-05, item 5.4.13' }} />
+                  defaultValue={cipa.representante ?? ''} />
               )}
               <label className="flex items-center gap-2 self-end pb-3 text-sm">
                 <input type="checkbox" name="atendidaSesmt" defaultChecked={cipa.atendidaSesmt} className="h-4 w-4 accent-primary" />
@@ -622,8 +607,7 @@ function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosL
           });
         }}
       >
-        <Selecao id={`av-tipo-${risco.id}`} rotulo="Avaliação" value={tipo} onChange={(e) => setTipo(e.target.value as AvaliacaoRisco['tipoAvaliacao'])}
-          ajuda={{ oQueE: 'Quantitativa quando o agente foi medido com equipamento. Qualitativa quando a exposição foi caracterizada só por inspeção.', baseLegal: 'NR-09 e NR-15' }}>
+        <Selecao id={`av-tipo-${risco.id}`} rotulo="Avaliação" value={tipo} onChange={(e) => setTipo(e.target.value as AvaliacaoRisco['tipoAvaliacao'])}>
           <option value="QUANTITATIVA">Quantitativa (medida)</option>
           <option value="QUALITATIVA">Qualitativa</option>
         </Selecao>
@@ -636,24 +620,19 @@ function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosL
         <Selecao id={`av-epc-${risco.id}`} name="epc" rotulo="EPC eficaz?" defaultValue={valor(risco.epcEficaz)}>
           <option value="">Não se aplica</option><option value="S">Sim</option><option value="N">Não</option>
         </Selecao>
-        <Selecao id={`av-epi-${risco.id}`} name="epi" rotulo="EPI eficaz?" defaultValue={valor(risco.epiEficaz)}
-          ajuda={{ oQueE: 'Se o EPI neutraliza a exposição. Vai para o PPP e pesa na aposentadoria especial.' }}>
+        <Selecao id={`av-epi-${risco.id}`} name="epi" rotulo="EPI eficaz?" defaultValue={valor(risco.epiEficaz)}>
           <option value="">Não se aplica</option><option value="S">Sim</option><option value="N">Não</option>
         </Selecao>
         <Campo id={`av-ca-${risco.id}`} name="ca" rotulo="CA do EPI" defaultValue={risco.epiCa ?? ''} placeholder="Ex.: 12345" />
-        <Campo id={`av-anexo-${risco.id}`} name="anexo" rotulo="Código do Anexo IV" defaultValue={risco.codigoAnexoIv ?? ''} placeholder="Ex.: 2.0.1"
-          ajuda={{ oQueE: 'Código do agente na lista de agentes nocivos da Previdência.', baseLegal: 'Decreto 3.048/99, Anexo IV' }} />
-        <Selecao id={`av-esp-${risco.id}`} name="especial" rotulo="Enseja aposentadoria especial?" defaultValue={risco.aposentadoriaEspecial ? 'S' : 'N'}
-          ajuda={{ oQueE: 'Sua conclusão técnica: a exposição dá direito à aposentadoria especial? Sai na conclusão do LTCAT.' }}>
+        <Campo id={`av-anexo-${risco.id}`} name="anexo" rotulo="Código do Anexo IV" defaultValue={risco.codigoAnexoIv ?? ''} placeholder="Ex.: 2.0.1" />
+        <Selecao id={`av-esp-${risco.id}`} name="especial" rotulo="Enseja aposentadoria especial?" defaultValue={risco.aposentadoriaEspecial ? 'S' : 'N'}>
           <option value="N">Não</option><option value="S">Sim</option>
         </Selecao>
-        <Selecao id={`av-anexo15-${risco.id}`} rotulo="Anexo da NR-15" value={anexo} onChange={(e) => escolherAnexo(e.target.value)} className="md:col-span-2"
-          ajuda={{ oQueE: 'O anexo da NR-15 que trata deste agente. Usado no laudo de insalubridade (LIP).', baseLegal: 'NR-15' }}>
+        <Selecao id={`av-anexo15-${risco.id}`} rotulo="Anexo da NR-15" value={anexo} onChange={(e) => escolherAnexo(e.target.value)} className="md:col-span-2">
           <option value="">Não se enquadra / não avaliado</option>
           {anexos?.nr15.map((a) => <option key={a.anexo} value={a.anexo}>Anexo {a.anexo} · {a.nome}</option>)}
         </Selecao>
-        <Selecao id={`av-grau-${risco.id}`} rotulo="Insalubridade" value={grau} onChange={(e) => setGrau(e.target.value)}
-          ajuda={{ oQueE: 'Sua conclusão para este agente, já considerando EPC e EPI. Quando o EPI neutraliza a exposição, marque "Não insalubre".', baseLegal: 'NR-15, itens 15.2 e 15.4' }}>
+        <Selecao id={`av-grau-${risco.id}`} rotulo="Insalubridade" value={grau} onChange={(e) => setGrau(e.target.value)}>
           <option value="">Não avaliado</option>
           <option value="NAO">Não insalubre</option>
           <option value="MINIMO">Grau mínimo (10%)</option>
@@ -714,8 +693,7 @@ function Periculosidade({ ghe, anexos, salvar }: { ghe: Ghe; anexos: AnexosLaudo
           const d = new FormData(ev.currentTarget);
           salvar({ anexo: String(d.get('anexo') ?? ''), justificativa: String(d.get('justificativa') ?? '').trim() });
         }}>
-        <Selecao id={`per-${ghe.id}`} name="anexo" rotulo="Enquadramento" defaultValue={ghe.periculosidadeAnexo ?? ''} required className="md:col-span-3"
-          ajuda={{ oQueE: 'Se as atividades deste grupo se enquadram em algum anexo da NR-16. Quando sim, o adicional é de 30% sobre o salário.', baseLegal: 'CLT, art. 193, e NR-16' }}>
+        <Selecao id={`per-${ghe.id}`} name="anexo" rotulo="Enquadramento" defaultValue={ghe.periculosidadeAnexo ?? ''} required className="md:col-span-3">
           <option value="">Escolha</option>
           <option value="NENHUM">Não perigoso (não se enquadra na NR-16)</option>
           {anexos.nr16.map((a) => <option key={a.codigo} value={a.codigo}>{a.anexo} · {a.nome}</option>)}

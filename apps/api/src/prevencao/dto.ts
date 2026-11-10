@@ -1,7 +1,8 @@
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsDateString, IsIn, IsOptional, IsString, Length, MaxLength, ValidateNested } from 'class-validator';
 
-export const TIPOS_RELATO = ['QUASE_ACIDENTE', 'CONDICAO_INSEGURA', 'ATO_INSEGURO', 'SUGESTAO'] as const;
+// DENUNCIA: canal de denúncia de assédio e abuso (Lei 14.457/2022 e NR-01). É sempre anônima e só a consultoria vê.
+export const TIPOS_RELATO = ['QUASE_ACIDENTE', 'CONDICAO_INSEGURA', 'ATO_INSEGURO', 'SUGESTAO', 'DENUNCIA'] as const;
 export const CATEGORIAS_CAUSA = ['METODO', 'MAQUINA', 'MATERIAL', 'PESSOAS', 'AMBIENTE', 'GESTAO'] as const;
 
 export class RelatoPublicoDto {
@@ -34,7 +35,7 @@ export class AtualizarAcaoDto {
   @IsOptional() @IsDateString() prazo?: string;
   @IsOptional() @IsIn(['ALTA', 'MEDIA', 'BAIXA']) prioridade?: string;
   @IsOptional() @IsIn(['RAPIDO', 'MEDIO', 'DEMORADO']) esforco?: string;
-  @IsOptional() @IsIn(['ABERTA', 'FEITA']) status?: string;
+  @IsOptional() @IsIn(['ABERTA', 'ANDAMENTO', 'FEITA']) status?: string;
   @IsOptional() @IsString() @MaxLength(2000) observacao?: string;
 }
 

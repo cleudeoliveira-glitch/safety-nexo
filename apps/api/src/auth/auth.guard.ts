@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ehAdminPlataforma, SOMENTE_ADMIN } from '../admin/admin-plataforma';
+import { caixaPlano, mensagemUpgrade, planoEfetivo, Recurso, RECURSO, temRecurso } from '../common/plano';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { PERMITE_EMPRESA } from './permite-empresa.decorator';
@@ -31,19 +32,26 @@ export class AuthGuard implements CanActivate {
     }
 
     // Lê o usuário a cada pedido: um acesso removido para de funcionar na hora.
-    const usuario = await this.prisma.usuario.findUnique({ where: { id: sub }, include: { consultoria: { select: { bloqueada: true } } } });
+    const usuario = await this.prisma.usuario.findUnique({ where: { id: sub }, include: { consultoria: { select: { bloqueada: true, plano: true, testeAte: true, usuarios: { where: { papel: 'CONSULTORIA' }, select: { email: true } } } } } });
     if (!usuario) throw new UnauthorizedException('Seu acesso foi removido. Fale com a sua consultoria.');
     const admin = usuario.papel === 'CONSULTORIA' && ehAdminPlataforma(usuario.email);
     // Consultoria bloqueada pelo painel ADM para de funcionar na hora (inclusive o login das empresas dela).
     if (usuario.consultoria.bloqueada && !admin) {
       throw new ForbiddenException('Este acesso está suspenso. Fale com o suporte do Safety Nexo.');
     }
-    req.sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId, papel: usuario.papel, empresaId: usuario.empresaId, admin };
+    // Plano que vale agora (teste de 14 dias, plano pago ou consultoria do dono da plataforma).
+    const plano = planoEfetivo(usuario.consultoria, usuario.consultoria.usuarios.some((u) => ehAdminPlataforma(u.email)));
+    const caixa = caixaPlano.getStore();
+    if (caixa) caixa.plano = plano;
+    req.sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId, papel: usuario.papel, empresaId: usuario.empresaId, admin, plano };
 
     // Último acesso (para o painel ADM), gravado no máximo uma vez por hora.
     if (!usuario.ultimoAcesso || Date.now() - usuario.ultimoAcesso.getTime() > 3600_000) {
       this.prisma.usuario.update({ where: { id: usuario.id }, data: { ultimoAcesso: new Date() } }).catch(() => undefined);
     }
+
+    const exige = this.reflector.getAllAndOverride<{ r: Recurso; oQue: string } | undefined>(RECURSO, alvos);
+    if (exige && !temRecurso(plano, exige.r)) throw new ForbiddenException(mensagemUpgrade(exige.r, exige.oQue));
 
     if (this.reflector.getAllAndOverride<boolean>(SOMENTE_ADMIN, alvos)) {
       if (!admin) throw new ForbiddenException('Esta área é só do administrador da plataforma.');

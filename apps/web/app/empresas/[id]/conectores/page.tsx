@@ -299,8 +299,7 @@ function AbaFaltas({ empresaId, colaboradores, cliente, avisar }: { empresaId: s
               ? <input id="at-horas" name="horas" aria-label="Horas" inputMode="decimal" required placeholder="Ex.: 3" className="w-full rounded-card border border-border bg-background px-3 py-2" />
               : <input id="at-dias" name="dias" aria-label="Dias" type="number" min={1} max={365} required placeholder="Ex.: 2" className="w-full rounded-card border border-border bg-background px-3 py-2" />}
           </div>
-          <Campo id="at-cid" name="cid" rotulo="CID (se vier no atestado)" placeholder="Ex.: M54.5"
-            ajuda={{ oQueE: 'Código da doença. Só preencha se o trabalhador autorizou e o médico escreveu no atestado. Serve para juntar atestados da mesma doença.' }} />
+          <Campo id="at-cid" name="cid" rotulo="CID (se vier no atestado)" placeholder="Ex.: M54.5" />
           <Campo id="at-medico" name="medico" rotulo="Médico e CRM" />
           <div className="flex justify-end md:col-span-3"><Botao type="submit">Lançar</Botao></div>
         </form>

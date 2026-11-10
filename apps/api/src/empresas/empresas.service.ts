@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CnaeService } from '../cnae/cnae.service';
 import { ehAdminPlataforma } from '../admin/admin-plataforma';
+import { conferirFuncionarios } from '../common/plano';
 import { PrismaService } from '../prisma/prisma.service';
 import { CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CopiarDadosDto, CreateGheDto, CreateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 
@@ -57,6 +58,7 @@ export class EmpresasService {
 
   async criarColaborador(consultoriaId: string, empresaId: string, dto: CreateColaboradorDto) {
     await this.buscar(consultoriaId, empresaId);
+    conferirFuncionarios(await this.prisma.colaborador.count({ where: { empresaId } }), 1);
     if (dto.gheId) {
       const ghe = await this.prisma.ghe.findFirst({ where: { id: dto.gheId, empresaId } });
       if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');

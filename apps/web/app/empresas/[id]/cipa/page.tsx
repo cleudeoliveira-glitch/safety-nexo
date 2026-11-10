@@ -141,13 +141,10 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
               );
             }}
           >
-            <Campo id="edital" name="editalEm" type="date" rotulo="Publicação do edital" required
-              ajuda={{ oQueE: 'Dia em que o edital é afixado ou enviado aos funcionários.', baseLegal: 'NR-05, 5.5.1: até 60 dias antes do fim do mandato' }} />
+            <Campo id="edital" name="editalEm" type="date" rotulo="Publicação do edital" required />
             <Campo id="insc-inicio" name="inscricaoInicio" type="date" rotulo="Início das inscrições" required />
-            <Campo id="insc-fim" name="inscricaoFim" type="date" rotulo="Fim das inscrições" required
-              ajuda={{ oQueE: 'As inscrições precisam ficar abertas por pelo menos 15 dias corridos.', baseLegal: 'NR-05, 5.5.3, b' }} />
-            <Campo id="eleicao-dia" name="eleicaoEm" type="date" rotulo="Dia da eleição" required
-              ajuda={{ oQueE: 'Em dia normal de trabalho, até 30 dias antes do fim do mandato.', baseLegal: 'NR-05, 5.5.3, f e g' }} />
+            <Campo id="insc-fim" name="inscricaoFim" type="date" rotulo="Fim das inscrições" required />
+            <Campo id="eleicao-dia" name="eleicaoEm" type="date" rotulo="Dia da eleição" required />
             <Campo id="eleicao-local" name="localVotacao" rotulo="Local da votação" required placeholder="Ex.: Refeitório" />
             <Campo id="eleicao-horario" name="horarioVotacao" rotulo="Horário" required placeholder="Ex.: 8h às 17h" />
             <div className="flex justify-end md:col-span-3"><Botao type="submit">Criar eleição</Botao></div>
@@ -228,8 +225,7 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
                 agir(() => atualizarEleicao(empresaId, eleicao.id, { votantes }), 'Participação salva.');
               }}
             >
-              <Campo id="votantes" name="votantes" type="number" min={0} rotulo="Quantos funcionários votaram" defaultValue={eleicao.votantes ?? ''}
-                ajuda={{ oQueE: 'Se votarem menos da metade dos funcionários, a votação é prorrogada antes de apurar.', baseLegal: 'NR-05, 5.5.4' }} />
+              <Campo id="votantes" name="votantes" type="number" min={0} rotulo="Quantos funcionários votaram" defaultValue={eleicao.votantes ?? ''} />
               <Botao type="submit">Salvar participação</Botao>
               {eleicao.participacao && (
                 <span className={`pb-3 text-sm font-semibold ${eleicao.participacao.valida ? 'text-success' : 'text-danger'}`}>
@@ -309,8 +305,7 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
                 agir(() => atualizarEleicao(empresaId, eleicao.id, dados), 'Posse e treinamento salvos. O calendário da CIPA passou a contar da nova posse.');
               }}
             >
-              <Campo id="posse" name="posseEm" type="date" rotulo="Data da posse" defaultValue={dia(eleicao.posseEm)}
-                ajuda={{ oQueE: 'Primeiro dia útil depois do fim do mandato anterior. Abre o novo mandato de um ano.', baseLegal: 'NR-05, 5.4.6 e 5.4.7' }} />
+              <Campo id="posse" name="posseEm" type="date" rotulo="Data da posse" defaultValue={dia(eleicao.posseEm)} />
               <Campo id="instrutor" name="instrutor" rotulo="Instrutor(a) do treinamento" defaultValue={eleicao.instrutor ?? ''} placeholder="Ex.: Cleude Oliveira" />
               <Campo id="trein-inicio" name="treinamentoInicio" type="date" rotulo="Treinamento: início" defaultValue={dia(eleicao.treinamentoInicio)}
                 ajuda={{ oQueE: `Antes da posse, com no mínimo ${eleicao.cargaHoraria ?? '—'} horas para o grau de risco desta empresa, no máximo 8 horas por dia.`, baseLegal: 'NR-05, 5.7.1 e 5.7.4' }} />

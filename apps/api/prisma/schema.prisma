@@ -28,8 +28,6 @@ model Consultoria {
   pedidoPlano     String?   // plano que a consultoria pediu na tela "Meu plano" (o ADM faz a troca)
   pedidoPlanoEm   DateTime?
   reguaCobranca   Boolean   @default(false) // avisos de cobrança por e-mail para as empresas clientes (antes e depois do vencimento)
-  // CONSULTORIA (atende várias empresas) | EMPRESA (empresa que se cadastrou sozinha, com técnico próprio: só a empresa dela)
-  tipo            String    @default("CONSULTORIA")
   testeAte        DateTime? // até quando vale o teste com tudo liberado (14 dias depois do cadastro)
   createdAt DateTime  @default(now())
   normasLidas AvisoNormaLido[]
@@ -1147,7 +1145,7 @@ model AcaoCorretiva {
   prazo         DateTime? @db.Date
   prioridade    String    @default("MEDIA") // ALTA | MEDIA | BAIXA (impacto no risco)
   esforco       String    @default("MEDIO") // RAPIDO | MEDIO | DEMORADO
-  status        String    @default("ABERTA") // ABERTA | FEITA
+  status        String    @default("ABERTA") // ABERTA (a fazer) | ANDAMENTO | FEITA
   feitaEm       DateTime?
   feitaPor      String?
   observacao    String?

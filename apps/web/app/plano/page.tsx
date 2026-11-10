@@ -6,6 +6,13 @@ import { GradePlanos, InclusoEmTodos } from '@/components/Planos';
 import { Aviso, Botao } from '@/components/ui';
 import { MeuPlano, meuPlano } from '@/lib/api';
 import { PLANOS_SITE, textoLimite } from '@/lib/planos';
+import { esquecerRecursos, planoMinimo } from '@/lib/plano';
+
+const NOME_RECURSO: Record<string, string> = {
+  documentos: 'Gerar todos os programas e laudos', assinatura: 'A assinatura de documentos e listas', offline: 'O uso no campo sem internet', slides: 'O material completo dos treinamentos',
+  esocial: 'O eSocial', proposta: 'O Comercial (propostas)', cobranca: 'Contratos e cobranças', rosto: 'A entrega de EPI pelo rosto', equipe: 'A equipe com mais pessoas', semMarca: 'Documentos sem a marca Safety Nexo',
+  logoEmpresa: 'O PDF com a sua logo', logoConsultoria: 'A logo da consultoria nos documentos',
+};
 
 const nomeDo = (codigo: string | null) => PLANOS_SITE.find((p) => p.codigo === codigo)?.nome ?? codigo;
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '');
@@ -17,7 +24,13 @@ export default function PaginaMeuPlano() {
   const [ok, setOk] = useState('');
   const [enviando, setEnviando] = useState('');
 
-  useEffect(() => { meuPlano.ver().then(setDados).catch((e: Error) => setErro(e.message)); }, []);
+  // Veio de um item com cadeado (?recurso=...): explica o que libera.
+  const [recursoPedido, setRecursoPedido] = useState<string | null>(null);
+  useEffect(() => {
+    esquecerRecursos();
+    meuPlano.ver().then(setDados).catch((e: Error) => setErro(e.message));
+    setRecursoPedido(new URLSearchParams(window.location.search).get('recurso'));
+  }, []);
 
   async function pedir(codigo: string) {
     setErro(''); setOk(''); setEnviando(codigo);
@@ -37,6 +50,18 @@ export default function PaginaMeuPlano() {
         <p className="text-sm text-text/60">Veja o seu plano, quantas empresas você já usa e o que tem em cada plano. <Link href="/planos" className="font-semibold text-primary">Abrir a página dos planos</Link></p>
       </div>
 
+      {recursoPedido && (
+        <div className="card-pendente rounded-card p-4 text-sm">
+          <p className="font-semibold">{NOME_RECURSO[recursoPedido] ?? 'Este recurso'} faz parte do plano {planoMinimo(recursoPedido)} ou maior.</p>
+          <p className="mt-1 text-text/70">Escolha o plano abaixo e a equipe do Safety Nexo libera para você.</p>
+        </div>
+      )}
+      {dados?.emTeste && dados.testeAte && (
+        <div className="card-ok rounded-card p-4 text-sm">
+          <p className="font-semibold">Você está no teste com tudo liberado até {data(dados.testeAte)}.</p>
+          <p className="mt-1 text-text/70">Depois disso, a conta continua no Grátis (1 empresa, PDF com marca "Versão Teste"). Escolha um plano para não perder nada.</p>
+        </div>
+      )}
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
       {ok && <Aviso tipo="ok">{ok}</Aviso>}
 

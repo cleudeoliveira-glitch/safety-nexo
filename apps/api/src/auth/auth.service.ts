@@ -1,10 +1,14 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { ehAdminPlataforma } from '../admin/admin-plataforma';
 import { PrismaService } from '../prisma/prisma.service';
 import { emailLigado, emailMoldura, enviarEmail, WEB } from '../common/email';
 import { CadastroDto, EntrarDto, RedefinirDto } from './dto';
+import { limparErrosLogin, loginTravado, registrarErroLogin } from '../common/protecao';
+
+// Senha falsa usada quando o e-mail não existe: a resposta demora o mesmo tempo e não revela quem tem conta.
+const HASH_FALSO = bcrypt.hashSync('senha-que-nao-existe', 10);
 
 // Link de criar ou trocar a senha: vale 1 hora (convite: 7 dias) e deixa de valer assim que a senha muda.
 type TokenSenha = { sub: string; uso: 'senha'; v: string };
@@ -22,15 +26,12 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  // Cadastro direto. Consultoria: cria a consultoria no plano Free. Empresa: cria a conta da empresa já com a empresa cadastrada.
-  // As duas ganham 14 dias com tudo liberado.
+  // Cadastro direto: cria a conta no plano Grátis, com 14 dias de tudo liberado. Não pede CNPJ.
   async cadastrar(dto: CadastroDto) {
     const email = dto.email.toLowerCase().trim();
     if (await this.prisma.usuario.findUnique({ where: { email } })) {
       throw new ConflictException('Já existe uma conta com este e-mail. Use "Entrar".');
     }
-    const ehEmpresa = dto.tipo === 'EMPRESA';
-    if (ehEmpresa && !dto.cnpj) throw new BadRequestException('Informe o CNPJ da empresa.');
     const senhaHash = await bcrypt.hash(dto.senha, 10);
     const testeAte = new Date(Date.now() + DIAS_TESTE * 86400_000);
     const usuario = await this.prisma.usuario.create({
@@ -43,10 +44,7 @@ export class AuthService {
             nome: dto.nomeConsultoria.trim(),
             plano: 'FREE',
             limiteEmpresas: 1,
-            tipo: ehEmpresa ? 'EMPRESA' : 'CONSULTORIA',
             testeAte,
-            cnpj: ehEmpresa ? dto.cnpj : undefined,
-            ...(ehEmpresa ? { empresas: { create: { razaoSocial: dto.nomeConsultoria.trim(), cnpj: dto.cnpj! } } } : {}),
           },
         },
       },
@@ -89,13 +87,20 @@ export class AuthService {
   }
 
   async entrar(dto: EntrarDto) {
+    const email = dto.email.toLowerCase().trim();
+    if (loginTravado(email)) {
+      throw new HttpException('Muitas senhas erradas para este e-mail. Espere 15 minutos ou use "Esqueci minha senha".', HttpStatus.TOO_MANY_REQUESTS);
+    }
     const usuario = await this.prisma.usuario.findUnique({
-      where: { email: dto.email.toLowerCase() },
+      where: { email },
       include: { consultoria: { select: { bloqueada: true } } },
     });
-    if (!usuario || !(await bcrypt.compare(dto.senha, usuario.senhaHash))) {
+    const senhaOk = await bcrypt.compare(dto.senha, usuario?.senhaHash ?? HASH_FALSO);
+    if (!usuario || !senhaOk) {
+      registrarErroLogin(email);
       throw new UnauthorizedException('E-mail ou senha incorretos.');
     }
+    limparErrosLogin(email);
     if (usuario.consultoria.bloqueada && !this.ehAdmin(usuario)) {
       throw new ForbiddenException('Este acesso está suspenso. Fale com o suporte do Safety Nexo.');
     }
@@ -109,12 +114,11 @@ export class AuthService {
     return s;
   }
 
-  private async emitir(usuario: UsuarioEmitido) {
+  private emitir(usuario: UsuarioEmitido) {
     const sessao: Sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId };
-    const c = await this.prisma.consultoria.findUnique({ where: { id: usuario.consultoriaId }, select: { tipo: true } });
     return {
       token: this.jwt.sign(sessao),
-      usuario: { nome: usuario.nome, papel: usuario.papel, empresaId: usuario.empresaId, adminPlataforma: this.ehAdmin(usuario), tipoConta: c?.tipo ?? 'CONSULTORIA' },
+      usuario: { nome: usuario.nome, papel: usuario.papel, empresaId: usuario.empresaId, adminPlataforma: this.ehAdmin(usuario) },
     };
   }
 

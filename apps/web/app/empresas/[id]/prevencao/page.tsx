@@ -12,7 +12,7 @@ import {
 import { ehEmpresa } from '@/lib/sessao';
 
 type Aba = 'relatos' | 'acoes' | 'investigacao';
-const ABAS: [Aba, string][] = [['relatos', 'Relatos pelo QR code'], ['acoes', 'Plano de ação'], ['investigacao', 'Investigação de acidentes']];
+const ABAS: [Aba, string][] = [['relatos', 'Relatos e denúncias'], ['acoes', 'Plano de ação'], ['investigacao', 'Investigação de acidentes']];
 type Avisar = (tipo: 'erro' | 'ok', texto: string) => void;
 
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—');
@@ -23,6 +23,10 @@ const Etiqueta = ({ cor, children }: { cor: string; children: React.ReactNode })
 const STATUS_RELATO: Record<Relato['status'], [string, string]> = { NOVO: ['Novo', 'bg-warning text-white'], EM_ANALISE: ['Em análise', 'bg-primary text-white'], ENCERRADO: ['Encerrado', 'bg-success text-white'] };
 const PRIORIDADE: Record<Prioridade, string> = { ALTA: 'Alta', MEDIA: 'Média', BAIXA: 'Baixa' };
 const ESFORCO: Record<Esforco, string> = { RAPIDO: 'Rápido de fazer', MEDIO: 'Médio', DEMORADO: 'Demorado' };
+type Coluna = AcaoCorretiva['status'];
+// Colunas em tom neutro; só uma faixa fina no topo diz a etapa (âmbar, petróleo, menta).
+const COLUNAS: [Coluna, string, string][] = [['ABERTA', 'A fazer', 'bg-[#f59e0b]'], ['ANDAMENTO', 'Em andamento', 'bg-primary'], ['FEITA', 'Concluída', 'bg-success']];
+const mini = (v?: 'primario') => `rounded-lg px-2.5 py-1.5 text-xs font-semibold ${v ? 'bg-primary text-white' : 'border border-border bg-white hover:border-primary'}`;
 
 // ---------- Relatos ----------
 
@@ -103,7 +107,7 @@ function AbaRelatos({ empresaId, empresa, consultoria, iaLigada, avisar, irParaI
                 <div className="flex flex-wrap items-center gap-2">
                   <strong>Nº {r.numero}</strong>
                   <Etiqueta cor={STATUS_RELATO[r.status][1]}>{STATUS_RELATO[r.status][0]}</Etiqueta>
-                  <Etiqueta cor="bg-background">{TIPOS_RELATO[r.tipo]}</Etiqueta>
+                  <Etiqueta cor={r.tipo === 'DENUNCIA' ? 'bg-danger text-white' : 'bg-background'}>{TIPOS_RELATO[r.tipo]}{r.tipo === 'DENUNCIA' ? ' · só a consultoria vê' : ''}</Etiqueta>
                   <span className="text-text/60">{dataHora(r.criadoEm)} · {r.local || 'local não informado'} · {r.nome || 'anônimo'}</span>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap">{r.descricao}</p>
@@ -185,30 +189,50 @@ function AbaAcoes({ empresaId, empresa, consultoria, iaLigada, avisar, aoMudar }
   }
 
   const agora = new Date(hoje());
-  const abertas = (acoes ?? []).filter((a) => a.status === 'ABERTA');
-  const atrasada = (a: AcaoCorretiva) => !!a.prazo && new Date(a.prazo) < agora;
+  const atrasada = (a: AcaoCorretiva) => a.status !== 'FEITA' && !!a.prazo && new Date(a.prazo) < agora;
   // "Faça primeiro": prioridade alta e rápida de fazer.
   const peso = (a: AcaoCorretiva) => (atrasada(a) ? 0 : 10) + { ALTA: 0, MEDIA: 3, BAIXA: 6 }[a.prioridade] + { RAPIDO: 0, MEDIO: 1, DEMORADO: 2 }[a.esforco];
-  const ordenadas = [...abertas].sort((x, y) => peso(x) - peso(y));
-  const feitas = (acoes ?? []).filter((a) => a.status === 'FEITA');
+  const daColuna = (c: Coluna) => {
+    const l = (acoes ?? []).filter((a) => a.status === c);
+    return c === 'FEITA' ? l.sort((x, y) => (y.feitaEm ?? '').localeCompare(x.feitaEm ?? '')) : l.sort((x, y) => peso(x) - peso(y));
+  };
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  const [sobre, setSobre] = useState<Coluna | null>(null);
 
-  const Linha = ({ a }: { a: AcaoCorretiva }) => (
-    <li className="rounded-card border border-border p-3 text-sm">
-      <div className="flex flex-wrap items-center gap-2">
+  // Muda a ação de coluna. Na tela ela já pula na hora; se o servidor recusar, a lista volta como estava.
+  function mover(a: AcaoCorretiva, para: Coluna) {
+    if (a.status === para || a.somenteLeitura) return;
+    if (para === 'FEITA') return concluir(a);
+    setAcoes((l) => l?.map((x) => (x.id === a.id ? { ...x, status: para, feitaEm: null, feitaPor: null } : x)) ?? l);
+    agir(() => prevencao.atualizarAcao(empresaId, a.id, { status: para }));
+  }
+
+  // Função (não componente) para o card não ser recriado no meio do arraste.
+  const card = (a: AcaoCorretiva) => (
+    <li
+      key={a.id}
+      draggable={!a.somenteLeitura}
+      onDragStart={(e) => { e.dataTransfer.setData('text/plain', a.id); e.dataTransfer.effectAllowed = 'move'; setArrastando(a.id); }}
+      onDragEnd={() => { setArrastando(null); setSobre(null); }}
+      className={`rounded-card border bg-white p-3 text-sm shadow-sm ${a.somenteLeitura ? 'border-border' : 'cursor-grab active:cursor-grabbing'} ${atrasada(a) ? 'border-danger/50' : 'border-border'} ${arrastando === a.id ? 'opacity-40' : ''}`}
+    >
+      <div className="flex flex-wrap items-center gap-1.5">
         {a.status === 'FEITA' ? <Etiqueta cor="bg-success text-white">Feita {data(a.feitaEm)}</Etiqueta> : atrasada(a) ? <Etiqueta cor="bg-danger text-white">Atrasada</Etiqueta> : null}
-        {a.status === 'ABERTA' && a.prioridade === 'ALTA' && a.esforco === 'RAPIDO' && <Etiqueta cor="bg-primary text-white">Faça primeiro</Etiqueta>}
-        <Etiqueta cor="bg-background">Prioridade {PRIORIDADE[a.prioridade]}</Etiqueta>
+        {a.status !== 'FEITA' && a.prioridade === 'ALTA' && a.esforco === 'RAPIDO' && <Etiqueta cor="bg-primary text-white">Faça primeiro</Etiqueta>}
+        <Etiqueta cor="bg-background">{PRIORIDADE[a.prioridade]}</Etiqueta>
         <Etiqueta cor="bg-background">{ESFORCO[a.esforco]}</Etiqueta>
-        <span className="text-xs text-text/60">{a.origemTexto ?? 'Incluída à mão'}</span>
       </div>
       <p className="mt-1.5 font-semibold">{a.descricao}</p>
-      <p className="text-text/60">{a.local ? `${a.local} · ` : ''}Responsável: {a.responsavel || '—'} · Prazo: {data(a.prazo)}{a.feitaPor ? ` · fechada por ${a.feitaPor}` : ''}</p>
+      <p className="mt-0.5 text-xs text-text/60">{a.local ? `${a.local} · ` : ''}{a.responsavel || 'Sem responsável'} · Prazo {data(a.prazo)}</p>
+      <p className="text-xs text-text/50">{a.origemTexto ?? 'Incluída à mão'}{a.feitaPor ? ` · fechada por ${a.feitaPor}` : ''}</p>
       {a.temEvidencia && <FotoProtegida carregar={() => prevencao.verEvidencia(empresaId, a.id)} rotulo="Ver foto de como ficou" />}
       {a.somenteLeitura ? <p className="mt-1 text-xs text-text/60">Cuidada na tela do <Link className="text-primary underline" href={`/empresas/${empresaId}/psicossocial`}>psicossocial</Link>.</p> : (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {a.status === 'ABERTA' ? <Botao onClick={() => concluir(a)}>Marcar como feita</Botao> : <Botao variante="secundario" onClick={() => agir(() => prevencao.atualizarAcao(empresaId, a.id, { status: 'ABERTA' }))}>Reabrir</Botao>}
-          {a.status === 'ABERTA' && <Botao variante="secundario" onClick={() => editar(a)}>Responsável e prazo</Botao>}
-          {consultoria && <Botao variante="secundario" onClick={() => { if (window.confirm('Apagar esta ação?')) agir(() => prevencao.removerAcao(empresaId, a.id), 'Ação apagada.'); }}>Apagar</Botao>}
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {a.status === 'ABERTA' && <button onClick={() => mover(a, 'ANDAMENTO')} className={mini('primario')}>Começar →</button>}
+          {a.status === 'ANDAMENTO' && <><button onClick={() => mover(a, 'ABERTA')} className={mini()}>← A fazer</button><button onClick={() => mover(a, 'FEITA')} className={mini('primario')}>Concluir ✓</button></>}
+          {a.status === 'FEITA' && <button onClick={() => mover(a, 'ANDAMENTO')} className={mini()}>Reabrir</button>}
+          {a.status !== 'FEITA' && <button onClick={() => editar(a)} className={mini()}>Responsável e prazo</button>}
+          {consultoria && <button onClick={() => { if (window.confirm('Apagar esta ação?')) agir(() => prevencao.removerAcao(empresaId, a.id), 'Ação apagada.'); }} className={mini()}>Apagar</button>}
         </div>
       )}
     </li>
@@ -246,15 +270,31 @@ function AbaAcoes({ empresaId, empresa, consultoria, iaLigada, avisar, aoMudar }
         </form>
       </Cartao>
 
-      <Cartao titulo={`Em aberto (${abertas.length})`} acao={<Botao variante="secundario" onClick={() => agir(async () => salvarArquivo(await prevencao.pdfPlano(empresaId), `Plano-de-acao-${empresa.razaoSocial}.pdf`))}>Baixar plano em PDF</Botao>}>
-        {acoes === null ? <p className="text-sm text-text/60">Carregando…</p> : ordenadas.length === 0 ? <p className="text-sm text-text/60">Nenhuma ação em aberto. 🎉</p> : (
-          <>
-            <p className="mb-3 text-xs text-text/60">Em ordem do que fazer primeiro: atrasadas, depois prioridade alta e rápidas de fazer.</p>
-            <ul className="space-y-2">{ordenadas.map((a) => <Linha key={a.id} a={a} />)}</ul>
-          </>
+      <Cartao titulo="Quadro do plano de ação" acao={<Botao variante="secundario" onClick={() => agir(async () => salvarArquivo(await prevencao.pdfPlano(empresaId), `Plano-de-acao-${empresa.razaoSocial}.pdf`))}>Baixar plano em PDF</Botao>}>
+        <p className="mb-3 text-xs text-text/60">Arraste o card de uma coluna para outra, ou use os botões do card. Em cada coluna, o que vem primeiro é o mais urgente.</p>
+        {acoes === null ? <p className="text-sm text-text/60">Carregando…</p> : (
+          <div className="grid gap-4 md:grid-cols-3">
+            {COLUNAS.map(([c, nome, fundo]) => {
+              const lista = daColuna(c);
+              return (
+                <div
+                  key={c}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (sobre !== c) setSobre(c); }}
+                  onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSobre(null); }}
+                  onDrop={(e) => { e.preventDefault(); setSobre(null); setArrastando(null); const x = acoes.find((y) => y.id === e.dataTransfer.getData('text/plain')); if (x) mover(x, c); }}
+                  className={`relative min-h-[140px] overflow-hidden rounded-card border border-border bg-background p-3 pt-4 transition ${sobre === c ? 'border-success bg-success/5 ring-2 ring-success/30' : ''}`}
+                  aria-label={`Coluna ${nome}`}
+                >
+                  <span className={`absolute inset-x-0 top-0 h-1 ${fundo}`} aria-hidden />
+                  <p className="mb-3 flex items-center justify-between text-sm font-semibold text-primary"><span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${fundo}`} aria-hidden />{nome}</span><span className="rounded-full border border-border bg-white px-2 py-0.5 text-xs text-text/70">{lista.length}</span></p>
+                  {lista.length === 0 ? <p className="rounded-card border border-dashed border-border bg-white/60 p-4 text-center text-xs text-text/50">{c === 'ABERTA' ? 'Nada a fazer. 🎉' : 'Solte um card aqui'}</p>
+                    : <ul className="space-y-2">{lista.map(card)}</ul>}
+                </div>
+              );
+            })}
+          </div>
         )}
       </Cartao>
-      {feitas.length > 0 && <Cartao titulo={`Feitas (${feitas.length})`}><ul className="space-y-2">{feitas.map((a) => <Linha key={a.id} a={a} />)}</ul></Cartao>}
     </div>
   );
 }
