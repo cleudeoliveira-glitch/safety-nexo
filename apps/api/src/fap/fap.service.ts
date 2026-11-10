@@ -63,7 +63,7 @@ export class FapService {
     const dados = await this.listar(c, e);
     if (!dados.anos.length) throw new NotFoundException('Informe o FAP de pelo menos um ano para gerar o relatório.');
     const { empresa, logoEmpresa, consultoria } = await this.contexto.carregar(c, e, 'FAP-RAT');
-    const m = { titulo: 'FAP e RAT: quanto a segurança custa na folha', logoEmpresa, consultoria, aviso: 'Documento gerado pelo Safety Nexo. Valores estimados: confira com a folha e o FAP oficial.', infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj], ['CNAE', dados.cnae ?? 'não informado']] as [string, string][] };
+    const m = { titulo: 'FAP e RAT: quanto a segurança custa na folha', logoEmpresa, consultoria, aviso: 'Feito com o Safety Nexo. Os valores são estimativas: confira com a folha de pagamento e com o FAP oficial.', infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj], ['CNAE', dados.cnae ?? 'não informado']] as [string, string][] };
     return this.pdf.render(relatorioFapHtml(m, dados.anos, dados.ocorrencias));
   }
 }

@@ -21,7 +21,7 @@ const CSS = `.ok { color: #10B981; font-weight: 600; } .atraso { color: #EF4444;
 
 export function planoAcaoHtml(m: Omit<Moldura, 'aviso'>, acoes: AcaoPdf[]) {
   const feitas = acoes.filter((a) => a.status === 'FEITA').length;
-  return documentoHtml({ ...m, aviso: 'Plano de ação gerado pelo Safety Nexo. Cada ação deve ser acompanhada até a conclusão (NR-01, 1.5.5.2).' },
+  return documentoHtml({ ...m, aviso: 'Feito com o Safety Nexo. Acompanhe cada ação até ela ser concluída.' },
     `<p><strong>${acoes.length} ação(ões)</strong> · ${feitas} feita(s) · ${acoes.length - feitas} aberta(s)</p>${acoes.length ? tabelaAcoes(acoes) : '<p>Nenhuma ação cadastrada.</p>'}`, CSS);
 }
 

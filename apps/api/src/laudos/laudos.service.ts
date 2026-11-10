@@ -4,8 +4,8 @@ import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DadosOs, laudoHtml, osHtml, pgrtrHtml } from './templates';
 
-const AVISO_LAUDO = 'Documento gerado pelo Safety Nexo. Deve ser revisado e assinado por engenheiro de segurança do trabalho ou médico do trabalho.';
-const AVISO = 'Documento gerado pelo Safety Nexo. Deve ser conferido e assinado pelos responsáveis.';
+const AVISO_LAUDO = 'Feito com o Safety Nexo.';
+const AVISO = 'Feito com o Safety Nexo.';
 const NOCIVOS = ['FISICO', 'QUIMICO', 'BIOLOGICO'];
 
 export type TipoLaudo = 'LIP' | 'LPP';
@@ -63,7 +63,7 @@ export class LaudosService {
         logoEmpresa,
         consultoria,
         infos: [...this.infos(empresa, versao, geradoEm).slice(0, 4), ['Trabalhadores', empresa.numFuncionarios], this.infos(empresa, versao, geradoEm)[4]],
-        aviso: 'Documento gerado pelo Safety Nexo. Deve ser revisado e assinado pelo profissional responsável.',
+        aviso: 'Feito com o Safety Nexo.',
       },
       empresa.ghes.map((g) => ({ nome: g.nome, descricao: g.descricao, colaboradores: g._count.colaboradores, riscos: g.riscos })),
     );

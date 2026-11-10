@@ -24,8 +24,8 @@ export function renderPppHtml(moldura: Moldura, d: DadosPpp): string {
   return documentoHtml(
     moldura,
     `
-    <p class="nota">O PPP oficial é emitido eletronicamente a partir das informações do eSocial (evento S-2240). Este documento serve de apoio e
-    para períodos não enviados ao eSocial.</p>
+    <p class="nota">Desde 2023, o PPP oficial sai pelo eSocial, com os dados do evento S-2240. Este documento serve de apoio e para os
+    períodos que não foram enviados ao eSocial.</p>
     <section>
       <h2>Seção I · Dados administrativos</h2>
       <table>
@@ -49,7 +49,7 @@ export function renderPppHtml(moldura: Moldura, d: DadosPpp): string {
           )
           .join('')}</tbody>
       </table>`
-          : '<p>Ausência de agentes nocivos registrados para o GHE do trabalhador.</p>'
+          : '<p>Não há agente nocivo registrado para o GHE deste trabalhador.</p>'
       }
       <p><strong>Responsável pelos registros ambientais:</strong> ${escape(d.responsavelAmbiental.nome ?? 'não informado')}${d.responsavelAmbiental.registro ? ` · ${escape(d.responsavelAmbiental.registro)}` : ''}</p>
     </section>
@@ -67,8 +67,8 @@ export function renderPppHtml(moldura: Moldura, d: DadosPpp): string {
     </section>
     <section>
       <h2>Seção IV · Responsáveis pelas informações</h2>
-      <p>Declaramos, para todos os fins de direito, que as informações prestadas neste documento são verídicas e foram transcritas fielmente dos
-      registros administrativos, das demonstrações ambientais e dos programas médicos de responsabilidade da empresa.</p>
+      <p>Declaramos que as informações deste documento são verdadeiras e foram copiadas fielmente dos registros da empresa,
+      dos laudos ambientais e dos programas médicos sob responsabilidade dela.</p>
       <p>Emitido em ${data(d.emitidoEm)}.</p>
       <div class="assinaturas"><div class="assinatura">${escape(d.representanteLegal ?? '')}<span>Representante legal da empresa</span></div></div>
     </section>`,

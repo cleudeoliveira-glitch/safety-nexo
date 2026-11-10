@@ -7,7 +7,7 @@ import { AtualizarCatEsocialDto, CriarAetDto, CriarAfastamentoDto, CriarCatDto }
 import { prazoCat } from './prazo-cat';
 import { AetPdf, aetHtml, catHtml } from './templates';
 
-const AVISO = 'Documento gerado pelo Safety Nexo. Deve ser conferido e assinado pelos responsáveis.';
+const AVISO = 'Feito com o Safety Nexo.';
 
 @Injectable()
 export class SaudeService {

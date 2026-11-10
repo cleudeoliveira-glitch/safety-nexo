@@ -7,7 +7,7 @@ import { AtividadeDto, Auditoria5sDto, SipatDto } from './dto';
 import { auditoria5sHtml, presencaHtml, programacaoHtml, relatorioSipatHtml } from './templates';
 
 const dia = (v: string) => new Date(`${v.slice(0, 10)}T12:00:00Z`);
-const AVISO = 'Documento gerado pelo Safety Nexo.';
+const AVISO = 'Feito com o Safety Nexo.';
 
 @Injectable()
 export class CulturaService {

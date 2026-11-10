@@ -24,7 +24,7 @@ function secaoIa(r: RelatorioInspecaoIa | null) {
     ${r.perigos.length ? `<table><thead><tr><th>Perigo observado</th><th>Tipo</th><th>NR</th><th>Nível</th><th>Ação sugerida</th></tr></thead>
     <tbody>${r.perigos.map((p) => { const [n, c] = nivel(p.probabilidade, p.severidade); return `<tr><td>${escape(p.descricao)}${p.foto ? `<br/><span class="meta">Foto ${p.foto}</span>` : ''}</td><td>${TIPO_RISCO[p.tipo] ?? p.tipo}</td><td>${escape(p.nr ?? '—')}</td><td class="n-${c}">${n} (${p.probabilidade}×${p.severidade})</td><td>${p.acoes.map(escape).join('<br/>')}</td></tr>`; }).join('')}</tbody></table>` : '<p>Nenhum perigo visível nas fotos.</p>'}
     ${r.boasPraticas.length ? `<p><strong>Pontos positivos:</strong> ${r.boasPraticas.map(escape).join('; ')}.</p>` : ''}
-    <p class="meta">Análise feita com apoio de inteligência artificial e revisada pelo(a) profissional responsável.</p>`;
+    <p class="meta">A análise teve ajuda de inteligência artificial e foi revisada por quem fez a inspeção.</p>`;
 }
 
 // Conformidade = itens conformes sobre os itens que se aplicam.

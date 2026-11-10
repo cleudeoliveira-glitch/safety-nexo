@@ -11,7 +11,7 @@ import { CATALOGO } from './catalogo';
 import { CriarTurmaDto } from './dto';
 import { certificadosHtml, listaPresencaHtml } from './templates';
 
-const AVISO = 'Documento gerado pelo Safety Nexo. Deve ser conferido e assinado pelos responsáveis.';
+const AVISO = 'Feito com o Safety Nexo.';
 const WEB = () => (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
 
 // Código curto e difícil de adivinhar, sem letras que se confundem (0/O, 1/I).

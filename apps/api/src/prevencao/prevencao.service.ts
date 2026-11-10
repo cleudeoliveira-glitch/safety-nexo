@@ -276,7 +276,7 @@ export class PrevencaoService {
     const cat = inv.catId ? await this.prisma.cat.findFirst({ where: { id: inv.catId }, include: { colaborador: { select: { nome: true } } } }) : null;
     const { empresa, logoEmpresa, consultoria } = await this.contexto.carregar(consultoriaId, empresaId, 'INVESTIGACAO');
     return this.pdf.render(investigacaoHtml(
-      { titulo: 'Relatório de Investigação de Acidente', logoEmpresa, consultoria, infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj]], aviso: 'Análise de acidente conforme a NR-01 (1.5.5.5): feita para encontrar causas e evitar repetição, não para achar culpados.' },
+      { titulo: 'Relatório de Investigação de Acidente', logoEmpresa, consultoria, infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj]], aviso: 'Esta investigação serve para entender as causas e evitar que aconteça de novo, não para procurar culpados.' },
       { ...inv, causas: inv.causas as { categoria: string; texto: string }[], vitima: cat?.colaborador.nome ?? null },
       medidas,
     ));

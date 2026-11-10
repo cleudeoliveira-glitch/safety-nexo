@@ -139,7 +139,7 @@ export class AssinaturasService {
     const { logoEmpresa, consultoria } = await this.contexto.carregar(consultoriaId, p.empresaId, 'ASSINATURA');
     const urlValidacao = `${WEB()}/assinatura/${p.codigo}`;
     const html = folhaHtml(
-      { titulo: 'Folha de assinaturas', logoEmpresa, consultoria, infos: [], aviso: 'Folha gerada pelo Safety Nexo.' },
+      { titulo: 'Folha de assinaturas', logoEmpresa, consultoria, infos: [], aviso: 'Feito com o Safety Nexo.' },
       { titulo: p.titulo, codigo: p.codigo, hashOriginal: p.hashOriginal, urlValidacao, qr: await QRCode.toDataURL(urlValidacao, { margin: 0, width: 200 }), icp: credencial?.aberto.titular ?? null },
       p.signatarios.map((s) => ({ ...s, assinadoEm: s.assinadoEm!, imagem: s.imagem ?? '' })),
     );

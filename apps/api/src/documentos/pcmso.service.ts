@@ -25,7 +25,7 @@ export class PcmsoService {
           ['Funcionários', empresa.numFuncionarios],
           ['Versão', `${versao} · emitido em ${geradoEm.toLocaleDateString('pt-BR')}`],
         ],
-        aviso: 'Documento gerado pelo Safety Nexo. Deve ser revisado e assinado pelo médico responsável pelo PCMSO.',
+        aviso: 'Feito com o Safety Nexo.',
       },
       { nome: empresa.medicoPcmsoNome, crm: empresa.medicoPcmsoCrm },
       empresa.ghes.map((ghe) => ({

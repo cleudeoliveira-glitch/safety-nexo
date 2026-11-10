@@ -223,7 +223,7 @@ export class ReguaCobrancaService {
       const pixDados = pix ? { copiaECola: pix, qr: await QRCode.toDataURL(pix, { margin: 1, width: 340 }), recebedor: cb.consultoria.pixNome || cb.consultoria.nome } : null;
       const m = {
         titulo: 'Cobrança', logoEmpresa: await this.logos.comoDataUri(cb.empresa.logoPath),
-        consultoria: { nome: cb.consultoria.nome, logo: await this.logos.comoDataUri(cb.consultoria.logoPath) }, infos: [], aviso: 'Documento gerado pelo Safety Nexo.',
+        consultoria: { nome: cb.consultoria.nome, logo: await this.logos.comoDataUri(cb.consultoria.logoPath) }, infos: [], aviso: 'Feito com o Safety Nexo.',
       };
       const buf = await this.pdf.render(cobrancaHtml(m, cb, cb.empresa, pixDados));
       return Buffer.from(buf).toString('base64');

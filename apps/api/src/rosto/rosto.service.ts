@@ -215,7 +215,7 @@ export class RostoService {
     const url = `${WEB()}/validar-rosto/${p.codigo}`;
     const titulo = `Comprovante de ${item?.titulo ?? 'registro'} por reconhecimento facial`;
     return this.pdf.render(comprovanteHtml(
-      { titulo, logoEmpresa, consultoria, aviso: 'Documento gerado pelo Safety Nexo. Confira a autenticidade pelo QR Code.', infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj]] },
+      { titulo, logoEmpresa, consultoria, aviso: 'Feito com o Safety Nexo. Para conferir se é verdadeiro, leia o QR Code.', infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj]] },
       { ...p, colaborador: { nome: p.colaborador.nome, cpf: p.colaborador.cpf, cargo: p.colaborador.cargo }, item: item?.linhas ?? [], tipo: p.tipo, limiar: configFacial().limiar, url, qr: await QRCode.toDataURL(url, { margin: 0, width: 200 }) },
     ));
   }

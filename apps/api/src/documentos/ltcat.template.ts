@@ -38,13 +38,13 @@ export function renderLtcatHtml(moldura: Moldura, ghes: GheLtcat[], responsavel:
             )
             .join('')}</tbody>
         </table>`
-            : '<p>Nenhum agente físico, químico ou biológico identificado neste GHE.</p>'
+            : '<p>Não encontramos agente físico, químico ou biológico neste GHE.</p>'
         }
         ${pendentes ? `<p class="alerta">${pendentes} agente(s) ainda sem avaliação registrada.</p>` : ''}
         <p class="conclusao ${enquadra ? 'sim' : 'nao'}"><strong>Conclusão:</strong> ${
           enquadra
-            ? 'há exposição a agente nocivo que enseja aposentadoria especial, conforme a avaliação acima.'
-            : 'não foi caracterizada exposição a agente nocivo que enseje aposentadoria especial.'
+            ? 'há exposição a agente nocivo que dá direito à aposentadoria especial, conforme a avaliação acima.'
+            : 'não encontramos exposição a agente nocivo que dê direito à aposentadoria especial.'
         }</p>
       </section>`;
     })
@@ -54,17 +54,17 @@ export function renderLtcatHtml(moldura: Moldura, ghes: GheLtcat[], responsavel:
     moldura,
     `
     <section>
-      <h2>Objetivo</h2>
-      <p>Caracterizar as condições ambientais de trabalho quanto à exposição a agentes nocivos químicos, físicos e biológicos, para fins de
-      comprovação junto à Previdência Social (Lei 8.213/91, art. 58, e Decreto 3.048/99, Anexo IV).</p>
-      <h2>Metodologia</h2>
-      <p>Inspeção dos ambientes e das atividades, com avaliações qualitativas e quantitativas dos agentes. Os resultados quantitativos são
-      comparados com os limites de tolerância e as técnicas indicadas para cada agente. A eficácia dos EPCs e EPIs foi considerada na conclusão.</p>
+      <h2>Para que serve este laudo</h2>
+      <p>Mostrar à Previdência Social se os trabalhadores ficam expostos a agentes químicos, físicos ou biológicos que dão direito à
+      aposentadoria especial (Lei 8.213/91, art. 58, e Decreto 3.048/99, Anexo IV).</p>
+      <h2>Como avaliamos</h2>
+      <p>Visitamos os ambientes, acompanhamos as atividades e avaliamos cada agente, com medição quando a norma pede. As medições foram
+      comparadas com os limites de tolerância, usando a técnica indicada para cada agente. Na conclusão, levamos em conta se as proteções coletivas e os EPIs funcionam de fato.</p>
     </section>
     ${blocos || '<p>Nenhum GHE cadastrado.</p>'}
     <section>
       <h2>Revisão</h2>
-      <p>Este laudo deve ser revisto sempre que houver mudança no ambiente, no processo, nas atividades ou nas medidas de controle.</p>
+      <p>Sempre que mudar o ambiente, o processo, as atividades ou as proteções, este laudo precisa ser refeito.</p>
     </section>
     <div class="assinaturas"><div class="assinatura">${escape(responsavel.nome ?? '')}<span>Responsável técnico${responsavel.registro ? ` · ${escape(responsavel.registro)}` : ''}</span></div></div>`,
     `.ghe table { font-size: 10px; } .alerta { color: #EF4444; } .conclusao { padding: 8px 10px; border-radius: 8px; margin-top: 8px; }

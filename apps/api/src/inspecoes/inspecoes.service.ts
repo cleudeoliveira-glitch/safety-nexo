@@ -137,7 +137,7 @@ export class InspecoesService {
           logoEmpresa,
           consultoria,
           infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj]],
-          aviso: 'Documento gerado pelo Safety Nexo. As não conformidades devem ser corrigidas e acompanhadas no plano de ação.',
+          aviso: 'Feito com o Safety Nexo. O que não estiver conforme vai para o plano de ação.',
         },
         { ...i, itens: i.itens as unknown as ItemInspecao[], fotos, relatorioIa: (i.relatorioIa as RelatorioInspecaoIa | null) ?? null },
         empresa.numFuncionarios,
