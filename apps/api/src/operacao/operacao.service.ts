@@ -6,10 +6,15 @@ import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TEMAS_DDS, TIPOS_PT, TipoPt } from './conteudo';
-import { CriarAprDto, CriarDdsDto, CriarPermissaoDto } from './dto';
+import { CriarAprDto, CriarDdsDto, CriarPermissaoDto, MedicaoGasDto } from './dto';
 import { aprHtml, ddsHtml, EtapaApr, permissaoHtml } from './templates';
 
 const AVISO = 'Feito com o Safety Nexo.';
+
+type Medicao = { hora: string; oxigenio: number; lie: number; h2s: number | null; co: number | null; outro: string | null; responsavel: string };
+const medicao = (m: MedicaoGasDto): Medicao => ({
+  hora: new Date(m.hora).toISOString(), oxigenio: m.oxigenio, lie: m.lie, h2s: m.h2s ?? null, co: m.co ?? null, outro: m.outro?.trim() || null, responsavel: m.responsavel.trim(),
+});
 
 @Injectable()
 export class OperacaoService {
@@ -121,8 +126,21 @@ export class OperacaoService {
         executantes: await this.conferirColaboradores(empresaId, dto.executantes),
         emitente: dto.emitente.trim(),
         checklist: dto.checklist.map((c) => ({ item: c.item, ok: c.ok })),
+        supervisorEntrada: dto.supervisorEntrada?.trim() || null,
+        vigia: dto.vigia?.trim() || null,
+        medicoes: (dto.medicoes ?? []).map(medicao),
       },
     });
+  }
+
+  // Medições feitas durante o trabalho entram na mesma permissão, com a hora de cada uma.
+  async registrarMedicao(consultoriaId: string, empresaId: string, ptId: string, dto: MedicaoGasDto) {
+    await this.empresa(consultoriaId, empresaId);
+    const pt = await this.prisma.permissaoTrabalho.findFirst({ where: { id: ptId, empresaId } });
+    if (!pt) throw new NotFoundException('Permissão não encontrada');
+    if (pt.encerradaEm) throw new BadRequestException('Esta permissão já foi encerrada.');
+    const lista = [...((pt.medicoes as Medicao[]) ?? []), medicao(dto)].sort((a, b) => a.hora.localeCompare(b.hora));
+    return this.prisma.permissaoTrabalho.update({ where: { id: ptId }, data: { medicoes: lista } });
   }
 
   async encerrarPermissao(consultoriaId: string, empresaId: string, ptId: string) {
@@ -145,6 +163,7 @@ export class OperacaoService {
         { ...pt, tipoNome: tipo?.nome ?? pt.tipo, norma: tipo?.norma ?? '', aprNumero: pt.apr?.numero ?? null },
         pt.checklist as { item: string; ok: boolean }[],
         await this.pessoas(pt.executantes),
+        pt.medicoes as Medicao[],
       ),
     );
   }

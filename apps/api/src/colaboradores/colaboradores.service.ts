@@ -9,7 +9,7 @@ import { renderAsoHtml } from './aso.template';
 import { CreateAsoDto, CreateEntregaEpiDto } from './dto';
 import { renderFichaEpiHtml } from './ficha-epi.template';
 import { renderPppHtml } from './ppp.template';
-import { examesDoTipo, NOME_TIPO_ASO, proximoExame, TipoAso } from './regras';
+import { dispensaDemissional, examesDoTipo, NOME_TIPO_ASO, proximoExame, TipoAso } from './regras';
 
 // PDF do ASO feito pela clínica (a consultoria só controla: não agenda exame).
 const guardaAso = new Guarda('asos', process.env.ASOS_DIR ?? join(__dirname, '..', '..', 'storage', 'asos'));
@@ -38,6 +38,30 @@ export class ColaboradoresService {
     return colaborador;
   }
 
+  // Tela do colaborador: inclui, para quem saiu, se o demissional ainda falta ou pode ser dispensado.
+  async ficha(consultoriaId: string, empresaId: string, colaboradorId: string) {
+    const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    const demissional = colaborador.dataDesligamento ? await this.demissional(empresaId, colaborador, colaborador.dataDesligamento) : null;
+    return { ...colaborador, demissional };
+  }
+
+  // Saída da empresa: o histórico fica guardado, mas a pessoa sai dos alertas e das contagens.
+  async desligar(consultoriaId: string, empresaId: string, colaboradorId: string, data: string | null) {
+    const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    const dataDesligamento = data ? new Date(data) : null;
+    if (dataDesligamento && colaborador.dataAdmissao && dataDesligamento < colaborador.dataAdmissao) {
+      throw new BadRequestException('A saída não pode ser antes da admissão.');
+    }
+    await this.prisma.colaborador.update({ where: { id: colaboradorId }, data: { dataDesligamento } });
+    return { dataDesligamento, demissional: dataDesligamento ? await this.demissional(empresaId, colaborador, dataDesligamento) : null };
+  }
+
+  private async demissional(empresaId: string, colaborador: { asos: { tipo: string; dataExame: Date }[] }, saida: Date) {
+    if (colaborador.asos.some((a) => a.tipo === 'DEMISSIONAL')) return { feito: true, dispensa: false, limite: 0, dias: null };
+    const empresa = await this.prisma.empresa.findUnique({ where: { id: empresaId }, select: { grauRisco: true } });
+    return { feito: false, ...dispensaDemissional(empresa?.grauRisco ?? null, colaborador.asos[0]?.dataExame ?? null, saida) };
+  }
+
   async registrarAso(consultoriaId: string, empresaId: string, colaboradorId: string, dto: CreateAsoDto) {
     const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
     const programa = colaborador.ghe?.exames ?? [];
@@ -51,7 +75,7 @@ export class ColaboradoresService {
         dataExame,
         exames: examesDoTipo(programa, tipo),
         riscos: (colaborador.ghe?.riscos ?? []).map((r) => r.agente),
-        proximoExame: proximoExame(programa, tipo, dto.resultado, dataExame),
+        proximoExame: proximoExame(programa, tipo, dto.resultado, dataExame, (colaborador.ghe?.riscos.length ?? 0) > 0),
       },
     });
   }

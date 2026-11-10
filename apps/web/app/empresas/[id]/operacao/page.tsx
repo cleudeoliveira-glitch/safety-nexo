@@ -23,6 +23,8 @@ import {
   Dds,
   Empresa,
   encerrarPermissao,
+  registrarMedicaoGas,
+  type MedicaoGas,
   EtapaApr,
   gerarPdfOperacao,
   listarAprs,
@@ -170,6 +172,56 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar }: 
   );
 }
 
+// Campos de uma medição de gases. Oxigênio e inflamáveis são obrigatórios quando se mede.
+function CamposMedicao({ prefixo }: { prefixo: string }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-3">
+      <Campo id={`${prefixo}-hora`} name="medHora" type="datetime-local" rotulo="Hora da medição" />
+      <Campo id={`${prefixo}-o2`} name="medO2" type="number" step="0.1" rotulo="Oxigênio (%)" placeholder="Entre 19,5 e 23" />
+      <Campo id={`${prefixo}-lie`} name="medLie" type="number" step="0.1" rotulo="Inflamáveis (% do LIE)" placeholder="Abaixo de 10" />
+      <Campo id={`${prefixo}-h2s`} name="medH2s" type="number" step="0.1" rotulo="H2S (ppm)" placeholder="Até 8" />
+      <Campo id={`${prefixo}-co`} name="medCo" type="number" step="0.1" rotulo="CO (ppm)" placeholder="Até 39" />
+      <Campo id={`${prefixo}-outro`} name="medOutro" rotulo="Outro gás" placeholder="Ex.: NH3 5 ppm" />
+      <Campo id={`${prefixo}-quem`} name="medQuem" rotulo="Quem mediu" />
+    </div>
+  );
+}
+
+function lerMedicao(d: FormData): MedicaoGas | null {
+  const txt = (c: string) => String(d.get(c) ?? '').trim();
+  if (!txt('medO2') && !txt('medLie')) return null;
+  const n = (c: string) => (txt(c) ? Number(txt(c).replace(',', '.')) : null);
+  if (n('medO2') === null || n('medLie') === null) throw new Error('Na medição, informe pelo menos o oxigênio e os inflamáveis.');
+  if (!txt('medQuem')) throw new Error('Na medição, informe quem mediu.');
+  return {
+    hora: txt('medHora') ? new Date(txt('medHora')).toISOString() : new Date().toISOString(),
+    oxigenio: n('medO2')!, lie: n('medLie')!, h2s: n('medH2s'), co: n('medCo'), outro: txt('medOutro') || null, responsavel: txt('medQuem'),
+  };
+}
+
+function NovaMedicao({ aoSalvar }: { aoSalvar: (m: MedicaoGas) => Promise<void> }) {
+  const [aberto, setAberto] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  if (!aberto) return <Botao variante="secundario" onClick={() => setAberto(true)}>Lançar medição</Botao>;
+  return (
+    <form className="w-full space-y-2 rounded-card border border-border p-3" onSubmit={async (ev) => {
+      ev.preventDefault();
+      try {
+        const m = lerMedicao(new FormData(ev.currentTarget));
+        if (!m) throw new Error('Informe o oxigênio e os inflamáveis.');
+        await aoSalvar(m); setAberto(false); setErro(null);
+      } catch (e) { setErro((e as Error).message); }
+    }}>
+      <CamposMedicao prefixo="nova" />
+      {erro && <p className="text-xs font-semibold text-danger">{erro}</p>}
+      <div className="flex justify-end gap-2">
+        <Botao type="button" variante="secundario" onClick={() => setAberto(false)}>Cancelar</Botao>
+        <Botao type="submit">Salvar medição</Botao>
+      </div>
+    </form>
+  );
+}
+
 function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarregar, avisar, baixar }: {
   empresaId: string; colaboradores: Colaborador[]; aprs: Apr[]; permissoes: Permissao[]; conteudo: ConteudoOperacao;
   recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
@@ -178,6 +230,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
   const [marcados, setMarcados] = useState<string[]>([]);
   const [executantes, setExecutantes] = useState<string[]>([]);
   const itens = conteudo.tiposPt[tipo].checklist;
+  const confinado = tipo === 'ESPACO_CONFINADO';
   const pendentes = itens.length - marcados.length;
 
   async function salvar(ev: React.FormEvent<HTMLFormElement>) {
@@ -195,6 +248,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
         executantes,
         emitente: String(d.get('emitente')).trim(),
         checklist: itens.map((item) => ({ item, ok: marcados.includes(item) })),
+        ...(confinado ? { supervisorEntrada: String(d.get('supervisorEntrada')).trim(), vigia: String(d.get('vigia')).trim(), medicoes: lerMedicao(d) ? [lerMedicao(d)!] : [] } : {}),
       });
       form.reset();
       setMarcados([]);
@@ -226,7 +280,19 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
             <Campo id="pt-inicio" name="inicio" type="datetime-local" rotulo="Válida a partir de" required />
             <Campo id="pt-fim" name="fim" type="datetime-local" rotulo="Válida até" required />
             <Campo id="pt-emitente" name="emitente" rotulo="Emitente" required placeholder="Quem libera o trabalho" />
+            {confinado && <>
+              <Campo id="pt-supervisor" name="supervisorEntrada" rotulo="Supervisor de entrada" required placeholder="Quem autoriza a entrada" />
+              <Campo id="pt-vigia" name="vigia" rotulo="Vigia" required placeholder="Quem fica do lado de fora" />
+            </>}
           </div>
+
+          {confinado && (
+            <fieldset className="rounded-card border border-border p-3">
+              <legend className="px-1 text-sm font-semibold">Medição antes da entrada</legend>
+              <p className="mb-2 text-xs text-text/60">Valores do detector de gases. Se ainda não mediu, deixe em branco: o PDF sai com a tabela para preencher à mão, e dá para lançar as medições depois na lista abaixo.</p>
+              <CamposMedicao prefixo="pt" />
+            </fieldset>
+          )}
 
           <fieldset className="rounded-card border border-border p-3">
             <legend className="px-1 text-sm font-semibold">Verificações: {conteudo.tiposPt[tipo].nome}</legend>
@@ -258,8 +324,15 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
                   <span>
                     <strong>Nº {p.numero}</strong> · {conteudo.tiposPt[p.tipo]?.nome ?? p.tipo} · {p.atividade} · até {dataHora(p.fim)} ·{' '}
                     <span className={`font-semibold ${cor}`}>{rotulo}</span>
+                    {p.tipo === 'ESPACO_CONFINADO' && <span className="text-text/60"> · {p.medicoes?.length ?? 0} medição(ões)</span>}
                   </span>
                   <span className="flex gap-2">
+                    {!p.encerradaEm && p.tipo === 'ESPACO_CONFINADO' && (
+                      <NovaMedicao aoSalvar={async (m) => {
+                        try { await registrarMedicaoGas(empresaId, p.id, m); avisar('ok', `Medição lançada na permissão nº ${p.numero}.`); await recarregar(); }
+                        catch (e) { avisar('erro', (e as Error).message); }
+                      }} />
+                    )}
                     {!p.encerradaEm && (
                       <Botao variante="secundario" onClick={async () => {
                         try { await encerrarPermissao(empresaId, p.id); avisar('ok', `Permissão nº ${p.numero} encerrada.`); await recarregar(); }

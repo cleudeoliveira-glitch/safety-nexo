@@ -66,14 +66,16 @@ export type Exame = {
   codigoEsocial?: string | null;
 };
 export type Ghe = { id: string; nome: string; descricao: string | null; periculosidadeAnexo?: string | null; periculosidadeJustificativa?: string | null; riscos: Risco[]; exames: Exame[]; _count: { colaboradores: number } };
-export type Colaborador = { id: string; nome: string; cpf?: string | null; matricula?: string | null; codCateg?: string | null; dataAdmissao?: string | null; cargo: string; cbo: string | null; gheId: string | null };
+export type Colaborador = { id: string; nome: string; cpf?: string | null; matricula?: string | null; codCateg?: string | null; dataAdmissao?: string | null; dataDesligamento?: string | null; cargo: string; cbo: string | null; gheId: string | null };
 export type Aso = {
   id: string; tipo: string; dataExame: string; resultado: 'APTO' | 'INAPTO';
   medicoExaminadorNome: string; medicoExaminadorCrm: string; exames: string[]; riscos: string[]; proximoExame: string | null;
   arquivoPath?: string | null; // PDF do ASO feito pela clínica
 };
 export type EntregaEpi = { id: string; epi: string; ca: string; validadeCa: string | null; quantidade: number; motivo: string; dataEntrega: string };
-export type ColaboradorDetalhe = Colaborador & { ghe: Ghe | null; asos: Aso[]; entregasEpi: EntregaEpi[]; presencasFaciais?: { refId: string; codigo: string }[] };
+// Situação do exame demissional de quem saiu (NR-07: dispensa se o último exame for recente).
+export type SituacaoDemissional = { feito: boolean; dispensa: boolean; limite: number; dias: number | null };
+export type ColaboradorDetalhe = Colaborador & { ghe: Ghe | null; asos: Aso[]; entregasEpi: EntregaEpi[]; presencasFaciais?: { refId: string; codigo: string }[]; demissional?: SituacaoDemissional | null };
 export type Pendencia = { titulo: string; detalhe: string; nivel: 'vencido' | 'pendente' | 'em-dia' };
 export type Vencimento = { tipo: string; versao: number; vencimento: string; dias: number };
 export type NumerosPainel = { colaboradores: number; acoesAbertas: number; acoesAtrasadas: number; relatosNovos: number; pendenciasVencidas: number; riscosPorTipo: Record<string, number>; riscosAltos: number };
@@ -195,7 +197,10 @@ export type TipoPt = 'ALTURA' | 'ESPACO_CONFINADO' | 'QUENTE' | 'ELETRICIDADE';
 export type Permissao = {
   id: string; numero: number; tipo: TipoPt; atividade: string; local: string; inicio: string; fim: string;
   executantes: string[]; emitente: string; checklist: { item: string; ok: boolean }[]; encerradaEm: string | null; apr: { numero: number } | null;
+  supervisorEntrada?: string | null; vigia?: string | null; medicoes?: MedicaoGas[];
 };
+// Leitura do detector de gases no espaço confinado: O2 e LIE em %, H2S e CO em ppm.
+export type MedicaoGas = { hora: string; oxigenio: number; lie: number; h2s?: number | null; co?: number | null; outro?: string | null; responsavel: string };
 export type Dds = { id: string; tema: string; conteudo: string; data: string; duracaoMin: number; ministrante: string; participantes: string[] };
 // Tema da biblioteca de DDS: o que falar, a pergunta para a equipe, um caso para contar e a dinâmica vivencial.
 export type TemaDds = { categoria: string; tema: string; conteudo: string; pergunta: string; situacao: string; dinamica: string };
@@ -211,6 +216,8 @@ export const criarApr = (empresaId: string, dados: Omit<Apr, 'id' | 'numero'>) =
 export const listarPermissoes = (empresaId: string) => chamar<Permissao[]>('GET', `/empresas/${empresaId}/permissoes`);
 export const criarPermissao = (empresaId: string, dados: Omit<Permissao, 'id' | 'numero' | 'encerradaEm' | 'apr'> & { aprId?: string }) =>
   chamar<Permissao>('POST', `/empresas/${empresaId}/permissoes`, dados);
+export const registrarMedicaoGas = (empresaId: string, id: string, dados: MedicaoGas) =>
+  chamar<Permissao>('POST', `/empresas/${empresaId}/permissoes/${id}/medicoes`, dados);
 export const encerrarPermissao = (empresaId: string, id: string) => chamar<Permissao>('POST', `/empresas/${empresaId}/permissoes/${id}/encerrar`);
 export const listarDds = (empresaId: string) => chamar<Dds[]>('GET', `/empresas/${empresaId}/dds`);
 export const criarDds = (empresaId: string, dados: Omit<Dds, 'id'>) => chamar<Dds>('POST', `/empresas/${empresaId}/dds`, dados);
@@ -270,6 +277,8 @@ export const carregarPainelGeral = () => chamar<PainelGeral>('GET', '/painel-ger
 const rotaColaborador = (empresaId: string, colaboradorId: string) => `/empresas/${empresaId}/colaboradores/${colaboradorId}`;
 export const buscarColaborador = (empresaId: string, colaboradorId: string) =>
   chamar<ColaboradorDetalhe>('GET', rotaColaborador(empresaId, colaboradorId));
+export const registrarDesligamento = (empresaId: string, colaboradorId: string, data: string | null) =>
+  chamar<{ dataDesligamento: string | null; demissional: SituacaoDemissional | null }>('PUT', `${rotaColaborador(empresaId, colaboradorId)}/desligamento`, { data });
 export const registrarAso = (empresaId: string, colaboradorId: string, dados: Record<string, string>) =>
   chamar<Aso>('POST', `${rotaColaborador(empresaId, colaboradorId)}/asos`, dados);
 export const registrarEpi = (empresaId: string, colaboradorId: string, dados: Record<string, string | number>) =>

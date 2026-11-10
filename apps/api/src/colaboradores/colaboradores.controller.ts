@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Param, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { enviarPdf } from '../documentos/documentos.controller';
 import { ColaboradoresService } from './colaboradores.service';
-import { CreateAsoDto, CreateEntregaEpiDto } from './dto';
+import { CreateAsoDto, CreateEntregaEpiDto, DesligamentoDto } from './dto';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 
 @PermiteEmpresa()
@@ -14,7 +14,12 @@ export class ColaboradoresController {
 
   @Get()
   detalhar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string) {
-    return this.colaboradores.detalhar(c, e, id);
+    return this.colaboradores.ficha(c, e, id);
+  }
+
+  @Put('desligamento')
+  desligar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Body() dto: DesligamentoDto) {
+    return this.colaboradores.desligar(c, e, id, dto.data ?? null);
   }
 
   @Post('asos')

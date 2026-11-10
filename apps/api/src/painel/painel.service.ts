@@ -19,8 +19,9 @@ export class PainelService {
     const empresa = await this.prisma.empresa.findFirst({
       where: { id: empresaId, consultoriaId },
       include: {
-        ghes: { include: { _count: { select: { riscos: true, exames: true, colaboradores: true } } } },
+        ghes: { include: { _count: { select: { riscos: true, exames: true, colaboradores: { where: { dataDesligamento: null } } } } } },
         colaboradores: {
+          where: { dataDesligamento: null },
           select: {
             id: true,
             nome: true,
@@ -33,11 +34,11 @@ export class PainelService {
         },
         documentos: { orderBy: { geradoEm: 'desc' } },
         cats: { where: { enviadaEm: null }, include: { colaborador: { select: { nome: true } } } },
-        afastamentos: { where: { motivo: { in: ['01', '03'] } }, include: { colaborador: { select: { nome: true, asos: { where: { tipo: 'RETORNO_TRABALHO' }, select: { dataExame: true } } } } } },
+        afastamentos: { where: { motivo: { in: ['01', '03'] }, colaborador: { dataDesligamento: null } }, include: { colaborador: { select: { nome: true, asos: { where: { tipo: 'RETORNO_TRABALHO' }, select: { dataExame: true } } } } } },
         controlesEmergencia: { where: { validade: { not: null } } },
         atestados: { where: { inicio: { gte: new Date(Date.now() - 180 * DIA_MS) } } },
         terceiros: { where: { OR: [{ fim: null }, { fim: { gte: new Date() } }] }, select: { razaoSocial: true, documentos: { where: { validade: { lt: new Date() } }, select: { tipo: true } } } },
-        registrosSaude: { where: { proximaData: { not: null } }, select: { tipo: true, titulo: true, data: true, proximaData: true, colaborador: { select: { id: true, nome: true } } } },
+        registrosSaude: { where: { proximaData: { not: null }, colaborador: { dataDesligamento: null } }, select: { tipo: true, titulo: true, data: true, proximaData: true, colaborador: { select: { id: true, nome: true } } } },
         turmas: { where: { norma: 'IT-17' }, select: { fim: true, validadeMeses: true, participantes: { select: { colaboradorId: true } } } },
       },
     });

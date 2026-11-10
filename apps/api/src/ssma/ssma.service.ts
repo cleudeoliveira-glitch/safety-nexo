@@ -29,7 +29,7 @@ export class SsmaService {
 
     const [colabs, cats, afast, atestados, horas, ddss, acoes, fap] = await Promise.all([
       this.prisma.colaborador.findMany({ where: { empresaId: e, ...filtroColab }, select: {
-        id: true, dataAdmissao: true, ghe: { select: { nome: true } },
+        id: true, dataAdmissao: true, dataDesligamento: true, ghe: { select: { nome: true } },
         asos: { orderBy: { dataExame: 'desc' }, take: 1, select: { proximoExame: true } },
         entregasEpi: { orderBy: { dataEntrega: 'desc' }, select: { epi: true, validadeCa: true } },
         treinamentos: { select: { turma: { select: { nome: true, fim: true, validadeMeses: true } } } },
@@ -48,7 +48,7 @@ export class SsmaService {
     const catComAfast = new Set(afast.filter((a) => a.catId).map((a) => a.catId));
     const serie = meses.map((mes) => {
       const fm = fimMes(mes);
-      const ativos = colabs.filter((x) => !x.dataAdmissao || x.dataAdmissao <= fm).length;
+      const ativos = colabs.filter((x) => (!x.dataAdmissao || x.dataAdmissao <= fm) && (!x.dataDesligamento || x.dataDesligamento >= inicioMes(mes))).length;
       // As horas digitadas valem para a empresa toda; com filtro de setor, estima pelo setor.
       const informado = !f.gheId && horasInformadas.has(mes);
       const hht = informado ? horasInformadas.get(mes)! : Math.round(ativos * emp.jornadaDiariaHoras * diasUteis(mes, hoje));
@@ -66,11 +66,12 @@ export class SsmaService {
     const ranking = [...porSetor.entries()].map(([nome, n]) => ({ nome, acidentes: n })).sort((a, b) => b.acidentes - a.acidentes).slice(0, 8);
 
     // ---------- Em dia (situação de hoje) ----------
-    const total = colabs.length;
-    const asoOk = colabs.filter((x) => x.asos[0]?.proximoExame && x.asos[0].proximoExame >= hoje).length;
-    const comEpi = colabs.filter((x) => x.entregasEpi.length);
+    const atuais = colabs.filter((x) => !x.dataDesligamento);
+    const total = atuais.length;
+    const asoOk = atuais.filter((x) => x.asos[0]?.proximoExame && x.asos[0].proximoExame >= hoje).length;
+    const comEpi = atuais.filter((x) => x.entregasEpi.length);
     const epiOk = comEpi.filter((x) => { const visto = new Set<string>(); return x.entregasEpi.every((ep) => { if (visto.has(ep.epi)) return true; visto.add(ep.epi); return !ep.validadeCa || ep.validadeCa >= hoje; }); }).length;
-    const comTrein = colabs.filter((x) => x.treinamentos.length);
+    const comTrein = atuais.filter((x) => x.treinamentos.length);
     const treinOk = comTrein.filter((x) => {
       const ultimo = new Map<string, Date | null>();
       for (const p of x.treinamentos) {
@@ -80,7 +81,7 @@ export class SsmaService {
       }
       return [...ultimo.values()].every((v) => v === null || v >= hoje);
     }).length;
-    const ids = new Set(colabs.map((x) => x.id));
+    const ids = new Set(atuais.map((x) => x.id));
     const noDds = new Set(ddss.flatMap((d) => d.participantes).filter((p) => ids.has(p))).size;
     const emDia = [
       { item: 'ASO', ok: asoOk, de: total, pct: pct(asoOk, total) },

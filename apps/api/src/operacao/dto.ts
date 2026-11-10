@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, Length, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 import { TIPOS_PT } from './conteudo';
 
 export class EtapaAprDto {
@@ -57,6 +57,25 @@ export class ItemChecklistDto {
   ok!: boolean;
 }
 
+// Leitura do detector de gases no espaço confinado (NR-33).
+export class MedicaoGasDto {
+  @IsDateString({}, { message: 'Informe a hora da medição.' })
+  hora!: string;
+
+  @IsNumber({}, { message: 'Informe o oxigênio (%).' }) @Min(0) @Max(100)
+  oxigenio!: number;
+
+  @IsNumber({}, { message: 'Informe os inflamáveis (% do LIE).' }) @Min(0) @Max(100)
+  lie!: number;
+
+  @IsOptional() @IsNumber() @Min(0) h2s?: number;
+  @IsOptional() @IsNumber() @Min(0) co?: number;
+  @IsOptional() @IsString() @MaxLength(120) outro?: string;
+
+  @IsString() @Length(2, 120, { message: 'Informe quem fez a medição.' })
+  responsavel!: string;
+}
+
 export class CriarPermissaoDto {
   @IsIn(Object.keys(TIPOS_PT), { message: 'Tipo de permissão inválido.' })
   tipo!: string;
@@ -92,6 +111,21 @@ export class CriarPermissaoDto {
   @ValidateNested({ each: true })
   @Type(() => ItemChecklistDto)
   checklist!: ItemChecklistDto[];
+
+  // Espaço confinado: a PET precisa do supervisor de entrada e do vigia.
+  @ValidateIf((o) => o.tipo === 'ESPACO_CONFINADO' || o.supervisorEntrada)
+  @IsString() @Length(2, 120, { message: 'Informe o supervisor de entrada.' })
+  supervisorEntrada?: string;
+
+  @ValidateIf((o) => o.tipo === 'ESPACO_CONFINADO' || o.vigia)
+  @IsString() @Length(2, 120, { message: 'Informe o vigia.' })
+  vigia?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MedicaoGasDto)
+  medicoes?: MedicaoGasDto[];
 }
 
 export class CriarDdsDto {

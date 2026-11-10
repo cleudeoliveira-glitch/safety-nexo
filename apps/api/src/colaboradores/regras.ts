@@ -35,14 +35,25 @@ export function examesDoTipo(programa: ExameProgramado[], tipo: TipoAso): string
 }
 
 // Próximo exame periódico: a menor periodicidade entre os exames periódicos do GHE.
+// Se o médico ainda não definiu prazo, vale o padrão da NR-07 (7.5.8): todo ano para quem tem
+// risco no PGR e a cada 2 anos para os demais.
 // Não há próximo exame após o demissional nem quando o resultado é inapto.
-export function proximoExame(programa: ExameProgramado[], tipo: TipoAso, resultado: string, dataExame: Date): Date | null {
+export function proximoExame(programa: ExameProgramado[], tipo: TipoAso, resultado: string, dataExame: Date, temRisco = true): Date | null {
   if (tipo === 'DEMISSIONAL' || resultado !== 'APTO') return null;
   const meses = programa
     .filter((e) => e.periodico && e.periodicidadeMeses)
     .map((e) => e.periodicidadeMeses as number);
-  if (meses.length === 0) return null;
+  const prazo = meses.length ? Math.min(...meses) : temRisco ? 12 : 24;
   const proxima = new Date(dataExame);
-  proxima.setMonth(proxima.getMonth() + Math.min(...meses));
+  proxima.setMonth(proxima.getMonth() + prazo);
   return proxima;
+}
+
+// NR-07 (7.5.11): o demissional pode ser dispensado se o último exame foi feito há menos de
+// 135 dias (grau de risco 1 e 2) ou 90 dias (grau 3 e 4).
+export function dispensaDemissional(grauRisco: number | null, ultimoExame: Date | null, desligamento: Date) {
+  const limite = grauRisco && grauRisco >= 3 ? 90 : 135;
+  if (!ultimoExame) return { dispensa: false, limite, dias: null as number | null };
+  const dias = Math.floor((desligamento.getTime() - ultimoExame.getTime()) / 86_400_000);
+  return { dispensa: dias >= 0 && dias < limite, limite, dias };
 }

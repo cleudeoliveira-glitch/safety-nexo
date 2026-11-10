@@ -377,7 +377,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
         <ul className="mt-4 divide-y divide-border text-sm">
           {colaboradores.map((c) => (
             <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-              <span>{c.nome} · {c.cargo}</span>
+              <span className={c.dataDesligamento ? 'text-text/50' : ''}>{c.nome} · {c.cargo}{c.dataDesligamento ? ' · saiu da empresa' : ''}</span>
               <span className="flex items-center gap-4">
                 <span className={c.gheId ? 'text-text/60' : 'text-warning'}>{ghes.find((g) => g.id === c.gheId)?.nome ?? 'Sem GHE'}</span>
                 <Link href={`/empresas/${empresaId}/colaboradores/${c.id}`} className="font-semibold text-primary hover:underline">

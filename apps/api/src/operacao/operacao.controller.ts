@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Post, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { enviarPdf } from '../documentos/documentos.controller';
-import { CriarAprDto, CriarDdsDto, CriarPermissaoDto } from './dto';
+import { CriarAprDto, CriarDdsDto, CriarPermissaoDto, MedicaoGasDto } from './dto';
 import { OperacaoService } from './operacao.service';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 
@@ -39,6 +39,11 @@ export class OperacaoController {
   @Post('empresas/:empresaId/permissoes')
   criarPermissao(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Body() dto: CriarPermissaoDto) {
     return this.operacao.criarPermissao(c, e, dto);
+  }
+
+  @Post('empresas/:empresaId/permissoes/:id/medicoes')
+  registrarMedicao(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() dto: MedicaoGasDto) {
+    return this.operacao.registrarMedicao(c, e, id, dto);
   }
 
   @Post('empresas/:empresaId/permissoes/:id/encerrar')

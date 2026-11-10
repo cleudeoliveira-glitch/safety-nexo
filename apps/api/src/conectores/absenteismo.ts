@@ -11,7 +11,7 @@ export const TIPOS_ATESTADO: Record<string, string> = {
 };
 
 type AtestadoCalc = { colaboradorId: string; inicio: Date; dias: number; horas: number | null; tipo: string; cid: string | null };
-type ColabCalc = { id: string; nome: string; dataAdmissao: Date | null; ghe?: { nome: string } | null };
+type ColabCalc = { id: string; nome: string; dataAdmissao: Date | null; dataDesligamento?: Date | null; ghe?: { nome: string } | null };
 
 const utc = (a: number, m: number, d: number) => Date.UTC(a, m, d);
 const diaUtil = (t: number) => { const s = new Date(t).getUTCDay(); return s !== 0 && s !== 6; };
@@ -37,7 +37,7 @@ export function indicadores(ano: number, jornada: number, colaboradores: ColabCa
   const meses = Array.from({ length: ultimoMes }, (_, m) => {
     const de = utc(ano, m, 1); const ate = utc(ano, m + 1, 0);
     let uteis = 0; for (let t = de; t <= ate; t += DIA) if (diaUtil(t)) uteis++;
-    const ativos = colaboradores.filter((c) => !c.dataAdmissao || inicioDia(c.dataAdmissao) <= ate).length;
+    const ativos = colaboradores.filter((c) => (!c.dataAdmissao || inicioDia(c.dataAdmissao) <= ate) && (!c.dataDesligamento || inicioDia(c.dataDesligamento) >= de)).length;
     const previstas = ativos * uteis * jornada;
     let perdidas = 0; let qtd = 0;
     for (const a of atestados) {

@@ -18,7 +18,7 @@ export class ContextoDocumentoService {
         consultoria: true,
         ghes: {
           orderBy: { nome: 'asc' },
-          include: { riscos: true, exames: true, _count: { select: { colaboradores: true } } },
+          include: { riscos: true, exames: true, _count: { select: { colaboradores: { where: { dataDesligamento: null } } } } },
         },
       },
     });

@@ -91,7 +91,7 @@ export class EmpresasService {
     await this.buscar(consultoriaId, empresaId);
     return this.prisma.ghe.findMany({
       where: { empresaId },
-      include: { riscos: true, exames: true, _count: { select: { colaboradores: true } } },
+      include: { riscos: true, exames: true, _count: { select: { colaboradores: { where: { dataDesligamento: null } } } } },
       orderBy: { nome: 'asc' },
     });
   }

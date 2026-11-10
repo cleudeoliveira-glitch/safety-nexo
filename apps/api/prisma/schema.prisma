@@ -125,6 +125,7 @@ model Colaborador {
   matricula     String?  // matrícula do vínculo no eSocial (S-2200)
   codCateg      String?  // categoria eSocial, só para quem não tem matrícula (ex.: estagiário)
   dataAdmissao  DateTime?
+  dataDesligamento DateTime? // saiu da empresa: fica no histórico, mas some dos alertas
   gheId         String?
   ghe           Ghe?     @relation(fields: [gheId], references: [id], onDelete: SetNull)
   createdAt     DateTime @default(now())
@@ -369,6 +370,9 @@ model PermissaoTrabalho {
   executantes String[]  // ids de colaboradores
   emitente    String
   checklist   Json      // [{ item, ok }]
+  supervisorEntrada String? // espaço confinado (NR-33): supervisor de entrada
+  vigia       String?       // espaço confinado (NR-33): vigia do lado de fora
+  medicoes    Json      @default("[]") // [{ hora, oxigenio, lie, h2s, co, outro, responsavel }]
   encerradaEm DateTime?
   createdAt   DateTime  @default(now())
 

@@ -2,7 +2,7 @@ import { documentoHtml, escape, Moldura } from '../documentos/layout';
 
 export type DadosPpp = {
   empresa: { razaoSocial: string; cnpj: string; cnae: string | null };
-  trabalhador: { nome: string; cpf: string | null; dataAdmissao: Date | null; cargo: string; cbo: string | null; ghe: string | null };
+  trabalhador: { nome: string; cpf: string | null; dataAdmissao: Date | null; dataDesligamento?: Date | null; cargo: string; cbo: string | null; ghe: string | null };
   agentes: {
     tipo: string; agente: string; tipoAvaliacao: string | null; intensidade: string | null; tecnicaMedicao: string | null;
     epcEficaz: boolean | null; epiEficaz: boolean | null; epiCa: string | null;
@@ -36,7 +36,7 @@ export function renderPppHtml(moldura: Moldura, d: DadosPpp): string {
     </section>
     <section>
       <h2>Seção II · Registros ambientais</h2>
-      <p class="meta">Período: ${data(t.dataAdmissao)} até ${data(d.emitidoEm)}</p>
+      <p class="meta">Período: ${data(t.dataAdmissao)} até ${data(t.dataDesligamento ?? d.emitidoEm)}${t.dataDesligamento ? ' (data de saída)' : ''}</p>
       ${
         d.agentes.length
           ? `<table>
