@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { planoAtual, temRecurso } from '../common/plano';
+import { emPrevia, planoAtual, temRecurso } from '../common/plano';
 import { LogosService } from '../logos/logos.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -34,6 +34,7 @@ export class ContextoDocumentoService {
   }
 
   async registrar(empresaId: string, tipo: string, versao: number, geradoEm: Date, validadeMeses: number) {
+    if (emPrevia()) return; // só conta versão quando a pessoa autoriza o PDF
     const vencimento = new Date(geradoEm);
     vencimento.setMonth(vencimento.getMonth() + validadeMeses);
     await this.prisma.documento.create({ data: { empresaId, tipo, versao, geradoEm, vencimento } });

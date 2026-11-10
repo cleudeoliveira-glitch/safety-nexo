@@ -10,7 +10,8 @@ import { cabecalhosSeguranca, limiteDePedidos } from './common/protecao';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   // Cada pedido ganha uma caixa onde o AuthGuard guarda o plano (usada no PDF: marca d'água e logos).
-  app.use((_req: unknown, _res: unknown, next: () => void) => caixaPlano.run({}, next));
+  // "X-Previa: 1" marca o pedido como pré-visualização do documento (ver emPrevia).
+  app.use((req: { headers: Record<string, unknown> }, _res: unknown, next: () => void) => caixaPlano.run({ previa: req.headers['x-previa'] === '1' }, next));
   app.useBodyParser('json', { limit: '1mb' }); // o desenho da assinatura vem como imagem
   app.set('trust proxy', 1); // IP real de quem assina, atrás do servidor de hospedagem
   app.disable('x-powered-by');

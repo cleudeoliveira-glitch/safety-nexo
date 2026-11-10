@@ -17,6 +17,7 @@ export class HistoricoInterceptor implements NestInterceptor {
     return next.handle().pipe(tap(() => {
       const sessao = req.sessao;
       if (!sessao?.sub) return; // cadastro, entrar e rotas públicas ficam de fora
+      if (req.headers?.['x-previa'] === '1') return; // pré-visualização não é emissão
       const rota: string = `${req.baseUrl ?? ''}${req.route?.path ?? req.path}`;
       if (!descreverAcao(metodo, rota)) return; // consultas feitas por POST (ex.: prévia da importação)
       this.gravar(sessao, metodo, rota, req.params?.empresaId ?? null).catch((e) => this.log.warn(`não gravou o histórico: ${e.message}`));

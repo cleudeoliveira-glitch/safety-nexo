@@ -1,6 +1,6 @@
 import { Controller, ForbiddenException, Param, Post, Res } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { mensagemUpgrade, planoAtual, Recurso, temRecurso } from '../common/plano';
+import { emPrevia, mensagemUpgrade, planoAtual, Recurso, temRecurso } from '../common/plano';
 import { Response } from 'express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { LtcatService } from './ltcat.service';
@@ -42,6 +42,12 @@ export class DocumentosController {
 }
 
 export function enviarPdf(res: Response, pdf: Buffer, nome: string) {
+  if (emPrevia()) {
+    // Pré-visualização: volta a página em HTML e não entra no arquivo de documentos.
+    res.set({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(pdf);
+    return;
+  }
   res.locals.arquivoPdf = { pdf, nome }; // o ArquivoInterceptor guarda uma cópia no arquivo da empresa
   res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${nome}"` });
   res.end(pdf);
