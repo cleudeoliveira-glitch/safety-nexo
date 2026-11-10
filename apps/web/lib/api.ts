@@ -66,7 +66,14 @@ export type Exame = {
   periodicidadeMeses: number | null;
   codigoEsocial?: string | null;
 };
-export type Ghe = { id: string; nome: string; descricao: string | null; periculosidadeAnexo?: string | null; periculosidadeJustificativa?: string | null; riscos: Risco[]; exames: Exame[]; _count: { colaboradores: number } };
+// GHE por setor e função (NR-01, 1.5.7.3.2), com a ficha do ambiente do setor.
+export type FuncaoGhe = { nome: string; cbo?: string | null; atividades?: string | null };
+export type AmbienteGhe = {
+  edificacao?: string; piso?: string; paredes?: string; cobertura?: string; peDireito?: string; iluminacao?: string; ventilacao?: string;
+  ceuAberto?: boolean; confinado?: boolean; maquinas?: string; ruidoFundo?: string; observacoes?: string;
+};
+export type DadosGhe = { setor: string; nome?: string; funcoes: FuncaoGhe[]; ambiente: AmbienteGhe; descricao?: string };
+export type Ghe = { id: string; nome: string; descricao: string | null; setor?: string | null; funcoes?: FuncaoGhe[] | null; ambiente?: AmbienteGhe | null; periculosidadeAnexo?: string | null; periculosidadeJustificativa?: string | null; riscos: Risco[]; exames: Exame[]; _count: { colaboradores: number } };
 export type Colaborador = { id: string; nome: string; cpf?: string | null; matricula?: string | null; codCateg?: string | null; dataAdmissao?: string | null; dataDesligamento?: string | null; cargo: string; cbo: string | null; gheId: string | null };
 export type Aso = {
   id: string; tipo: string; dataExame: string; resultado: 'APTO' | 'INAPTO';
@@ -124,7 +131,8 @@ export const buscarCnae = (codigo: string) => chamar<CnaeInfo>('GET', `/cnae/${e
 export const listarGhes = (empresaId: string) => chamar<Ghe[]>('GET', `/empresas/${empresaId}/ghes`);
 export const copiarDadosDe = (empresaId: string, d: { origemId: string; gheIds?: string[]; responsaveis?: boolean }) =>
   chamar<{ copiados: string[]; pulados: string[]; responsaveis: boolean }>('POST', `/empresas/${empresaId}/copiar-de`, d);
-export const criarGhe = (empresaId: string, dados: { nome: string; descricao?: string }) =>
+export const atualizarGhe = (empresaId: string, gheId: string, dados: DadosGhe) => chamar<Ghe>('PUT', `/empresas/${empresaId}/ghes/${gheId}`, dados);
+export const criarGhe = (empresaId: string, dados: DadosGhe) =>
   chamar<Ghe>('POST', `/empresas/${empresaId}/ghes`, dados);
 export const criarRisco = (empresaId: string, gheId: string, dados: Omit<Risco, 'id'>) =>
   chamar<Risco>('POST', `/empresas/${empresaId}/ghes/${gheId}/riscos`, dados);

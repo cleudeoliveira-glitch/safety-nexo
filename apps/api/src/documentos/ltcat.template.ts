@@ -22,7 +22,7 @@ export function renderLtcatHtml(moldura: Moldura, ghes: GheLtcat[], responsavel:
       return `
       <section class="ghe">
         <h2>${escape(g.nome)} <span class="meta">${g.colaboradores} colaborador(es)</span></h2>
-        ${g.descricao ? `<p>${escape(g.descricao)}</p>` : ''}
+        ${g.descricao ? `<p>${escape(g.descricao).replace(/\n/g, '<br>')}</p>` : ''}
         <p><strong>Cargos:</strong> ${g.cargos.length ? g.cargos.map(escape).join(', ') : 'nenhum colaborador vinculado'}</p>
         ${
           g.agentes.length

@@ -17,6 +17,8 @@ import {
   criarColaborador,
   criarExame,
   criarGhe,
+  atualizarGhe,
+  DadosGhe,
   criarRisco,
   avaliarRisco,
   ajustarRisco,
@@ -46,6 +48,7 @@ import {
 import { EscolhaTabela } from '@/components/EscolhaTabela';
 import { ehEmpresa } from '@/lib/sessao';
 import { CopiarDados } from '@/components/CopiarDados';
+import { FormGhe } from '@/components/FormGhe';
 import { rolarParaAncora } from '@/lib/abaDoEndereco';
 
 const TIPOS_RISCO = [
@@ -162,6 +165,20 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     }
   }
 
+  // Salva o GHE e diz se deu certo, para o formulário saber se limpa os campos.
+  async function salvarGhe(acao: () => Promise<unknown>, sucesso: string): Promise<boolean> {
+    try {
+      await acao();
+      setAviso({ tipo: 'ok', texto: sucesso });
+      await recarregar();
+      return true;
+    } catch (e) {
+      setAviso({ tipo: 'erro', texto: (e as Error).message });
+      return false;
+    }
+  }
+  const cargos = [...new Set(colaboradores.map((c) => c.cargo).filter(Boolean))].sort();
+
   if (!empresa) {
     return <main className="p-10">{aviso ? <Aviso tipo="erro">{aviso.texto}</Aviso> : 'Carregando empresa…'}</main>;
   }
@@ -209,22 +226,22 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Campo id="rtNome" name="rtNome" rotulo="Responsável técnico" defaultValue={empresa.responsavelTecnicoNome ?? ''} placeholder="Ex.: Cleude Oliveira" />
           <Campo id="rtRegistro" name="rtRegistro" rotulo="Registro profissional" defaultValue={empresa.responsavelTecnicoRegistro ?? ''} placeholder="Ex.: CREA-SP 123456" />
           <Campo id="representante" name="representante" rotulo="Representante legal" defaultValue={empresa.representanteLegalNome ?? ''} placeholder="Quem assina o PPP pela empresa" />
-          <Campo id="processos" name="processos" rotulo="Processos e ambientes de trabalho (vai no PGR)" className="md:col-span-3" defaultValue={empresa.descricaoProcessos ?? ''}
-            placeholder="Ex.: Padaria com área de produção (forno, masseira, cilindro), estoque e loja. Turno único, 8 h." />
+          <Campo id="processos" name="processos" rotulo="Visão geral da empresa (opcional, vai no PGR)" className="md:col-span-3" defaultValue={empresa.descricaoProcessos ?? ''}
+            placeholder="Ex.: Padaria com produção, estoque e loja. Turno único, 8 h."
+            dica="Só um resumo. O ambiente de cada setor é descrito no próprio GHE, logo abaixo." />
           <div className="flex items-end justify-end md:col-span-3"><Botao type="submit">Salvar dados</Botao></div>
         </form>
       </Cartao>
 
       <Cartao titulo="2. GHEs, riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
         {!cliente && <div className="mb-4"><CopiarDados empresaId={empresaId} aoCopiar={(t, erro) => { setAviso({ tipo: erro ? 'erro' : 'ok', texto: t }); if (!erro) recarregar(); }} /></div>}
-        <form
-          className="grid gap-4 md:grid-cols-3"
-          onSubmit={enviar((d) => criarGhe(empresaId, { nome: texto(d, 'nome'), descricao: texto(d, 'descricao') || undefined }), 'GHE cadastrado.')}
-        >
-          <Campo id="ghe-nome" name="nome" rotulo="Nome do GHE" required placeholder="Ex.: Produção" />
-          <Campo id="ghe-descricao" name="descricao" rotulo="Descrição" placeholder="Ex.: Operadores de forno e masseiros" />
-          <div className="flex items-end justify-end"><Botao type="submit">Adicionar GHE</Botao></div>
-        </form>
+        <details className="rounded-card border border-primary/30 bg-primary/5 p-4" open={ghes.length === 0}>
+          <summary className="cursor-pointer font-semibold text-primary">+ Novo GHE (por setor e função)</summary>
+          <div className="mt-4">
+            <FormGhe chave="novo" cargos={cargos} textoBotao="Adicionar GHE"
+              salvar={(dados) => salvarGhe(() => criarGhe(empresaId, dados), `GHE do setor ${dados.setor} cadastrado.`)} />
+          </div>
+        </details>
 
         <div className="mt-6 space-y-6">
           {ghes.length === 0 && <p className="text-sm text-text/60">Nenhum GHE ainda. Comece pelo primeiro acima.</p>}
@@ -233,6 +250,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
               <h3 className="font-semibold text-primary">
                 {ghe.nome} <span className="text-sm font-normal text-text/60">· {ghe._count.colaboradores} colaborador(es)</span>
               </h3>
+              <ResumoGhe ghe={ghe} cargos={cargos} salvar={(dados) => salvarGhe(() => atualizarGhe(empresaId, ghe.id, dados), `${ghe.nome} atualizado.`)} />
 
               <h4 className="mt-3 text-sm font-semibold">Riscos</h4>
               {ghe.riscos.length === 0 ? (
@@ -820,6 +838,34 @@ function LinkConvite({ convite, fechar }: { convite: Convite; fechar: () => void
         <Botao type="button" variante="secundario" onClick={fechar}>Fechar</Botao>
       </div>
       <p className="text-xs text-text/60">O link vale 7 dias. Depois disso, use "Mandar link de senha" de novo.</p>
+    </div>
+  );
+}
+
+// Setor, funções e ambiente do GHE, com o botão para editar.
+function ResumoGhe({ ghe, cargos, salvar }: { ghe: Ghe; cargos: string[]; salvar: (dados: DadosGhe) => Promise<boolean> }) {
+  const [editando, setEditando] = useState(false);
+  const funcoes = ghe.funcoes ?? [];
+  const amb = ghe.ambiente ?? {};
+  const temAmbiente = Object.values(amb).some((v) => v === true || (typeof v === 'string' && v.trim()));
+  if (editando) {
+    return (
+      <div className="mt-3 rounded-card border border-border bg-background/60 p-4">
+        <FormGhe chave={ghe.id} cargos={cargos} textoBotao="Salvar GHE" cancelar={() => setEditando(false)}
+          inicial={{ setor: ghe.setor ?? '', nome: ghe.nome, funcoes, ambiente: amb, descricao: ghe.descricao ?? undefined }}
+          salvar={async (dados) => { const ok = await salvar(dados); if (ok) setEditando(false); return ok; }} />
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 space-y-1 text-sm">
+      {!ghe.setor || !funcoes.length ? (
+        <p className="text-warning">Complete o setor e as funções deste GHE. O PGR e o eSocial pedem isso.</p>
+      ) : (
+        <p><strong>Setor:</strong> {ghe.setor} · <strong>Funções:</strong> {funcoes.map((f) => f.nome).join(', ')}</p>
+      )}
+      {!temAmbiente && <p className="text-warning">Falta descrever o ambiente deste setor (edificação, piso, iluminação, ventilação, máquinas).</p>}
+      <button type="button" className="font-semibold text-primary hover:underline" onClick={() => setEditando(true)}>Editar setor, funções e ambiente</button>
     </div>
   );
 }

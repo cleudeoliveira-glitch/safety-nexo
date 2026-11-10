@@ -1,5 +1,6 @@
 import * as tokens from '@safety-nexo/design-tokens';
 import { documentoHtml, escape, Moldura } from './layout';
+import { FuncaoGhe } from '../empresas/ghe-ambiente';
 import { DECISAO_NIVEL, NOME_GRAU, NOME_NIVEL, Nivel, nivelRisco } from './nivel-risco';
 
 // PGR conforme a NR-01 (1.5.7): inventário de riscos + plano de ação, datado e assinado.
@@ -8,7 +9,10 @@ export type RiscoPdf = {
   tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; severidade: string; probabilidade: string;
   possiveisLesoes: string | null; tipoAvaliacao?: string | null; intensidade?: string | null; limiteTolerancia?: string | null;
 };
-export type GhePdf = { nome: string; descricao: string | null; riscos: RiscoPdf[]; colaboradores: number };
+export type GhePdf = {
+  nome: string; descricao: string | null; riscos: RiscoPdf[]; colaboradores: number;
+  setor?: string | null; funcoes?: FuncaoGhe[]; ambiente?: string;
+};
 export type AcaoPdf = { descricao: string; local: string | null; responsavel: string | null; prazo: Date | null; prioridade: string; status: string; origemTexto: string | null };
 export type ExtrasPgr = {
   processos: string | null;
@@ -49,6 +53,25 @@ function matriz() {
     </table>`;
 }
 
+// Funções do GHE e o que cada uma faz (NR-01, 1.5.7.3.2, b).
+function funcoesHtml(ghe: GhePdf): string {
+  const funcoes = ghe.funcoes ?? [];
+  if (!funcoes.length) {
+    return `<p class="descricao"><strong>Atividades:</strong> ${ghe.descricao ? escape(ghe.descricao) : '<span class="falta">não descritas</span>'}</p>`;
+  }
+  return `<p class="descricao"><strong>Funções:</strong> ${funcoes.map((f) => `${escape(f.nome)}${f.cbo ? ` (CBO ${escape(f.cbo)})` : ''}`).join(', ')}</p>
+    ${funcoes.map((f) => `<p class="descricao"><strong>${escape(f.nome)}:</strong> ${f.atividades ? escape(f.atividades) : '<span class="falta">atividades a descrever</span>'}</p>`).join('')}
+    ${ghe.descricao ? `<p class="descricao">${escape(ghe.descricao)}</p>` : ''}`;
+}
+
+// Cada GHE com o seu ambiente: o administrativo não é descrito igual à solda.
+function ambientesHtml(ghes: GhePdf[]): string {
+  if (!ghes.length) return '';
+  return ghes
+    .map((g) => `<p><strong>${escape(g.nome)}</strong>${g.setor && !g.nome.includes(g.setor) ? ` (setor ${escape(g.setor)})` : ''}: ${g.ambiente ? escape(g.ambiente) : '<span class="falta">falta descrever o ambiente deste GHE (edificação, piso, iluminação, ventilação, máquinas).</span>'}</p>`)
+    .join('');
+}
+
 export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPgr): string {
   const todos = ghes.flatMap((g) => g.riscos.map((r) => ({ ghe: g.nome, r, nivel: nivelRisco(r.severidade, r.probabilidade) })));
   const prioritarios = todos.filter((x) => x.nivel === 'ALTO' || x.nivel === 'CRITICO');
@@ -58,7 +81,7 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
       (ghe) => `
       <section class="ghe">
         <h3>${escape(ghe.nome)} <span class="meta">${ghe.colaboradores} colaborador(es)</span></h3>
-        <p class="descricao"><strong>Atividades:</strong> ${ghe.descricao ? escape(ghe.descricao) : '<span class="falta">não descritas</span>'}</p>
+        ${funcoesHtml(ghe)}
         ${
           ghe.riscos.length
             ? `<table>
@@ -110,7 +133,8 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
   const corpo = `
     <section>
       <h2>1. Processos e ambientes de trabalho</h2>
-      <p>${extras.processos ? escape(extras.processos).replace(/\n/g, '<br>') : '<span class="falta">Falta descrever os processos e os ambientes da empresa.</span>'}</p>
+      ${extras.processos ? `<p>${escape(extras.processos).replace(/\n/g, '<br>')}</p>` : ''}
+      ${ghes.length ? `<p>Cada grupo de exposição tem o seu ambiente:</p>${ambientesHtml(ghes)}` : '<p class="falta">Falta cadastrar os GHEs e descrever o ambiente de cada um.</p>'}
     </section>
 
     <section>

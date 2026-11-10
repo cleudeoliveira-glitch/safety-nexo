@@ -3,6 +3,7 @@ import { ContextoDocumentoService } from './contexto.service';
 import { PdfService } from './pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { renderPgrHtml } from './pgr.template';
+import { lerAmbiente, lerFuncoes, textoAmbiente } from '../empresas/ghe-ambiente';
 
 @Injectable()
 export class PgrService {
@@ -38,6 +39,9 @@ export class PgrService {
       empresa.ghes.map((ghe) => ({
         nome: ghe.nome,
         descricao: ghe.descricao,
+        setor: ghe.setor,
+        funcoes: lerFuncoes(ghe.funcoes),
+        ambiente: textoAmbiente(lerAmbiente(ghe.ambiente)),
         colaboradores: ghe._count.colaboradores,
         riscos: ghe.riscos,
       })),

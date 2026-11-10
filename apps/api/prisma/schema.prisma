@@ -155,6 +155,10 @@ model Ghe {
   empresa       Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   nome          String
   descricao     String?
+  // NR-01, 1.5.7.3.2: o GHE é formado por setor e funções, nunca por pessoa.
+  setor         String?
+  funcoes       Json?    // [{ nome, cbo, atividades }]: a função e o que ela faz (alínea b)
+  ambiente      Json?    // ficha do ambiente do setor (alínea a): ver src/empresas/ghe-ambiente.ts
   // Periculosidade (NR-16): anexo que enquadra a atividade do GHE, ou NENHUM quando avaliado e não perigoso.
   periculosidadeAnexo         String?
   periculosidadeJustificativa String?

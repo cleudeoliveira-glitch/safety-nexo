@@ -65,6 +65,11 @@ export class EmpresasController {
     return this.empresas.criarGhe(consultoriaId, empresaId, dto);
   }
 
+  @Put(':empresaId/ghes/:gheId')
+  atualizarGhe(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Param('gheId') gheId: string, @Body() dto: CreateGheDto) {
+    return this.empresas.atualizarGhe(consultoriaId, empresaId, gheId, dto);
+  }
+
   @Post(':empresaId/ghes/:gheId/riscos')
   criarRisco(
     @ConsultoriaId() consultoriaId: string,
