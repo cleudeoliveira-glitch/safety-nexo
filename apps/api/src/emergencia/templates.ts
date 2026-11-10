@@ -65,7 +65,7 @@ export function planoHtml(moldura: Moldura, d: DadosPlano): string {
       <h2>6. Telefones de emergência</h2>
       <p>Corpo de Bombeiros 193 · SAMU 192 · Polícia Militar 190 · Defesa Civil 199${d.contatos ? ` · ${escape(d.contatos)}` : ''}</p>
       <h2>7. Treinamentos e simulados</h2>
-      <p>Os brigadistas fazem a atualização do treinamento a cada 12 meses (IT 17, item 4.4.1.4.2). Recomenda-se ao menos um simulado de abandono por ano com toda a população.</p>
+      <p>Os brigadistas refazem o treinamento todo ano (IT 17, item 4.4.1.4.2). Vale fazer pelo menos um simulado de abandono por ano, com todo mundo que trabalha no local.</p>
     </section>
     <div class="assinaturas">
       <div class="assinatura">&nbsp;<span>Responsável técnico</span></div>

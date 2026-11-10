@@ -32,7 +32,7 @@ function blocoInsalubridade(g: GheLaudo): string {
       ? `<p class="conclusao sim"><strong>Insalubridade:</strong> caracterizada em ${GRAUS[grau].nome.toLowerCase()}, com adicional de ${GRAUS[grau].percentual}% (CLT, art. 192).</p>`
       : grau === 'NAO' && !pendentes
         ? '<p class="conclusao nao"><strong>Insalubridade:</strong> não caracterizada.</p>'
-        : '<p class="conclusao pendente"><strong>Insalubridade:</strong> conclusão pendente de avaliação.</p>';
+        : '<p class="conclusao pendente"><strong>Insalubridade:</strong> a avaliação ainda não foi concluída.</p>';
   return `
     <h3>Insalubridade (NR-15)</h3>
     ${
@@ -48,9 +48,9 @@ function blocoInsalubridade(g: GheLaudo): string {
         )
         .join('')}</tbody>
     </table>`
-        : '<p>Nenhum agente físico, químico ou biológico identificado neste GHE.</p>'
+        : '<p>Não encontramos agente físico, químico ou biológico neste GHE.</p>'
     }
-    ${pendentes ? `<p class="alerta">${pendentes} agente(s) ainda sem grau de insalubridade definido.</p>` : ''}
+    ${pendentes ? `<p class="alerta">${pendentes} agente(s) ainda sem o grau de insalubridade definido.</p>` : ''}
     ${conclusao}`;
 }
 
@@ -59,8 +59,8 @@ function blocoPericulosidade(g: GheLaudo): string {
   const conclusao = anexo
     ? `<p class="conclusao sim"><strong>Periculosidade:</strong> caracterizada (NR-16, ${anexo.anexo}: ${escape(anexo.nome)}), com adicional de 30% sobre o salário (CLT, art. 193).</p>`
     : g.periculosidadeAnexo === 'NENHUM'
-      ? '<p class="conclusao nao"><strong>Periculosidade:</strong> não caracterizada. As atividades não se enquadram nos anexos da NR-16.</p>'
-      : '<p class="conclusao pendente"><strong>Periculosidade:</strong> conclusão pendente de avaliação.</p>';
+      ? '<p class="conclusao nao"><strong>Periculosidade:</strong> não caracterizada. Nenhuma atividade se encaixa nos anexos da NR-16.</p>'
+      : '<p class="conclusao pendente"><strong>Periculosidade:</strong> a avaliação ainda não foi concluída.</p>';
   return `
     <h3>Periculosidade (NR-16)</h3>
     ${g.periculosidadeJustificativa ? `<p><strong>Fundamentação:</strong> ${escape(g.periculosidadeJustificativa)}</p>` : ''}
@@ -69,8 +69,8 @@ function blocoPericulosidade(g: GheLaudo): string {
 
 export function laudoHtml(moldura: Moldura, ghes: GheLaudo[], partes: { insalubridade: boolean; periculosidade: boolean }, responsavel: Responsavel): string {
   const objetivo = [
-    partes.insalubridade && 'caracterizar ou descaracterizar a insalubridade (CLT, arts. 189 a 192, e NR-15)',
-    partes.periculosidade && 'caracterizar ou descaracterizar a periculosidade (CLT, art. 193, e NR-16)',
+    partes.insalubridade && 'dizer se há ou não insalubridade (CLT, arts. 189 a 192, e NR-15)',
+    partes.periculosidade && 'dizer se há ou não periculosidade (CLT, art. 193, e NR-16)',
   ]
     .filter(Boolean)
     .join(' e ');
@@ -92,17 +92,17 @@ export function laudoHtml(moldura: Moldura, ghes: GheLaudo[], partes: { insalubr
     `
     <section>
       <h2>Objetivo</h2>
-      <p>Este laudo tem por objetivo ${objetivo}, a partir da inspeção dos locais de trabalho e da análise das atividades de cada grupo homogêneo de exposição (GHE).</p>
-      <h2>Critérios</h2>
-      ${partes.insalubridade ? `<p><strong>Insalubridade:</strong> os agentes foram avaliados conforme os anexos da NR-15. Os graus mínimo, médio e máximo correspondem a adicionais de 10%, 20% e 40%.
-      Havendo mais de um agente, vale só o de grau mais alto, porque os adicionais não se somam (NR-15, item 15.3). A eficácia dos EPCs e EPIs foi considerada (NR-15, item 15.4.1).</p>` : ''}
-      ${partes.periculosidade ? `<p><strong>Periculosidade:</strong> as atividades foram comparadas com os anexos da NR-16. Quando caracterizada, o adicional é de 30% sobre o salário, sem os acréscimos de gratificações e prêmios.
-      O trabalhador pode optar pelo adicional de insalubridade, se também for devido, porque os dois não se acumulam (NR-16, item 16.2.1).</p>` : ''}
+      <p>Este laudo foi feito para ${objetivo}. Para isso, visitamos os locais de trabalho e acompanhamos as atividades de cada grupo de trabalhadores com exposição parecida (GHE).</p>
+      <h2>Como avaliamos</h2>
+      ${partes.insalubridade ? `<p><strong>Insalubridade:</strong> cada agente foi comparado com o anexo correspondente da NR-15. O grau mínimo dá direito a 10% de adicional, o médio a 20% e o máximo a 40%.
+      Se houver mais de um agente, vale só o de grau mais alto, porque os adicionais não se somam (NR-15, 15.3). Também levamos em conta se as proteções coletivas e os EPIs funcionam de fato (NR-15, 15.4.1).</p>` : ''}
+      ${partes.periculosidade ? `<p><strong>Periculosidade:</strong> comparamos as atividades com os anexos da NR-16. Quando há periculosidade, o adicional é de 30% sobre o salário-base, sem contar gratificações e prêmios.
+      Se a pessoa também tiver direito à insalubridade, ela escolhe um dos dois, porque eles não se acumulam (NR-16, 16.2.1).</p>` : ''}
     </section>
     ${blocos || '<p>Nenhum GHE cadastrado.</p>'}
     <section>
       <h2>Revisão</h2>
-      <p>Este laudo deve ser revisto sempre que houver mudança no ambiente, no processo, nas atividades ou nas medidas de controle.</p>
+      <p>Sempre que mudar o ambiente, o processo, as atividades ou as proteções, este laudo precisa ser refeito.</p>
     </section>
     <div class="assinaturas"><div class="assinatura">${escape(responsavel.nome ?? '')}<span>Responsável técnico${responsavel.registro ? ` · ${escape(responsavel.registro)}` : ''}</span></div></div>`,
     `.ghe table { font-size: 10px; } h3 { font-size: 13px; margin: 14px 0 6px; } .alerta { color: #EF4444; }
@@ -146,17 +146,15 @@ export function pgrtrHtml(moldura: Moldura, ghes: { nome: string; descricao: str
     `
     <section>
       <h2>Objetivo</h2>
-      <p>Identificar os perigos, avaliar os riscos e definir as medidas de prevenção das atividades rurais da empresa, conforme a NR-31 (item 31.3)
-      e as disposições gerais de gerenciamento de riscos da NR-01.</p>
-      <h2>Temas do trabalho rural considerados</h2>
+      <p>Este programa reúne os perigos do trabalho no campo, o tamanho de cada risco e o que será feito para prevenir acidentes e doenças, seguindo a NR-31 (31.3) e a NR-01.</p>
+      <h2>O que olhamos no trabalho rural</h2>
       <ul>${TEMAS_RURAIS.map((t) => `<li>${escape(t)}</li>`).join('')}</ul>
     </section>
-    <h2>Inventário de riscos por grupo</h2>
+    <h2>Riscos de cada grupo</h2>
     ${inventario || '<p>Nenhum GHE cadastrado.</p>'}
     <section>
       <h2>Revisão</h2>
-      <p>O programa deve ser revisto sempre que houver mudança nas atividades, nas culturas, nas máquinas ou nos produtos utilizados, após acidentes e,
-      no máximo, no prazo da revisão periódica.</p>
+      <p>O programa precisa ser revisto se mudarem as atividades, as culturas, as máquinas ou os produtos usados, depois de um acidente e, de qualquer forma, no prazo da revisão periódica.</p>
     </section>`,
   );
 }
@@ -170,9 +168,9 @@ export type DadosOs = {
 };
 
 const DEVERES = [
-  'Cumprir as normas de segurança e saúde do trabalho e as instruções desta ordem de serviço',
-  'Usar os EPIs fornecidos somente para a finalidade a que se destinam, guardá-los e conservá-los',
-  'Comunicar ao superior qualquer alteração no EPI que o torne impróprio para uso',
+  'Seguir as regras de segurança e as instruções desta ordem de serviço',
+  'Usar os EPIs só para o que eles servem, guardar e cuidar bem deles',
+  'Avisar o superior quando o EPI estragar ou deixar de proteger',
   'Fazer os exames médicos previstos no PCMSO',
   'Participar dos treinamentos e diálogos de segurança',
   'Comunicar imediatamente qualquer acidente, quase acidente ou condição insegura',
@@ -212,9 +210,9 @@ function paginaOs(d: DadosOs): string {
       <h2>É proibido</h2>
       <ul>${PROIBICOES.map((x) => `<li>${x}</li>`).join('')}</ul>
       <h2>Em caso de acidente</h2>
-      <p>Pare a atividade, peça socorro, avise imediatamente o superior ou o responsável pela segurança e não altere o local, exceto para socorrer.</p>
-      <p class="legal">A recusa injustificada em cumprir estas instruções ou em usar os EPIs fornecidos constitui ato faltoso (CLT, art. 158, parágrafo único).</p>
-      <p>Declaro que recebi esta ordem de serviço, que ela me foi explicada e que entendi o seu conteúdo.</p>
+      <p>Pare o que está fazendo, peça socorro e avise na hora o seu superior ou o responsável pela segurança. Não mexa no local, a não ser para socorrer alguém.</p>
+      <p class="legal">Recusar sem motivo estas instruções ou o uso dos EPIs fornecidos é falta do empregado (CLT, art. 158, parágrafo único).</p>
+      <p>Recebi esta ordem de serviço, ela me foi explicada e entendi o que está escrito.</p>
     </section>
     <div class="assinaturas">
       <div class="assinatura">${escape(d.colaborador.nome)}<span>Trabalhador · data ____/____/______</span></div>

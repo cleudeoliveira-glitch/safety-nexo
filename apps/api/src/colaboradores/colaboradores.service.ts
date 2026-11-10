@@ -14,7 +14,7 @@ import { examesDoTipo, NOME_TIPO_ASO, proximoExame, TipoAso } from './regras';
 // PDF do ASO feito pela clínica (a consultoria só controla: não agenda exame).
 const guardaAso = new Guarda('asos', process.env.ASOS_DIR ?? join(__dirname, '..', '..', 'storage', 'asos'));
 
-const AVISO = 'Documento gerado pelo Safety Nexo. Deve ser conferido e assinado pelos responsáveis.';
+const AVISO = 'Feito com o Safety Nexo.';
 
 @Injectable()
 export class ColaboradoresService {

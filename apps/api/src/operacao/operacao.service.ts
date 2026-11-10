@@ -9,7 +9,7 @@ import { TEMAS_DDS, TIPOS_PT, TipoPt } from './conteudo';
 import { CriarAprDto, CriarDdsDto, CriarPermissaoDto } from './dto';
 import { aprHtml, ddsHtml, EtapaApr, permissaoHtml } from './templates';
 
-const AVISO = 'Documento gerado pelo Safety Nexo. Deve ser conferido e assinado pelos responsáveis.';
+const AVISO = 'Feito com o Safety Nexo.';
 
 @Injectable()
 export class OperacaoService {

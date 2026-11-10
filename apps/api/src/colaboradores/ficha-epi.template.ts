@@ -44,8 +44,8 @@ export function renderFichaEpiHtml(
       </tbody>
     </table>
 
-    <p class="declaracao">Declaro que recebi os EPIs acima, gratuitamente, e o treinamento sobre seu uso, guarda e conservação.
-    Comprometo-me a usá-los apenas para a finalidade a que se destinam e a comunicar qualquer alteração que os torne impróprios para uso (NR-06).</p>`;
+    <p class="declaracao">Recebi de graça os EPIs acima e fui orientado(a) sobre como usar, guardar e cuidar de cada um.
+    Vou usar cada um só para o que ele serve e aviso quando algum estragar ou deixar de proteger (NR-06).</p>`;
 
   return documentoHtml(
     moldura,

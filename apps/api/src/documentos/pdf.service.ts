@@ -12,7 +12,7 @@ export function htmlDoPlano(html: string): string {
   const plano = planoAtual();
   if (!plano) return html;
   let saida = html;
-  if (temRecurso(plano, 'semMarca')) saida = saida.replace(/(gerad[oa]s? |guardad[oa]s? )(pelo|no) Safety Nexo/g, '$1$2 sistema').replace(/no Safety Nexo/g, 'no sistema');
+  if (temRecurso(plano, 'semMarca')) saida = saida.replace(/Feito com o Safety Nexo[.,]\s?/g, '').replace(/(gerad[oa]s? |guardad[oa]s? )(pelo|no) Safety Nexo/g, '$1$2 sistema').replace(/no Safety Nexo/g, 'no sistema');
   if (!temRecurso(plano, 'logoEmpresa')) saida = saida.includes('</body>') ? saida.replace('</body>', `${MARCA_TESTE}</body>`) : saida + MARCA_TESTE;
   return saida;
 }

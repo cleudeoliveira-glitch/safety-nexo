@@ -56,7 +56,7 @@ export class ProntuarioService {
       this.prisma.registroSaude.findMany({ where: { colaboradorId, empresaId: e }, orderBy: { data: 'asc' } }),
       this.contexto.carregar(c, e, 'PRONTUARIO'),
     ]);
-    const m = { titulo: 'Prontuário de saúde ocupacional', logoEmpresa: ctx.logoEmpresa, consultoria: ctx.consultoria, aviso: 'Documento gerado pelo Safety Nexo. Dados sigilosos de saúde.',
+    const m = { titulo: 'Prontuário de saúde ocupacional', logoEmpresa: ctx.logoEmpresa, consultoria: ctx.consultoria, aviso: 'Feito com o Safety Nexo. Contém dados de saúde: guarde com sigilo.',
       infos: [['Empresa', ctx.empresa.razaoSocial], ['Funcionário', col.nome], ['Cargo', col.cargo], ...(col.cpf ? [['CPF', col.cpf]] : [])] as [string, string][] };
     return { pdf: await this.pdf.render(prontuarioHtml(m, asos, regs)), nome: col.nome };
   }

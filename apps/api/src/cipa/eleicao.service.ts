@@ -20,7 +20,7 @@ export type DocumentoEleicao = keyof typeof DOCUMENTOS;
 export const ehDocumentoEleicao = (doc: string): doc is DocumentoEleicao => doc in DOCUMENTOS;
 
 const data = (iso?: string) => (iso === undefined ? undefined : new Date(iso));
-const AVISO = 'Documento gerado pelo Safety Nexo com base na NR-05. Deve ser conferido e assinado pelos responsáveis.';
+const AVISO = 'Feito com o Safety Nexo. Segue a NR-05.';
 
 @Injectable()
 export class EleicaoCipaService {

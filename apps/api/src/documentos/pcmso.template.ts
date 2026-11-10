@@ -21,7 +21,7 @@ export function renderPcmsoHtml(moldura: Moldura, medico: Medico, ghes: GhePcmso
       (ghe) => `
       <section>
         <h2>${escape(ghe.nome)} <span class="meta">${ghe.colaboradores} colaborador(es)</span></h2>
-        <p class="riscos"><strong>Riscos do PGR:</strong> ${ghe.riscos.length ? ghe.riscos.map(escape).join(', ') : 'nenhum risco cadastrado'}</p>
+        <p class="riscos"><strong>Riscos do PGR:</strong> ${ghe.riscos.length ? ghe.riscos.map(escape).join(', ') : 'nenhum risco cadastrado no PGR'}</p>
         ${
           ghe.exames.length
             ? `<table>
@@ -52,6 +52,12 @@ export function renderPcmsoHtml(moldura: Moldura, medico: Medico, ghes: GhePcmso
     .join('');
 
   const medicoHtml = `
+    <section>
+      <p>Este programa organiza os exames de saúde de cada grupo de trabalhadores, a partir dos riscos levantados no PGR. A ideia é
+      perceber cedo qualquer sinal de que o trabalho está afetando a saúde de alguém e agir antes que vire doença.</p>
+      <p>Os exames são feitos na admissão, de tempos em tempos (periódicos), na volta de afastamentos, quando a pessoa muda de risco e na
+      demissão. Os resultados ficam com o médico, em sigilo. A empresa recebe só o ASO, dizendo se a pessoa está apta ou não para a função.</p>
+    </section>
     <section class="medico">
       <h2>Médico responsável</h2>
       <p>${escape(medico.nome ?? 'Não informado')} · CRM ${escape(medico.crm ?? 'não informado')}</p>

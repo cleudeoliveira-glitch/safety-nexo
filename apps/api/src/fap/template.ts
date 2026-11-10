@@ -22,6 +22,6 @@ export function relatorioFapHtml(m: Moldura, anos: Ano[], o: Ocorr) {
     <h2>O que está registrado no sistema (últimos 24 meses)</h2>
     <table><tr><th>CATs emitidas</th><th>Com afastamento</th><th>Óbitos</th><th>Afastamentos do trabalho com mais de 15 dias</th></tr>
     <tr><td>${o.cats}</td><td>${o.comAfastamento}</td><td>${o.obitos}</td><td>${o.afastamentosInss}</td></tr></table>
-    <p class="meta">Pesam no FAP as CATs e os benefícios por acidente ou doença do trabalho concedidos pelo INSS, inclusive por nexo técnico, conforme a gravidade e o custo de cada um (Decreto 3.048/1999, art. 202-A, § 4º). Menos acidentes e afastamentos levam a um FAP menor nos anos seguintes.</p>
-    <p class="meta">Base: RAT de 1%, 2% ou 3% conforme o risco da atividade preponderante (Lei 8.212/1991, art. 22, II). FAP de 0,5000 a 2,0000, com quatro casas decimais, multiplicado pelo RAT (Decreto 3.048/1999, art. 202-A, § 1º). O FAP de cada empresa é divulgado pela Previdência na internet (art. 202-A, § 5º).</p>`);
+    <p class="meta">O que pesa no FAP são as CATs e os benefícios que o INSS concede por acidente ou doença do trabalho, inclusive por nexo técnico, de acordo com a gravidade e o custo de cada um (Decreto 3.048/1999, art. 202-A, § 4º). Menos acidentes e afastamentos hoje significam um FAP menor nos próximos anos.</p>
+    <p class="meta">Como a conta é feita: o RAT é de 1%, 2% ou 3%, conforme o risco da atividade principal (Lei 8.212/1991, art. 22, II). O FAP vai de 0,5000 a 2,0000 e multiplica o RAT (Decreto 3.048/1999, art. 202-A, § 1º). A Previdência divulga o FAP de cada empresa todo ano, na internet.</p>`);
 }

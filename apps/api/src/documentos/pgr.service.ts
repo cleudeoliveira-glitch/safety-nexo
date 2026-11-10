@@ -33,7 +33,7 @@ export class PgrService {
           ['Versão', `${versao} · emitido em ${geradoEm.toLocaleDateString('pt-BR')}`],
           ['Responsável', [empresa.responsavelTecnicoNome, empresa.responsavelTecnicoRegistro].filter(Boolean).join(' · ') || null],
         ],
-        aviso: 'Documento gerado pelo Safety Nexo. Deve ser revisado e assinado pelo profissional responsável (NR-01, 1.5.7.2).',
+        aviso: 'Feito com o Safety Nexo.',
       },
       empresa.ghes.map((ghe) => ({
         nome: ghe.nome,

@@ -27,7 +27,7 @@ export class LtcatService {
           ['Grau de risco', empresa.grauRisco],
           ['Versão', `${versao} · emitido em ${geradoEm.toLocaleDateString('pt-BR')}`],
         ],
-        aviso: 'Documento gerado pelo Safety Nexo. Deve ser revisado e assinado por engenheiro de segurança do trabalho ou médico do trabalho.',
+        aviso: 'Feito com o Safety Nexo.',
       },
       empresa.ghes.map((g) => ({
         nome: g.nome,

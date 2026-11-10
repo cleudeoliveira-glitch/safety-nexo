@@ -9,7 +9,7 @@ import { cobrancaHtml, contratoHtml, ItemProposta, propostaHtml, totalItens } fr
 
 const dia = (iso: string) => new Date(iso.slice(0, 10));
 const hoje = () => new Date(new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10));
-const AVISO = 'Documento gerado pelo Safety Nexo.';
+const AVISO = 'Feito com o Safety Nexo.';
 
 @Injectable()
 export class ComercialService {

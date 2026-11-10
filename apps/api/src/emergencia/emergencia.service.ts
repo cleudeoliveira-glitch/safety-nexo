@@ -84,7 +84,7 @@ export class EmergenciaService {
           logoEmpresa,
           consultoria,
           infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj], ['Emitido em', new Date().toLocaleDateString('pt-BR')]],
-          aviso: 'Documento gerado pelo Safety Nexo. Brigada dimensionada pela IT 17/2025 do CBPMESP: confira com a instrução técnica do seu estado.',
+          aviso: 'Feito com o Safety Nexo. A brigada foi calculada pela IT 17/2025 de São Paulo. Em outros estados, confira a instrução do Corpo de Bombeiros local.',
         },
         {
           ...s.config,

@@ -70,7 +70,7 @@ export class CipaService {
           ['CNAE', empresa.cnae ?? '—'],
           ['Emitido em', geradoEm.toLocaleDateString('pt-BR')],
         ],
-        aviso: 'Documento gerado pelo Safety Nexo com base na NR-05 (Portaria MTP nº 422/2021). Deve ser conferido pelo responsável técnico.',
+        aviso: 'Feito com o Safety Nexo. Segue a NR-05.',
       },
       situacaoCipa(empresa),
     );
