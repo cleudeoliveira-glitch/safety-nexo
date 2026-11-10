@@ -29,6 +29,8 @@ model Consultoria {
   pedidoPlanoEm   DateTime?
   reguaCobranca   Boolean   @default(false) // avisos de cobrança por e-mail para as empresas clientes (antes e depois do vencimento)
   testeAte        DateTime? // até quando vale o teste com tudo liberado (14 dias depois do cadastro)
+  termosAceitosEm DateTime? // aceite dos termos de uso e da política de privacidade no cadastro (LGPD)
+  termosVersao    String?
   createdAt DateTime  @default(now())
   normasLidas AvisoNormaLido[]
   empresas  Empresa[]

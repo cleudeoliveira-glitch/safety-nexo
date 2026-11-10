@@ -299,7 +299,8 @@ function AbaFaltas({ empresaId, colaboradores, cliente, avisar }: { empresaId: s
               ? <input id="at-horas" name="horas" aria-label="Horas" inputMode="decimal" required placeholder="Ex.: 3" className="w-full rounded-card border border-border bg-background px-3 py-2" />
               : <input id="at-dias" name="dias" aria-label="Dias" type="number" min={1} max={365} required placeholder="Ex.: 2" className="w-full rounded-card border border-border bg-background px-3 py-2" />}
           </div>
-          <Campo id="at-cid" name="cid" rotulo="CID (se vier no atestado)" placeholder="Ex.: M54.5" />
+          <Campo id="at-cid" name="cid" rotulo="CID (se vier no atestado)" placeholder="Ex.: M54.5"
+            dica={cliente ? 'Dado de saúde sigiloso: depois de salvo, só a consultoria vê.' : undefined} />
           <Campo id="at-medico" name="medico" rotulo="Médico e CRM" />
           <div className="flex justify-end md:col-span-3"><Botao type="submit">Lançar</Botao></div>
         </form>
@@ -333,7 +334,7 @@ function AbaFaltas({ empresaId, colaboradores, cliente, avisar }: { empresaId: s
           <div className="grid gap-6 md:grid-cols-2">
             <Barras titulo="Por GHE" itens={ind.porGhe} />
             <Barras titulo="Por motivo" itens={ind.porTipo} />
-            <Barras titulo="Doenças que mais afastam (CID)" itens={ind.porCid} />
+            {!cliente && <Barras titulo="Doenças que mais afastam (CID)" itens={ind.porCid} />}
             <Barras titulo="Quem mais faltou" itens={ind.quemMaisFaltou} />
           </div>
         </Cartao>

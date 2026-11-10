@@ -45,6 +45,8 @@ export class AuthService {
             plano: 'FREE',
             limiteEmpresas: 1,
             testeAte,
+            termosAceitosEm: new Date(),
+            termosVersao: dto.versaoTermos ?? null,
           },
         },
       },

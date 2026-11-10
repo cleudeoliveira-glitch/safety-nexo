@@ -100,27 +100,27 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
           )
           .join('')}</tbody>
       </table>`
-    : '<p class="falta">Nenhuma ação cadastrada no plano de ação da empresa.</p>';
+    : '<p class="falta">Ainda não há ações cadastradas.</p>';
 
   const prioritariosHtml = prioritarios.length
-    ? `<p>Riscos de nível alto ou crítico, que precisam de ação no cronograma abaixo:</p>
+    ? `<p>Estes são os riscos que pedem atenção primeiro:</p>
        <ul>${prioritarios.map((x) => `<li>${selo(x.nivel)} <strong>${escape(x.ghe)}</strong>: ${escape(x.r.agente)} (${escape(x.r.fonteGeradora)})</li>`).join('')}</ul>`
-    : '<p>Nenhum risco classificado como alto ou crítico.</p>';
+    : '<p>Nenhum risco ficou em nível alto ou crítico.</p>';
 
   const corpo = `
     <section>
       <h2>1. Processos e ambientes de trabalho</h2>
-      <p>${extras.processos ? escape(extras.processos).replace(/\n/g, '<br>') : '<span class="falta">Descrição dos processos e ambientes ainda não informada.</span>'}</p>
+      <p>${extras.processos ? escape(extras.processos).replace(/\n/g, '<br>') : '<span class="falta">Falta descrever os processos e os ambientes da empresa.</span>'}</p>
     </section>
 
     <section>
-      <h2>2. Critérios de avaliação e tomada de decisão</h2>
-      <p>Os perigos foram identificados por inspeção dos ambientes e das atividades, com consulta aos trabalhadores. Cada risco recebeu uma
-      <strong>severidade</strong> (gravidade da lesão ou do agravo possível) e uma <strong>probabilidade</strong> (chance de acontecer, considerando as medidas
-      já existentes). O cruzamento das duas dá o <strong>nível de risco</strong> (NR-01, 1.5.4.4.2), que define a prioridade no plano de ação.</p>
+      <h2>2. Como os riscos foram avaliados</h2>
+      <p>Percorremos os setores, acompanhamos as atividades e conversamos com quem faz o trabalho. Para cada perigo encontrado, avaliamos
+      o tamanho do dano que ele pode causar (severidade) e a chance de isso acontecer com as proteções que já existem hoje (probabilidade).
+      O cruzamento das duas coisas dá o nível de risco, que define o que resolver primeiro.</p>
       ${matriz()}
-      <p>As medidas de prevenção seguem esta ordem de prioridade (NR-01): eliminar o perigo; trocar por algo menos perigoso; proteção coletiva;
-      medidas administrativas e de organização do trabalho; e, por último, equipamento de proteção individual.</p>
+      <p>Na escolha das medidas, a preferência é sempre tirar o perigo do caminho ou trocá-lo por algo mais seguro. Quando isso não dá,
+      vêm as proteções coletivas, depois a organização do trabalho, e o EPI fica como último recurso.</p>
     </section>
 
     <section>
@@ -132,19 +132,18 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
       <h2>4. Plano de ação</h2>
       ${prioritariosHtml}
       ${acoes}
-      <p><strong>Acompanhamento:</strong> o plano é acompanhado pela consultoria no sistema, conferido nas inspeções periódicas e revisto junto com o PGR.
-      Ao concluir cada ação, registra-se a data e a evidência, e verifica-se se o risco foi reduzido.</p>
+      <p>Cada ação concluída ganha data e foto de comprovação. O andamento é conferido nas visitas de inspeção e o plano é revisto junto com o PGR.</p>
     </section>
 
     <section>
       <h2>5. Preparação para emergências</h2>
-      <p>Os procedimentos de resposta a emergências estão no Plano de Emergência da empresa${extras.pontoEncontro ? `. Ponto de encontro: <strong>${escape(extras.pontoEncontro)}</strong>` : ''} (NR-01, 1.5.6).</p>
+      <p>O que fazer em caso de incêndio, acidente ou outra emergência está no Plano de Emergência da empresa${extras.pontoEncontro ? `. O ponto de encontro é: <strong>${escape(extras.pontoEncontro)}</strong>` : ''}.</p>
     </section>
 
     <section>
       <h2>6. Revisão</h2>
-      <p>A avaliação de riscos deve ser revista a cada 2 anos, ou antes, quando houver mudança nos processos, nos ambientes ou nas medidas,
-      após acidente ou doença relacionada ao trabalho, ou quando o acompanhamento mostrar que as medidas não funcionam (NR-01, 1.5.4.4.6).</p>
+      <p>Este PGR vale por até 2 anos. Ele deve ser revisto antes disso se mudar algum processo, máquina ou setor, se acontecer um acidente
+      ou adoecimento ligado ao trabalho, ou se alguma medida não estiver funcionando.</p>
     </section>
 
     <p>Emitido em ${data(extras.emitidoEm)}.</p>
