@@ -215,7 +215,7 @@ export class ConectoresService {
   async absenteismo(consultoriaId: string, empresaId: string, ano: number) {
     const empresa = await this.empresa(consultoriaId, empresaId);
     const [colaboradores, atestados, recentes] = await Promise.all([
-      this.prisma.colaborador.findMany({ where: { empresaId }, select: { id: true, nome: true, dataAdmissao: true, ghe: { select: { nome: true } } } }),
+      this.prisma.colaborador.findMany({ where: { empresaId }, select: { id: true, nome: true, dataAdmissao: true, dataDesligamento: true, ghe: { select: { nome: true } } } }),
       this.listarAtestados(consultoriaId, empresaId, ano),
       this.prisma.atestado.findMany({ where: { empresaId, inicio: { gte: new Date(Date.now() - 180 * DIA) } } }),
     ]);

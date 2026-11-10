@@ -59,3 +59,10 @@ export class CreateEntregaEpiDto {
   @IsDateString({}, { message: 'Informe a data da entrega.' })
   dataEntrega!: string;
 }
+
+export class DesligamentoDto {
+  // Vazio desfaz a saída (por exemplo, se foi marcada por engano).
+  @IsOptional()
+  @IsDateString({}, { message: 'Data de saída inválida.' })
+  data?: string | null;
+}

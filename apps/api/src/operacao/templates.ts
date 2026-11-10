@@ -53,12 +53,45 @@ export function aprHtml(moldura: Moldura, apr: { atividade: string; local: strin
   );
 }
 
+export type MedicaoGas = { hora: string; oxigenio: number; lie: number; h2s: number | null; co: number | null; outro: string | null; responsavel: string };
+
+// Faixas usadas na liberação: oxigênio entre 19,5% e 23%, inflamáveis abaixo de 10% do LIE,
+// H2S até 8 ppm e CO até 39 ppm (limites da NR-15 para 48 h semanais).
+const foraDaFaixa = (m: MedicaoGas) => ({
+  oxigenio: m.oxigenio < 19.5 || m.oxigenio > 23,
+  lie: m.lie >= 10,
+  h2s: m.h2s !== null && m.h2s > 8,
+  co: m.co !== null && m.co > 39,
+});
+const num = (v: number | null, alerta: boolean) => (v === null ? '—' : `<span${alerta ? ' class="alerta"' : ''}>${v.toLocaleString('pt-BR')}</span>`);
+
+function medicoesHtml(medicoes: MedicaoGas[]) {
+  const linhas = medicoes.length
+    ? medicoes.map((m) => {
+        const f = foraDaFaixa(m);
+        return `<tr><td>${dataHora(new Date(m.hora))}</td><td class="c">${num(m.oxigenio, f.oxigenio)}</td><td class="c">${num(m.lie, f.lie)}</td><td class="c">${num(m.h2s, f.h2s)}</td><td class="c">${num(m.co, f.co)}</td><td>${escape(m.outro ?? '')}</td><td>${escape(m.responsavel)}</td></tr>`;
+      }).join('')
+    : Array.from({ length: 4 }, () => '<tr><td style="height:22px"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+  const algumaFora = medicoes.some((m) => Object.values(foraDaFaixa(m)).some(Boolean));
+  return `<section>
+      <h2>Medição da atmosfera</h2>
+      <p class="meta">Medir antes de entrar e repetir durante o trabalho. Só entre se o oxigênio estiver entre 19,5% e 23%, os inflamáveis abaixo de 10% do LIE e os gases tóxicos dentro do limite (H2S até 8 ppm, CO até 39 ppm).</p>
+      <table>
+        <thead><tr><th>Hora</th><th class="c">O2 (%)</th><th class="c">LIE (%)</th><th class="c">H2S (ppm)</th><th class="c">CO (ppm)</th><th>Outro gás</th><th>Quem mediu</th></tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>
+      ${algumaFora ? '<p class="alerta">Há medição fora da faixa segura. Ninguém entra até ventilar e medir de novo.</p>' : ''}
+    </section>`;
+}
+
 export function permissaoHtml(
   moldura: Moldura,
-  pt: { tipoNome: string; norma: string; atividade: string; local: string; inicio: Date; fim: Date; emitente: string; aprNumero: number | null; encerradaEm: Date | null },
+  pt: { tipo?: string; tipoNome: string; norma: string; atividade: string; local: string; inicio: Date; fim: Date; emitente: string; aprNumero: number | null; encerradaEm: Date | null; supervisorEntrada?: string | null; vigia?: string | null },
   checklist: { item: string; ok: boolean }[],
   executantes: Pessoa[],
+  medicoes: MedicaoGas[] = [],
 ) {
+  const confinado = pt.tipo === 'ESPACO_CONFINADO';
   return documentoHtml(
     moldura,
     `
@@ -67,6 +100,7 @@ export function permissaoHtml(
       <p><strong>Atividade:</strong> ${escape(pt.atividade)} · <strong>Local:</strong> ${escape(pt.local)}</p>
       <p><strong>Válida de</strong> ${dataHora(pt.inicio)} <strong>até</strong> ${dataHora(pt.fim)}
       ${pt.aprNumero ? ` · <strong>APR vinculada:</strong> nº ${pt.aprNumero}` : ''}</p>
+      ${confinado ? `<p><strong>Supervisor de entrada:</strong> ${escape(pt.supervisorEntrada ?? '') || '________________'} · <strong>Vigia:</strong> ${escape(pt.vigia ?? '') || '________________'}</p>` : ''}
     </section>
     <section>
       <h2>Verificações antes de liberar</h2>
@@ -76,13 +110,14 @@ export function permissaoHtml(
       </table>
       ${checklist.some((c) => !c.ok) ? '<p class="alerta">Há itens marcados como "não". Só libere o trabalho depois de resolvê-los.</p>' : ''}
     </section>
+    ${confinado ? medicoesHtml(medicoes) : ''}
     <section>
-      <h2>Executantes</h2>
+      <h2>${confinado ? 'Trabalhadores autorizados a entrar' : 'Executantes'}</h2>
       ${listaAssinaturas(executantes, 'Nenhum executante registrado.')}
     </section>
     <div class="assinaturas">
       ${assinatura(pt.emitente, 'Emitente da permissão')}
-      ${assinatura('', 'Responsável pela área')}
+      ${confinado ? `${assinatura(pt.supervisorEntrada ?? '', 'Supervisor de entrada')}${assinatura(pt.vigia ?? '', 'Vigia')}` : assinatura('', 'Responsável pela área')}
     </div>
     <section class="encerramento">
       <h2>Encerramento</h2>

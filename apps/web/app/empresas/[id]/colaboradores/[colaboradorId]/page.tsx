@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
 import { conferirNoAparelho, guardarCaptura } from '@/lib/rosto-offline';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { abrirAsoClinica, anexarAsoClinica, buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto } from '@/lib/api';
+import { abrirAsoClinica, anexarAsoClinica, buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarDesligamento, type SituacaoDemissional, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto } from '@/lib/api';
 
 const TIPOS_ASO = [
   ['ADMISSIONAL', 'Admissional'],
@@ -302,6 +302,20 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
         )}
       </Cartao>
 
+      <CartaoSaida
+        dataDesligamento={colaborador.dataDesligamento ?? null}
+        demissional={colaborador.demissional ?? null}
+        salvar={async (d) => {
+          try {
+            await registrarDesligamento(empresaId, colaboradorId, d);
+            setAviso({ tipo: 'ok', texto: d ? 'Saída registrada. O histórico fica guardado, mas ele não aparece mais nos alertas.' : 'Saída desfeita. Ele volta a aparecer nos alertas.' });
+            await recarregar();
+          } catch (e) {
+            setAviso({ tipo: 'erro', texto: (e as Error).message });
+          }
+        }}
+      />
+
       {camera === 'cadastro' && (
         <CameraRosto titulo={`Cadastrar o rosto de ${colaborador.nome}`} modo="cadastro" onFechar={() => setCamera(null)}
           onCaptura={async (c) => { setStRosto(await rosto.cadastrar(empresaId, colaboradorId, c.descritores, consente)); return 'Rosto cadastrado. Já pode usar na entrega de EPI e nas presenças.'; }} />
@@ -322,5 +336,36 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
           }} />
       )}
     </main>
+  );
+}
+
+// Saída da empresa: guarda a data e diz o que falta do exame demissional.
+function CartaoSaida({ dataDesligamento, demissional, salvar }: {
+  dataDesligamento: string | null; demissional: SituacaoDemissional | null; salvar: (data: string | null) => Promise<void>;
+}) {
+  const [valor, setValor] = useState(dataDesligamento?.slice(0, 10) ?? '');
+  useEffect(() => setValor(dataDesligamento?.slice(0, 10) ?? ''), [dataDesligamento]);
+  return (
+    <Cartao titulo="Saída da empresa">
+      {dataDesligamento ? (
+        <div className="space-y-3 text-sm">
+          <p>Saiu em <strong>{data(dataDesligamento)}</strong>. Os documentos dele continuam guardados, e o PPP já sai com essa data no fim do período.</p>
+          {demissional && !demissional.feito && (
+            demissional.dispensa ? (
+              <Aviso tipo="info">O último exame foi há {demissional.dias} dias. Como é menos de {demissional.limite} dias, o demissional pode ser dispensado (NR-07). Confirme com o médico do PCMSO.</Aviso>
+            ) : (
+              <Aviso tipo="erro">Falta o exame demissional. Ele precisa ser feito até 10 dias depois da saída.</Aviso>
+            )
+          )}
+          <Botao variante="secundario" onClick={() => salvar(null)}>Desfazer saída</Botao>
+        </div>
+      ) : (
+        <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); if (valor) salvar(new Date(valor).toISOString()); }}>
+          <div className="w-48"><Campo id="saida" type="date" rotulo="Data de saída" value={valor} onChange={(e) => setValor(e.target.value)} required /></div>
+          <Botao type="submit">Registrar saída</Botao>
+          <p className="w-full text-xs text-text/60">Quem saiu deixa de aparecer nos alertas de ASO, EPI e treinamento, mas todo o histórico continua aqui.</p>
+        </form>
+      )}
+    </Cartao>
   );
 }

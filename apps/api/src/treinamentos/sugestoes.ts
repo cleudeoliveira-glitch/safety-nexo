@@ -32,6 +32,7 @@ export class SugestoesTreinamentoService {
       include: {
         ghes: { include: { riscos: { select: { agente: true, fonteGeradora: true } } } },
         colaboradores: {
+          where: { dataDesligamento: null },
           select: {
             id: true, nome: true, cargo: true, gheId: true,
             entregasEpi: { select: { id: true }, take: 1 },
