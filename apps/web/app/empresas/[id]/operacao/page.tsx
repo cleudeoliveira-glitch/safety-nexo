@@ -51,7 +51,7 @@ const ABAS: [Aba, string][] = [
   ['apr', 'Análise de risco (APR)'],
   ['pt', 'Permissão de trabalho'],
   ['dds', 'DDS'],
-  ['checklist', 'Checklist de NRs'],
+  ['checklist', 'Inspeções'],
 ];
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });

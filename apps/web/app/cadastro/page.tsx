@@ -50,7 +50,8 @@ export default function Cadastro() {
         <img src="/logo.png" alt="Safety Nexo" className="h-12 w-auto" />
         <div>
           <h1 className="text-2xl font-semibold text-primary">Crie sua conta grátis</h1>
-          <p className="text-sm text-text/60">São 14 dias com tudo liberado, sem cartão e sem precisar de CNPJ.</p>
+          <p className="text-sm text-text/60">Safety Nexo é gestão inteligente de SST. Você elabora PGR, PCMSO, LTCAT e os demais documentos, todos ligados entre si, com foto, assinatura e reconhecimento facial como prova, até no campo sem internet.</p>
+          <p className="mt-1 text-sm text-text/60">São 14 dias com tudo liberado, sem cartão e sem precisar de CNPJ.</p>
         </div>
         <JaConectado />
         {escolhido ? (

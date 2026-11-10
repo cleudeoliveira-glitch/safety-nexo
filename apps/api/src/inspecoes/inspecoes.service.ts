@@ -54,7 +54,7 @@ export class InspecoesService {
 
   async criar(consultoriaId: string, empresaId: string, dto: CriarInspecaoDto) {
     await this.empresa(consultoriaId, empresaId);
-    if (!ehModelo(dto.modelo)) throw new BadRequestException('Modelo de checklist desconhecido.');
+    if (!ehModelo(dto.modelo)) throw new BadRequestException('Modelo de inspeção desconhecido.');
     const itens = dto.itens.map((i) => ({
       texto: i.texto.trim(),
       resposta: i.resposta,
@@ -116,7 +116,7 @@ export class InspecoesService {
     if (!fotos.length) throw new BadRequestException('Inclua pelo menos uma foto do local para a IA analisar.');
     const imagens = await Promise.all(fotos.map(async (f) => ({ dados: await guarda.ler(f.caminho), tipo: f.tipo })));
     const ncs = (i.itens as unknown as ItemInspecao[]).filter((x) => x.resposta === 'NC').map((x) => x.texto);
-    const contexto = [`Local: ${i.local}`, `Checklist: ${i.titulo}`, ncs.length ? `Não conformidades marcadas: ${ncs.join('; ')}` : '', ...fotos.map((f, n) => (f.legenda ? `Foto ${n + 1}: ${f.legenda}` : ''))].filter(Boolean).join('. ');
+    const contexto = [`Local: ${i.local}`, `Inspeção: ${i.titulo}`, ncs.length ? `Não conformidades marcadas: ${ncs.join('; ')}` : '', ...fotos.map((f, n) => (f.legenda ? `Foto ${n + 1}: ${f.legenda}` : ''))].filter(Boolean).join('. ');
     const relatorio = await relatorioDeInspecao(imagens, contexto);
     const proxima = i.proximaInspecao ?? new Date(i.data.getTime() + relatorio.prazoSugeridoDias * DIA_MS);
     const atualizada = await this.prisma.inspecao.update({ where: { id }, data: { relatorioIa: relatorio, proximaInspecao: proxima } });

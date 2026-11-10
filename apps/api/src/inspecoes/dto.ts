@@ -17,7 +17,7 @@ export class CriarInspecaoDto {
   @IsString() @Length(2, 120) inspetor!: string;
   @IsOptional() @IsDateString({}, { message: 'Data da próxima inspeção inválida.' }) proximaInspecao?: string;
   @IsArray()
-  @ArrayMinSize(1, { message: 'Inclua pelo menos um item no checklist.' })
+  @ArrayMinSize(1, { message: 'Inclua pelo menos um item na inspeção.' })
   @ValidateNested({ each: true })
   @Type(() => ItemInspecaoDto)
   itens!: ItemInspecaoDto[];

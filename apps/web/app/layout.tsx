@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Moldura } from '@/components/Moldura';
 import { RegistrarSw } from '@/components/RegistrarSw';
+import { PreviaDocumento } from '@/components/PreviaDocumento';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background font-sans text-text antialiased">
         <RegistrarSw />
         <Moldura>{children}</Moldura>
+        <PreviaDocumento />
       </body>
     </html>
   );

@@ -94,8 +94,8 @@ export default function CampoPage() {
         </div>
       )}
       {libera(plano, 'offline') && !logado && <Aviso tipo="erro">Entre no sistema uma vez com internet para usar o campo neste aparelho. <Link href="/entrar" className="underline">Entrar</Link></Aviso>}
-      {logado && !base && <Aviso tipo="info">Abra esta tela uma vez com internet para guardar as empresas e os checklists no aparelho.</Aviso>}
-      {base && <p className="text-xs text-text/60">Empresas, checklists e rostos dos funcionários guardados em {quando(base.atualizadoEm)}. Dica: no celular, use &quot;Adicionar à tela inicial&quot; para abrir o Safety Nexo como aplicativo.</p>}
+      {logado && !base && <Aviso tipo="info">Abra esta tela uma vez com internet para guardar as empresas e os modelos de inspeção no aparelho.</Aviso>}
+      {base && <p className="text-xs text-text/60">Empresas, modelos de inspeção e rostos dos funcionários guardados em {quando(base.atualizadoEm)}. Dica: no celular, use &quot;Adicionar à tela inicial&quot; para abrir o Safety Nexo como aplicativo.</p>}
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 
       {pendentes.length > 0 && (
@@ -126,7 +126,7 @@ export default function CampoPage() {
           Slides dos treinamentos (abrem sem internet) <span aria-hidden>→</span>
         </a>
         <div role="tablist" className="flex flex-wrap gap-2">
-          {([['rosto', 'Entrega de EPI (rosto)'], ['inspecao', 'Inspeção (checklist)'], ['dds', 'DDS'], ['apr', 'APR']] as [Aba, string][]).map(([v, n]) => (
+          {([['rosto', 'Entrega de EPI (rosto)'], ['inspecao', 'Inspeção'], ['dds', 'DDS'], ['apr', 'APR']] as [Aba, string][]).map(([v, n]) => (
             <button key={v} role="tab" aria-selected={aba === v} onClick={() => setAba(v)} className={`rounded-card px-4 py-2 text-sm font-semibold ${aba === v ? 'bg-primary text-white' : 'border border-border bg-white'}`}>{n}</button>
           ))}
         </div>
@@ -138,14 +138,14 @@ export default function CampoPage() {
             <form key={chave} className="space-y-4" onSubmit={(ev) => {
               ev.preventDefault(); const d = new FormData(ev.currentTarget); const t = (c: string) => String(d.get(c) ?? '').trim();
               tentar(() => {
-                if (!checklist) throw new Error('Escolha o checklist.');
+                if (!checklist) throw new Error('Escolha o modelo de inspeção.');
                 const faltam = checklist.itens.filter((_, i) => !respostas[i]).length;
                 if (faltam) throw new Error(`Responda todos os itens. Faltam ${faltam}.`);
                 const itens = checklist.itens.map((texto, i) => ({ texto, resposta: respostas[i], observacao: t(`obs-${i}`) || undefined, grau: checklist.graus?.[i] }));
                 salvar('inspecao', `${checklist.titulo} · ${t('local')}${fotos.length ? ` · ${fotos.length} foto(s)` : ''}`, { modelo: checklist.modelo, titulo: checklist.titulo, local: t('local'), data: t('data'), inspetor: t('inspetor'), itens, abrirAcoes });
               });
             }}>
-              <Selecao id="cp-mod" rotulo="Checklist" value={modelo} onChange={(e) => { setModelo(e.target.value); setRespostas({}); }}>
+              <Selecao id="cp-mod" rotulo="Modelo de inspeção" value={modelo} onChange={(e) => { setModelo(e.target.value); setRespostas({}); }}>
                 <option value="">Escolha</option>{base.modelos.map((m) => <option key={m.modelo} value={m.modelo}>{m.titulo}</option>)}
               </Selecao>
               <div className="grid gap-3 sm:grid-cols-3">

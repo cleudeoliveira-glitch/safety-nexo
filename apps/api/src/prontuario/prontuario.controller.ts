@@ -4,6 +4,7 @@ import { ConsultoriaId } from '../common/consultoria.decorator';
 import { FREQUENCIAS } from './audiometria';
 import { RegistroSaudeDto } from './dto';
 import { ProntuarioService } from './prontuario.service';
+import { emPrevia } from '../common/plano';
 
 // Dados de saúde: só a consultoria vê. O PDF não vai para o arquivo de documentos, que a empresa cliente também abre.
 @Controller('empresas/:empresaId/prontuario')
@@ -17,6 +18,7 @@ export class ProntuarioController {
   @Post('pdf/:colaboradorId') async pdf(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') col: string, @Res() res: Response) {
     const { pdf, nome } = await this.p.pdfProntuario(c, e, col);
     const arquivo = `Prontuario-${nome.normalize('NFD').replace(/[^\w ]/g, '').trim().replace(/\s+/g, '-')}.pdf`;
+    if (emPrevia()) { res.set({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(pdf); return; }
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${arquivo}"`, 'Cache-Control': 'no-store' });
     res.end(pdf);
   }

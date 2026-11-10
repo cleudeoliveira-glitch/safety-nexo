@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import puppeteer from 'puppeteer-core';
-import { planoAtual, temRecurso } from '../common/plano';
+import { emPrevia, planoAtual, temRecurso } from '../common/plano';
 
 // Plano Grátis: o PDF sai com a marca "Versão Teste" em todas as páginas.
 const MARCA_TESTE = `<style>.sn-marca-teste{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:9999}
@@ -17,9 +17,20 @@ export function htmlDoPlano(html: string): string {
   return saida;
 }
 
+// Faixa da pré-visualização: deixa claro que aquilo ainda não é o documento final.
+const MARCA_PREVIA = `<style>.sn-previa{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:9999}
+.sn-previa span{transform:rotate(-35deg);font:700 60px Inter,Arial,sans-serif;color:rgba(220,38,38,.12);text-align:center;line-height:1.2}
+body{max-width:820px;margin-left:auto!important;margin-right:auto!important;background:#fff}</style>
+<div class="sn-previa"><span>Pré-visualização<br/>ainda não é o documento</span></div>`;
+
 @Injectable()
 export class PdfService {
   async render(html: string): Promise<Buffer> {
+    // Na pré-visualização não abre o navegador: devolve a página pronta para mostrar na tela.
+    if (emPrevia()) {
+      const pagina = htmlDoPlano(html);
+      return Buffer.from(pagina.includes('</body>') ? pagina.replace('</body>', `${MARCA_PREVIA}</body>`) : pagina + MARCA_PREVIA, 'utf-8');
+    }
     const browser = await puppeteer.launch({
       executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium',
       args: ['--no-sandbox', '--disable-setuid-sandbox'],

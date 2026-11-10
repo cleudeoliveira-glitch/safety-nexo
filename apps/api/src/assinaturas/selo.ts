@@ -3,10 +3,12 @@ import { P12Signer } from '@signpdf/signer-p12';
 import signpdf from '@signpdf/signpdf';
 import { PDFDocument } from 'pdf-lib';
 import { EsocialService } from '../esocial/esocial.service';
+import { emPrevia } from '../common/plano';
 
 // Assina o PDF com o certificado ICP-Brasil da consultoria (NR-01, item 1.6), quando houver um válido.
 // Sem certificado, devolve o PDF como está.
 export async function selarIcp(esocial: EsocialService, consultoriaId: string, pdf: Buffer, motivo: string, url?: string): Promise<{ pdf: Buffer; titular: string | null }> {
+  if (emPrevia()) return { pdf, titular: null }; // pré-visualização vem em HTML e não é assinada
   const credencial = await esocial.credencial(consultoriaId).catch(() => null);
   if (!credencial) return { pdf, titular: null };
   const doc = await PDFDocument.load(pdf);

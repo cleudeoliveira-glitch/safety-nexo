@@ -20,7 +20,7 @@ export const PLANOS_SITE: PlanoSite[] = [
   {
     codigo: 'START', nome: 'Start', precoMensal: 47, limiteEmpresas: 1,
     paraQuem: 'Para o técnico que trabalha dentro de uma empresa ou para quem está começando.',
-    inclui: ['1 empresa, funcionários sem limite', 'PGR, PCMSO, LTCAT, LIP, LPP, PPP, AET, ASO, CAT, OS, EPI, DDS, CIPA e checklists', 'PDF com a logo da empresa, sem marca d\'água', 'Treinamentos com slides prontos', 'Uso no campo sem internet', 'Assinatura com o dedo, foto e local', '2 pesquisas psicossociais por mês'],
+    inclui: ['1 empresa, funcionários sem limite', 'PGR, PCMSO, LTCAT, LIP, LPP, PPP, AET, ASO, CAT, OS, EPI, DDS, CIPA e inspeções', 'PDF com a logo da empresa, sem marca d\'água', 'Treinamentos com slides prontos', 'Uso no campo sem internet', 'Assinatura com o dedo, foto e local', '2 pesquisas psicossociais por mês'],
   },
   {
     codigo: 'ESSENCIAL', nome: 'Essencial', precoMensal: 97, limiteEmpresas: 5, base: 'Tudo do Start',
@@ -42,7 +42,7 @@ export const PLANOS_SITE: PlanoSite[] = [
 // O que vem em todos os planos pagos.
 export const INCLUSO_EM_TODOS: { grupo: string; itens: string[] }[] = [
   { grupo: 'Programas e laudos', itens: ['PGR, PCMSO, LTCAT, LIP e LPP em PDF', 'PPP, AET (ergonomia) e CAT', 'Ordem de serviço e ficha de EPI', 'Dimensionamento e eleição da CIPA'] },
-  { grupo: 'Dia a dia', itens: ['APR e permissão de trabalho', 'DDS com 150 temas prontos', 'Checklists das NRs', 'Almoxarifado de EPI', 'Uso em campo sem internet'] },
+  { grupo: 'Dia a dia', itens: ['APR e permissão de trabalho', 'DDS com 150 temas prontos', 'Inspeções das NRs', 'Almoxarifado de EPI', 'Uso em campo sem internet'] },
   { grupo: 'Pessoas e saúde', itens: ['Treinamentos das NRs com slides, certificado e QR code', 'Prontuário de saúde, ASO e afastamentos', 'SIPAT, 5S, emergência e brigada', 'Relatos e canal de denúncia anônima pelo QR code, plano de ação em quadro'] },
   { grupo: 'Para a empresa cliente', itens: ['Login para cada empresa cliente ver a própria área', 'Convite por WhatsApp', 'Avisos de mudanças nas normas', 'Arquivo de documentos com busca dentro do PDF'] },
 ];

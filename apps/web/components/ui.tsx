@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { CampoAjuda, Ajuda } from './CampoAjuda';
 import { Icone, NomeIcone } from './Icone';
 import { ajudaDoCampo } from '@/lib/ajudaCampos';
+import { VOLTOU_PARA_CORRIGIR } from '@/lib/previa';
 
 export function Cartao({ titulo, children, id, acao }: { titulo: string; children: React.ReactNode; id?: string; acao?: React.ReactNode }) {
   return (
@@ -122,6 +123,8 @@ export function Botao({ variante = 'primario', className = '', ...botao }: React
 }
 
 export function Aviso({ tipo, children }: { tipo: 'erro' | 'ok' | 'info'; children: React.ReactNode }) {
+  // Quem voltou da pré-visualização para corrigir não fez nada errado: não mostra como erro.
+  if (children === VOLTOU_PARA_CORRIGIR) return null;
   const cor = tipo === 'erro' ? 'border-danger text-danger' : tipo === 'ok' ? 'border-success text-success' : 'border-border text-text/70';
   return <p className={`rounded-card border bg-white px-4 py-3 text-sm ${cor}`}>{children}</p>;
 }

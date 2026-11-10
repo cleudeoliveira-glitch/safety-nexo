@@ -352,7 +352,7 @@ const MODELOS: Record<string, Modelo> = {
     itens: [
       ['Motoristas com habilitação válida para a categoria', 3],
       ['Exame toxicológico em dia para motoristas profissionais (C, D e E)', 3],
-      ['Checklist diário do veículo feito', 2],
+      ['Inspeção diária do veículo feita', 2],
       ['Pneus, freios, luzes e cintos em boas condições', 4],
       ['Carga amarrada e dentro do limite de peso', 3],
       ['Kit de emergência (triângulo, extintor quando exigido, macaco)', 2],
