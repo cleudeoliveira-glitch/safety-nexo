@@ -8,6 +8,13 @@ const rota = (resto: string) => new RegExp(`^${EMP}${resto}$`);
 
 export const GUIAS: GuiaTela[] = [
   {
+    id: 'calculadoras',
+    endereco: /^\/calculadoras$/,
+    titulo: 'Calculadoras de SST',
+    paraQue: 'Contas rápidas das normas, sem precisar abrir a NR: CIPA, SESMT, brigada, ruído, calor e taxas de acidentes.',
+    partes: [{ titulo: 'Como usar', passos: ['Escolha a calculadora.', 'Preencha os números pedidos. O "?" ao lado de cada campo explica o que colocar.', 'O resultado aparece na hora, com a norma usada.', 'Para guardar o resultado na empresa, use a tela da própria empresa (CIPA, Emergência e brigada, Laudos).'] }],
+  },
+  {
     id: 'painel',
     endereco: /^\/$/,
     titulo: 'Painel',
@@ -144,8 +151,15 @@ export const GUIAS: GuiaTela[] = [
     id: 'campo',
     endereco: /^\/campo$/,
     titulo: 'Campo sem internet',
-    paraQue: 'Para fazer inspeção (checklist) e APR em lugares sem sinal. Tudo fica guardado no aparelho e é enviado quando a internet voltar.',
-    partes: [{ titulo: 'Como usar', passos: ['Abra esta tela uma vez com internet, para o aparelho guardar as empresas e os checklists.', 'No campo, escolha a empresa e preencha a inspeção ou a APR normalmente.', 'Quando a internet voltar, o envio é automático. Você vê quantos registros ainda estão esperando.'] }],
+    paraQue: 'Para entregar EPI com o rosto, fazer inspeção (checklist), DDS e APR em lugares sem sinal. Tudo fica guardado no aparelho e é enviado quando a internet voltar.',
+    partes: [
+      { titulo: 'Antes de ir ao campo', passos: ['Abra esta tela uma vez com internet, para o aparelho guardar as empresas, os checklists e os rostos dos funcionários.', 'No celular, use "Adicionar à tela inicial" para abrir o Safety Nexo como aplicativo.', 'Escolha a empresa no alto da tela.'] },
+      { titulo: 'Entrega de EPI pelo rosto', aba: 'rosto', passos: ['Escolha o funcionário.', 'Escolha o EPI do almoxarifado (nome, CA e validade vêm prontos) ou digite o EPI e o CA.', 'Informe a quantidade e o motivo.', 'Aponte a câmera para o rosto do funcionário e peça para ele piscar: isso confirma que é a pessoa de verdade.', 'Pronto: a entrega fica registrada com o comprovante facial, mesmo sem internet.'] },
+      { titulo: 'Inspeção (checklist)', aba: 'inspecao', passos: ['Escolha o checklist da norma e o local.', 'Marque cada item como conforme, não conforme ou não se aplica.', 'Nos itens não conformes, tire foto e escreva a ação de correção.', 'Salve. O relatório em PDF sai quando a internet voltar.'] },
+      { titulo: 'DDS', aba: 'dds', passos: ['Procure o tema ou use o DDS do dia.', 'Leia o caso e faça a dinâmica com a equipe.', 'Colha a presença na lista de toque ou pelo rosto.', 'Salve.'] },
+      { titulo: 'APR', aba: 'apr', passos: ['Escreva a atividade, o local, o responsável e a equipe.', 'Para cada passo do serviço, anote os riscos e as medidas de controle.', 'Salve e mostre a APR para a equipe antes de começar.'] },
+      { titulo: 'Quando a internet voltar', passos: ['O envio é automático. No alto aparece quantos registros ainda estão esperando.', 'Se o sistema recusar algum, aparece o motivo e o botão "Tentar de novo".'] },
+    ],
   },
   {
     id: 'saude',

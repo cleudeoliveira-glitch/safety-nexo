@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { AjudaDaTela } from '@/components/AjudaDaTela';
+import { AjudaDaTela, BotaoAjudaTopo } from '@/components/AjudaDaTela';
 import { WhatsAppDuvidas } from '@/components/WhatsAppDuvidas';
-import { Dicionario } from '@/components/Dicionario';
 import { libera, planoMinimo, usePlano } from '@/lib/plano';
 import { Icone } from '@/components/Icone';
 import type { Empresa } from '@/lib/api';
@@ -31,14 +30,17 @@ export function Moldura({ children }: { children: React.ReactNode }) {
     setLogado(!!lerToken());
   }, [caminho]);
 
-  if (SEM_MENU.some((r) => r.test(caminho)) || !logado) return <>{children}<WhatsAppDuvidas caminho={caminho} acimaDaAjuda={false} /></>;
+  if (SEM_MENU.some((r) => r.test(caminho)) || !logado) return <>{children}<WhatsAppDuvidas caminho={caminho} /></>;
 
   return (
     <div className="min-h-screen md:pl-72">
       <Menu caminho={caminho} />
-      <div className="min-w-0 pb-20">{children}</div>
-      <AjudaDaTela caminho={caminho} />
-      <WhatsAppDuvidas caminho={caminho} acimaDaAjuda />
+      <div className="min-w-0 pb-20">
+        {/* O painel já tem o próprio "Como usar?" no alto. */}
+        <AjudaDaTela caminho={caminho} barra={caminho !== '/'} />
+        {children}
+      </div>
+      <WhatsAppDuvidas caminho={caminho} />
     </div>
   );
 }
@@ -51,7 +53,6 @@ function Menu({ caminho }: { caminho: string }) {
   const [aberto, setAberto] = useState(false); // gaveta no celular
   const [fechados, setFechados] = useState<string[]>([]);
   const [ancora, setAncora] = useState('');
-  const [dicionario, setDicionario] = useState(false);
   const [erro, setErro] = useState(false);
 
   useEffect(() => {
@@ -251,9 +252,6 @@ function Menu({ caminho }: { caminho: string }) {
         <Link href="/ajuda" className={`flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition ${caminho === '/ajuda' ? 'bg-white text-primary' : 'text-white/85 hover:bg-white/10'}`}>
           <Icone nome="interrogacao" className="h-[18px] w-[18px] text-menta/80" /> Central de ajuda
         </Link>
-        <button type="button" onClick={() => setDicionario(true)} className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-white/85 hover:bg-white/10">
-          <Icone nome="livro" className="h-[18px] w-[18px] text-menta/80" /> Base de Conhecimento
-        </button>
         <div className="mt-2 flex items-center gap-3 rounded-lg bg-black/15 px-2.5 py-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-menta text-sm font-bold text-primary-escuro">
             {(usuario?.nome ?? '?').trim().charAt(0).toUpperCase()}
@@ -284,6 +282,7 @@ function Menu({ caminho }: { caminho: string }) {
           <p className="text-sm font-bold leading-tight">Safety Nexo</p>
           {empresa && <p className="truncate text-xs text-white/70">{empresa.razaoSocial}</p>}
         </div>
+        <BotaoAjudaTopo caminho={caminho} />
       </header>
 
       <aside className="fundo-menu fixed inset-y-0 left-0 z-40 hidden w-72 md:block">{conteudo}</aside>
@@ -297,7 +296,6 @@ function Menu({ caminho }: { caminho: string }) {
         </div>
       )}
 
-      {dicionario && <Dicionario onFechar={() => setDicionario(false)} />}
     </>
   );
 }
