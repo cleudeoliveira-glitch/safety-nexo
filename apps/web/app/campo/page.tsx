@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { RostoCampo } from '@/components/RostoCampo';
+import { AjudaDaTela, BotaoComoUsar } from '@/components/AjudaDaTela';
 import { ListasGuardadas } from '@/components/ListasGuardadas';
 import { reduzirFoto } from '@/components/Foto';
 import { FotoGuardada, guardarFotos } from '@/lib/fotos-offline';
@@ -81,6 +82,8 @@ export default function CampoPage() {
           <Link href="/" className="text-sm text-primary">← Painel</Link>
           <h1 className="mt-2 text-2xl font-semibold text-primary">Campo</h1>
         </div>
+        <BotaoComoUsar />
+        <AjudaDaTela caminho="/campo" barra={false} aba={aba} />
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${online ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>{online ? 'Com internet' : 'Sem internet: guardando no aparelho'}</span>
       </div>
 

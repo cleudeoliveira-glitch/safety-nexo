@@ -9,8 +9,12 @@ import { GuiaTela, guiaDoEndereco } from '@/lib/ajudaTelas';
 // Evento para outras telas abrirem esta ajuda (ex.: o botão "Como usar?" do painel).
 export const ABRIR_AJUDA = 'safety-nexo:abrir-ajuda';
 
-// Botão fixo "Como usar esta tela?", em todas as telas com menu.
-export function AjudaDaTela({ caminho }: { caminho: string }) {
+// "Como usar esta tela?" fica no TOPO, nunca flutuando por cima dos campos:
+//  - computador: botão no alto da página, à direita (rola junto com a página);
+//  - celular: "?" na barra fixa do topo (BotaoAjudaTopo, no Moldura).
+// Uma tela pode abrir esta ajuda disparando o evento ABRIR_AJUDA (ex.: "Como usar?" do painel).
+// aba: a parte do guia que abre primeiro (telas com abas por estado, como o Campo).
+export function AjudaDaTela({ caminho, barra = true, aba }: { caminho: string; barra?: boolean; aba?: string }) {
   const [aberto, setAberto] = useState(false);
   const guia = guiaDoEndereco(caminho);
 
@@ -24,25 +28,49 @@ export function AjudaDaTela({ caminho }: { caminho: string }) {
   if (!guia) return null;
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setAberto(true)}
-        aria-label="Como usar esta tela?"
-        className="fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition hover:brightness-110 print:hidden"
-      >
-        <Icone nome="interrogacao" className="h-5 w-5" />
-        <span className="md:hidden">Ajuda</span>
-        <span className="hidden md:inline">Como usar esta tela?</span>
-      </button>
+      {barra && (
+        <div className="hidden justify-end px-6 pt-4 md:flex print:hidden">
+          <BotaoComoUsar />
+        </div>
+      )}
       {aberto && (
         <Painel titulo={`Como usar: ${guia.titulo}`} onFechar={() => setAberto(false)}>
-          <GuiaCompleto guia={guia} aba={typeof window === 'undefined' ? '' : window.location.hash.slice(1)} />
+          <GuiaCompleto guia={guia} aba={aba ?? (typeof window === 'undefined' ? '' : window.location.hash.slice(1))} />
           <Link href="/ajuda" className="mt-6 block rounded-card border border-border px-4 py-3 text-center text-sm font-semibold text-primary hover:border-primary">
-            Ver a ajuda de todas as telas
+            Ver a Central de ajuda
           </Link>
         </Painel>
       )}
     </>
+  );
+}
+
+// Botão "Como usar esta tela?" para pôr no alto de uma tela.
+export function BotaoComoUsar({ className = '' }: { className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new Event(ABRIR_AJUDA))}
+      className={`flex items-center gap-1.5 rounded-full border border-border bg-white px-3.5 py-1.5 text-sm font-medium text-text/80 shadow-sm hover:border-primary hover:text-primary print:hidden ${className}`}
+    >
+      <Icone nome="interrogacao" className="h-4 w-4" /> Como usar esta tela?
+    </button>
+  );
+}
+
+// "?" da barra do topo no celular. Só aparece se a tela tiver guia.
+export function BotaoAjudaTopo({ caminho }: { caminho: string }) {
+  if (!guiaDoEndereco(caminho)) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new Event(ABRIR_AJUDA))}
+      aria-label="Como usar esta tela?"
+      title="Como usar esta tela?"
+      className="ml-auto flex shrink-0 items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold hover:bg-white/25"
+    >
+      <Icone nome="interrogacao" className="h-5 w-5" /> Ajuda
+    </button>
   );
 }
 
