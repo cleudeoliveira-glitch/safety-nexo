@@ -454,6 +454,13 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
         <p className="mb-4 text-sm text-text/60">Cada documento sai em PDF com a logo da empresa no cabeçalho e a da sua consultoria no rodapé.
           O LTCAT e o LIP usam as avaliações dos riscos físicos, químicos e biológicos de cada GHE; o LPP usa a periculosidade de cada GHE.
           O PGRTR é a versão do PGR para atividade rural (NR-31). O PPP e a ordem de serviço de cada pessoa também ficam na página do colaborador.</p>
+        {empresa.grauRisco && empresa.grauRisco <= 2 && ghes.length > 0 && !ghes.some((g) => g.riscos.some((r) => ['FISICO', 'QUIMICO', 'BIOLOGICO'].includes(r.tipo))) && (
+          <div className="mb-4"><Aviso tipo="info">
+            Esta empresa é grau de risco {empresa.grauRisco} e não tem risco físico, químico nem biológico cadastrado. Se ela for MEI, microempresa ou empresa
+            de pequeno porte, pode ficar dispensada do PGR (NR-01, item 1.8). Para isso, a empresa precisa fazer a declaração digital de inexistência de riscos
+            no gov.br. Os riscos ergonômicos e de acidente continuam precisando de atenção, e a NR-17 segue valendo.
+          </Aviso></div>
+        )}
         <div className="flex flex-wrap gap-3">
           <Botao onClick={() => baixar('pgr')}>Gerar PGR</Botao>
           <Botao onClick={() => baixar('pcmso')}>Gerar PCMSO</Botao>
