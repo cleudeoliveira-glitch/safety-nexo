@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { GradePlanos, InclusoEmTodos } from '@/components/Planos';
+import { DuvidasPlanos } from '@/components/DuvidasPlanos';
 import { lerToken } from '@/lib/sessao';
 
 // Página aberta dos planos: qualquer pessoa vê, sem entrar no sistema.
@@ -48,14 +49,7 @@ export default function PaginaPlanos() {
 
       <section className="mt-12"><InclusoEmTodos /></section>
 
-      <section className="mt-12 rounded-card border border-border bg-white p-6 text-sm text-text/70">
-        <h2 className="text-lg font-semibold text-text">Como funciona</h2>
-        <ul className="mt-2 list-disc space-y-1 pl-5">
-          <li>Toda conta nova começa no plano Free, sem cartão.</li>
-          <li>Para mudar de plano, entre no sistema e abra <strong>Meu plano</strong> no menu. A equipe do Safety Nexo confirma a troca e combina o pagamento.</li>
-          <li>Seus dados ficam guardados mesmo se você trocar de plano.</li>
-        </ul>
-      </section>
+      <section className="mx-auto mb-16 mt-12 max-w-3xl"><DuvidasPlanos /></section>
     </main>
   );
 }
