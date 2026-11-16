@@ -27,6 +27,9 @@ export type Empresa = {
   responsavelTecnicoNome?: string | null;
   descricaoProcessos?: string | null;
   responsavelTecnicoRegistro?: string | null;
+  responsavelTecnicoFormacao?: string | null;
+  responsavelTecnicoArt?: string | null;
+  endereco?: string | null;
   representanteLegalNome?: string | null;
   medicoPcmsoCpf?: string | null;
   medicoPcmsoUf?: string | null;

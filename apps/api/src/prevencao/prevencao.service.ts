@@ -215,7 +215,7 @@ export class PrevencaoService {
     const ncs = (i.itens as { texto: string; resposta: string; observacao?: string }[]).filter((x) => x.resposta === 'NC');
     if (!ncs.length) throw new BadRequestException('Esta inspeção não tem itens não conformes.');
     const existentes = new Set((await this.prisma.acaoCorretiva.findMany({ where: { empresaId, origem: 'INSPECAO', origemId: inspecaoId }, select: { descricao: true } })).map((a) => a.descricao));
-    const origemTexto = `Inspeção ${i.modelo} de ${i.data.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`;
+    const origemTexto = `${i.modelo === 'LIVRE' ? i.titulo : `Inspeção ${i.modelo}`} de ${i.data.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`;
     const novas = ncs.map((n) => `Corrigir: ${n.texto}${n.observacao ? ` (${n.observacao})` : ''}`).filter((t) => !existentes.has(t));
     await this.prisma.acaoCorretiva.createMany({ data: novas.map((descricao) => ({ empresaId, descricao, local: i.local, origem: 'INSPECAO', origemId: inspecaoId, origemTexto, prioridade: 'ALTA' })) });
     return { criadas: novas.length };

@@ -1,3 +1,4 @@
+import { capaDe, responsavelTecnico } from './capa';
 import { Injectable } from '@nestjs/common';
 import { ContextoDocumentoService } from './contexto.service';
 import { PdfService } from './pdf.service';
@@ -35,6 +36,7 @@ export class PgrService {
           ['Responsável', [empresa.responsavelTecnicoNome, empresa.responsavelTecnicoRegistro].filter(Boolean).join(' · ') || null],
         ],
         aviso: 'Feito com o Safety Nexo.',
+        capa: capaDe('PGR', empresa, versao, geradoEm, [responsavelTecnico(empresa)], 'revisão a cada 2 anos ou quando algo mudar'),
       },
       empresa.ghes.map((ghe) => ({
         nome: ghe.nome,
