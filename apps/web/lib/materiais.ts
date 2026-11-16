@@ -8,6 +8,8 @@ export type Material = {
   codigo: string; norma: string; nome: string; cargaHoraria: string; publico: string;
   // palestra: a NR só pede que o trabalhador seja informado; curso (padrão): a NR pede capacitação.
   tipo?: 'curso' | 'palestra';
+  // Quando a NR tem vários treinamentos, só liga o material à turma cujo nome bate (ex.: NR-31 agrotóxicos).
+  combina?: RegExp;
   slides: Slide[]; prova: Questao[];
 };
 
@@ -148,4 +150,5 @@ const PRIMEIRO_LOTE: Material[] = [
 
 export const MATERIAIS: Material[] = [...PRIMEIRO_LOTE, ...MATERIAIS_NRS].sort((a, b) => a.norma.localeCompare(b.norma));
 
-export const materialDa = (norma: string | null | undefined) => MATERIAIS.find((m) => m.norma === norma);
+export const materialDa = (norma: string | null | undefined, nome = '') =>
+  MATERIAIS.find((m) => m.norma === norma && (!m.combina || m.combina.test(nome)));
