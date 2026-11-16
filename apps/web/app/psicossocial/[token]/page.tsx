@@ -53,7 +53,7 @@ export default function ResponderPsicossocial({ params }: { params: { token: str
           </p>
           {!f.aberta ? <p className="mt-4 text-danger">Esta pesquisa já foi encerrada.</p> : (<>
             {jaRespondeu && <p className="mt-4 text-sm text-warning">Parece que você já respondeu neste aparelho. Se outra pessoa está usando o mesmo celular, pode seguir.</p>}
-            <p className="mt-4 text-sm text-text/70">{f.questionario.descricao}</p>
+            <p className="mt-4 text-sm text-text/70">{f.questionario.instrucao ?? f.questionario.descricao}</p>
             <div className="mt-4">
               <label htmlFor="setor" className="mb-1.5 block text-sm font-semibold">Seu setor</label>
               <select id="setor" value={setor} onChange={(e) => setSetor(e.target.value)} className="w-full rounded-card border border-border bg-background px-3 py-2">

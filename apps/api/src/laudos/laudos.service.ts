@@ -1,3 +1,4 @@
+import { capaDe, responsavelTecnico, identificacao } from '../documentos/capa';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
@@ -37,7 +38,7 @@ export class LaudosService {
     const { empresa, versao, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, tipo);
     const colaboradores = await this.prisma.colaborador.findMany({ where: { empresaId }, select: { gheId: true, cargo: true } });
     const html = laudoHtml(
-      { titulo: TITULOS[tipo], logoEmpresa, consultoria, infos: this.infos(empresa, versao, geradoEm), aviso: AVISO_LAUDO },
+      { titulo: TITULOS[tipo], logoEmpresa, consultoria, infos: this.infos(empresa, versao, geradoEm), aviso: AVISO_LAUDO, capa: capaDe(tipo, empresa, versao, geradoEm, [responsavelTecnico(empresa)]) },
       empresa.ghes.map((g) => ({
         nome: g.nome,
         descricao: descricaoGhe(g),
@@ -65,6 +66,7 @@ export class LaudosService {
         consultoria,
         infos: [...this.infos(empresa, versao, geradoEm).slice(0, 4), ['Trabalhadores', empresa.numFuncionarios], this.infos(empresa, versao, geradoEm)[4]],
         aviso: 'Feito com o Safety Nexo.',
+        capa: capaDe('PGRTR', empresa, versao, geradoEm, [responsavelTecnico(empresa)]),
       },
       empresa.ghes.map((g) => ({ nome: g.nome, descricao: descricaoGhe(g), colaboradores: g._count.colaboradores, riscos: g.riscos })),
     );
@@ -90,7 +92,7 @@ export class LaudosService {
       epis: [...new Set(c.entregasEpi.map((e) => e.epi))].sort(),
     }));
     return this.pdf.render(
-      osHtml({ titulo: 'Ordem de Serviço de Segurança e Saúde no Trabalho', logoEmpresa, consultoria, infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj]], aviso: AVISO }, lista),
+      osHtml({ titulo: 'Ordem de Serviço de Segurança e Saúde no Trabalho', logoEmpresa, consultoria, infos: identificacao(empresa), aviso: AVISO }, lista),
     );
   }
 }

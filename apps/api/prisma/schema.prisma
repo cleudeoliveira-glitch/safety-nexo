@@ -55,6 +55,9 @@ model Empresa {
   medicoPcmsoCrm  String?
   responsavelTecnicoNome     String? // assina LTCAT e registros ambientais do PPP
   responsavelTecnicoRegistro String? // CREA ou CRM
+  responsavelTecnicoFormacao String? // ex.: Engenheira de Segurança do Trabalho (vai na capa)
+  responsavelTecnicoArt      String? // número da ART (engenheiro, CREA) ou TRT (técnico, CFT)
+  endereco                   String? // endereço da empresa, vai na capa dos programas e laudos
   representanteLegalNome     String? // assina o PPP pela empresa
   descricaoProcessos         String? // NR-01, 1.5.7.3.2, a: processos e ambientes de trabalho (vai no PGR)
   // eSocial: dados extras dos responsáveis (S-2220 respMonit, S-2240 respReg) e ambiente de envio.
@@ -850,6 +853,9 @@ model AvaliacaoPsicossocial {
   status       String   @default("ABERTA") // ABERTA, ENCERRADA
   token        String   @unique
   minimoGrupo  Int      @default(5)
+  // Avaliação técnica do responsável, por setor e tema (0 a 4): { "GHE 01 · Solda": { "demandas": 2 } }
+  avaliacaoTecnica Json  @default("{}")
+  enviadoPgrEm DateTime?
   criadoPorNome String
   criadoEm     DateTime @default(now())
   encerradaEm  DateTime?

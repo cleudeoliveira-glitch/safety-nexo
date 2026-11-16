@@ -210,6 +210,9 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
               numFuncionarios: Number(texto(d, 'numFuncionarios') || 0),
               responsavelTecnicoNome: texto(d, 'rtNome') || undefined,
               responsavelTecnicoRegistro: texto(d, 'rtRegistro') || undefined,
+              responsavelTecnicoFormacao: texto(d, 'rtFormacao') || undefined,
+              responsavelTecnicoArt: texto(d, 'rtArt') || undefined,
+              endereco: texto(d, 'endereco') || undefined,
               representanteLegalNome: texto(d, 'representante') || undefined,
               descricaoProcessos: texto(d, 'processos'),
             });
@@ -227,6 +230,9 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
             dica={empresa.logoPath ? 'Logo já enviada. Envie outra para trocar.' : 'PNG ou JPG, até 2 MB. Sai no cabeçalho dos documentos.'} />
           <Campo id="rtNome" name="rtNome" rotulo="Responsável técnico" defaultValue={empresa.responsavelTecnicoNome ?? ''} placeholder="Ex.: Cleude Oliveira" />
           <Campo id="rtRegistro" name="rtRegistro" rotulo="Registro profissional" defaultValue={empresa.responsavelTecnicoRegistro ?? ''} placeholder="Ex.: CREA-SP 123456" />
+          <Campo id="rtFormacao" name="rtFormacao" rotulo="Formação do responsável" defaultValue={empresa.responsavelTecnicoFormacao ?? ''} placeholder="Ex.: Engenheira de Segurança do Trabalho" />
+          <Campo id="rtArt" name="rtArt" rotulo="ART ou TRT" defaultValue={empresa.responsavelTecnicoArt ?? ''} placeholder="Ex.: ART 2826543210" />
+          <Campo id="endereco" name="endereco" rotulo="Endereço da empresa" className="md:col-span-2" defaultValue={empresa.endereco ?? ''} placeholder="Rua, número, bairro, cidade/UF, CEP" />
           <Campo id="representante" name="representante" rotulo="Representante legal" defaultValue={empresa.representanteLegalNome ?? ''} placeholder="Quem assina o PPP pela empresa" />
           <Campo id="processos" name="processos" rotulo="Visão geral da empresa (opcional, vai no PGR)" className="md:col-span-3" defaultValue={empresa.descricaoProcessos ?? ''}
             placeholder="Ex.: Padaria com produção, estoque e loja. Turno único, 8 h."

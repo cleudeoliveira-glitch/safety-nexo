@@ -1,3 +1,4 @@
+import { capaDe, responsavelTecnico } from './capa';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DadosAno, relatorioPcmsoHtml, resumoAno } from './relatorio-pcmso';
@@ -75,6 +76,7 @@ export class PcmsoService {
           ['Versão', `${versao} · emitido em ${geradoEm.toLocaleDateString('pt-BR')}`],
         ],
         aviso: 'Feito com o Safety Nexo.',
+        capa: capaDe('PCMSO', empresa, versao, geradoEm, [{ papel: 'Médico responsável', nome: empresa.medicoPcmsoNome, registro: empresa.medicoPcmsoCrm }]),
       },
       { nome: empresa.medicoPcmsoNome, crm: empresa.medicoPcmsoCrm },
       empresa.ghes.map((ghe) => ({

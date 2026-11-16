@@ -129,6 +129,7 @@ export class EmpresasService {
           medicoPcmsoNome: origem.medicoPcmsoNome, medicoPcmsoCrm: origem.medicoPcmsoCrm, medicoPcmsoCpf: origem.medicoPcmsoCpf, medicoPcmsoUf: origem.medicoPcmsoUf,
           responsavelTecnicoNome: origem.responsavelTecnicoNome, responsavelTecnicoRegistro: origem.responsavelTecnicoRegistro, responsavelTecnicoCpf: origem.responsavelTecnicoCpf,
           responsavelTecnicoConselho: origem.responsavelTecnicoConselho, responsavelTecnicoUf: origem.responsavelTecnicoUf,
+          responsavelTecnicoFormacao: origem.responsavelTecnicoFormacao,
         },
       });
     }

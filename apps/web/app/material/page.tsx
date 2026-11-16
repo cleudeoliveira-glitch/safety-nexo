@@ -159,7 +159,7 @@ function Lista() {
         {MATERIAIS.map((m) => (
           <li key={m.codigo}>
             <a href={`/material#${m.codigo}`} className="flex h-full flex-col rounded-card border border-border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40">
-              <span className="flex items-center gap-2 text-sm font-bold text-success"><Icone nome="formatura" className="h-5 w-5" />{m.norma}</span>
+              <span className="flex items-center gap-2 text-sm font-bold text-success"><Icone nome="formatura" className="h-5 w-5" />{m.norma}{m.tipo === 'palestra' && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">Palestra</span>}</span>
               <span className="mt-1 text-lg font-semibold text-primary">{m.nome}</span>
               <span className="mt-2 flex-1 text-sm text-text/60">{m.slides.length} slides · prova com {m.prova.length} questões</span>
               <span className="mt-3 text-sm font-semibold text-primary">Abrir →</span>
@@ -167,7 +167,7 @@ function Lista() {
           </li>
         ))}
       </ul>
-      <p className="text-xs text-text/50">Mais NRs entram aos poucos. Todo material é uma base: revise e adapte à empresa antes de aplicar.</p>
+      <p className="text-xs text-text/50">Curso: a NR pede capacitação. Palestra: a NR pede que o trabalhador seja informado, sem carga fixa. Mais NRs entram aos poucos. Todo material é uma base: revise e adapte à empresa antes de aplicar.</p>
     </main>
   );
 }

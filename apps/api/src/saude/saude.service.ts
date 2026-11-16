@@ -1,3 +1,4 @@
+import { capaDe, responsavelTecnico } from '../documentos/capa';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
@@ -46,7 +47,10 @@ export class SaudeService {
     const aet = await this.prisma.aet.findFirst({ where: { id, empresaId } });
     if (!aet) throw new NotFoundException('AET não encontrada');
     const moldura = await this.moldura(consultoriaId, empresaId, 'Análise Ergonômica do Trabalho (AET)', 'AET');
-    return this.pdf.render(aetHtml(moldura, { ...aet, recomendacoes: aet.recomendacoes as AetPdf['recomendacoes'] }));
+    const empresa = await this.empresa(consultoriaId, empresaId);
+    const mesmoRt = empresa.responsavelTecnicoNome?.trim().toLowerCase() === aet.responsavel.trim().toLowerCase();
+    const capa = capaDe('AET', empresa, undefined, new Date(), [mesmoRt ? responsavelTecnico(empresa, 'Responsável pela AET') : { papel: 'Responsável pela AET', nome: aet.responsavel }]);
+    return this.pdf.render(aetHtml({ ...moldura, capa }, { ...aet, recomendacoes: aet.recomendacoes as AetPdf['recomendacoes'] }));
   }
 
   // CAT

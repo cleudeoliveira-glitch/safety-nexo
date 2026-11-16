@@ -27,3 +27,9 @@ export class LevarPgrDto {
   @IsString() dimensao!: string;
   @IsIn(['BAIXA', 'MEDIA', 'ALTA']) severidade!: string;
 }
+
+export class TecnicaDto {
+  @IsString() @Length(1, 200) setor!: string;
+  // Nota de 0 a 4 por tema; tema sem nota fica só com o questionário.
+  @IsObject() valores!: Record<string, number | null>;
+}

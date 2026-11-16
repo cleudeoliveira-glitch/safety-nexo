@@ -6,10 +6,16 @@ export type Slide = { titulo: string; pontos: string[]; fala: string };
 export type Questao = { pergunta: string; opcoes: [string, string, string, string]; certa: 0 | 1 | 2 | 3 };
 export type Material = {
   codigo: string; norma: string; nome: string; cargaHoraria: string; publico: string;
+  // palestra: a NR só pede que o trabalhador seja informado; curso (padrão): a NR pede capacitação.
+  tipo?: 'curso' | 'palestra';
+  // Quando a NR tem vários treinamentos, só liga o material à turma cujo nome bate (ex.: NR-31 agrotóxicos).
+  combina?: RegExp;
   slides: Slide[]; prova: Questao[];
 };
 
-export const MATERIAIS: Material[] = [
+import { MATERIAIS_NRS } from './materiaisNrs';
+
+const PRIMEIRO_LOTE: Material[] = [
   {
     codigo: 'nr35', norma: 'NR-35', nome: 'Trabalho em altura', cargaHoraria: 'Inicial: 8 horas, teórico e prático. Periódico: a cada 2 anos, 8 horas.',
     publico: 'Quem trabalha acima de 2,00 m do nível inferior, onde haja risco de queda.',
@@ -142,4 +148,7 @@ export const MATERIAIS: Material[] = [
   },
 ];
 
-export const materialDa = (norma: string | null | undefined) => MATERIAIS.find((m) => m.norma === norma);
+export const MATERIAIS: Material[] = [...PRIMEIRO_LOTE, ...MATERIAIS_NRS].sort((a, b) => a.norma.localeCompare(b.norma));
+
+export const materialDa = (norma: string | null | undefined, nome = '') =>
+  MATERIAIS.find((m) => m.norma === norma && (!m.combina || m.combina.test(nome)));
