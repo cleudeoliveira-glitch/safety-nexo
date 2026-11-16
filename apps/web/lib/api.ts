@@ -698,12 +698,14 @@ export type ConferenciaAssinatura = {
 export const conferirAssinatura = (codigo: string) => chamar<ConferenciaAssinatura>('GET', `/assinatura/${encodeURIComponent(codigo)}`);
 
 // ---------- Avaliação psicossocial ----------
-export type DimensaoPs = { id: string; nome: string; tipo: 'casos' | 'media'; corte?: number; rotuloResultado: string; maiorEPior: boolean };
-export type QuestionarioPs = { id: string; sigla: string; nome: string; descricao: string; fonte: string; totalItens: number };
+export type DimensaoPs = { id: string; nome: string; tipo: 'casos' | 'media'; corte?: number; rotuloResultado: string; maiorEPior: boolean; pgr?: { fonte: string; consequencias: string; medida: string; severidade: string } };
+export type QuestionarioPs = { id: string; sigla: string; nome: string; descricao: string; fonte: string; totalItens: number; validado: boolean };
+export type NivelPs = 'BAIXO' | 'MODERADO' | 'ALTO' | 'CRITICO';
+export type CelulaPs = { questionario: number | null; tecnica: number | null; final: number | null; probabilidade: string | null; severidade: string; nivel: NivelPs | null };
 export type AvaliacaoPs = { id: string; titulo: string; questionario: string; sigla: string; status: 'ABERTA' | 'ENCERRADA'; minimoGrupo: number; link: string; criadoEm: string; criadoPorNome: string; _count: { respostas: number; acoes: number } };
-export type LinhaPs = { setor: string; respostas: number; oculto: boolean; valores: Record<string, number | null> | null };
+export type LinhaPs = { setor: string; respostas: number; oculto: boolean; valores: Record<string, number | null> | null; matriz?: Record<string, CelulaPs> | null; tecnica?: Record<string, number | null> | null };
 export type AcaoPs = { id: string; setor: string | null; dimensao: string; acao: string; responsavel: string | null; prazo: string | null; feita: boolean };
-export type ResultadoPs = { avaliacao: AvaliacaoPs; questionario: { id: string; sigla: string; nome: string; fonte: string; dimensoes: DimensaoPs[] }; total: LinhaPs; setores: LinhaPs[]; acoes: AcaoPs[] };
+export type ResultadoPs = { avaliacao: AvaliacaoPs & { enviadoPgrEm?: string | null }; questionario: { id: string; sigla: string; nome: string; fonte: string; dimensoes: DimensaoPs[]; validado: boolean; comPgr: boolean }; total: LinhaPs; setores: LinhaPs[]; acoes: AcaoPs[] };
 export const psicossocial = {
   questionarios: (e: string) => chamar<QuestionarioPs[]>('GET', `/empresas/${e}/psicossocial/questionarios`),
   listar: (e: string) => chamar<AvaliacaoPs[]>('GET', `/empresas/${e}/psicossocial`),
@@ -715,10 +717,12 @@ export const psicossocial = {
   marcar: (e: string, id: string, acaoId: string, feita: boolean) => chamar<{ ok: boolean }>('PUT', `/empresas/${e}/psicossocial/${id}/acoes/${acaoId}`, { feita }),
   removerAcao: (e: string, id: string, acaoId: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/psicossocial/${id}/acoes/${acaoId}`),
   levarAoPgr: (e: string, id: string, d: { setor: string; dimensao: string; severidade: string }) => chamar<unknown>('POST', `/empresas/${e}/psicossocial/${id}/pgr`, d),
+  tecnica: (e: string, id: string, d: { setor: string; valores: Record<string, number | null> }) => chamar<{ ok: boolean }>('PUT', `/empresas/${e}/psicossocial/${id}/tecnica`, d),
+  enviarPgr: (e: string, id: string) => chamar<{ riscos: number; acoes: number; removidos: number }>('POST', `/empresas/${e}/psicossocial/${id}/enviar-pgr`),
 };
 export type FormularioPs = {
   titulo: string; empresa: string; consultoria: string; aberta: boolean; setores: string[];
-  questionario: { sigla: string; nome: string; descricao: string; escala: { valor: number; rotulo: string }[]; itens: { n: number; texto: string }[]; aviso: string | null };
+  questionario: { sigla: string; nome: string; descricao: string; instrucao: string | null; escala: { valor: number; rotulo: string }[]; itens: { n: number; texto: string }[]; aviso: string | null };
 };
 export const formularioPs = {
   dados: (token: string) => chamar<FormularioPs>('GET', `/psicossocial/${token}`),

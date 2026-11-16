@@ -853,6 +853,9 @@ model AvaliacaoPsicossocial {
   status       String   @default("ABERTA") // ABERTA, ENCERRADA
   token        String   @unique
   minimoGrupo  Int      @default(5)
+  // Avaliação técnica do responsável, por setor e tema (0 a 4): { "GHE 01 · Solda": { "demandas": 2 } }
+  avaliacaoTecnica Json  @default("{}")
+  enviadoPgrEm DateTime?
   criadoPorNome String
   criadoEm     DateTime @default(now())
   encerradaEm  DateTime?

@@ -137,7 +137,10 @@ export class PrevencaoService {
       this.prisma.acaoPsicossocial.findMany({ where: { avaliacao: { empresaId } }, include: { avaliacao: { select: { titulo: true } } } }),
     ]);
     // As ações do psicossocial aparecem juntas, mas continuam sendo cuidadas na tela do psicossocial.
-    const dePsico = psico.map((a) => ({
+    // As que já foram enviadas ao PGR (viraram ação da empresa) não aparecem de novo.
+    const enviadas = proprias.filter((p) => p.origem === 'PSICOSSOCIAL');
+    const jaEnviada = (a: (typeof psico)[number]) => enviadas.some((p) => p.origemId === a.avaliacaoId && p.descricao === a.acao && (!a.setor || p.local === a.setor));
+    const dePsico = psico.filter((a) => !jaEnviada(a)).map((a) => ({
       id: a.id, empresaId, origem: 'PSICOSSOCIAL', origemId: a.avaliacaoId, origemTexto: `Psicossocial: ${a.avaliacao.titulo}`,
       descricao: a.acao, local: a.setor, responsavel: a.responsavel, prazo: a.prazo, prioridade: 'MEDIA', esforco: 'MEDIO',
       status: a.feita ? 'FEITA' : 'ABERTA', feitaEm: null, feitaPor: null, observacao: null, temEvidencia: false, criadoEm: a.criadoEm, somenteLeitura: true,
