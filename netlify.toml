@@ -7,6 +7,19 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# Endereço oficial: safetynexo.com.br. Quem abrir os endereços antigos do Netlify vai para o novo.
+[[redirects]]
+  from = "https://safety-nexo-sst.netlify.app/*"
+  to = "https://safetynexo.com.br/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.safetynexo.com.br/*"
+  to = "https://safetynexo.com.br/:splat"
+  status = 301
+  force = true
+
 # Proteção do site: o navegador recebe estas regras em toda página.
 # - ninguém consegue colocar o Safety Nexo dentro de outro site para enganar quem clica (frame-ancestors / X-Frame-Options);
 # - o navegador não "adivinha" tipo de arquivo; o endereço completo não vaza para outros sites;
