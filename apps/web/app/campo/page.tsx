@@ -182,7 +182,7 @@ export default function CampoPage() {
                 </ol>
               )}
               <div className="space-y-2 rounded-card border border-border bg-white p-3">
-                <p className="text-sm font-semibold text-primary">Fotos (até 5)</p>
+                <p className="text-sm font-semibold text-primary">Fotos (até 15)</p>
                 <p className="text-xs text-text/60">Tire a foto da não conformidade. Ela fica no aparelho e sobe junto com a inspeção.</p>
                 {fotos.length > 0 && (
                   <ul className="space-y-2">
@@ -196,12 +196,12 @@ export default function CampoPage() {
                     ))}
                   </ul>
                 )}
-                {fotos.length < 5 && (
+                {fotos.length < 15 && (
                   <label className="inline-block cursor-pointer rounded-card border-2 border-dashed border-primary/40 px-4 py-2.5 text-sm font-semibold text-primary">
                     📷 Tirar ou escolher foto
                     <input type="file" accept="image/*" capture="environment" className="hidden" onChange={async (e) => {
                       const arq = e.target.files?.[0]; e.target.value = '';
-                      if (arq) { const foto = await reduzirFoto(arq, 1280); setFotos((x) => [...x, { foto, legenda: '' }].slice(0, 5)); }
+                      if (arq) { const foto = await reduzirFoto(arq, 1280); setFotos((x) => [...x, { foto, legenda: '' }].slice(0, 15)); }
                     }} />
                   </label>
                 )}

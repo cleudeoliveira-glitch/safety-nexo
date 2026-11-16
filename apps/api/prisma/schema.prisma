@@ -75,6 +75,7 @@ model Empresa {
   ghes           Ghe[]
   documentos     Documento[]
   eleicoesCipa   CipaEleicao[]
+  reunioesCipa   CipaReuniao[]
   aprs           Apr[]
   permissoes     PermissaoTrabalho[]
   ddss           Dds[]
@@ -127,6 +128,8 @@ model Colaborador {
   cbo           String?
   matricula     String?  // matrícula do vínculo no eSocial (S-2200)
   codCateg      String?  // categoria eSocial, só para quem não tem matrícula (ex.: estagiário)
+  cnhCategoria  String?  // motorista: categoria da CNH (C, D e E pedem exame toxicológico)
+  cnhValidade   DateTime?
   dataAdmissao  DateTime?
   dataDesligamento DateTime? // saiu da empresa: fica no histórico, mas some dos alertas
   gheId         String?
@@ -291,6 +294,10 @@ model EntregaEpi {
   motivo        String      // ENTREGA_INICIAL, DESGASTE, PERDA, DANO
   dataEntrega   DateTime
   estoqueId     String?     // item do almoxarifado que teve baixa
+  fabricante    String?     // fabricante ou fornecedor, para rastrear o lote
+  // Devolução (troca, dano, saída da empresa): a entrega fica no histórico, mas deixa de contar como "em uso".
+  devolvidoEm     DateTime?
+  motivoDevolucao String?   // TROCA | DANIFICADO | SAIDA_EMPRESA | OUTRO
   createdAt     DateTime    @default(now())
 
   @@index([colaboradorId])
@@ -1051,6 +1058,7 @@ model EstoqueEpi {
   ca         String
   validadeCa DateTime?
   tamanho    String?
+  fabricante String?            // fabricante ou fornecedor
   quantidade Int                @default(0)
   minimo     Int                @default(0)
   ativo      Boolean            @default(true)
@@ -1193,6 +1201,26 @@ model Investigacao {
   conclusao      String?
   criadoEm       DateTime @default(now())
 
+  @@index([empresaId])
+}
+
+// Reunião da CIPA (NR-05, 5.6): ordinária todo mês ou extraordinária. Vira a ata em PDF.
+model CipaReuniao {
+  id              String   @id @default(cuid())
+  empresaId       String
+  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  numero          Int      // sequencial por empresa
+  tipo            String   // ORDINARIA | EXTRAORDINARIA
+  data            DateTime
+  horario         String?
+  local           String
+  presentes       String[] // nomes de quem participou (membros e convidados)
+  pauta           String
+  discussao       String   // o que foi tratado
+  encaminhamentos Json     @default("[]") // [{ acao, responsavel, prazo }]
+  createdAt       DateTime @default(now())
+
+  @@unique([empresaId, numero])
   @@index([empresaId])
 }
 

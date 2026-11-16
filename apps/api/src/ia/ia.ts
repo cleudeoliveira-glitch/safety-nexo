@@ -103,7 +103,7 @@ Não culpe a vítima: procure causas no sistema de trabalho. Se faltar informaç
   `O que aconteceu: ${descricao}`);
 
 export const relatorioDeInspecao = (imagens: Imagem[], contexto: string) => perguntar(RelatorioInspecaoIa,
-  `Você recebe de 1 a 5 fotos do mesmo local de trabalho, tiradas numa inspeção de segurança.
+  `Você recebe de 1 a 15 fotos do mesmo local de trabalho, tiradas numa inspeção de segurança.
 Escreva um resumo curto do que a inspeção mostra (2 a 4 frases).
 Liste os perigos que dá para VER nas fotos. Para cada um: o que está errado, a NR relacionada, o tipo de risco, a probabilidade e a severidade de 1 a 5 (matriz 5x5), ações corretivas práticas e o número da foto onde aparece (null se aparece em várias).
 Liste o que está certo (boas práticas), se houver.

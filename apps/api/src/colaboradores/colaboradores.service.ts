@@ -6,7 +6,7 @@ import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { renderAsoHtml } from './aso.template';
-import { CreateAsoDto, CreateEntregaEpiDto } from './dto';
+import { CreateAsoDto, CreateEntregaEpiDto, DevolucaoEpiDto, EditarColaboradorDto } from './dto';
 import { renderFichaEpiHtml } from './ficha-epi.template';
 import { renderPppHtml } from './ppp.template';
 import { dispensaDemissional, examesDoTipo, NOME_TIPO_ASO, proximoExame, TipoAso } from './regras';
@@ -83,8 +83,56 @@ export class ColaboradoresService {
   async registrarEntregaEpi(consultoriaId: string, empresaId: string, colaboradorId: string, dto: CreateEntregaEpiDto) {
     await this.detalhar(consultoriaId, empresaId, colaboradorId);
     return registrarEntrega(this.prisma, empresaId, {
-      colaboradorId, estoqueId: dto.estoqueId, epi: dto.epi?.trim(), ca: dto.ca?.trim(), quantidade: dto.quantidade ?? 1, motivo: dto.motivo,
+      colaboradorId, estoqueId: dto.estoqueId, epi: dto.epi?.trim(), ca: dto.ca?.trim(), fabricante: dto.fabricante, quantidade: dto.quantidade ?? 1, motivo: dto.motivo,
       dataEntrega: new Date(dto.dataEntrega), validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null,
+    });
+  }
+
+  // Devolução de EPI: a entrega continua no histórico (e na ficha), mas sai da conta do que está em uso.
+  async devolverEpi(consultoriaId: string, empresaId: string, colaboradorId: string, entregaId: string, dto: DevolucaoEpiDto) {
+    const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    const entrega = colaborador.entregasEpi.find((e) => e.id === entregaId);
+    if (!entrega) throw new NotFoundException('Entrega de EPI não encontrada.');
+    if (entrega.devolvidoEm) throw new BadRequestException(`Este EPI já foi devolvido em ${entrega.devolvidoEm.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}.`);
+    const data = new Date(dto.data);
+    if (data < entrega.dataEntrega) throw new BadRequestException('A devolução não pode ser antes da entrega.');
+    const voltar = !!dto.voltaAoEstoque && !!entrega.estoqueId;
+    return this.prisma.$transaction(async (tx) => {
+      if (voltar) {
+        const item = await tx.estoqueEpi.findFirst({ where: { id: entrega.estoqueId!, empresaId } });
+        if (item) {
+          const atualizado = await tx.estoqueEpi.update({ where: { id: item.id }, data: { quantidade: { increment: entrega.quantidade } } });
+          await tx.movimentoEstoque.create({ data: { estoqueId: item.id, tipo: 'ENTRADA', quantidade: entrega.quantidade, saldo: atualizado.quantidade, entregaEpiId: entrega.id, observacao: `Devolvido por ${colaborador.nome}` } });
+        }
+      }
+      return tx.entregaEpi.update({ where: { id: entrega.id }, data: { devolvidoEm: data, motivoDevolucao: dto.motivo } });
+    });
+  }
+
+  // Dados do cadastro, editados pela ficha. Campo vazio apaga (menos nome e cargo, que são obrigatórios).
+  async editar(consultoriaId: string, empresaId: string, colaboradorId: string, dto: EditarColaboradorDto) {
+    await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    const limpo = (v?: string) => (v === undefined ? undefined : v.trim() || null);
+    const dataOuNulo = (v?: string) => (v === undefined ? undefined : v.trim() ? new Date(v) : null);
+    if (dto.gheId) {
+      const ghe = await this.prisma.ghe.findFirst({ where: { id: dto.gheId, empresaId }, select: { id: true } });
+      if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
+    }
+    const dataAdmissao = dataOuNulo(dto.dataAdmissao);
+    if (dataAdmissao && Number.isNaN(dataAdmissao.getTime())) throw new BadRequestException('Data de admissão inválida.');
+    return this.prisma.colaborador.update({
+      where: { id: colaboradorId },
+      data: {
+        ...(dto.nome?.trim() ? { nome: dto.nome.trim() } : {}),
+        ...(dto.cargo?.trim() ? { cargo: dto.cargo.trim() } : {}),
+        cpf: limpo(dto.cpf),
+        cbo: limpo(dto.cbo),
+        matricula: limpo(dto.matricula),
+        dataAdmissao,
+        gheId: dto.gheId === undefined ? undefined : dto.gheId || null,
+        cnhCategoria: limpo(dto.cnhCategoria),
+        cnhValidade: dataOuNulo(dto.cnhValidade),
+      },
     });
   }
 

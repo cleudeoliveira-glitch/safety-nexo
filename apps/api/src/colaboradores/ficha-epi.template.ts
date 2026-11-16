@@ -1,6 +1,11 @@
 import { documentoHtml, escape, Moldura } from '../documentos/layout';
 
-export type EntregaPdf = { epi: string; ca: string; validadeCa: Date | null; quantidade: number; motivo: string; dataEntrega: Date; confirmacao?: string | null };
+export type EntregaPdf = {
+  epi: string; ca: string; validadeCa: Date | null; fabricante?: string | null; quantidade: number; motivo: string; dataEntrega: Date;
+  devolvidoEm?: Date | null; motivoDevolucao?: string | null; confirmacao?: string | null;
+};
+
+const DEVOLUCAO: Record<string, string> = { TROCA: 'troca', DANIFICADO: 'danificado', SAIDA_EMPRESA: 'saída da empresa', OUTRO: 'outro motivo' };
 
 const MOTIVOS: Record<string, string> = {
   ENTREGA_INICIAL: 'Entrega inicial',
@@ -26,17 +31,18 @@ export function renderFichaEpiHtml(
 
     <h2>Entregas de EPI</h2>
     <table>
-      <thead><tr><th>Data</th><th>EPI</th><th>CA</th><th>Validade do CA</th><th>Qtd.</th><th>Motivo</th><th>Assinatura</th></tr></thead>
+      <thead><tr><th>Data</th><th>EPI</th><th>CA</th><th>Validade do CA</th><th>Qtd.</th><th>Motivo</th><th>Devolução</th><th>Assinatura</th></tr></thead>
       <tbody>
         ${entregas
           .map(
             (e) => `<tr>
               <td>${data(e.dataEntrega)}</td>
-              <td>${escape(e.epi)}</td>
+              <td>${escape(e.epi)}${e.fabricante ? `<br><small>${escape(e.fabricante)}</small>` : ''}</td>
               <td>${escape(e.ca)}</td>
               <td>${data(e.validadeCa)}</td>
               <td>${e.quantidade}</td>
               <td>${escape(MOTIVOS[e.motivo] ?? e.motivo)}</td>
+              <td>${e.devolvidoEm ? `${data(e.devolvidoEm)}<br><small>${escape(DEVOLUCAO[e.motivoDevolucao ?? ''] ?? e.motivoDevolucao)}</small>` : ''}</td>
               <td class="assinar">${e.confirmacao ? `<small>Reconhecimento facial<br>código ${escape(e.confirmacao)}</small>` : ''}</td>
             </tr>`,
           )

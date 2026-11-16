@@ -31,7 +31,7 @@ export class SsmaService {
       this.prisma.colaborador.findMany({ where: { empresaId: e, ...filtroColab }, select: {
         id: true, dataAdmissao: true, dataDesligamento: true, ghe: { select: { nome: true } },
         asos: { orderBy: { dataExame: 'desc' }, take: 1, select: { proximoExame: true } },
-        entregasEpi: { orderBy: { dataEntrega: 'desc' }, select: { epi: true, validadeCa: true } },
+        entregasEpi: { where: { devolvidoEm: null }, orderBy: { dataEntrega: 'desc' }, select: { epi: true, validadeCa: true } },
         treinamentos: { select: { turma: { select: { nome: true, fim: true, validadeMeses: true } } } },
       } }),
       this.prisma.cat.findMany({ where: { empresaId: e, dataHora: { gte: ini, lte: fimData }, colaborador: filtroColab }, select: { id: true, dataHora: true, tipoCat: true, houveAfastamento: true, houveObito: true, diasTratamento: true, colaborador: { select: { ghe: { select: { nome: true } } } } } }),

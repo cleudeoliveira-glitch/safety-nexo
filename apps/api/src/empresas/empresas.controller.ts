@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { ExcluirEmpresaDto, CopiarDadosDto, CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, UpdateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 import { EmpresasService } from './empresas.service';
@@ -35,8 +35,8 @@ export class EmpresasController {
 
   @PermiteEmpresa()
   @Get(':empresaId/colaboradores')
-  listarColaboradores(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string) {
-    return this.empresas.listarColaboradores(consultoriaId, empresaId);
+  listarColaboradores(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Query('situacao') situacao?: string) {
+    return this.empresas.listarColaboradores(consultoriaId, empresaId, situacao === '1');
   }
 
   @PermiteEmpresa()
@@ -74,6 +74,11 @@ export class EmpresasController {
   @Delete(':empresaId/ghes/:gheId')
   excluirGhe(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Param('gheId') gheId: string) {
     return this.empresas.excluirGhe(consultoriaId, empresaId, gheId);
+  }
+
+  @Post(':empresaId/ghes/:gheId/copiar')
+  copiarGhe(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Param('gheId') gheId: string) {
+    return this.empresas.copiarGhe(consultoriaId, empresaId, gheId);
   }
 
   @Put(':empresaId/ghes/:gheId')

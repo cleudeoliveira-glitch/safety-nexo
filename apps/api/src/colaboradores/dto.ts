@@ -1,4 +1,5 @@
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, Length, Min, ValidateIf } from 'class-validator';
+import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Length, Matches, MaxLength, Min, ValidateIf } from 'class-validator';
+import { CATEGORIAS_CNH } from '../empresas/dto';
 import { TIPOS_ASO } from './regras';
 
 export class CreateAsoDto {
@@ -53,11 +54,44 @@ export class CreateEntregaEpiDto {
   @Min(1)
   quantidade?: number;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  fabricante?: string;
+
   @IsIn(['ENTREGA_INICIAL', 'DESGASTE', 'PERDA', 'DANO'])
   motivo!: string;
 
   @IsDateString({}, { message: 'Informe a data da entrega.' })
   dataEntrega!: string;
+}
+
+export const MOTIVOS_DEVOLUCAO = ['TROCA', 'DANIFICADO', 'SAIDA_EMPRESA', 'OUTRO'] as const;
+
+export class DevolucaoEpiDto {
+  @IsDateString({}, { message: 'Informe a data da devolução.' })
+  data!: string;
+
+  @IsIn(MOTIVOS_DEVOLUCAO as unknown as string[], { message: 'Escolha o motivo da devolução.' })
+  motivo!: string;
+
+  // Voltou em bom estado e pode ser entregue de novo: soma no saldo do almoxarifado.
+  @IsOptional()
+  @IsBoolean()
+  voltaAoEstoque?: boolean;
+}
+
+// Edição dos dados do colaborador pela ficha. Campo vazio apaga o valor (menos nome e cargo).
+export class EditarColaboradorDto {
+  @IsOptional() @IsString() @Length(2, 200, { message: 'Escreva o nome completo.' }) nome?: string;
+  @IsOptional() @IsString() @Length(2, 120, { message: 'Escreva o cargo.' }) cargo?: string;
+  @IsOptional() @Matches(/^(\d{3}\.?\d{3}\.?\d{3}-?\d{2})?$/, { message: 'CPF inválido.' }) cpf?: string;
+  @IsOptional() @Matches(/^(\d{4}-?\d{2})?$/, { message: 'O CBO tem 6 números (ex.: 7823-05).' }) cbo?: string;
+  @IsOptional() @IsString() @MaxLength(30) matricula?: string;
+  @IsOptional() @Matches(/^(\d{4}-\d{2}-\d{2}.*)?$/, { message: 'Data de admissão inválida.' }) dataAdmissao?: string;
+  @IsOptional() @IsString() gheId?: string;
+  @IsOptional() @IsIn(['', ...CATEGORIAS_CNH], { message: 'Categoria da CNH inválida (A, B, C, D, E, AB, AC, AD ou AE).' }) cnhCategoria?: string;
+  @IsOptional() @Matches(/^(\d{4}-\d{2}-\d{2}.*)?$/, { message: 'Validade da CNH inválida.' }) cnhValidade?: string;
 }
 
 export class DesligamentoDto {

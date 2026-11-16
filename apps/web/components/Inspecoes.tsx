@@ -21,7 +21,7 @@ import {
 import { ehEmpresa } from '@/lib/sessao';
 
 type Avisar = (tipo: 'erro' | 'ok', texto: string) => void;
-const MAX_FOTOS = 5;
+const MAX_FOTOS = 15;
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 // Data local (não UTC): à noite o UTC já está no dia seguinte.
 const hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
