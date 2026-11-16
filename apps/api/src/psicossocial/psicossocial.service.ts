@@ -2,7 +2,8 @@ import { BadRequestException, Injectable, NotFoundException, ForbiddenException 
 import { randomBytes } from 'crypto';
 import { SessaoUsuario } from '../common/sessao.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import { AcaoDto, CriarAvaliacaoDto, LevarPgrDto, ResponderDto } from './dto';
+import { nivelRisco, Nivel } from '../documentos/nivel-risco';
+import { AcaoDto, CriarAvaliacaoDto, LevarPgrDto, ResponderDto, TecnicaDto } from './dto';
 import { questionario, QUESTIONARIOS, Questionario } from './questionarios';
 
 const WEB = () => (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
@@ -22,6 +23,23 @@ export function calcular(q: Questionario, respostas: Record<string, number>[]) {
     return [d.id, medias.length ? Math.round((medias.reduce((a, b) => a + b, 0) / medias.length) * 100) / 100 : null];
   })) as Record<string, number | null>;
 }
+
+// Média de 0 a 4 vira probabilidade: abaixo de 1 o fator não foi identificado.
+export function probabilidadeDe(media: number | null): 'BAIXA' | 'MEDIA' | 'ALTA' | null {
+  if (media === null || media < 1) return null;
+  return media < 2 ? 'BAIXA' : media < 3 ? 'MEDIA' : 'ALTA';
+}
+
+// Questionário (peso 1) e avaliação técnica (peso 2), como no modelo de AEP psicossocial.
+export function combinar(questionario: number | null, tecnica: number | null) {
+  if (questionario === null && tecnica === null) return null;
+  if (questionario === null) return tecnica;
+  if (tecnica === null) return questionario;
+  return Math.round(((questionario + 2 * tecnica) / 3) * 100) / 100;
+}
+
+export type CelulaMatriz = { questionario: number | null; tecnica: number | null; final: number | null; probabilidade: string | null; severidade: string; nivel: Nivel | null };
+const NIVEIS_PGR: Nivel[] = ['MODERADO', 'ALTO', 'CRITICO'];
 
 @Injectable()
 export class PsicossocialService {
@@ -81,11 +99,27 @@ export class PsicossocialService {
     ]);
     const porSetor = new Map<string, Record<string, number>[]>();
     for (const r of respostas) porSetor.set(r.setor, [...(porSetor.get(r.setor) ?? []), r.valores as Record<string, number>]);
-    const linha = (setor: string, lista: Record<string, number>[]) => ({ setor, respostas: lista.length, oculto: lista.length < a.minimoGrupo, valores: lista.length < a.minimoGrupo ? null : calcular(q, lista) });
+    const comPgr = q.dimensoes.some((d) => d.pgr);
+    const tecnica = (a.avaliacaoTecnica ?? {}) as Record<string, Record<string, number | null>>;
+    // Matriz por tema: questionário + avaliação técnica, probabilidade, severidade e nível (NR-01).
+    const matriz = (setor: string, valores: Record<string, number | null> | null) => !comPgr ? null : Object.fromEntries(q.dimensoes.map((d) => {
+      const qv = valores?.[d.id] ?? null; const tv = tecnica[setor]?.[d.id] ?? null;
+      const final = combinar(qv, tv); const prob = probabilidadeDe(final); const sev = d.pgr?.severidade ?? 'MEDIA';
+      return [d.id, { questionario: qv, tecnica: tv, final, probabilidade: prob, severidade: sev, nivel: prob ? nivelRisco(sev, prob) : null } satisfies CelulaMatriz];
+    })) as Record<string, CelulaMatriz>;
+    const linha = (setor: string, lista: Record<string, number>[]) => {
+      const oculto = lista.length < a.minimoGrupo; const valores = oculto ? null : calcular(q, lista);
+      return { setor, respostas: lista.length, oculto, valores, matriz: matriz(setor, valores), tecnica: tecnica[setor] ?? null };
+    };
+    // Na triagem de fatores, todos os GHEs aparecem: dá para lançar a avaliação técnica mesmo sem respostas.
+    if (comPgr) {
+      const ghes = await this.prisma.ghe.findMany({ where: { empresaId }, select: { nome: true } });
+      for (const g of ghes) if (!porSetor.has(g.nome)) porSetor.set(g.nome, []);
+    }
     const setores = [...porSetor.entries()].sort((x, y) => x[0].localeCompare(y[0])).map(([s, l]) => linha(s, l));
     return {
       avaliacao: { ...a, link: `${WEB()}/psicossocial/${a.token}` },
-      questionario: { id: q.id, sigla: q.sigla, nome: q.nome, fonte: q.fonte, dimensoes: q.dimensoes, escala: q.escala },
+      questionario: { id: q.id, sigla: q.sigla, nome: q.nome, fonte: q.fonte, dimensoes: q.dimensoes, escala: q.escala, validado: q.validado, comPgr },
       total: linha(TODOS, respostas.map((r) => r.valores as Record<string, number>)),
       setores,
       acoes,
@@ -130,6 +164,71 @@ export class PsicossocialService {
     return existente ? this.prisma.gheRisco.update({ where: { id: existente.id }, data: dados }) : this.prisma.gheRisco.create({ data: { ...dados, gheId: ghe.id } });
   }
 
+  // Avaliação técnica do responsável (peso 2) para um setor.
+  async salvarTecnica(consultoriaId: string, empresaId: string, id: string, dto: TecnicaDto) {
+    const a = await this.avaliacao(consultoriaId, empresaId, id);
+    const q = questionario(a.questionario);
+    if (!q?.dimensoes.some((d) => d.pgr)) throw new BadRequestException('A avaliação técnica é da triagem de fatores do trabalho.');
+    if (!(await this.prisma.ghe.findFirst({ where: { empresaId, nome: dto.setor }, select: { id: true } }))) throw new BadRequestException(`Não existe GHE "${dto.setor}" nesta empresa.`);
+    const notas: Record<string, number | null> = {};
+    for (const d of q.dimensoes) {
+      const v = dto.valores[d.id];
+      if (v === null || v === undefined) { notas[d.id] = null; continue; }
+      if (typeof v !== 'number' || v < 0 || v > 4) throw new BadRequestException(`A nota de "${d.nome}" vai de 0 a 4.`);
+      notas[d.id] = v;
+    }
+    const atual = (a.avaliacaoTecnica ?? {}) as Record<string, Record<string, number | null>>;
+    await this.prisma.avaliacaoPsicossocial.update({ where: { id }, data: { avaliacaoTecnica: { ...atual, [dto.setor]: notas } } });
+    return { ok: true };
+  }
+
+  // Leva ao PGR todos os fatores moderados ou acima: entram no inventário do GHE do setor
+  // e viram ações no plano de ação único da empresa (NR-01, 1.5.3.1.4 e 1.5.5.2).
+  async enviarAoPgr(consultoriaId: string, empresaId: string, id: string) {
+    const r = await this.resultado(consultoriaId, empresaId, id);
+    if (!r.questionario.comPgr) throw new BadRequestException('Este questionário mede sintomas das pessoas. Para o PGR, use a triagem de fatores do trabalho.');
+    const ghes = await this.prisma.ghe.findMany({ where: { empresaId }, select: { id: true, nome: true } });
+    const chave = (descricao: string, local: string | null) => `${descricao}|${local ?? ''}`;
+    const existentes = new Set((await this.prisma.acaoCorretiva.findMany({ where: { empresaId, origem: 'PSICOSSOCIAL', origemId: id }, select: { descricao: true, local: true } })).map((x) => chave(x.descricao, x.local)));
+    const origemTexto = `Avaliação psicossocial "${r.avaliacao.titulo}"`;
+    let riscos = 0; let acoes = 0; let removidos = 0;
+    for (const s of r.setores) {
+      const ghe = ghes.find((g) => g.nome === s.setor);
+      if (!ghe || !s.matriz) continue;
+      for (const d of r.questionario.dimensoes) {
+        const c = s.matriz[d.id]; const pgr = d.pgr; if (!pgr) continue;
+        const agente = `Fatores psicossociais: ${d.nome.toLowerCase()}`;
+        const existente = await this.prisma.gheRisco.findFirst({ where: { gheId: ghe.id, agente } });
+        if (!c?.nivel || !NIVEIS_PGR.includes(c.nivel)) {
+          // Se caiu para baixo numa nova avaliação, sai do inventário (o histórico fica nas avaliações).
+          if (existente && existente.fonteGeradora.includes('Avaliação psicossocial')) { await this.prisma.gheRisco.delete({ where: { id: existente.id } }); removidos++; }
+          continue;
+        }
+        const medidasPlano = r.acoes.filter((x) => x.dimensao === d.id && (!x.setor || x.setor === s.setor)).map((x) => x.acao);
+        const br = (n: number) => n.toFixed(1).replace('.', ',');
+        const partes = [c.questionario !== null ? `${s.respostas} respostas no questionário, média ${br(c.questionario)}` : '', c.tecnica !== null ? `avaliação técnica ${br(c.tecnica)}` : ''].filter(Boolean).join('; ');
+        const dados = {
+          tipo: 'ERGONOMICO', agente, tipoAvaliacao: 'QUALITATIVA',
+          severidade: c.severidade, probabilidade: c.probabilidade ?? 'MEDIA',
+          fonteGeradora: `${pgr.fonte}. Avaliação psicossocial "${r.avaliacao.titulo}": nota ${br(c.final ?? 0)} de 4, com ${partes}.`,
+          possiveisLesoes: pgr.consequencias,
+          medidasControle: (medidasPlano.length ? medidasPlano : [pgr.medida]).join('; '),
+        };
+        if (existente) await this.prisma.gheRisco.update({ where: { id: existente.id }, data: dados });
+        else await this.prisma.gheRisco.create({ data: { ...dados, gheId: ghe.id } });
+        riscos++;
+        // As ações do plano do psicossocial passam para o plano de ação da empresa, que é o que sai no PGR.
+        for (const descricao of medidasPlano.length ? medidasPlano : [pgr.medida]) {
+          if (existentes.has(chave(descricao, s.setor))) continue;
+          await this.prisma.acaoCorretiva.create({ data: { empresaId, origem: 'PSICOSSOCIAL', origemId: id, origemTexto: `${origemTexto} · ${d.nome}`, descricao, local: s.setor, prioridade: c.nivel === 'MODERADO' ? 'MEDIA' : 'ALTA' } });
+          existentes.add(chave(descricao, s.setor)); acoes++;
+        }
+      }
+    }
+    await this.prisma.avaliacaoPsicossocial.update({ where: { id }, data: { enviadoPgrEm: new Date() } });
+    return { riscos, acoes, removidos };
+  }
+
   // ---------- Link público (anônimo) ----------
 
   private async porToken(token: string) {
@@ -145,7 +244,7 @@ export class PsicossocialService {
     return {
       titulo: a.titulo, empresa: a.empresa.razaoSocial, consultoria: a.empresa.consultoria.nome, aberta: a.status === 'ABERTA',
       setores: a.empresa.ghes.map((g) => g.nome),
-      questionario: { sigla: q.sigla, nome: q.nome, descricao: q.descricao, escala: q.escala, itens: q.itens.map(({ n, texto }) => ({ n, texto })), aviso: q.aviso ?? null },
+      questionario: { sigla: q.sigla, nome: q.nome, descricao: q.descricao, instrucao: q.instrucao ?? null, escala: q.escala, itens: q.itens.map(({ n, texto }) => ({ n, texto })), aviso: q.aviso ?? null },
     };
   }
 

@@ -9,6 +9,18 @@ export type Moldura = {
   consultoria: { nome: string; logo: string | null };
   infos: [rotulo: string, valor: string | number | null][];
   aviso: string;
+  capa?: Capa; // programas e laudos (PGR, PCMSO, LTCAT, LIP, LPP, PGRTR, AET) abrem com capa
+};
+
+// Capa: identificação da empresa, do responsável técnico e o que é o documento.
+export type Capa = {
+  sigla: string;
+  empresa: { razaoSocial: string; cnpj: string; cnae: string | null; grauRisco: number | null; endereco: string | null; numFuncionarios?: number };
+  responsaveis: { papel: string; nome: string | null; formacao?: string | null; registro?: string | null; documento?: { rotulo: string; numero: string | null } }[];
+  versao?: number;
+  emitidoEm: Date;
+  vigencia?: string;
+  escopo: { oQueE: string; paraQue: string; norma: string };
 };
 
 export const escape = (valor: string | number | null | undefined) =>
@@ -79,6 +91,69 @@ export function rodapeHtml(moldura: Pick<Moldura, 'consultoria' | 'aviso'>): str
   </footer>`;
 }
 
+const falta = (v: string | number | null | undefined, oQue: string) =>
+  v === null || v === undefined || v === '' ? `<span class="falta">${escape(oQue)} não informado</span>` : escape(v);
+
+export function capaHtml(moldura: Pick<Moldura, 'titulo' | 'logoEmpresa' | 'consultoria'>, c: Capa): string {
+  const e = c.empresa;
+  return `
+  <section class="capa">
+    <div class="capa-topo">${moldura.logoEmpresa ? `<img src="${moldura.logoEmpresa}" alt="Logo da empresa" />` : ''}</div>
+    <div class="capa-titulo">
+      <p class="capa-sigla">${escape(c.sigla)}</p>
+      <h1>${escape(moldura.titulo)}</h1>
+      <p class="capa-empresa">${escape(e.razaoSocial)}</p>
+      <p class="meta">${c.versao ? `Versão ${c.versao} · ` : ''}emitido em ${c.emitidoEm.toLocaleDateString('pt-BR')}${c.vigencia ? ` · ${escape(c.vigencia)}` : ''}</p>
+    </div>
+    <div class="capa-bloco">
+      <h2>Empresa</h2>
+      <table>
+        <tr><th>Razão social</th><td>${escape(e.razaoSocial)}</td></tr>
+        <tr><th>CNPJ</th><td>${falta(e.cnpj, 'CNPJ')}</td></tr>
+        <tr><th>CNAE</th><td>${falta(e.cnae, 'CNAE')}</td></tr>
+        <tr><th>Grau de risco (NR-04)</th><td>${falta(e.grauRisco, 'Grau de risco')}</td></tr>
+        <tr><th>Endereço</th><td>${falta(e.endereco, 'Endereço')}</td></tr>
+        ${e.numFuncionarios !== undefined ? `<tr><th>Trabalhadores</th><td>${e.numFuncionarios}</td></tr>` : ''}
+      </table>
+    </div>
+    <div class="capa-bloco">
+      <h2>${c.responsaveis.length > 1 ? 'Responsáveis técnicos' : 'Responsável técnico'}</h2>
+      <table>
+        ${c.responsaveis.map((r) => `
+        <tr><th>${escape(r.papel)}</th><td>
+          <strong>${falta(r.nome, 'Nome')}</strong>${r.formacao ? ` · ${escape(r.formacao)}` : ''}<br>
+          ${[r.registro !== undefined ? `Registro: ${falta(r.registro, 'Registro')}` : '', r.documento ? `${escape(r.documento.rotulo)}: ${falta(r.documento.numero, r.documento.rotulo)}` : ''].filter(Boolean).join(' · ')}
+        </td></tr>`).join('')}
+      </table>
+    </div>
+    <div class="capa-bloco capa-escopo">
+      <h2>Sobre este documento</h2>
+      <p><strong>O que é:</strong> ${escape(c.escopo.oQueE)}</p>
+      <p><strong>Para que serve:</strong> ${escape(c.escopo.paraQue)}</p>
+      <p><strong>O que a norma pede:</strong> ${escape(c.escopo.norma)}</p>
+    </div>
+    <div class="capa-rodape">
+      ${moldura.consultoria.logo ? `<img src="${moldura.consultoria.logo}" alt="Logo da consultoria" />` : ''}
+      <span>Elaborado por <strong>${escape(moldura.consultoria.nome)}</strong></span>
+    </div>
+  </section>`;
+}
+
+const CSS_CAPA = `
+  .capa { page-break-after: always; min-height: 1000px; display: flex; flex-direction: column; gap: 18px; }
+  .capa-topo img { height: 80px; }
+  .capa-titulo { border-left: 5px solid ${tokens.colors.primary}; padding: 6px 0 6px 16px; margin-top: 40px; }
+  .capa-titulo h1 { font-size: 26px; }
+  .capa-sigla { margin: 0; font-size: 40px; font-weight: 700; color: ${tokens.colors.primary}; letter-spacing: 1px; }
+  .capa-empresa { margin: 8px 0 2px; font-size: 16px; font-weight: 600; }
+  .capa-bloco table th { width: 30%; }
+  .capa-escopo p { margin: 4px 0; line-height: 1.45; }
+  .capa-rodape { margin-top: auto; display: flex; align-items: center; gap: 10px; font-size: 11px; border-top: 1px solid ${tokens.colors.border}; padding-top: 10px; }
+  .capa-rodape img { height: 32px; }
+  .falta { color: #b45309; font-style: italic; }
+`;
+
 export function documentoHtml(moldura: Moldura, corpo: string, cssExtra = ''): string {
-  return folhaHtml(cabecalhoHtml(moldura) + corpo + rodapeHtml(moldura), cssExtra);
+  const capa = moldura.capa ? capaHtml(moldura, moldura.capa) : '';
+  return folhaHtml(capa + cabecalhoHtml(moldura) + corpo + rodapeHtml(moldura), moldura.capa ? cssExtra + CSS_CAPA : cssExtra);
 }

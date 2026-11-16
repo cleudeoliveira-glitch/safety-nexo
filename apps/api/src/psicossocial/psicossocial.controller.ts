@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common'
 import { Publica } from '../auth/publica.decorator';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
-import { AcaoDto, AcaoFeitaDto, CriarAvaliacaoDto, LevarPgrDto, ResponderDto } from './dto';
+import { AcaoDto, AcaoFeitaDto, CriarAvaliacaoDto, LevarPgrDto, ResponderDto, TecnicaDto } from './dto';
 import { PsicossocialService } from './psicossocial.service';
 
 // Só a consultoria: resultado psicossocial é dado sensível e é ela quem interpreta.
@@ -19,6 +19,8 @@ export class PsicossocialController {
   @Post(':id/acoes') acao(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() dto: AcaoDto) { return this.ps.criarAcao(c, e, id, dto); }
   @Put(':id/acoes/:acaoId') marcar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Param('acaoId') a: string, @Body() dto: AcaoFeitaDto) { return this.ps.marcarAcao(c, e, id, a, dto.feita); }
   @Delete(':id/acoes/:acaoId') remover(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Param('acaoId') a: string) { return this.ps.removerAcao(c, e, id, a); }
+  @Put(':id/tecnica') tecnica(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() dto: TecnicaDto) { return this.ps.salvarTecnica(c, e, id, dto); }
+  @Post(':id/enviar-pgr') enviarPgr(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.ps.enviarAoPgr(c, e, id); }
   @Post(':id/pgr') pgr(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() dto: LevarPgrDto) { return this.ps.levarAoPgr(c, e, id, dto); }
 }
 

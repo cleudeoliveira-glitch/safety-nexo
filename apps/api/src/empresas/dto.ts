@@ -38,6 +38,21 @@ export class CreateEmpresaDto {
   @IsOptional()
   @IsString()
   @Length(2, 120)
+  responsavelTecnicoFormacao?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 60)
+  responsavelTecnicoArt?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(5, 300)
+  endereco?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
   representanteLegalNome?: string;
 
   @IsOptional()
@@ -268,6 +283,21 @@ export class UpdateEmpresaDto {
   @IsString()
   @Length(2, 60)
   responsavelTecnicoRegistro?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  responsavelTecnicoFormacao?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 60)
+  responsavelTecnicoArt?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(5, 300)
+  endereco?: string;
 
   @IsOptional()
   @IsString()

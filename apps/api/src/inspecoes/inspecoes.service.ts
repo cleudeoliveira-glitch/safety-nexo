@@ -1,3 +1,4 @@
+import { identificacao } from '../documentos/capa';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { join } from 'path';
 import { Guarda } from '../common/guarda';
@@ -136,7 +137,7 @@ export class InspecoesService {
           titulo: 'Relatório de Inspeção de Segurança',
           logoEmpresa,
           consultoria,
-          infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj]],
+          infos: identificacao(empresa),
           aviso: 'Feito com o Safety Nexo. O que não estiver conforme vai para o plano de ação.',
         },
         { ...i, itens: i.itens as unknown as ItemInspecao[], fotos, relatorioIa: (i.relatorioIa as RelatorioInspecaoIa | null) ?? null },

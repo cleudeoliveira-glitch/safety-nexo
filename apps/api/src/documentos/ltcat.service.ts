@@ -1,3 +1,4 @@
+import { capaDe, responsavelTecnico } from './capa';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ContextoDocumentoService } from './contexto.service';
@@ -29,6 +30,7 @@ export class LtcatService {
           ['Versão', `${versao} · emitido em ${geradoEm.toLocaleDateString('pt-BR')}`],
         ],
         aviso: 'Feito com o Safety Nexo.',
+        capa: capaDe('LTCAT', empresa, versao, geradoEm, [responsavelTecnico(empresa)]),
       },
       empresa.ghes.map((g) => ({
         nome: g.nome,
