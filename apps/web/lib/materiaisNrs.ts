@@ -169,9 +169,9 @@ export const MATERIAIS_NRS: Material[] = [
     ],
   },
 
-  // Palestras: a NR pede que o trabalhador seja informado, sem curso com carga fixa.
+  // NR-17, NR-26 e NR-21: material mais curto. Só a NR-21 é palestra (a norma não pede capacitação).
   {
-    codigo: 'nr17', norma: 'NR-17', nome: 'Ergonomia no dia a dia', tipo: 'palestra', cargaHoraria: 'Palestra de cerca de 1 hora. A NR-17 não fixa carga horária.',
+    codigo: 'nr17', norma: 'NR-17', nome: 'Ergonomia no dia a dia', cargaHoraria: 'A NR-17 não fixa carga horária geral. Nos anexos (checkout e teleatendimento) há conteúdo e prazos próprios: complete com eles quando for o caso.',
     publico: 'Todos os trabalhadores, com exemplos do setor.',
     slides: [
       { titulo: 'Ergonomia no dia a dia (NR-17)', pontos: ['Adaptar o trabalho às pessoas', 'Postura, carga, pausas e organização', 'Dor não é normal: avise'], fala: 'Pergunte quem sente alguma dor no fim do expediente e onde. Mostre que isso é sinal de que algo no trabalho pode melhorar.' },
@@ -189,7 +189,7 @@ export const MATERIAIS_NRS: Material[] = [
     ],
   },
   {
-    codigo: 'nr26', norma: 'NR-26', nome: 'Sinalização e rótulos de produtos químicos', tipo: 'palestra', cargaHoraria: 'Palestra de cerca de 1 hora. A NR-26 pede que os trabalhadores sejam orientados sobre rótulos e fichas.',
+    codigo: 'nr26', norma: 'NR-26', nome: 'Sinalização e rótulos de produtos químicos', cargaHoraria: 'A NR-26 pede treinamento sobre rótulos e fichas de segurança, sem carga horária fixa.',
     publico: 'Quem usa, guarda ou transporta produtos químicos.',
     slides: [
       { titulo: 'Rótulos e sinais de segurança (NR-26)', pontos: ['Ler o rótulo antes de usar', 'Entender os símbolos de perigo', 'Saber onde está a ficha do produto'], fala: 'Leve dois ou três produtos usados na empresa e passe de mão em mão. Pergunte o que cada um sabe sobre eles.' },
@@ -330,7 +330,7 @@ export const MATERIAIS_NRS: Material[] = [
     ],
   },
   {
-    codigo: 'nr25', norma: 'NR-25', nome: 'Resíduos industriais', tipo: 'palestra', cargaHoraria: 'Palestra de cerca de 1 hora. A NR-25 pede que os trabalhadores sejam orientados sobre os riscos dos resíduos.',
+    codigo: 'nr25', norma: 'NR-25', nome: 'Resíduos industriais', cargaHoraria: 'A NR-25 pede capacitação de quem lida com resíduos, sem carga horária fixa.',
     publico: 'Quem gera, separa, guarda ou transporta resíduos na empresa.',
     slides: [
       { titulo: 'Resíduos industriais (NR-25)', pontos: ['Resíduo também tem risco', 'Separar certo protege as pessoas e o ambiente', 'Cada um cuida do que gera'], fala: 'Pergunte quais resíduos o setor de cada um gera. Anote e separe em perigosos e não perigosos.' },

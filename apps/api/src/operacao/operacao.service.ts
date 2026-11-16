@@ -1,3 +1,4 @@
+import { identificacao } from '../documentos/capa';
 import { selarIcp } from '../assinaturas/selo';
 import { EsocialService } from '../esocial/esocial.service';
 import { assinaturasDaLista } from '../presenca/consulta';
@@ -54,7 +55,7 @@ export class OperacaoService {
       titulo,
       logoEmpresa,
       consultoria,
-      infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj], ...extra] as [string, string][],
+      infos: [...identificacao(empresa), ...extra] as [string, string][],
       aviso: AVISO,
     };
   }

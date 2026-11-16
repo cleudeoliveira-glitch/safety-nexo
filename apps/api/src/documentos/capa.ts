@@ -65,3 +65,16 @@ export function capaDe(sigla: keyof typeof ESCOPOS, e: EmpresaCapa, versao: numb
     escopo: ESCOPOS[sigla],
   };
 }
+
+// Documentos sem capa (OS, APR, PT, inspeção): identificação completa no cabeçalho, como pede o parecer do item 8.
+export function identificacao(e: Pick<EmpresaCapa, 'razaoSocial' | 'cnpj' | 'cnae' | 'grauRisco' | 'endereco' | 'responsavelTecnicoNome' | 'responsavelTecnicoRegistro'>): [string, string][] {
+  const linhas: [string, string | null][] = [
+    ['Empresa', e.razaoSocial],
+    ['CNPJ', e.cnpj],
+    ['CNAE', e.cnae],
+    ['Grau de risco', e.grauRisco ? String(e.grauRisco) : null],
+    ['Endereço', e.endereco],
+    ['Responsável técnico', e.responsavelTecnicoNome ? [e.responsavelTecnicoNome, e.responsavelTecnicoRegistro].filter(Boolean).join(' · ') : null],
+  ];
+  return linhas.filter((l): l is [string, string] => Boolean(l[1]));
+}

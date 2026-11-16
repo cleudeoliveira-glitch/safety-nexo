@@ -1,4 +1,4 @@
-import { capaDe, responsavelTecnico } from '../documentos/capa';
+import { capaDe, responsavelTecnico, identificacao } from '../documentos/capa';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
@@ -92,7 +92,7 @@ export class LaudosService {
       epis: [...new Set(c.entregasEpi.map((e) => e.epi))].sort(),
     }));
     return this.pdf.render(
-      osHtml({ titulo: 'Ordem de Serviço de Segurança e Saúde no Trabalho', logoEmpresa, consultoria, infos: [['Empresa', empresa.razaoSocial], ['CNPJ', empresa.cnpj]], aviso: AVISO }, lista),
+      osHtml({ titulo: 'Ordem de Serviço de Segurança e Saúde no Trabalho', logoEmpresa, consultoria, infos: identificacao(empresa), aviso: AVISO }, lista),
     );
   }
 }
