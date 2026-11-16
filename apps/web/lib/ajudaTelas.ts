@@ -150,8 +150,8 @@ export const GUIAS: GuiaTela[] = [
   {
     id: 'campo',
     endereco: /^\/campo$/,
-    titulo: 'Campo sem internet',
-    paraQue: 'Para entregar EPI com o rosto, fazer inspeção, DDS e APR em lugares sem sinal. Tudo fica guardado no aparelho e é enviado quando a internet voltar.',
+    titulo: 'Registros de campo',
+    paraQue: 'Os quatro registros do campo num lugar só: entrega de EPI (conferida pelo rosto), inspeção, DDS e APR. Funciona com ou sem sinal: o que for feito sem internet fica no aparelho e é enviado quando ela voltar.',
     partes: [
       { titulo: 'Antes de ir ao campo', passos: ['Abra esta tela uma vez com internet, para o aparelho guardar as empresas, os modelos de inspeção e os rostos dos funcionários.', 'No celular, use "Adicionar à tela inicial" para abrir o Safety Nexo como aplicativo.', 'Escolha a empresa no alto da tela.'] },
       { titulo: 'Entrega de EPI pelo rosto', aba: 'rosto', passos: ['Escolha o funcionário.', 'Escolha o EPI do almoxarifado (nome, CA e validade vêm prontos) ou digite o EPI e o CA.', 'Informe a quantidade e o motivo.', 'Aponte a câmera para o rosto do funcionário e peça para ele piscar: isso confirma que é a pessoa de verdade.', 'Pronto: a entrega fica registrada com o comprovante facial, mesmo sem internet.'] },

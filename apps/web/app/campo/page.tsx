@@ -43,7 +43,8 @@ export default function CampoPage() {
   }, [atualizar]);
 
   useEffect(() => {
-    setLogado(!!lerToken()); setOnline(navigator.onLine); setBase(lerBase()); atualizar();
+    setLogado(!!lerToken());
+    if (!new URLSearchParams(window.location.search).get('aba')) setAba('rosto'); // abre na primeira aba, a entrega de EPI setOnline(navigator.onLine); setBase(lerBase()); atualizar();
     const pedida = new URLSearchParams(window.location.search).get('aba'); // vindo do menu ou dos botões do painel
     if (pedida === 'epi') setAba('rosto'); else if (pedida === 'dds' || pedida === 'apr' || pedida === 'inspecao') setAba(pedida);
     // Com uma empresa só, já deixa escolhida.
@@ -80,7 +81,8 @@ export default function CampoPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <Link href="/" className="text-sm text-primary">← Painel</Link>
-          <h1 className="mt-2 text-2xl font-semibold text-primary">Campo</h1>
+          <h1 className="mt-2 text-2xl font-semibold text-primary">Registros de campo</h1>
+          <p className="mt-1 text-sm text-text/70">Entrega de EPI, inspeção, DDS e APR, com ou sem internet.</p>
         </div>
         <BotaoComoUsar />
         <AjudaDaTela caminho="/campo" barra={false} aba={aba} />
@@ -126,12 +128,22 @@ export default function CampoPage() {
           Slides dos treinamentos (abrem sem internet) <span aria-hidden>→</span>
         </a>
         <div role="tablist" className="flex flex-wrap gap-2">
-          {([['rosto', 'Entrega de EPI (rosto)'], ['inspecao', 'Inspeção'], ['dds', 'DDS'], ['apr', 'APR']] as [Aba, string][]).map(([v, n]) => (
-            <button key={v} role="tab" aria-selected={aba === v} onClick={() => setAba(v)} className={`rounded-card px-4 py-2 text-sm font-semibold ${aba === v ? 'bg-primary text-white' : 'border border-border bg-white'}`}>{n}</button>
+          {([['rosto', 'Entrega de EPI'], ['inspecao', 'Inspeção'], ['dds', 'DDS'], ['apr', 'APR']] as [Aba, string][]).map(([v, n]) => (
+            <button key={v} role="tab" aria-selected={aba === v} onClick={() => setAba(v)} className={`rounded-card px-4 py-2 text-sm font-semibold ${aba === v ? 'bg-primary text-white' : 'border border-border bg-white'}`}>
+              {n}
+              {v === 'rosto' && <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold ${aba === v ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'}`}>com rosto</span>}
+            </button>
           ))}
         </div>
+        <p className="text-xs text-text/60">O rosto confere quem recebeu o EPI. Na inspeção, no DDS e na APR o registro é feito com foto, lista de toque e assinatura com o dedo.</p>
 
-        {aba === 'rosto' && (empresaId ? <RostoCampo empresaId={empresaId} base={base.rosto?.[empresaId]} /> : <Aviso tipo="info">Escolha a empresa.</Aviso>)}
+        {aba === 'rosto' && !libera(plano, 'rosto') && (
+          <div className="card-pendente rounded-card p-4 text-sm">
+            <p className="font-semibold">A entrega de EPI pelo rosto faz parte do plano {planoMinimo('rosto')} ou maior.</p>
+            <p className="mt-1">Inspeção, DDS e APR funcionam no seu plano. <Link href="/plano?recurso=rosto" className="font-semibold text-primary">Ver os planos</Link></p>
+          </div>
+        )}
+        {aba === 'rosto' && libera(plano, 'rosto') && (empresaId ? <RostoCampo empresaId={empresaId} base={base.rosto?.[empresaId]} /> : <Aviso tipo="info">Escolha a empresa.</Aviso>)}
 
         {aba === 'inspecao' && (
           <Cartao titulo="Inspeção">

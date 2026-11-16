@@ -34,7 +34,7 @@ const atalhos: { nome: string; texto: string; icone: NomeIcone; rota: string; so
   { nome: 'APR e PT', texto: 'Análise de risco e permissões', icone: 'escudo', rota: '/operacao#apr' },
   { nome: 'Treinamentos', texto: '28 NRs com certificado', icone: 'formatura', rota: '/treinamentos' },
   { nome: 'CIPA', texto: 'Dimensionamento e eleição', icone: 'votar', rota: '/cipa', soConsultoria: true },
-  { nome: 'Entrega de EPI', texto: 'Com rosto, até sem internet', icone: 'cracha', rota: '/campo?aba=epi', geral: true },
+  { nome: 'Registros de campo', texto: 'EPI pelo rosto, inspeção, DDS e APR', icone: 'cracha', rota: '/campo', geral: true },
   { nome: 'Almoxarifado', texto: 'Estoque e CA dos EPIs', icone: 'caixa', rota: '/almoxarifado' },
   { nome: 'eSocial', texto: 'S-2210, S-2220, S-2240', icone: 'nuvem', rota: '/esocial', soConsultoria: true },
   { nome: 'Emergência', texto: 'Brigada, AVCB e extintores', icone: 'fogo', rota: '/emergencia' },
