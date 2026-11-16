@@ -6,7 +6,7 @@ export const PLATAFORMA = {
   documento: process.env.NEXT_PUBLIC_PLATAFORMA_DOCUMENTO ?? 'CPF 978.***.***-87', // CNPJ ou CPF de quem explora o serviço
   cidade: process.env.NEXT_PUBLIC_PLATAFORMA_CIDADE ?? '',
   encarregado: process.env.NEXT_PUBLIC_ENCARREGADO_NOME ?? 'Cleude de Oliveira Silva Soares',
-  emailPrivacidade: process.env.NEXT_PUBLIC_EMAIL_PRIVACIDADE ?? 'cleude.oliveira@gmail.com',
+  emailPrivacidade: process.env.NEXT_PUBLIC_EMAIL_PRIVACIDADE ?? 'contato@safetynexo.com.br',
   whatsapp: (process.env.NEXT_PUBLIC_WHATSAPP_SUPORTE ?? '5562994343838').replace(/\D/g, ''),
   versaoTermos: '2026-11-10',
 };
