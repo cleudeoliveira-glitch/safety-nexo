@@ -178,6 +178,116 @@ empresaId: string; i: Inspecao; cliente: boolean; iaLigada: boolean; ocupado: bo
   );
 }
 
+// Inspeção com imagem: cada foto vira um item da inspeção (OK / Não OK). Os "Não OK" já viram ações 5W2H no plano de ação.
+type FotoAvaliada = FotoNova & { resposta: 'C' | 'NC' | ''; problema: string };
+
+function InspecaoComImagem({ empresaId, locais, cliente, recarregar, avisar, aoSalvar }: {
+  empresaId: string; locais: string[]; cliente: boolean; recarregar: () => Promise<void>; avisar: Avisar; aoSalvar: (id: string) => void;
+}) {
+  const entrada = useRef<HTMLInputElement>(null);
+  const [fotos, setFotos] = useState<FotoAvaliada[]>([]);
+  const [local, setLocal] = useState('');
+  const [inspetor, setInspetor] = useState('');
+  const [dataInsp, setDataInsp] = useState(hoje());
+  const [salvando, setSalvando] = useState(false);
+
+  async function escolher(lista: FileList | null) {
+    if (!lista) return;
+    const novas: FotoAvaliada[] = [];
+    for (const arq of Array.from(lista).slice(0, MAX_FOTOS - fotos.length)) {
+      const foto = await reduzirFoto(arq);
+      novas.push({ foto, legenda: '', previa: URL.createObjectURL(foto), resposta: '', problema: '' });
+    }
+    setFotos((f) => [...f, ...novas]);
+    if (entrada.current) entrada.current.value = '';
+  }
+  const mudar = (i: number, campos: Partial<FotoAvaliada>) => setFotos((x) => x.map((f, j) => (j === i ? { ...f, ...campos } : f)));
+  function limpar() { fotos.forEach((f) => URL.revokeObjectURL(f.previa)); setFotos([]); setLocal(''); setDataInsp(hoje()); }
+
+  async function salvar() {
+    if (!local.trim() || !inspetor.trim()) return avisar('erro', 'Preencha o local e quem fez a inspeção.');
+    const semResposta = fotos.filter((f) => !f.resposta).length;
+    if (semResposta) return avisar('erro', `Marque OK ou Não OK em todas as fotos: faltam ${semResposta}.`);
+    if (fotos.some((f) => f.resposta === 'NC' && !f.problema.trim())) return avisar('erro', 'Nas fotos "Não OK", escreva o que está errado.');
+    setSalvando(true);
+    try {
+      const itens = fotos.map((f, k) => ({
+        texto: f.legenda.trim() || `Foto ${k + 1} do local`,
+        resposta: f.resposta as ItemInspecao['resposta'],
+        ...(f.resposta === 'NC' ? { observacao: f.problema.trim() } : {}),
+      }));
+      const criada = await criarInspecao(empresaId, { modelo: 'LIVRE', titulo: 'Inspeção com imagem', local: local.trim(), data: dataInsp, inspetor: inspetor.trim(), itens });
+      let extra = '';
+      try {
+        await enviarFotosInspecao(empresaId, criada.id, fotos.map((f, k) => ({ foto: f.foto, legenda: f.resposta === 'NC' ? `${itens[k].texto}: ${f.problema.trim()}` : itens[k].texto })));
+      } catch (e) { extra += ` As fotos não foram: ${(e as Error).message}. Inclua de novo na lista abaixo.`; }
+      const ncs = fotos.filter((f) => f.resposta === 'NC').length;
+      if (ncs && !cliente) {
+        try { const r = await prevencao.acoesDaInspecao(empresaId, criada.id); extra += r.criadas ? ` ${r.criadas} ação(ões) 5W2H aberta(s) no plano de ação: complete quem, quando e como.` : ''; }
+        catch (e) { extra += ` As ações não foram abertas: ${(e as Error).message}. Use "Levar ao plano de ação" na lista.`; }
+      }
+      limpar();
+      aoSalvar(criada.id);
+      avisar('ok', `Inspeção com imagem salva.${extra}`);
+      await recarregar();
+    } catch (e) {
+      avisar('erro', (e as Error).message);
+    }
+    setSalvando(false);
+  }
+
+  return (
+    <section className="rounded-card border border-primary/20 bg-primary/5 p-5 sm:p-6">
+      <h2 className="text-xl font-semibold text-primary sm:text-2xl">Inspeção com imagem em poucos minutos</h2>
+      <p className="mt-1 text-sm text-text/70">Envie foto do ambiente, organize, analise e gere a ação na hora.</p>
+      <input ref={entrada} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={(e) => escolher(e.target.files)} />
+      {fotos.length === 0 ? (
+        <Botao className="mt-4 w-full py-3 text-base sm:w-auto sm:px-8" onClick={() => entrada.current?.click()}>📷 Criar inspeção com imagem</Botao>
+      ) : (
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <Campo id="img-local" rotulo="Local inspecionado" required value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex.: Almoxarifado" list="img-locais" />
+            <datalist id="img-locais">{locais.map((l) => <option key={l} value={l} />)}</datalist>
+            <Campo id="img-data" type="date" rotulo="Data" required value={dataInsp} onChange={(e) => setDataInsp(e.target.value)} />
+            <Campo id="img-inspetor" rotulo="Inspetor(a)" required value={inspetor} onChange={(e) => setInspetor(e.target.value)} placeholder="Quem fez a inspeção" />
+          </div>
+          <ol className="space-y-3">
+            {fotos.map((f, i) => (
+              <li key={f.previa} className={`flex flex-col gap-3 rounded-card border border-border bg-white p-3 sm:flex-row ${f.resposta === 'C' ? 'card-ok' : f.resposta === 'NC' ? 'card-nao' : ''}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={f.previa} alt={`Foto ${i + 1}`} className="h-40 w-full rounded-card object-cover sm:h-28 sm:w-40" />
+                <div className="flex-1 space-y-2">
+                  <input aria-label={`O que a foto ${i + 1} mostra`} value={f.legenda} maxLength={200} onChange={(e) => mudar(i, { legenda: e.target.value })}
+                    placeholder={`Foto ${i + 1}: o que ela mostra? Ex.: corredor de saída`} className={caixaTexto} />
+                  <div className="flex flex-wrap gap-2">
+                    {([['C', 'OK', 'bg-success text-white'], ['NC', 'Não OK', 'bg-danger text-white']] as const).map(([v, nome, cor]) => (
+                      <button key={v} type="button" aria-pressed={f.resposta === v} onClick={() => mudar(i, { resposta: v })}
+                        className={`rounded-card px-4 py-1.5 text-sm font-semibold ${f.resposta === v ? cor : 'border border-border bg-white'}`}>{nome}</button>
+                    ))}
+                    <button type="button" className="px-2 text-xs text-danger hover:underline" onClick={() => { URL.revokeObjectURL(f.previa); setFotos((x) => x.filter((_, j) => j !== i)); }}>Tirar a foto</button>
+                  </div>
+                  {f.resposta === 'NC' && (
+                    <input aria-label={`O que está errado na foto ${i + 1}`} value={f.problema} maxLength={300} onChange={(e) => mudar(i, { problema: e.target.value })}
+                      placeholder="O que está errado? Ex.: caixas bloqueando a saída de emergência" className={caixaTexto} />
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+          {!cliente && fotos.some((f) => f.resposta === 'NC') && <p className="text-xs text-text/60">Ao salvar, cada foto &quot;Não OK&quot; vira uma ação 5W2H no plano de ação.</p>}
+          <div className="flex flex-wrap justify-between gap-2">
+            <span className="flex flex-wrap gap-2">
+              {fotos.length < MAX_FOTOS && <Botao variante="secundario" onClick={() => entrada.current?.click()}>📷 Mais fotos ({fotos.length} de {MAX_FOTOS})</Botao>}
+              <Botao variante="secundario" onClick={limpar}>Cancelar</Botao>
+            </span>
+            <Botao disabled={salvando} onClick={salvar}>{salvando ? 'Salvando…' : 'Salvar inspeção'}</Botao>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: {
   empresaId: string; lista: Inspecao[]; modelos: ModeloChecklist[]; recarregar: () => Promise<void>; avisar: Avisar;
 }) {
@@ -268,7 +378,8 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: 
 
   return (
     <div className="space-y-6">
-      <Cartao titulo="Nova inspeção">
+      <InspecaoComImagem empresaId={empresaId} locais={locais.map((l) => l[l.length - 1].local)} cliente={cliente} recarregar={recarregar} avisar={avisar} aoSalvar={setAberta} />
+      <Cartao titulo="Nova inspeção pelos modelos das NRs">
         <form key={chave} className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-3">
             <Selecao id="ck-modelo" rotulo="Modelo de inspeção" value={modelo} onChange={(e) => escolher(e.target.value)} className="md:col-span-3">
