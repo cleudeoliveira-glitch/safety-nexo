@@ -44,12 +44,13 @@ export default function AlmoxarifadoPage({ params }: { params: { id: string } })
       <Cartao titulo="Incluir EPI no almoxarifado">
         <form key={chave} className="grid gap-4 md:grid-cols-3" onSubmit={(ev) => {
           ev.preventDefault(); const d = new FormData(ev.currentTarget);
-          agir(async () => { await estoque.criar(empresaId, { epi: txt(d, 'epi'), ca: txt(d, 'ca'), ...(txt(d, 'validadeCa') ? { validadeCa: txt(d, 'validadeCa') } : {}), ...(txt(d, 'tamanho') ? { tamanho: txt(d, 'tamanho') } : {}), quantidade: Number(txt(d, 'quantidade') || 0), minimo: Number(txt(d, 'minimo') || 0) }); return 'EPI incluído no almoxarifado.'; });
+          agir(async () => { await estoque.criar(empresaId, { epi: txt(d, 'epi'), ca: txt(d, 'ca'), ...(txt(d, 'validadeCa') ? { validadeCa: txt(d, 'validadeCa') } : {}), ...(txt(d, 'tamanho') ? { tamanho: txt(d, 'tamanho') } : {}), ...(txt(d, 'fabricante') ? { fabricante: txt(d, 'fabricante') } : {}), quantidade: Number(txt(d, 'quantidade') || 0), minimo: Number(txt(d, 'minimo') || 0) }); return 'EPI incluído no almoxarifado.'; });
         }}>
           <Campo id="est-epi" name="epi" rotulo="EPI" required placeholder="Ex.: Luva térmica" />
           <Campo id="est-ca" name="ca" rotulo="Número do CA" required placeholder="Ex.: 12345" />
           <Campo id="est-validade" name="validadeCa" type="date" rotulo="Validade do CA" />
           <Campo id="est-tamanho" name="tamanho" rotulo="Tamanho (se tiver)" placeholder="Ex.: G, 42" />
+          <Campo id="est-fabricante" name="fabricante" rotulo="Fabricante ou fornecedor" placeholder="Ex.: 3M" />
           <Campo id="est-qtd" name="quantidade" type="number" min={0} rotulo="Quantidade em estoque" required defaultValue={0} />
           <Campo id="est-min" name="minimo" type="number" min={0} rotulo="Avisar quando chegar a" defaultValue={0} dica="Quantidade mínima: abaixo disso aparece no painel para comprar." />
           <div className="flex justify-end md:col-span-3"><Botao type="submit">Incluir</Botao></div>
@@ -64,7 +65,7 @@ export default function AlmoxarifadoPage({ params }: { params: { id: string } })
               <tbody>
                 {itens.map((i) => (
                   <tr key={i.id} className={`border-b border-border align-top ${i.ativo ? '' : 'text-text/40'}`}>
-                    <td className="py-2.5"><strong>{i.epi}</strong>{i.tamanho && <span className="text-text/60"> · {i.tamanho}</span>}{!i.ativo && ' (fora de uso)'}</td>
+                    <td className="py-2.5"><strong>{i.epi}</strong>{i.tamanho && <span className="text-text/60"> · {i.tamanho}</span>}{!i.ativo && ' (fora de uso)'}{i.fabricante && <span className="block text-xs text-text/60">{i.fabricante}</span>}</td>
                     <td>{i.ca}</td>
                     <td className={i.caVencido ? 'font-semibold text-danger' : ''}>{data(i.validadeCa)}{i.caVencido && ' · vencido'}</td>
                     <td className={`text-right text-base font-semibold ${i.baixo ? 'text-danger' : ''}`}>{i.quantidade}</td>

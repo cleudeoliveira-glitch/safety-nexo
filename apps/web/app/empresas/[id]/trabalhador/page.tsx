@@ -32,7 +32,7 @@ export default function EspacoTrabalhadorPage({ params }: { params: { id: string
       </div>
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
       <Cartao titulo="Links dos funcionários" acao={semLink > 0 ? <Botao onClick={() => agir(() => portal.gerar(empresaId), 'Links criados.')}>Criar links para {semLink} funcionário(s)</Botao> : undefined}>
-        {semCpf > 0 && <p className="mb-3 rounded-card bg-background px-3 py-2 text-sm">{semCpf} funcionário(s) estão sem CPF no cadastro e não conseguem entrar. Complete em <Link className="text-primary underline" href={`/empresas/${empresaId}#colaboradores`}>Colaboradores</Link>.</p>}
+        {semCpf > 0 && <p className="mb-3 rounded-card bg-background px-3 py-2 text-sm">{semCpf} funcionário(s) estão sem CPF no cadastro e não conseguem entrar. Complete em <Link className="text-primary underline" href={`/empresas/${empresaId}/colaboradores`}>Colaboradores</Link>.</p>}
         {lista === null ? <p className="text-sm text-text/60">Carregando…</p> : lista.length === 0 ? <p className="text-sm text-text/60">Cadastre os colaboradores primeiro.</p> : (
           <ul className="divide-y divide-border text-sm">
             {lista.map((c) => (

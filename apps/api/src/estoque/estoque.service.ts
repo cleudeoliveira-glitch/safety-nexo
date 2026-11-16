@@ -32,7 +32,7 @@ export class EstoqueService {
     if (ja) throw new BadRequestException(`${epi} (CA ${ca}) já está no almoxarifado. Use "Entrada" para somar.`);
     return this.prisma.estoqueEpi.create({
       data: {
-        empresaId: e, epi, ca, tamanho, validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null, quantidade: dto.quantidade, minimo: dto.minimo ?? 0,
+        empresaId: e, epi, ca, tamanho, fabricante: dto.fabricante?.trim() || null, validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null, quantidade: dto.quantidade, minimo: dto.minimo ?? 0,
         movimentos: dto.quantidade ? { create: { tipo: 'ENTRADA', quantidade: dto.quantidade, saldo: dto.quantidade, observacao: 'Saldo inicial' } } : undefined,
       },
     });
@@ -40,7 +40,7 @@ export class EstoqueService {
 
   async editar(c: string, e: string, id: string, dto: EditarItemDto) {
     await this.item(c, e, id);
-    return this.prisma.estoqueEpi.update({ where: { id }, data: { ...(dto.validadeCa !== undefined ? { validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null } : {}), ...(dto.minimo !== undefined ? { minimo: dto.minimo } : {}), ...(dto.ativo !== undefined ? { ativo: dto.ativo } : {}) } });
+    return this.prisma.estoqueEpi.update({ where: { id }, data: { ...(dto.fabricante !== undefined ? { fabricante: dto.fabricante.trim() || null } : {}), ...(dto.validadeCa !== undefined ? { validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null } : {}), ...(dto.minimo !== undefined ? { minimo: dto.minimo } : {}), ...(dto.ativo !== undefined ? { ativo: dto.ativo } : {}) } });
   }
 
   async entrada(c: string, e: string, id: string, dto: MovimentoDto) {

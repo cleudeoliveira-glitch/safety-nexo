@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { VotacaoCelular } from '@/components/VotacaoCipa';
+import { ReunioesCipa } from '@/components/ReunioesCipa';
+import { rolarParaAncora } from '@/lib/abaDoEndereco';
 import { ehEmpresa } from '@/lib/sessao';
 import {
   adicionarMembroCipa,
@@ -50,6 +52,14 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
     recarregar();
   }, [recarregar]);
 
+  // O menu pode abrir direto nas atas (#reunioes).
+  const carregou = eleicao !== undefined;
+  useEffect(() => {
+    if (!carregou) return;
+    const t = setTimeout(rolarParaAncora, 80);
+    return () => clearTimeout(t);
+  }, [carregou]);
+
   // Toda ação devolve a eleição atualizada; basta trocar o estado.
   async function agir(acao: () => Promise<EleicaoCipa>, sucesso?: string) {
     try {
@@ -84,7 +94,7 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
     <main className="mx-auto max-w-4xl space-y-6 p-6 md:p-10">
       <div>
         <Link href={`/empresas/${empresaId}#cipa`} className="text-sm text-primary">← Voltar à empresa</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">Eleição da CIPA</h1>
+        <h1 className="mt-4 text-3xl font-semibold text-primary">CIPA: eleição e reuniões</h1>
         <p className="text-text/60">
           {empresa.razaoSocial}
           {eleicao && ` · ${eleicao.vagas.efetivos} titular(es) e ${eleicao.vagas.suplentes} suplente(s) eleitos pelos funcionários`}
@@ -320,6 +330,8 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
           </Cartao>
         </>
       )}
+
+      <ReunioesCipa empresaId={empresaId} eleicao={eleicao} />
     </main>
   );
 }

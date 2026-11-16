@@ -28,5 +28,5 @@ export class ProximaInspecaoDto {
 }
 
 export class FotosInspecaoDto {
-  @IsOptional() @IsString() @MaxLength(500) legendas?: string; // JSON com uma legenda por foto enviada
+  @IsOptional() @IsString() @MaxLength(4000) legendas?: string; // JSON com uma legenda por foto enviada
 }

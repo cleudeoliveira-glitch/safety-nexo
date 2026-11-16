@@ -77,13 +77,15 @@ export type AmbienteGhe = {
 };
 export type DadosGhe = { setor: string; nome?: string; funcoes: FuncaoGhe[]; ambiente: AmbienteGhe; descricao?: string };
 export type Ghe = { id: string; nome: string; descricao: string | null; setor?: string | null; funcoes?: FuncaoGhe[] | null; ambiente?: AmbienteGhe | null; periculosidadeAnexo?: string | null; periculosidadeJustificativa?: string | null; riscos: Risco[]; exames: Exame[]; _count: { colaboradores: number } };
-export type Colaborador = { id: string; nome: string; cpf?: string | null; matricula?: string | null; codCateg?: string | null; dataAdmissao?: string | null; dataDesligamento?: string | null; cargo: string; cbo: string | null; gheId: string | null };
+export type Colaborador = { id: string; nome: string; cpf?: string | null; matricula?: string | null; codCateg?: string | null; dataAdmissao?: string | null; dataDesligamento?: string | null; cargo: string; cbo: string | null; gheId: string | null; cnhCategoria?: string | null; cnhValidade?: string | null };
+export const CATEGORIAS_CNH = ['A', 'B', 'C', 'D', 'E', 'AB', 'AC', 'AD', 'AE'] as const;
 export type Aso = {
   id: string; tipo: string; dataExame: string; resultado: 'APTO' | 'INAPTO';
   medicoExaminadorNome: string; medicoExaminadorCrm: string; exames: string[]; riscos: string[]; proximoExame: string | null;
   arquivoPath?: string | null; // PDF do ASO feito pela clínica
 };
-export type EntregaEpi = { id: string; epi: string; ca: string; validadeCa: string | null; quantidade: number; motivo: string; dataEntrega: string };
+export type EntregaEpi = { id: string; epi: string; ca: string; validadeCa: string | null; fabricante?: string | null; quantidade: number; motivo: string; dataEntrega: string; estoqueId?: string | null; devolvidoEm?: string | null; motivoDevolucao?: string | null };
+export const MOTIVOS_DEVOLUCAO = [['TROCA', 'Troca por outro'], ['DANIFICADO', 'Danificado'], ['SAIDA_EMPRESA', 'Saída da empresa'], ['OUTRO', 'Outro motivo']] as const;
 // Situação do exame demissional de quem saiu (NR-07: dispensa se o último exame for recente).
 export type SituacaoDemissional = { feito: boolean; dispensa: boolean; limite: number; dias: number | null };
 export type ColaboradorDetalhe = Colaborador & { ghe: Ghe | null; asos: Aso[]; entregasEpi: EntregaEpi[]; presencasFaciais?: { refId: string; codigo: string }[]; demissional?: SituacaoDemissional | null };
@@ -135,6 +137,7 @@ export const listarGhes = (empresaId: string) => chamar<Ghe[]>('GET', `/empresas
 export const copiarDadosDe = (empresaId: string, d: { origemId: string; gheIds?: string[]; responsaveis?: boolean }) =>
   chamar<{ copiados: string[]; pulados: string[]; responsaveis: boolean }>('POST', `/empresas/${empresaId}/copiar-de`, d);
 export const atualizarGhe = (empresaId: string, gheId: string, dados: DadosGhe) => chamar<Ghe>('PUT', `/empresas/${empresaId}/ghes/${gheId}`, dados);
+export const copiarGhe = (empresaId: string, gheId: string) => chamar<Ghe>('POST', `/empresas/${empresaId}/ghes/${gheId}/copiar`);
 export const excluirGhe = (empresaId: string, gheId: string) => chamar<{ ok: boolean; nome: string }>('DELETE', `/empresas/${empresaId}/ghes/${gheId}`);
 export const excluirEmpresa = (empresaId: string, confirmacao: string) => chamar<{ ok: boolean }>('POST', `/empresas/${empresaId}/excluir`, { confirmacao });
 export const criarGhe = (empresaId: string, dados: DadosGhe) =>
@@ -149,6 +152,11 @@ export const criarExame = (empresaId: string, gheId: string, dados: Omit<Exame, 
   chamar<Exame>('POST', `/empresas/${empresaId}/ghes/${gheId}/exames`, dados);
 
 export const listarColaboradores = (empresaId: string) => chamar<Colaborador[]>('GET', `/empresas/${empresaId}/colaboradores`);
+// Página de colaboradores: cada um com o último ASO e quantos EPIs em uso estão com CA vencido.
+export type ColaboradorComSituacao = Colaborador & {
+  ultimoAso: { tipo: string; dataExame: string; proximoExame: string | null } | null; episEmUso: number; caVencido: number;
+};
+export const listarColaboradoresComSituacao = (empresaId: string) => chamar<ColaboradorComSituacao[]>('GET', `/empresas/${empresaId}/colaboradores?situacao=1`);
 export const criarColaborador = (empresaId: string, dados: Omit<Colaborador, 'id'>) =>
   chamar<Colaborador>('POST', `/empresas/${empresaId}/colaboradores`, dados);
 
@@ -218,6 +226,20 @@ export const removerMembroCipa = (empresaId: string, eleicaoId: string, membroId
   chamar<EleicaoCipa>('DELETE', `${rotaEleicoes(empresaId)}/${eleicaoId}/membros/${membroId}`);
 export const gerarDocumentoEleicao = (empresaId: string, eleicaoId: string, documento: DocumentoEleicao) =>
   baixarPdf(`${rotaEleicoes(empresaId)}/${eleicaoId}/pdf/${documento}`, 'documento da CIPA');
+
+// Reuniões mensais da CIPA e as atas (NR-05, 5.6).
+export type EncaminhamentoCipa = { acao: string; responsavel: string | null; prazo: string | null };
+export type ReuniaoCipa = {
+  id: string; numero: number; tipo: 'ORDINARIA' | 'EXTRAORDINARIA'; data: string; horario: string | null; local: string;
+  presentes: string[]; pauta: string; discussao: string; encaminhamentos: EncaminhamentoCipa[];
+};
+export const reunioesCipa = {
+  listar: (e: string) => chamar<{ reunioes: ReuniaoCipa[]; diasDesdeUltimaOrdinaria: number | null }>('GET', `/empresas/${e}/cipa/reunioes`),
+  criar: (e: string, d: { tipo: string; data: string; horario?: string; local: string; presentes: string[]; pauta: string; discussao: string; encaminhamentos: { acao: string; responsavel?: string; prazo?: string }[] }) =>
+    chamar<ReuniaoCipa>('POST', `/empresas/${e}/cipa/reunioes`, d),
+  excluir: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/cipa/reunioes/${id}`),
+  pdf: (e: string, id: string) => baixarPdf(`/empresas/${e}/cipa/reunioes/${id}/pdf`, 'ata da reunião'),
+};
 
 export type EtapaApr = { etapa: string; riscos: string; medidas: string; epis: string };
 export type Apr = { id: string; numero: number; atividade: string; local: string; data: string; responsavel: string; equipe: string[]; etapas: EtapaApr[] };
@@ -307,6 +329,10 @@ export const buscarColaborador = (empresaId: string, colaboradorId: string) =>
   chamar<ColaboradorDetalhe>('GET', rotaColaborador(empresaId, colaboradorId));
 export const registrarDesligamento = (empresaId: string, colaboradorId: string, data: string | null) =>
   chamar<{ dataDesligamento: string | null; demissional: SituacaoDemissional | null }>('PUT', `${rotaColaborador(empresaId, colaboradorId)}/desligamento`, { data });
+export const editarColaborador = (empresaId: string, colaboradorId: string, dados: Record<string, string>) =>
+  chamar<Colaborador>('PUT', rotaColaborador(empresaId, colaboradorId), dados);
+export const devolverEpi = (empresaId: string, colaboradorId: string, entregaId: string, dados: { data: string; motivo: string; voltaAoEstoque?: boolean }) =>
+  chamar<EntregaEpi>('POST', `${rotaColaborador(empresaId, colaboradorId)}/epis/${entregaId}/devolucao`, dados);
 export const registrarAso = (empresaId: string, colaboradorId: string, dados: Record<string, string>) =>
   chamar<Aso>('POST', `${rotaColaborador(empresaId, colaboradorId)}/asos`, dados);
 export const registrarEpi = (empresaId: string, colaboradorId: string, dados: Record<string, string | number>) =>
@@ -828,12 +854,12 @@ export const rosto = {
 };
 
 // Almoxarifado de EPI.
-export type ItemEstoque = { id: string; epi: string; ca: string; validadeCa: string | null; tamanho: string | null; quantidade: number; minimo: number; ativo: boolean; baixo: boolean; caVencido: boolean };
+export type ItemEstoque = { id: string; epi: string; ca: string; validadeCa: string | null; tamanho: string | null; fabricante?: string | null; quantidade: number; minimo: number; ativo: boolean; baixo: boolean; caVencido: boolean };
 export type MovEstoque = { id: string; tipo: 'ENTRADA' | 'SAIDA' | 'AJUSTE'; quantidade: number; saldo: number; observacao: string | null; colaborador: string | null; createdAt: string };
 export const estoque = {
   listar: (e: string) => chamar<ItemEstoque[]>('GET', `/empresas/${e}/estoque`),
-  criar: (e: string, d: { epi: string; ca: string; validadeCa?: string; tamanho?: string; quantidade: number; minimo?: number }) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque`, d),
-  editar: (e: string, id: string, d: { validadeCa?: string | null; minimo?: number; ativo?: boolean }) => chamar<ItemEstoque>('PATCH', `/empresas/${e}/estoque/${id}`, d),
+  criar: (e: string, d: { epi: string; ca: string; validadeCa?: string; tamanho?: string; fabricante?: string; quantidade: number; minimo?: number }) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque`, d),
+  editar: (e: string, id: string, d: { validadeCa?: string | null; minimo?: number; ativo?: boolean; fabricante?: string }) => chamar<ItemEstoque>('PATCH', `/empresas/${e}/estoque/${id}`, d),
   entrada: (e: string, id: string, quantidade: number, observacao?: string) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque/${id}/entrada`, { quantidade, observacao }),
   ajuste: (e: string, id: string, quantidade: number, observacao: string) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque/${id}/ajuste`, { quantidade, observacao }),
   movimentos: (e: string, id: string) => chamar<MovEstoque[]>('GET', `/empresas/${e}/estoque/${id}/movimentos`),

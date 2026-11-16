@@ -52,9 +52,29 @@ export class EmpresasService {
     return empresa;
   }
 
-  async listarColaboradores(consultoriaId: string, empresaId: string) {
+  async listarColaboradores(consultoriaId: string, empresaId: string, comSituacao = false) {
     await this.buscar(consultoriaId, empresaId);
-    return this.prisma.colaborador.findMany({ where: { empresaId }, orderBy: { nome: 'asc' } });
+    if (!comSituacao) return this.prisma.colaborador.findMany({ where: { empresaId }, orderBy: { nome: 'asc' } });
+    // Página de colaboradores: junta o último ASO e os EPIs em uso para mostrar a situação de cada um.
+    const lista = await this.prisma.colaborador.findMany({
+      where: { empresaId },
+      orderBy: { nome: 'asc' },
+      include: {
+        asos: { orderBy: { dataExame: 'desc' }, take: 1, select: { tipo: true, dataExame: true, proximoExame: true } },
+        entregasEpi: { where: { devolvidoEm: null }, orderBy: { dataEntrega: 'desc' }, select: { epi: true, validadeCa: true } },
+      },
+    });
+    const hoje = new Date();
+    return lista.map(({ asos, entregasEpi, ...c }) => {
+      const vistos = new Set<string>();
+      const caVencido = entregasEpi.filter((e) => {
+        const chave = e.epi.trim().toLowerCase();
+        if (vistos.has(chave)) return false;
+        vistos.add(chave);
+        return !!e.validadeCa && e.validadeCa < hoje;
+      }).length;
+      return { ...c, ultimoAso: asos[0] ?? null, episEmUso: vistos.size, caVencido };
+    });
   }
 
   async criarColaborador(consultoriaId: string, empresaId: string, dto: CreateColaboradorDto) {
@@ -67,7 +87,7 @@ export class EmpresasService {
     // Sem GHE escolhido, entra no GHE da sua função.
     const gheId = dto.gheId || (await this.gheDaFuncao(empresaId, dto.cargo)) || undefined;
     return this.prisma.colaborador.create({
-      data: { ...dto, gheId, empresaId, dataAdmissao: dto.dataAdmissao ? new Date(dto.dataAdmissao) : undefined },
+      data: { ...dto, gheId, empresaId, dataAdmissao: dto.dataAdmissao ? new Date(dto.dataAdmissao) : undefined, cnhValidade: dto.cnhValidade ? new Date(dto.cnhValidade) : undefined },
     });
   }
 
@@ -147,6 +167,25 @@ export class EmpresasService {
     });
     await this.vincularPorFuncao(empresaId, ghe.id, funcoes);
     return ghe;
+  }
+
+  // Copia um GHE da mesma empresa (riscos, avaliações, exames, ambiente e periculosidade) para um setor parecido.
+  // As funções não vêm junto: cada função fica num GHE só, e quem está no GHE original continua lá.
+  async copiarGhe(consultoriaId: string, empresaId: string, gheId: string) {
+    await this.buscar(consultoriaId, empresaId);
+    const g = await this.prisma.ghe.findFirst({ where: { id: gheId, empresaId }, include: { riscos: true, exames: true } });
+    if (!g) throw new NotFoundException('GHE não encontrado nesta empresa');
+    const usados = new Set((await this.prisma.ghe.findMany({ where: { empresaId }, select: { nome: true } })).map((x) => x.nome));
+    let nome = `${g.nome} (cópia)`;
+    for (let n = 2; usados.has(nome); n++) nome = `${g.nome} (cópia ${n})`;
+    return this.prisma.ghe.create({
+      data: {
+        empresaId, nome, descricao: g.descricao, setor: g.setor, funcoes: [], ambiente: g.ambiente ?? undefined,
+        periculosidadeAnexo: g.periculosidadeAnexo, periculosidadeJustificativa: g.periculosidadeJustificativa,
+        riscos: { create: g.riscos.map(({ id: _i, gheId: _g, esocial, ...r }) => ({ ...r, esocial: esocial ?? undefined })) },
+        exames: { create: g.exames.map(({ id: _i, gheId: _g, ...e }) => e) },
+      },
+    });
   }
 
   // Apaga o GHE com os riscos e exames dele. Os colaboradores ficam sem GHE, nada mais é apagado.

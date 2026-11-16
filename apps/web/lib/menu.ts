@@ -33,7 +33,7 @@ export const MENU: GrupoMenu[] = [
     itens: [
       { nome: 'Dados da empresa', icone: 'predio', rota: '#dados', soConsultoria: true },
       { nome: 'GHEs, riscos e exames', icone: 'alerta', rota: '#ghes', soConsultoria: true },
-      { nome: 'Colaboradores, ASO e EPI', icone: 'pessoas', rota: '#colaboradores' },
+      { nome: 'Colaboradores, ASO e EPI', icone: 'pessoas', rota: '/colaboradores' },
       { nome: 'Importar funcionários do RH', icone: 'upload', rota: '/conectores#rh' },
       { nome: 'Trazer PGR antigo (IA)', icone: 'brilho', rota: '/importar-pdf', soConsultoria: true },
     ],
@@ -77,6 +77,7 @@ export const MENU: GrupoMenu[] = [
       { nome: 'Slides dos treinamentos', icone: 'livro', rota: '/material', geral: true },
       { nome: 'Espaço do trabalhador', icone: 'cracha', rota: '/trabalhador' },
       { nome: 'Eleição da CIPA', icone: 'votar', rota: '/cipa', soConsultoria: true },
+      { nome: 'Reuniões e atas da CIPA', icone: 'lista', rota: '/cipa#reunioes', soConsultoria: true },
       { nome: 'SIPAT', icone: 'festa', rota: '/cultura#sipat' },
       { nome: 'Programa 5S', icone: 'vassoura', rota: '/cultura#5s' },
       { nome: 'Emergência e brigada', icone: 'fogo', rota: '/emergencia' },

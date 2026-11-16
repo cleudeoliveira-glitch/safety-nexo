@@ -12,7 +12,7 @@ import { FotoNoPdf, inspecaoHtml, ItemInspecao, resumoInspecao } from './templat
 
 // Fotos das inspeções: no Supabase Storage (ou na pasta local, sem nuvem).
 const guarda = new Guarda('inspecoes', process.env.INSPECOES_DIR ?? join(__dirname, '..', '..', 'storage', 'inspecoes'));
-export const MAX_FOTOS = 5;
+export const MAX_FOTOS = 15;
 const TIPOS: Record<string, string> = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
 
 export type FotoInspecao = { caminho: string; tipo: string; legenda?: string };

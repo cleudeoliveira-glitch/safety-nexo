@@ -4,7 +4,7 @@ import { Response } from 'express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { enviarPdf } from '../documentos/documentos.controller';
 import { ColaboradoresService } from './colaboradores.service';
-import { CreateAsoDto, CreateEntregaEpiDto, DesligamentoDto } from './dto';
+import { CreateAsoDto, CreateEntregaEpiDto, DesligamentoDto, DevolucaoEpiDto, EditarColaboradorDto } from './dto';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 
 @PermiteEmpresa()
@@ -15,6 +15,11 @@ export class ColaboradoresController {
   @Get()
   detalhar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string) {
     return this.colaboradores.ficha(c, e, id);
+  }
+
+  @Put()
+  editar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Body() dto: EditarColaboradorDto) {
+    return this.colaboradores.editar(c, e, id, dto);
   }
 
   @Put('desligamento')
@@ -54,6 +59,11 @@ export class ColaboradoresController {
   @Post('epis')
   registrarEpi(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Body() dto: CreateEntregaEpiDto) {
     return this.colaboradores.registrarEntregaEpi(c, e, id, dto);
+  }
+
+  @Post('epis/:entregaId/devolucao')
+  devolverEpi(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Param('entregaId') entregaId: string, @Body() dto: DevolucaoEpiDto) {
+    return this.colaboradores.devolverEpi(c, e, id, entregaId, dto);
   }
 
   @Post('ficha-epi')

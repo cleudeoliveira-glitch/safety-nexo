@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
 import { conferirNoAparelho, guardarCaptura } from '@/lib/rosto-offline';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { abrirAsoClinica, anexarAsoClinica, buscarColaborador, ColaboradorDetalhe, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarDesligamento, type SituacaoDemissional, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto } from '@/lib/api';
+import { abrirAsoClinica, anexarAsoClinica, buscarColaborador, CATEGORIAS_CNH, ColaboradorDetalhe, devolverEpi, editarColaborador, Ghe, listarGhes, MOTIVOS_DEVOLUCAO, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarDesligamento, type SituacaoDemissional, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto } from '@/lib/api';
 
 const TIPOS_ASO = [
   ['ADMISSIONAL', 'Admissional'],
@@ -49,6 +49,9 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
   const [itensEstoque, setItensEstoque] = useState<ItemEstoque[]>([]);
   const [itemId, setItemId] = useState('');
   const [foto, setFoto] = useState<string | null>(null);
+  const [ghes, setGhes] = useState<Ghe[]>([]);
+  const [editando, setEditando] = useState(false);
+  const [devolvendo, setDevolvendo] = useState<string | null>(null);
 
   const recarregar = useCallback(async () => {
     try {
@@ -57,6 +60,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
       rosto.status(empresaId, colaboradorId).then(setStRosto).catch(() => setStRosto(null));
       fotoColaborador.ver(empresaId, colaboradorId).then((f) => setFoto(f.foto)).catch(() => setFoto(null));
       estoque.listar(empresaId).then((l) => setItensEstoque(l.filter((i) => i.ativo))).catch(() => setItensEstoque([]));
+      listarGhes(empresaId).then(setGhes).catch(() => setGhes([]));
     } catch (e) {
       setAviso({ tipo: 'erro', texto: (e as Error).message });
     }
@@ -99,14 +103,14 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
     const d = new FormData(formEpi.current!);
     const base = { quantidade: Number(texto(d, 'quantidade') || 1), motivo: texto(d, 'motivo') };
     if (itemId) return { ...base, estoqueId: itemId };
-    return { ...base, epi: texto(d, 'epi'), ca: texto(d, 'ca'), ...(texto(d, 'validadeCa') ? { validadeCa: texto(d, 'validadeCa') } : {}) };
+    return { ...base, epi: texto(d, 'epi'), ca: texto(d, 'ca'), ...(texto(d, 'validadeCa') ? { validadeCa: texto(d, 'validadeCa') } : {}), ...(texto(d, 'fabricante') ? { fabricante: texto(d, 'fabricante') } : {}) };
   };
   const examesPrevistos = colaborador.ghe?.exames.map((e) => e.nome) ?? [];
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-6 md:p-10">
       <div>
-        <Link href={`/empresas/${empresaId}`} className="text-sm text-primary">← Voltar à empresa</Link>
+        <Link href={`/empresas/${empresaId}/colaboradores`} className="text-sm text-primary">← Voltar aos colaboradores</Link>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-3xl font-semibold text-primary">{colaborador.nome}</h1>
           <div className="flex flex-wrap gap-2">
@@ -118,6 +122,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
         <p className="text-text/60">
           {colaborador.cargo} · {colaborador.ghe?.nome ?? 'Sem GHE'}
           {colaborador.cpf ? ` · CPF ${colaborador.cpf}` : ''}
+          {colaborador.cnhCategoria ? ` · CNH ${colaborador.cnhCategoria}` : ''}
         </p>
       </div>
 
@@ -125,9 +130,74 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
 
       {!colaborador.ghe && (
         <Aviso tipo="info">
-          Este colaborador ainda não tem GHE. O ASO sai sem riscos e sem exames: vincule um GHE no cadastro da empresa antes de emitir.
+          Este colaborador ainda não tem GHE. O ASO sai sem riscos e sem exames: escolha o GHE em &quot;Dados do colaborador&quot; antes de emitir.
         </Aviso>
       )}
+
+      <Cartao titulo="Dados do colaborador" acao={!editando && <Botao variante="secundario" onClick={() => setEditando(true)}>Editar dados</Botao>}>
+        {editando ? (
+          <form
+            className="grid gap-4 md:grid-cols-3"
+            onSubmit={async (ev) => {
+              ev.preventDefault();
+              const d = new FormData(ev.currentTarget);
+              const campos = ['nome', 'cargo', 'cpf', 'cbo', 'matricula', 'dataAdmissao', 'gheId', 'cnhCategoria', 'cnhValidade'];
+              try {
+                await editarColaborador(empresaId, colaboradorId, Object.fromEntries(campos.map((c) => [c, texto(d, c)])));
+                setEditando(false);
+                setAviso({ tipo: 'ok', texto: 'Dados salvos.' });
+                await recarregar();
+              } catch (e) {
+                setAviso({ tipo: 'erro', texto: (e as Error).message });
+              }
+            }}
+          >
+            <Campo id="ed-nome" name="nome" rotulo="Nome" required defaultValue={colaborador.nome} />
+            <Campo id="ed-cargo" name="cargo" rotulo="Cargo" required defaultValue={colaborador.cargo} />
+            <Campo id="ed-cpf" name="cpf" rotulo="CPF" defaultValue={colaborador.cpf ?? ''} placeholder="Ex.: 123.456.789-00" />
+            <Campo id="ed-admissao" name="dataAdmissao" type="date" rotulo="Admissão" defaultValue={colaborador.dataAdmissao?.slice(0, 10) ?? ''} />
+            <Campo id="ed-cbo" name="cbo" rotulo="CBO" defaultValue={colaborador.cbo ?? ''} placeholder="Ex.: 8483-05" />
+            <Campo id="ed-matricula" name="matricula" rotulo="Matrícula no eSocial" defaultValue={colaborador.matricula ?? ''} />
+            <Selecao id="ed-ghe" name="gheId" rotulo="GHE" defaultValue={colaborador.gheId ?? ''}>
+              <option value="">Sem GHE</option>
+              {ghes.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+            </Selecao>
+            <Selecao id="ed-cnh" name="cnhCategoria" rotulo="CNH (se dirige pela empresa)" defaultValue={colaborador.cnhCategoria ?? ''}
+              ajuda={{ oQueE: 'Motorista com CNH C, D ou E precisa do exame toxicológico, que vai para o eSocial (S-2221).', baseLegal: 'CLT, art. 168, §6º' }}>
+              <option value="">Não dirige</option>
+              {CATEGORIAS_CNH.map((c) => <option key={c} value={c}>Categoria {c}</option>)}
+            </Selecao>
+            <Campo id="ed-cnh-validade" name="cnhValidade" type="date" rotulo="Validade da CNH" defaultValue={colaborador.cnhValidade?.slice(0, 10) ?? ''} />
+            <div className="flex justify-end gap-2 md:col-span-3">
+              <Botao type="button" variante="secundario" onClick={() => setEditando(false)}>Cancelar</Botao>
+              <Botao type="submit">Salvar dados</Botao>
+            </div>
+          </form>
+        ) : (
+          <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 md:grid-cols-3">
+            {([
+              ['Cargo', colaborador.cargo],
+              ['CPF', colaborador.cpf],
+              ['Admissão', colaborador.dataAdmissao ? data(colaborador.dataAdmissao) : null],
+              ['CBO', colaborador.cbo],
+              ['Matrícula no eSocial', colaborador.matricula],
+              ['GHE', colaborador.ghe?.nome],
+              ['CNH', colaborador.cnhCategoria ? `Categoria ${colaborador.cnhCategoria}${colaborador.cnhValidade ? `, vale até ${data(colaborador.cnhValidade)}` : ''}` : 'Não dirige pela empresa'],
+            ] as [string, string | null | undefined][]).map(([rotulo, valor]) => (
+              <div key={rotulo}>
+                <dt className="text-xs text-text/60">{rotulo}</dt>
+                <dd className={valor ? '' : 'text-warning'}>{valor || 'Não preenchido'}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {colaborador.cnhCategoria && ['C', 'D', 'E', 'AC', 'AD', 'AE'].includes(colaborador.cnhCategoria) && (
+          <p className="mt-3 text-sm text-text/70">CNH categoria {colaborador.cnhCategoria}: registre o exame toxicológico no <Link href={`/empresas/${empresaId}/esocial`} className="font-semibold text-primary underline">eSocial (S-2221)</Link>.</p>
+        )}
+        {colaborador.cnhValidade && new Date(colaborador.cnhValidade) < new Date() && (
+          <div className="mt-3"><Aviso tipo="erro">A CNH venceu em {data(colaborador.cnhValidade)}. Ele não pode dirigir pela empresa até renovar.</Aviso></div>
+        )}
+      </Cartao>
 
       <Cartao titulo="Atestado de Saúde Ocupacional (ASO)">
         <p className="mb-4 text-sm text-text/60">
@@ -264,6 +334,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
           <Campo id="epi-nome" name="epi" rotulo="EPI" required placeholder="Ex.: Luva térmica" />
           <Campo id="epi-ca" name="ca" rotulo="Número do CA" required placeholder="Ex.: 12345" />
           <Campo id="epi-validade" name="validadeCa" type="date" rotulo="Validade do CA" />
+          <Campo id="epi-fabricante" name="fabricante" rotulo="Fabricante ou fornecedor" placeholder="Ex.: 3M" className="md:col-span-3" />
           </>)}
           <Campo id="epi-qtd" name="quantidade" type="number" min={1} rotulo="Quantidade" required defaultValue={1} />
           <Selecao id="epi-motivo" name="motivo" rotulo="Motivo" required>
@@ -284,17 +355,56 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
         {colaborador.entregasEpi.length > 0 && (
           <ul className="mt-5 divide-y divide-border text-sm">
             {colaborador.entregasEpi.map((e) => {
-              const vencido = e.validadeCa !== null && new Date(e.validadeCa) < new Date();
+              const vencido = !e.devolvidoEm && e.validadeCa !== null && new Date(e.validadeCa) < new Date();
               return (
-                <li key={e.id} className="flex flex-wrap justify-between gap-2 py-2.5">
+                <li key={e.id} className={`flex flex-wrap justify-between gap-2 py-2.5 ${e.devolvidoEm ? 'text-text/50' : ''}`}>
                   <span>
-                    <strong>{e.epi}</strong> · CA {e.ca} · {e.quantidade} un. · {nomeDe(MOTIVOS_EPI, e.motivo)}
+                    <strong>{e.epi}</strong> · CA {e.ca}{e.fabricante ? ` · ${e.fabricante}` : ''} · {e.quantidade} un. · {nomeDe(MOTIVOS_EPI, e.motivo)}
                     {confirmadas.has(e.id) && <> · <button className="text-primary underline" onClick={() => baixar(() => rosto.pdf(empresaId, confirmadas.get(e.id)!), `Comprovante-facial-${colaborador.nome}.pdf`)}>confirmada pelo rosto</button></>}
                   </span>
-                  <span className={vencido ? 'text-danger' : 'text-text/60'}>
-                    {data(e.dataEntrega)}
-                    {e.validadeCa && ` · CA ${vencido ? 'vencido em' : 'válido até'} ${data(e.validadeCa)}`}
+                  <span className="flex flex-wrap items-center gap-3">
+                    <span className={vencido ? 'text-danger' : 'text-text/60'}>
+                      {data(e.dataEntrega)}
+                      {e.devolvidoEm
+                        ? ` · devolvido em ${data(e.devolvidoEm)} (${nomeDe(MOTIVOS_DEVOLUCAO, e.motivoDevolucao ?? '').toLowerCase()})`
+                        : e.validadeCa && ` · CA ${vencido ? 'vencido em' : 'válido até'} ${data(e.validadeCa)}`}
+                    </span>
+                    {!e.devolvidoEm && devolvendo !== e.id && (
+                      <button type="button" className="text-primary hover:underline" onClick={() => setDevolvendo(e.id)}>Registrar devolução</button>
+                    )}
                   </span>
+                  {devolvendo === e.id && (
+                    <form
+                      className="grid w-full gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3"
+                      onSubmit={async (ev) => {
+                        ev.preventDefault();
+                        const d = new FormData(ev.currentTarget);
+                        try {
+                          await devolverEpi(empresaId, colaboradorId, e.id, { data: texto(d, 'data'), motivo: texto(d, 'motivo'), voltaAoEstoque: d.get('voltaAoEstoque') === 'on' });
+                          setDevolvendo(null);
+                          setAviso({ tipo: 'ok', texto: `Devolução de ${e.epi} registrada.` });
+                          await recarregar();
+                        } catch (erro) {
+                          setAviso({ tipo: 'erro', texto: (erro as Error).message });
+                        }
+                      }}
+                    >
+                      <Campo id={`dev-data-${e.id}`} name="data" type="date" rotulo="Data da devolução" required defaultValue={hoje()} />
+                      <Selecao id={`dev-motivo-${e.id}`} name="motivo" rotulo="Motivo" required>
+                        {MOTIVOS_DEVOLUCAO.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
+                      </Selecao>
+                      {e.estoqueId ? (
+                        <label className="flex items-center gap-2 self-end pb-3">
+                          <input type="checkbox" name="voltaAoEstoque" className="h-4 w-4 accent-primary" />
+                          Está em bom estado e volta ao almoxarifado
+                        </label>
+                      ) : <span />}
+                      <div className="flex justify-end gap-2 md:col-span-3">
+                        <Botao type="button" variante="secundario" onClick={() => setDevolvendo(null)}>Cancelar</Botao>
+                        <Botao type="submit">Salvar devolução</Botao>
+                      </div>
+                    </form>
+                  )}
                 </li>
               );
             })}

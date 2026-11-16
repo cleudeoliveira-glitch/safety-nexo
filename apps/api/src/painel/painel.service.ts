@@ -28,7 +28,7 @@ export class PainelService {
             dataAdmissao: true,
             gheId: true,
             asos: { orderBy: { dataExame: 'desc' }, take: 1, select: { proximoExame: true } },
-            entregasEpi: { orderBy: { dataEntrega: 'desc' }, select: { epi: true, validadeCa: true } },
+            entregasEpi: { where: { devolvidoEm: null }, orderBy: { dataEntrega: 'desc' }, select: { epi: true, validadeCa: true } },
             treinamentos: { select: { turma: { select: { nome: true, fim: true, validadeMeses: true } } } },
           },
         },
@@ -39,6 +39,7 @@ export class PainelService {
         atestados: { where: { inicio: { gte: new Date(Date.now() - 180 * DIA_MS) } } },
         terceiros: { where: { OR: [{ fim: null }, { fim: { gte: new Date() } }] }, select: { razaoSocial: true, documentos: { where: { validade: { lt: new Date() } }, select: { tipo: true } } } },
         registrosSaude: { where: { proximaData: { not: null }, colaborador: { dataDesligamento: null } }, select: { tipo: true, titulo: true, data: true, proximaData: true, colaborador: { select: { id: true, nome: true } } } },
+        reunioesCipa: { where: { tipo: 'ORDINARIA' }, orderBy: { data: 'desc' }, take: 1, select: { data: true } },
         turmas: { where: { norma: 'IT-17' }, select: { fim: true, validadeMeses: true, participantes: { select: { colaboradorId: true } } } },
       },
     });
@@ -95,6 +96,12 @@ export class PainelService {
     pendencias.push(...this.pendenciasDosColaboradores(empresa.colaboradores, hoje));
     pendencias.push(...this.pendenciasDaCipa(empresa, hoje));
     pendencias.push(...this.pendenciasDeTreinamento(empresa.colaboradores, hoje));
+    // CIPA que já registra as atas aqui: avisa quando a reunião do mês passou (NR-05, 5.6.1).
+    const ultimaReuniao = empresa.reunioesCipa[0]?.data;
+    if (ultimaReuniao) {
+      const dias = Math.floor((hoje.getTime() - ultimaReuniao.getTime()) / DIA_MS);
+      if (dias > 35) pendencias.push({ titulo: 'Reunião mensal da CIPA atrasada', detalhe: `A última reunião ordinária foi há ${dias} dias. A CIPA se reúne todo mês e registra a ata`, nivel: 'pendente' });
+    }
 
     // CAT sem envio ao eSocial: atrasada vira item vencido, no prazo vira tarefa do dia.
     for (const cat of empresa.cats) {

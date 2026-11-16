@@ -102,6 +102,9 @@ export class PericulosidadeDto {
   @IsOptional() @IsString() @Length(0, 2000) justificativa?: string;
 }
 
+// Categorias da CNH. C, D e E pedem exame toxicológico (S-2221).
+export const CATEGORIAS_CNH = ['A', 'B', 'C', 'D', 'E', 'AB', 'AC', 'AD', 'AE'];
+
 export class CreateColaboradorDto {
   @IsString()
   @Length(2, 200)
@@ -129,6 +132,8 @@ export class CreateColaboradorDto {
 
   @IsOptional() @IsString() @Length(1, 30) matricula?: string;
   @IsOptional() @Matches(/^\d{3}$/, { message: 'A categoria do eSocial tem 3 dígitos (ex.: 901 para estagiário).' }) codCateg?: string;
+  @IsOptional() @IsIn(CATEGORIAS_CNH, { message: 'Categoria da CNH inválida (A, B, C, D, E, AB, AC, AD ou AE).' }) cnhCategoria?: string;
+  @IsOptional() @IsDateString({}, { message: 'Validade da CNH inválida.' }) cnhValidade?: string;
 }
 
 export class EsocialColaboradorDto {

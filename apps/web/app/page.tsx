@@ -29,11 +29,11 @@ const tonsPorNivel = {
 // Atalhos do painel: os módulos mais usados no dia a dia.
 const atalhos: { nome: string; texto: string; icone: NomeIcone; rota: string; soConsultoria?: boolean; geral?: boolean }[] = [
   { nome: 'PGR e PCMSO', texto: 'Gerar programas e laudos', icone: 'documento', rota: '#documentos', soConsultoria: true },
-  { nome: 'Colaboradores', texto: 'ASO, EPI e ordem de serviço', icone: 'pessoas', rota: '#colaboradores' },
+  { nome: 'Colaboradores', texto: 'ASO, EPI e ordem de serviço', icone: 'pessoas', rota: '/colaboradores' },
   { nome: 'DDS', texto: '150 temas com dinâmica', icone: 'fala', rota: '/dds', geral: true },
   { nome: 'APR e PT', texto: 'Análise de risco e permissões', icone: 'escudo', rota: '/operacao#apr' },
   { nome: 'Treinamentos', texto: '28 NRs com certificado', icone: 'formatura', rota: '/treinamentos' },
-  { nome: 'CIPA', texto: 'Dimensionamento e eleição', icone: 'votar', rota: '/cipa', soConsultoria: true },
+  { nome: 'CIPA', texto: 'Eleição, reuniões e atas', icone: 'votar', rota: '/cipa', soConsultoria: true },
   { nome: 'Registros de campo', texto: 'EPI pelo rosto, inspeção, DDS e APR', icone: 'cracha', rota: '/campo', geral: true },
   { nome: 'Almoxarifado', texto: 'Estoque e CA dos EPIs', icone: 'caixa', rota: '/almoxarifado' },
   { nome: 'eSocial', texto: 'S-2210, S-2220, S-2240', icone: 'nuvem', rota: '/esocial', soConsultoria: true },
@@ -508,7 +508,7 @@ function NumerosDoTopo({ n, base, cliente }: { n: NumerosPainel; base: string; c
   return (
     <section className="mt-6 grid gap-4 lg:grid-cols-[1fr_340px]">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Numero href={`${base}#colaboradores`} rotulo="Colaboradores" valor={n.colaboradores} detalhe="cadastrados" icone="pessoas" />
+        <Numero href={`${base}/colaboradores`} rotulo="Colaboradores" valor={n.colaboradores} detalhe="cadastrados" icone="pessoas" />
         <Numero href={`${base}/prevencao#acoes`} rotulo="Ações abertas" valor={n.acoesAbertas} detalhe={n.acoesAtrasadas ? `${n.acoesAtrasadas} atrasada(s)` : 'nenhuma atrasada'} icone="check" alerta={n.acoesAtrasadas > 0} />
         <Numero href="#hoje" rotulo="Urgentes" valor={n.pendenciasVencidas} detalhe={n.pendenciasVencidas ? 'vencidos: resolver já' : 'nada vencido'} icone="calendario" alerta={n.pendenciasVencidas > 0} />
         <Numero href={`${base}/prevencao#relatos`} rotulo="Relatos novos" valor={n.relatosNovos} detalhe="pelo QR code" icone="qr" />

@@ -5,11 +5,13 @@ export class CriarItemDto {
   @IsString() @Length(1, 20) ca!: string;
   @IsOptional() @IsDateString() validadeCa?: string;
   @IsOptional() @IsString() @MaxLength(20) tamanho?: string;
+  @IsOptional() @IsString() @MaxLength(120) fabricante?: string;
   @IsInt() @Min(0) @Max(1_000_000) quantidade!: number;
   @IsOptional() @IsInt() @Min(0) @Max(1_000_000) minimo?: number;
 }
 
 export class EditarItemDto {
+  @IsOptional() @IsString() @MaxLength(120) fabricante?: string;
   @IsOptional() @IsDateString() validadeCa?: string;
   @IsOptional() @IsInt() @Min(0) @Max(1_000_000) minimo?: number;
   @IsOptional() @IsBoolean() ativo?: boolean;

@@ -14,11 +14,11 @@ import {
   buscarEmpresa,
   Cipa,
   Colaborador,
-  criarColaborador,
   criarExame,
   criarGhe,
   atualizarGhe,
   excluirGhe,
+  copiarGhe,
   excluirEmpresa,
   DadosGhe,
   criarRisco,
@@ -270,7 +270,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                 {ghe.nome} <span className="text-sm font-normal text-text/60">· {ghe._count.colaboradores} colaborador(es)</span>
               </h3>
               <ResumoGhe ghe={ghe} cargos={cargos} salvar={(dados) => salvarGhe(() => atualizarGhe(empresaId, ghe.id, dados), `${ghe.nome} atualizado.`)}
-                excluir={() => confirm(`Excluir ${ghe.nome}? Os riscos e exames dele saem junto. Os colaboradores continuam cadastrados, só ficam sem GHE.`) && agir(() => excluirGhe(empresaId, ghe.id), `${ghe.nome} excluído.`)} />
+                excluir={() => confirm(`Excluir ${ghe.nome}? Os riscos e exames dele saem junto. Os colaboradores continuam cadastrados, só ficam sem GHE.`) && agir(() => excluirGhe(empresaId, ghe.id), `${ghe.nome} excluído.`)}
+                copiar={() => agir(() => copiarGhe(empresaId, ghe.id), `Cópia de ${ghe.nome} criada com os mesmos riscos e exames. Agora edite o setor e as funções da cópia.`)} />
 
               <h4 className="mt-3 text-sm font-semibold">Riscos</h4>
               {ghe.riscos.length === 0 ? (
@@ -385,48 +386,22 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       </Cartao>
       </>)}
 
-      <Cartao titulo="3. Colaboradores" id="colaboradores">
-        <form
-          className="grid gap-4 md:grid-cols-3"
-          onSubmit={enviar(
-            (d) =>
-              criarColaborador(empresaId, {
-                nome: texto(d, 'nome'),
-                cpf: texto(d, 'cpf') || null,
-                dataAdmissao: texto(d, 'dataAdmissao') || null,
-                cargo: texto(d, 'cargo'),
-                cbo: texto(d, 'cbo') || null,
-                gheId: texto(d, 'gheId') || null,
-                matricula: texto(d, 'matricula') || null,
-              }),
-            'Colaborador cadastrado.',
-          )}
-        >
-          <Campo id="colab-nome" name="nome" rotulo="Nome" required placeholder="Ex.: Maria Silva" />
-          <Campo id="colab-cpf" name="cpf" rotulo="CPF" placeholder="Ex.: 123.456.789-00" />
-          <Campo id="colab-cargo" name="cargo" rotulo="Cargo" required placeholder="Ex.: Padeira" />
-          <Campo id="colab-admissao" name="dataAdmissao" type="date" rotulo="Admissão" />
-          <Campo id="colab-cbo" name="cbo" rotulo="CBO" placeholder="Ex.: 8483-05" />
-          <Campo id="colab-matricula" name="matricula" rotulo="Matrícula no eSocial" placeholder="Ex.: 000123" />
-          <Selecao id="colab-ghe" name="gheId" rotulo="GHE">
-            <option value="">Sem GHE</option>
-            {ghes.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
-          </Selecao>
-          <div className="flex justify-end md:col-span-3"><Botao type="submit">Adicionar colaborador</Botao></div>
-        </form>
-        <ul className="mt-4 divide-y divide-border text-sm">
-          {colaboradores.map((c) => (
-            <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-              <span className={c.dataDesligamento ? 'text-text/50' : ''}>{c.nome} · {c.cargo}{c.dataDesligamento ? ' · saiu da empresa' : ''}</span>
-              <span className="flex items-center gap-4">
-                <span className={c.gheId ? 'text-text/60' : 'text-warning'}>{ghes.find((g) => g.id === c.gheId)?.nome ?? 'Sem GHE'}</span>
-                <Link href={`/empresas/${empresaId}/colaboradores/${c.id}`} className="font-semibold text-primary hover:underline">
-                  ASO e EPI →
-                </Link>
-              </span>
-            </li>
-          ))}
-        </ul>
+      <Cartao titulo="3. Colaboradores" id="colaboradores"
+        acao={<Link href={`/empresas/${empresaId}/colaboradores`} className="rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">Abrir colaboradores →</Link>}>
+        {(() => {
+          const ativos = colaboradores.filter((c) => !c.dataDesligamento);
+          const semGhe = ativos.filter((c) => !c.gheId).length;
+          return (
+            <div className="space-y-2 text-sm">
+              <p>
+                <strong>{ativos.length}</strong> colaborador(es) ativo(s)
+                {semGhe > 0 && <span className="text-warning"> · {semGhe} sem GHE</span>}.
+                {' '}O cadastro, a ficha de cada um (ASO, EPI, ordem de serviço e PPP) e a situação de todos ficam na página de colaboradores.
+              </p>
+              {ativos.length === 0 && <p className="text-text/60">Ninguém cadastrado ainda. Abra a página para cadastrar ou trazer a lista do RH.</p>}
+            </div>
+          );
+        })()}
       </Cartao>
 
       {!cliente && (
@@ -863,7 +838,7 @@ function LinkConvite({ convite, fechar }: { convite: Convite; fechar: () => void
 }
 
 // Setor, funções e ambiente do GHE, com o botão para editar.
-function ResumoGhe({ ghe, cargos, salvar, excluir }: { ghe: Ghe; cargos: string[]; salvar: (dados: DadosGhe) => Promise<boolean>; excluir: () => void }) {
+function ResumoGhe({ ghe, cargos, salvar, excluir, copiar }: { ghe: Ghe; cargos: string[]; salvar: (dados: DadosGhe) => Promise<boolean>; excluir: () => void; copiar: () => void }) {
   const [editando, setEditando] = useState(false);
   const funcoes = ghe.funcoes ?? [];
   const amb = ghe.ambiente ?? {};
@@ -887,6 +862,7 @@ function ResumoGhe({ ghe, cargos, salvar, excluir }: { ghe: Ghe; cargos: string[
       {!temAmbiente && <p className="text-warning">Falta descrever o ambiente deste setor (edificação, piso, iluminação, ventilação, máquinas).</p>}
       <div className="flex flex-wrap gap-4">
         <button type="button" className="font-semibold text-primary hover:underline" onClick={() => setEditando(true)}>Editar setor, funções e ambiente</button>
+        <button type="button" className="font-semibold text-primary hover:underline" onClick={copiar} title="Cria um GHE novo com os mesmos riscos, avaliações e exames, para um setor parecido">Copiar GHE</button>
         <button type="button" className="text-danger hover:underline" onClick={excluir}>Excluir GHE</button>
       </div>
     </div>
