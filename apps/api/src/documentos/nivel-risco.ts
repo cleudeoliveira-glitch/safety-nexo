@@ -1,16 +1,43 @@
 // NR-01, 1.5.4.4.2: nível de risco = severidade x probabilidade.
-// Matriz 3x3. Cada eixo vale 1 (baixa), 2 (média) ou 3 (alta); o produto define o nível.
+// Matriz 5x5: cada eixo vai de 1 a 5 e o produto (1 a 25) define o nível.
+// Riscos antigos, da matriz 3x3, ainda podem vir como BAIXA, MEDIA ou ALTA:
+// valem 2, 3 e 5, o que mantém o mesmo nível que tinham antes.
 
-export type Grau = 'BAIXA' | 'MEDIA' | 'ALTA';
 export type Nivel = 'BAIXO' | 'MODERADO' | 'ALTO' | 'CRITICO';
 
-const PESO: Record<string, number> = { BAIXA: 1, MEDIA: 2, ALTA: 3 };
+const ANTIGO: Record<string, string> = { BAIXA: '2', MEDIA: '3', ALTA: '5' };
+export const GRAUS = ['1', '2', '3', '4', '5'];
+
+// Aceita '1'..'5' ou o valor antigo e devolve sempre '1'..'5'.
+export function grau5(v: string | null | undefined, padrao = '3'): string {
+  if (!v) return padrao;
+  if (GRAUS.includes(v)) return v;
+  return ANTIGO[v] ?? padrao;
+}
+
+export const NOME_SEVERIDADE: Record<string, string> = {
+  '1': 'Insignificante', '2': 'Leve', '3': 'Moderada', '4': 'Grave', '5': 'Gravíssima',
+};
+export const EXPLICA_SEVERIDADE: Record<string, string> = {
+  '1': 'sem lesão ou só primeiros socorros',
+  '2': 'lesão sem afastamento',
+  '3': 'afastamento temporário',
+  '4': 'lesão permanente ou doença séria',
+  '5': 'morte ou invalidez',
+};
+export const NOME_PROBABILIDADE: Record<string, string> = {
+  '1': 'Rara', '2': 'Improvável', '3': 'Possível', '4': 'Provável', '5': 'Quase certa',
+};
+
+export function pontosRisco(severidade: string, probabilidade: string) {
+  return Number(grau5(severidade)) * Number(grau5(probabilidade));
+}
 
 export function nivelRisco(severidade: string, probabilidade: string): Nivel {
-  const p = (PESO[severidade] ?? 2) * (PESO[probabilidade] ?? 2);
-  if (p >= 9) return 'CRITICO';
-  if (p >= 6) return 'ALTO';
-  if (p >= 3) return 'MODERADO';
+  const p = pontosRisco(severidade, probabilidade);
+  if (p >= 20) return 'CRITICO';
+  if (p >= 15) return 'ALTO';
+  if (p >= 8) return 'MODERADO';
   return 'BAIXO';
 }
 
@@ -24,4 +51,13 @@ export const DECISAO_NIVEL: Record<Nivel, string> = {
   CRITICO: 'Resolver já. Se não der, parar a atividade até controlar o risco.',
 };
 
-export const NOME_GRAU: Record<string, string> = { BAIXA: 'Baixa', MEDIA: 'Média', ALTA: 'Alta' };
+export const nomeSeveridade = (v: string) => `${grau5(v)} · ${NOME_SEVERIDADE[grau5(v)]}`;
+export const nomeProbabilidade = (v: string) => `${grau5(v)} · ${NOME_PROBABILIDADE[grau5(v)]}`;
+
+// Medidas de controle separadas pela hierarquia da NR-01 (1.5.5.1.2): proteção coletiva (EPC),
+// EPI e as outras (eliminar, trocar, organizar o trabalho). Riscos antigos só têm o texto geral.
+export type MedidasRisco = { medidasControle: string | null; medidasEpc?: string | null; medidasEpi?: string | null };
+export function medidasPartes(r: MedidasRisco): [string, string][] {
+  return ([['EPC', r.medidasEpc], ['EPI', r.medidasEpi], ['Outras medidas', r.medidasControle]] as [string, string | null | undefined][])
+    .filter((x): x is [string, string] => !!x[1]?.trim());
+}

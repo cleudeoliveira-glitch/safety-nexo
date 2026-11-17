@@ -1,3 +1,4 @@
+import { grau5 } from '../documentos/nivel-risco';
 import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { ArquivoService } from '../arquivo/arquivo.service';
@@ -84,7 +85,7 @@ export class ImportacaoService implements OnModuleInit {
           ja.add(k);
           const quantitativo = !!r.intensidade?.trim();
           await tx.gheRisco.create({ data: {
-            gheId: ghe.id, tipo: r.tipo, agente: r.agente.trim(), fonteGeradora: r.fonteGeradora.trim(), medidasControle: r.medidasControle?.trim() || null, severidade: r.severidade,
+            gheId: ghe.id, tipo: r.tipo, agente: r.agente.trim(), fonteGeradora: r.fonteGeradora.trim(), medidasControle: r.medidasControle?.trim() || null, severidade: grau5(r.severidade),
             intensidade: r.intensidade?.trim() || null, limiteTolerancia: r.limiteTolerancia?.trim() || null, tipoAvaliacao: quantitativo ? 'QUANTITATIVA' : null,
           } });
           novosRiscos++;

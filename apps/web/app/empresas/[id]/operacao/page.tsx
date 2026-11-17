@@ -24,6 +24,8 @@ import {
   ConteudoOperacao,
   criarApr,
   criarDds,
+  sugestoesDds,
+  SugestoesDds,
   criarPermissao,
   Dds,
   Empresa,
@@ -436,6 +438,8 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
   const [busca, setBusca] = useState('');
   const [camera, setCamera] = useState<Dds | null>(null);
   const [rostoDds, setRostoDds] = useState(false);
+  const [sugestoes, setSugestoes] = useState<SugestoesDds | null>(null);
+  useEffect(() => { sugestoesDds(empresaId).then(setSugestoes).catch(() => setSugestoes(null)); }, [empresaId, lista.length]);
   useEffect(() => { rosto.config().then((c) => setRostoDds(c.ativo && c.usos.DDS)).catch(() => setRostoDds(false)); }, []);
   const categorias = [...new Set(conteudo.temasDds.map((t) => t.categoria))].sort();
   const feitos = new Set(lista.map((d) => d.tema));
@@ -470,6 +474,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
         data: String(d.get('data')),
         duracaoMin: Number(d.get('duracaoMin') || 10),
         ministrante: String(d.get('ministrante')).trim(),
+        ...(String(d.get('local') ?? '').trim() ? { local: String(d.get('local')).trim() } : {}),
         participantes,
       });
       form.reset();
@@ -487,6 +492,23 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
     <div className="space-y-6">
       <Cartao titulo="Novo DDS">
         <form className="space-y-4" onSubmit={salvar}>
+          {sugestoes && (sugestoes.sugestoes.length > 0 ? (
+            <div className="rounded-card border border-primary/30 bg-primary/5 p-4">
+              <p className="text-sm font-semibold text-primary">Temas sugeridos para esta empresa</p>
+              <p className="mb-3 text-xs text-text/60">Escolhidos pelos riscos dos GHEs e pelos trabalhos com PT. Os temas dados nos últimos 90 dias ficam de fora.</p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {sugestoes.sugestoes.map((s) => (
+                  <button key={s.tema} type="button" onClick={() => escolherTema(s.tema)}
+                    className={`rounded-card border p-3 text-left text-sm transition ${tema === s.tema ? 'border-primary bg-white ring-2 ring-primary/30' : 'border-border bg-white hover:border-primary'}`}>
+                    <span className="block font-semibold">{s.tema}</span>
+                    <span className="mt-0.5 block text-xs text-text/60">{s.motivo}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : !sugestoes.temRiscos && (
+            <p className="rounded-card bg-background px-3 py-2 text-sm text-text/60">Quando os riscos dos GHEs estiverem cadastrados, aparecem aqui temas de DDS sugeridos para esta empresa.</p>
+          ))}
           <div className="grid gap-4 md:grid-cols-2">
             <Selecao id="dds-categoria" rotulo="Assunto" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
               <option value="">Todos os assuntos</option>
@@ -518,9 +540,10 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
             <textarea id="dds-texto" className={caixaTexto} rows={8} required value={texto} onChange={(e) => setTexto(e.target.value)} />
             <p className="mt-1 text-xs text-text/60">Já vem preenchido com o roteiro do tema. Você pode mudar o que quiser.</p>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <Campo id="dds-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
             <Campo id="dds-duracao" name="duracaoMin" type="number" min={1} rotulo="Duração (minutos)" required defaultValue={10} />
+            <Campo id="dds-local" name="local" rotulo="Local" placeholder="Ex.: Pátio de carga" />
             <Campo id="dds-ministrante" name="ministrante" rotulo="Ministrante" required placeholder="Quem conduziu" />
           </div>
           <EscolherPessoas titulo="Participantes" colaboradores={colaboradores} marcados={participantes} mudar={setParticipantes} />
@@ -533,7 +556,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
           <ul className="divide-y divide-border text-sm">
             {lista.map((d) => (
               <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                <span><strong>{data(d.data)}</strong> · {d.tema} · {d.participantes.length} participante(s)</span>
+                <span><strong>{data(d.data)}</strong> · {d.tema}{d.local ? ` · ${d.local}` : ''} · {d.participantes.length} participante(s)</span>
                 <span className="flex flex-wrap gap-2">
                   <Link href={`/empresas/${empresaId}/lista/dds/${d.id}`} className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white">Lista para assinar</Link>
                   {rostoDds && <Botao variante="secundario" onClick={() => setCamera(d)}>Presença pelo rosto</Botao>}

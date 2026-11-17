@@ -7,6 +7,7 @@ import { Campo, CardNumero, Selecao } from '@/components/ui';
 import { dimensionarCipa } from '@/lib/calculos/cipa';
 import { dimensionarBrigada, TABELA_A1, CARGA_HORARIA } from '@/lib/calculos/brigada';
 import { dimensionarSesmt } from '@/lib/calculos/sesmt';
+import { ListaCalculosSalvos, ProvedorCalculos, SalvarCalculo } from '@/components/CalculosSalvos';
 
 // Calculadoras de SST: tudo é feito no próprio aparelho, então funciona até sem internet depois de aberto uma vez.
 type Calc = 'cipa' | 'sesmt' | 'brigada' | 'ruido' | 'calor' | 'taxas';
@@ -26,11 +27,12 @@ export default function Calculadoras() {
   const [aba, setAba] = useState<Calc>('cipa');
   const atual = CALCS.find((c) => c.id === aba)!;
   return (
+    <ProvedorCalculos>
     <main className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
       <div>
         <Link href="/" className="text-sm text-primary">← Painel</Link>
         <h1 className="mt-2 text-2xl font-semibold text-primary">Calculadoras de SST</h1>
-        <p className="text-sm text-text/60">Contas rápidas do dia a dia. Funcionam no celular e, depois de abrir uma vez, até sem internet.</p>
+        <p className="text-sm text-text/60">Contas rápidas do dia a dia. Funcionam no celular e, depois de abrir uma vez, até sem internet. O resultado pode ser salvo na empresa, com a memória de cálculo em PDF.</p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" role="tablist">
         {CALCS.map((c) => (
@@ -52,7 +54,9 @@ export default function Calculadoras() {
         {aba === 'taxas' && <CalcTaxas />}
       </section>
       <p className="text-xs text-text/50">As contas seguem as normas citadas em cada calculadora. Confira sempre com o texto da norma em vigor antes de usar num documento.</p>
+      <ListaCalculosSalvos />
     </main>
+    </ProvedorCalculos>
   );
 }
 
@@ -89,6 +93,12 @@ function CalcCipa() {
           )}
           {r.situacao === 'CIPA' && <p className="text-sm">A empresa indica o mesmo número de efetivos e suplentes (paridade). Total da CIPA: <strong>{(r.efetivos + r.suplentes) * 2} pessoas</strong>.</p>}
           {r.situacao === 'REPRESENTANTE' && <div className="card-pendente rounded-card p-4 text-sm">Não precisa montar CIPA. A empresa nomeia <strong>1 representante da NR-05</strong> (item 5.4.13). A CIPA passa a ser obrigatória a partir de {r.minimoParaCipa} empregados neste grau.</div>}
+          <SalvarCalculo tipo="CIPA" tituloSugerido="Dimensionamento da CIPA"
+            entradas={[{ rotulo: 'Grau de risco', valor: `Grau ${grau}` }, { rotulo: 'Empregados no estabelecimento', valor: String(empregados) }]}
+            resultado={r.situacao === 'CIPA'
+              ? [{ rotulo: 'Efetivos (empregados)', valor: String(r.efetivos) }, { rotulo: 'Suplentes (empregados)', valor: String(r.suplentes) }, { rotulo: 'Indicados pela empresa', valor: `${r.efetivos} efetivos e ${r.suplentes} suplentes` }, { rotulo: 'Total da CIPA', valor: `${(r.efetivos + r.suplentes) * 2} pessoas` }]
+              : [{ rotulo: 'Situação', valor: r.situacao === 'REPRESENTANTE' ? 'Não precisa de CIPA: 1 representante da NR-05' : 'Sem dimensionamento para este grau' }]}
+            conclusao={r.situacao === 'REPRESENTANTE' ? `A CIPA passa a ser obrigatória a partir de ${r.minimoParaCipa} empregados neste grau de risco (NR-05, item 5.4.13).` : undefined} />
         </Resultado>
       )}
     </>
@@ -124,6 +134,11 @@ function CalcSesmt() {
             </>
           )}
           <p className="text-xs text-text/50">Base: NR-04, Anexo II. Confira o quadro da norma em vigor antes de usar num documento.</p>
+          <SalvarCalculo tipo="SESMT" tituloSugerido="Dimensionamento do SESMT"
+            entradas={[{ rotulo: 'Grau de risco', valor: `Grau ${grau}` }, { rotulo: 'Empregados', valor: String(empregados) }, { rotulo: 'Faixa do Anexo II', valor: `${r.faixa} empregados` }]}
+            resultado={r.situacao === 'SEM_SESMT'
+              ? [{ rotulo: 'Situação', valor: 'SESMT próprio não obrigatório nesta faixa' }]
+              : r.equipe.map((p) => ({ rotulo: p.nome, valor: `${p.quantidade}${p.parcial ? ' (tempo parcial)' : ''}` }))} />
         </Resultado>
       )}
     </>
@@ -165,6 +180,12 @@ function CalcBrigada() {
             </>
           )}
           <p className="text-xs text-text/50">Base: IT 17/2025 do Corpo de Bombeiros de SP. Outros estados têm instrução própria: confira com a norma local.</p>
+          <SalvarCalculo tipo="BRIGADA" tituloSugerido="Dimensionamento da brigada"
+            entradas={[{ rotulo: 'Ocupação', valor: `${l.divisao} · ${l.descricao} (risco ${risco[l.risco]})` }, ...pops.map((p, i) => ({ rotulo: `População fixa no pavimento ${i + 1}`, valor: `${p} pessoas` }))]}
+            resultado={r.total === null
+              ? [{ rotulo: 'Situação', valor: r.observacao ?? 'Sem dimensionamento pela tabela' }]
+              : [{ rotulo: 'Brigadistas', valor: String(r.total) }, ...(r.porPavimento.length > 1 ? [{ rotulo: 'Por pavimento', valor: r.porPavimento.join(' + ') }] : []), { rotulo: 'Treinamento', valor: `${r.nivelTexto}${r.nivel in CARGA_HORARIA ? ` (${CARGA_HORARIA[r.nivel as keyof typeof CARGA_HORARIA]} h)` : ''}` }]}
+            conclusao={r.total !== null && r.observacao ? r.observacao : undefined} />
         </Resultado>
       )}
     </>
@@ -211,6 +232,10 @@ function CalcRuido() {
             {validas.map((l, i) => <li key={i}>{fmt(l.db, 1)} dB(A): pode ficar até {fmt(tMax(l.db), 2)} h por dia</li>)}
           </ul>
           {q === '5' && validas.some((l) => l.db > 115) && <p className="card-nao rounded-card p-3 text-sm">Acima de 115 dB(A) sem proteção é risco grave e iminente (NR-15, Anexo 1).</p>}
+          <SalvarCalculo tipo="RUIDO" tituloSugerido="Dose de ruído"
+            entradas={[{ rotulo: 'Critério', valor: q === '5' ? 'NR-15, Anexo 1 (q = 5)' : 'NHO-01 (q = 3)' }, ...validas.map((l) => ({ rotulo: `${fmt(l.db, 1)} dB(A)`, valor: `${fmt(l.h, 2)} h no dia (máximo permitido: ${fmt(tMax(l.db), 2)} h)` }))]}
+            resultado={[{ rotulo: 'Dose diária', valor: `${fmt(dose * 100, 0)}%` }, { rotulo: 'Nível equivalente (8 h)', valor: ne ? `${fmt(ne, 1)} dB(A)` : '—' }, { rotulo: 'Tempo total de exposição', valor: `${fmt(horas, 1)} h` }]}
+            conclusao={dose > 1 ? 'Dose acima de 100%: exposição acima do limite de tolerância.' : dose >= 0.5 ? 'Dose acima do nível de ação (50%): manter as medidas preventivas e o controle médico (NR-09).' : 'Dose abaixo do nível de ação (50%).'} />
         </Resultado>
       )}
     </>
@@ -239,6 +264,10 @@ function CalcCalor() {
         <Resultado>
           <CardNumero tom="total" rotulo="IBUTG" valor={`${fmt(ibutg, 1)} °C`} detalhe={sol === 'nao' ? '0,7 × tbn + 0,3 × tg' : '0,7 × tbn + 0,2 × tg + 0,1 × tbs'} icone="alerta" />
           <p className="text-sm text-text/70">Compare com o limite do Anexo 3 da NR-15 para a taxa metabólica da atividade (quanto mais pesado o trabalho, menor o limite).</p>
+          <SalvarCalculo tipo="CALOR" tituloSugerido="IBUTG"
+            entradas={[{ rotulo: 'Local', valor: sol === 'nao' ? 'Sem sol direto (interno ou à sombra)' : 'Com sol direto (externo)' }, { rotulo: 'Bulbo úmido natural (tbn)', valor: `${fmt(a, 1)} °C` }, { rotulo: 'Globo (tg)', valor: `${fmt(b, 1)} °C` }, ...(sol === 'sim' ? [{ rotulo: 'Bulbo seco (tbs)', valor: `${fmt(c, 1)} °C` }] : [])]}
+            resultado={[{ rotulo: 'IBUTG', valor: `${fmt(ibutg, 1)} °C` }, { rotulo: 'Fórmula', valor: sol === 'nao' ? '0,7 × tbn + 0,3 × tg' : '0,7 × tbn + 0,2 × tg + 0,1 × tbs' }]}
+            conclusao="Comparar com o limite do Anexo 3 da NR-15 para a taxa metabólica da atividade." />
         </Resultado>
       )}
     </>
@@ -272,6 +301,9 @@ function CalcTaxas() {
             <CardNumero tom={tg ? 'pendente' : 'ok'} rotulo="Taxa de gravidade" valor={tg === null ? '—' : fmt(tg, 0)} detalhe="dias por milhão de horas" icone="calendario" />
           </div>
           <p className="text-xs text-text/50">Horas-homem usadas: {fmt(h, 0)}. Base: NBR 14280.</p>
+          <SalvarCalculo tipo="TAXAS" tituloSugerido="Taxas de acidente"
+            entradas={[{ rotulo: 'Acidentes com afastamento', valor: acid || '0' }, { rotulo: 'Dias perdidos e debitados', valor: dias || '0' }, { rotulo: 'Horas-homem trabalhadas', valor: fmt(h, 0) }, ...(num(hht) > 0 ? [] : [{ rotulo: 'Cálculo das horas-homem', valor: `${func} funcionários × ${horasMes} h` }])]}
+            resultado={[{ rotulo: 'Taxa de frequência', valor: tf === null ? '—' : `${fmt(tf)} acidentes por milhão de horas` }, { rotulo: 'Taxa de gravidade', valor: tg === null ? '—' : `${fmt(tg, 0)} dias por milhão de horas` }]} />
         </Resultado>
       )}
     </>

@@ -25,7 +25,7 @@ export class AcaoFeitaDto { @IsBoolean() feita!: boolean; }
 export class LevarPgrDto {
   @IsString() setor!: string;
   @IsString() dimensao!: string;
-  @IsIn(['BAIXA', 'MEDIA', 'ALTA']) severidade!: string;
+  @IsIn(['1', '2', '3', '4', '5', 'BAIXA', 'MEDIA', 'ALTA']) severidade!: string;
 }
 
 export class TecnicaDto {

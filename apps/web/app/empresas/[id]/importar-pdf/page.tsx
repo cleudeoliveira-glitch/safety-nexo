@@ -1,5 +1,6 @@
 'use client';
 
+import { grau5, SEVERIDADES } from '@/lib/matriz';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Cartao } from '@/components/ui';
@@ -44,7 +45,7 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
       setGhes((l.resultado?.ghes ?? []).map((g) => ({
         nome: g.nome, usar: true,
         descricao: [g.descricao, g.cargos.length ? `Cargos: ${g.cargos.join(', ')}` : '', g.trabalhadores ? `${g.trabalhadores} trabalhador(es) no documento original` : ''].filter(Boolean).join('. '),
-        riscos: g.riscos.map((r) => ({ tipo: r.tipo, agente: r.agente, fonteGeradora: r.fonteGeradora ?? '', medidasControle: r.medidasControle ?? '', severidade: r.severidade ?? '', intensidade: r.intensidade ?? '', limiteTolerancia: r.limiteTolerancia ?? '', usar: true, pagina: r.pagina })),
+        riscos: g.riscos.map((r) => ({ tipo: r.tipo, agente: r.agente, fonteGeradora: r.fonteGeradora ?? '', medidasControle: r.medidasControle ?? '', severidade: r.severidade ? grau5(r.severidade) : '', intensidade: r.intensidade ?? '', limiteTolerancia: r.limiteTolerancia ?? '', usar: true, pagina: r.pagina })),
       })));
       setTimeout(() => document.getElementById('conferir')?.scrollIntoView({ behavior: 'smooth' }), 50);
     } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
@@ -146,7 +147,7 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
                             <td className="p-1"><input className={`${entrada} ${cor(false)}`} value={r.agente} onChange={(e) => mudarRisco(i, k, { agente: e.target.value })} /></td>
                             <td className="p-1"><input className={`${entrada} ${cor(!r.fonteGeradora.trim())}`} value={r.fonteGeradora} placeholder="Não estava no documento" onChange={(e) => mudarRisco(i, k, { fonteGeradora: e.target.value })} /></td>
                             <td className="p-1"><input className={`${entrada} ${cor(false)}`} value={r.medidasControle} onChange={(e) => mudarRisco(i, k, { medidasControle: e.target.value })} /></td>
-                            <td className="p-1"><select className={`${entrada} ${cor(!r.severidade)}`} value={r.severidade} onChange={(e) => mudarRisco(i, k, { severidade: e.target.value as RiscoEd['severidade'] })} aria-label={`Severidade de ${r.agente}`}><option value="">Escolha</option><option value="BAIXA">Baixa</option><option value="MEDIA">Média</option><option value="ALTA">Alta</option></select></td>
+                            <td className="p-1"><select className={`${entrada} ${cor(!r.severidade)}`} value={r.severidade} onChange={(e) => mudarRisco(i, k, { severidade: e.target.value as RiscoEd['severidade'] })} aria-label={`Severidade de ${r.agente}`}><option value="">Escolha</option>{SEVERIDADES.map(([v, n]) => <option key={v} value={v}>{v} · {n}</option>)}</select></td>
                             <td className="p-1"><input className={`${entrada} ${cor(false)}`} value={r.intensidade} onChange={(e) => mudarRisco(i, k, { intensidade: e.target.value })} /></td>
                             <td className="p-1"><input className={`${entrada} ${cor(false)}`} value={r.limiteTolerancia} onChange={(e) => mudarRisco(i, k, { limiteTolerancia: e.target.value })} /></td>
                             <td className="p-1 text-xs text-text/60">{r.pagina ?? '-'}</td>

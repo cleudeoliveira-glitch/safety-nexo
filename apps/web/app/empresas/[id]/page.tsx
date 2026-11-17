@@ -1,5 +1,6 @@
 'use client';
 
+import { grau5, nivelDoRisco, PROBABILIDADES, SEVERIDADES } from '@/lib/matriz';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
@@ -280,7 +281,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                 <ul className="mt-1 space-y-1 text-sm">
                   {ghe.riscos.map((r) => (
                     <li key={r.id}>
-                      {r.agente} · {r.fonteGeradora} · <SeloNivel severidade={r.severidade} probabilidade={r.probabilidade ?? 'MEDIA'} />
+                      {r.agente} · {r.fonteGeradora} · <SeloNivel severidade={r.severidade} probabilidade={r.probabilidade ?? '3'} />
                       {!cliente && <AjustarRisco risco={r} salvar={(dados) => agir(() => ajustarRisco(empresaId, ghe.id, r.id, dados), `Classificação de ${r.agente} salva.`)} />}
                       {AGENTES_LTCAT.includes(r.tipo) && (
                         <AvaliarRisco risco={r} anexos={anexos} salvar={(dados) => agir(() => avaliarRisco(empresaId, ghe.id, r.id, dados), `Avaliação de ${r.agente} salva.`)} />
@@ -298,6 +299,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                       agente: texto(d, 'agente'),
                       fonteGeradora: texto(d, 'fonte'),
                       medidasControle: texto(d, 'medidas') || null,
+                      medidasEpc: texto(d, 'epc') || null,
+                      medidasEpi: texto(d, 'epi') || null,
                       severidade: texto(d, 'severidade'),
                       probabilidade: texto(d, 'probabilidade'),
                       possiveisLesoes: texto(d, 'lesoes') || null,
@@ -310,18 +313,16 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                 </Selecao>
                 <Campo id={`agente-${ghe.id}`} name="agente" rotulo="Agente ou perigo" required placeholder="Ex.: Ruído" />
                 <Campo id={`fonte-${ghe.id}`} name="fonte" rotulo="Fonte geradora" required placeholder="Ex.: Misturadeira" />
-                <Selecao id={`sev-${ghe.id}`} name="severidade" rotulo="Severidade" defaultValue="MEDIA">
-                  <option value="BAIXA">Baixa</option>
-                  <option value="MEDIA">Média</option>
-                  <option value="ALTA">Alta</option>
+                <Selecao id={`sev-${ghe.id}`} name="severidade" rotulo="Severidade (1 a 5)" defaultValue="3">
+                  {SEVERIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
                 </Selecao>
-                <Selecao id={`prob-${ghe.id}`} name="probabilidade" rotulo="Probabilidade" defaultValue="MEDIA">
-                  <option value="BAIXA">Baixa</option>
-                  <option value="MEDIA">Média</option>
-                  <option value="ALTA">Alta</option>
+                <Selecao id={`prob-${ghe.id}`} name="probabilidade" rotulo="Probabilidade (1 a 5)" defaultValue="3">
+                  {PROBABILIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
                 </Selecao>
                 <Campo id={`lesoes-${ghe.id}`} name="lesoes" rotulo="Possíveis lesões ou agravos" className="md:col-span-3" placeholder="Ex.: Perda auditiva, zumbido" />
-                <Campo id={`medidas-${ghe.id}`} name="medidas" rotulo="Medidas de controle" className="md:col-span-3" placeholder="Ex.: Protetor auricular tipo plug" />
+                <Campo id={`epc-${ghe.id}`} name="epc" rotulo="Proteção coletiva (EPC)" className="md:col-span-2" placeholder="Ex.: Enclausuramento da misturadeira" />
+                <Campo id={`epi-${ghe.id}`} name="epi" rotulo="EPI" className="md:col-span-2" placeholder="Ex.: Protetor auricular tipo plug" />
+                <Campo id={`medidas-${ghe.id}`} name="medidas" rotulo="Outras medidas" className="md:col-span-3" placeholder="Ex.: Rodízio de tarefas, sinalização da área" />
                 <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Adicionar risco</Botao></div>
               </form>
 
@@ -605,21 +606,13 @@ const AGENTES_LTCAT: string[] = ['FISICO', 'QUIMICO', 'BIOLOGICO'];
 
 // Avaliação do agente para o LTCAT e o PPP. Fica fechada até a consultoria abrir.
 // NR-01, 1.5.4.4.2: o nível de risco combina severidade e probabilidade (mesma matriz do PDF do PGR).
-const PESO_GRAU: Record<string, number> = { BAIXA: 1, MEDIA: 2, ALTA: 3 };
-function nivelDoRisco(severidade: string, probabilidade: string) {
-  const p = (PESO_GRAU[severidade] ?? 2) * (PESO_GRAU[probabilidade] ?? 2);
-  if (p >= 9) return { nome: 'Crítico', cor: 'bg-red-900 text-white' };
-  if (p >= 6) return { nome: 'Alto', cor: 'bg-danger text-white' };
-  if (p >= 3) return { nome: 'Moderado', cor: 'bg-warning text-white' };
-  return { nome: 'Baixo', cor: 'bg-success text-white' };
-}
 
 function SeloNivel({ severidade, probabilidade }: { severidade: string; probabilidade: string }) {
   const n = nivelDoRisco(severidade, probabilidade);
-  return <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${n.cor}`} title="Nível de risco = severidade x probabilidade">Risco {n.nome.toLowerCase()}</span>;
+  return <span className="rounded-full px-2 py-0.5 text-xs font-semibold text-white" style={{ background: n.fundo }} title={`Matriz 5x5: severidade ${grau5(severidade)} x probabilidade ${grau5(probabilidade)} = ${n.pontos}`}>Risco {n.nome.toLowerCase()} ({n.pontos})</span>;
 }
 
-function AjustarRisco({ risco, salvar }: { risco: Risco; salvar: (dados: { severidade: string; probabilidade: string; possiveisLesoes: string; medidasControle: string }) => void }) {
+function AjustarRisco({ risco, salvar }: { risco: Risco; salvar: (dados: { severidade: string; probabilidade: string; possiveisLesoes: string; medidasControle: string; medidasEpc: string; medidasEpi: string }) => void }) {
   return (
     <details className="ml-1 inline-block align-top">
       <summary className="cursor-pointer text-xs font-semibold text-primary hover:underline">Classificar</summary>
@@ -628,17 +621,19 @@ function AjustarRisco({ risco, salvar }: { risco: Risco; salvar: (dados: { sever
         onSubmit={(ev) => {
           ev.preventDefault();
           const d = new FormData(ev.currentTarget);
-          salvar({ severidade: String(d.get('severidade')), probabilidade: String(d.get('probabilidade')), possiveisLesoes: String(d.get('lesoes') ?? ''), medidasControle: String(d.get('medidas') ?? '') });
+          salvar({ severidade: String(d.get('severidade')), probabilidade: String(d.get('probabilidade')), possiveisLesoes: String(d.get('lesoes') ?? ''), medidasControle: String(d.get('medidas') ?? ''), medidasEpc: String(d.get('epc') ?? ''), medidasEpi: String(d.get('epi') ?? '') });
         }}
       >
-        <Selecao id={`aj-sev-${risco.id}`} name="severidade" rotulo="Severidade" defaultValue={risco.severidade}>
-          <option value="BAIXA">Baixa</option><option value="MEDIA">Média</option><option value="ALTA">Alta</option>
+        <Selecao id={`aj-sev-${risco.id}`} name="severidade" rotulo="Severidade (1 a 5)" defaultValue={grau5(risco.severidade)}>
+          {SEVERIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
         </Selecao>
-        <Selecao id={`aj-prob-${risco.id}`} name="probabilidade" rotulo="Probabilidade" defaultValue={risco.probabilidade ?? 'MEDIA'}>
-          <option value="BAIXA">Baixa</option><option value="MEDIA">Média</option><option value="ALTA">Alta</option>
+        <Selecao id={`aj-prob-${risco.id}`} name="probabilidade" rotulo="Probabilidade (1 a 5)" defaultValue={grau5(risco.probabilidade)}>
+          {PROBABILIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
         </Selecao>
         <Campo id={`aj-les-${risco.id}`} name="lesoes" rotulo="Possíveis lesões ou agravos" className="md:col-span-2" defaultValue={risco.possiveisLesoes ?? ''} />
-        <Campo id={`aj-med-${risco.id}`} name="medidas" rotulo="Medidas de controle" className="md:col-span-2" defaultValue={risco.medidasControle ?? ''} />
+        <Campo id={`aj-epc-${risco.id}`} name="epc" rotulo="Proteção coletiva (EPC)" defaultValue={risco.medidasEpc ?? ''} />
+        <Campo id={`aj-epi-${risco.id}`} name="epi" rotulo="EPI" defaultValue={risco.medidasEpi ?? ''} />
+        <Campo id={`aj-med-${risco.id}`} name="medidas" rotulo="Outras medidas" className="md:col-span-2" defaultValue={risco.medidasControle ?? ''} />
         <div className="flex justify-end md:col-span-2"><Botao type="submit" variante="secundario">Salvar classificação</Botao></div>
       </form>
     </details>

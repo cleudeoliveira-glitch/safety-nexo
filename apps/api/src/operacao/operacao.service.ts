@@ -8,6 +8,7 @@ import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MODELOS_RESGATE, RISCOS_CONFINADO, TEMAS_DDS, TIPOS_ESPACO, TIPOS_PT, TipoPt } from './conteudo';
 import { CriarAprDto, CriarDdsDto, CriarPermissaoDto, MedicaoGasDto } from './dto';
+import { sugerirTemasDds } from './sugestoes-dds';
 import { aprHtml, ddsHtml, DetalhesPt, EtapaApr, permissaoHtml } from './templates';
 
 const AVISO = 'Feito com o Safety Nexo.';
@@ -215,9 +216,27 @@ export class OperacaoService {
         data: new Date(dto.data),
         duracaoMin: dto.duracaoMin,
         ministrante: dto.ministrante.trim(),
+        local: dto.local?.trim() || null,
         participantes: await this.conferirColaboradores(empresaId, dto.participantes),
       },
     });
+  }
+
+  // Temas sugeridos pelos riscos da empresa (GHEs, espaços confinados e PTs recentes).
+  async sugestoesDds(consultoriaId: string, empresaId: string) {
+    await this.empresa(consultoriaId, empresaId);
+    const desde = new Date(Date.now() - 90 * 86400000);
+    const [ghes, espacos, pts, recentes] = await Promise.all([
+      this.prisma.ghe.findMany({ where: { empresaId }, select: { nome: true, riscos: { select: { tipo: true, agente: true, severidade: true, probabilidade: true } } } }),
+      this.prisma.espacoConfinado.count({ where: { empresaId, ativo: true } }),
+      this.prisma.permissaoTrabalho.findMany({ where: { empresaId, createdAt: { gte: desde } }, select: { tipo: true } }),
+      this.prisma.dds.findMany({ where: { empresaId, data: { gte: desde } }, select: { tema: true } }),
+    ]);
+    const riscos = ghes.flatMap((g) => g.riscos.map((r) => ({ ...r, ghe: g.nome })));
+    return {
+      temRiscos: riscos.length > 0,
+      sugestoes: sugerirTemasDds(riscos, { espacosConfinados: espacos, tiposPt: pts.map((p) => p.tipo), temasRecentes: recentes.map((d) => d.tema) }),
+    };
   }
 
   async pdfDds(consultoriaId: string, empresaId: string, ddsId: string) {

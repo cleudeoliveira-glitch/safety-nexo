@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException, ForbiddenException 
 import { randomBytes } from 'crypto';
 import { SessaoUsuario } from '../common/sessao.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import { nivelRisco, Nivel } from '../documentos/nivel-risco';
+import { grau5, nivelRisco, Nivel } from '../documentos/nivel-risco';
 import { AcaoDto, CriarAvaliacaoDto, LevarPgrDto, ResponderDto, TecnicaDto } from './dto';
 import { questionario, QUESTIONARIOS, Questionario } from './questionarios';
 
@@ -157,7 +157,7 @@ export class PsicossocialService {
     const agente = `Fatores psicossociais: ${dim.nome.toLowerCase()} (${r.questionario.sigla})`;
     const existente = await this.prisma.gheRisco.findFirst({ where: { gheId: ghe.id, agente } });
     const dados = {
-      tipo: 'ERGONOMICO', agente, severidade: dto.severidade, tipoAvaliacao: 'QUALITATIVA',
+      tipo: 'ERGONOMICO', agente, severidade: grau5(dto.severidade), tipoAvaliacao: 'QUALITATIVA',
       fonteGeradora: `Organização do trabalho. Avaliação "${r.avaliacao.titulo}": ${dim.rotuloResultado} = ${linha.valores[dim.id]}${dim.tipo === 'casos' ? '%' : ''} (${linha.respostas} respostas)`,
       medidasControle: medidas || null,
     };
@@ -209,7 +209,7 @@ export class PsicossocialService {
         const partes = [c.questionario !== null ? `${s.respostas} respostas no questionário, média ${br(c.questionario)}` : '', c.tecnica !== null ? `avaliação técnica ${br(c.tecnica)}` : ''].filter(Boolean).join('; ');
         const dados = {
           tipo: 'ERGONOMICO', agente, tipoAvaliacao: 'QUALITATIVA',
-          severidade: c.severidade, probabilidade: c.probabilidade ?? 'MEDIA',
+          severidade: grau5(c.severidade), probabilidade: grau5(c.probabilidade ?? 'MEDIA'),
           fonteGeradora: `${pgr.fonte}. Avaliação psicossocial "${r.avaliacao.titulo}": nota ${br(c.final ?? 0)} de 4, com ${partes}.`,
           possiveisLesoes: pgr.consequencias,
           medidasControle: (medidasPlano.length ? medidasPlano : [pgr.medida]).join('; '),

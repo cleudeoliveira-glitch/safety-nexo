@@ -169,6 +169,11 @@ export class CriarDdsDto {
   @Length(2, 120)
   ministrante!: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  local?: string;
+
   @IsArray()
   @IsString({ each: true })
   participantes!: string[];

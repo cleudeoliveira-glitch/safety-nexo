@@ -78,6 +78,7 @@ model Empresa {
   reunioesCipa   CipaReuniao[]
   espacosConfinados EspacoConfinado[]
   planosResgate  PlanoResgate[]
+  calculos       CalculoSalvo[]
   aprs           Apr[]
   permissoes     PermissaoTrabalho[]
   ddss           Dds[]
@@ -184,10 +185,12 @@ model GheRisco {
   tipo        String  // FISICO, QUIMICO, BIOLOGICO, ERGONOMICO, ACIDENTE
   agente      String
   fonteGeradora String
-  medidasControle String?
-  severidade  String  @default("MEDIA") // BAIXA, MEDIA, ALTA
+  medidasControle String? // outras medidas: eliminar, trocar, organizar o trabalho
+  medidasEpc      String? // proteção coletiva (EPC)
+  medidasEpi      String? // EPI
+  severidade  String  @default("3") // matriz 5x5: "1" a "5" (antes BAIXA, MEDIA, ALTA)
   // NR-01, 1.5.4.4.2: o nível de risco combina severidade e probabilidade.
-  probabilidade   String  @default("MEDIA") // BAIXA, MEDIA, ALTA
+  probabilidade   String  @default("3") // matriz 5x5: "1" a "5"
   possiveisLesoes String? // NR-01, 1.5.7.3.2, c: possíveis lesões ou agravos à saúde
   // Avaliação do agente: base do LTCAT e do PPP (registros ambientais / S-2240).
   tipoAvaliacao       String?  // QUALITATIVA | QUANTITATIVA
@@ -465,6 +468,7 @@ model Dds {
   data          DateTime
   duracaoMin    Int
   ministrante   String
+  local         String?  // onde foi feito (ex.: Pátio de carga)
   participantes String[] // ids de colaboradores
   createdAt     DateTime @default(now())
 
@@ -1313,6 +1317,22 @@ model Toxicologico {
   medicoCrm     String?
   medicoUf      String?
   createdAt     DateTime    @default(now())
+
+  @@index([empresaId])
+}
+
+// Resultado de uma calculadora de SST (CIPA, SESMT, brigada, ruído, calor, taxas) guardado na empresa.
+model CalculoSalvo {
+  id         String   @id @default(cuid())
+  empresaId  String
+  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tipo       String   // CIPA | SESMT | BRIGADA | RUIDO | CALOR | TAXAS
+  titulo     String
+  entradas   Json     // [{ rotulo, valor }]: o que foi digitado
+  resultado  Json     // [{ rotulo, valor }]: o que a conta deu
+  conclusao  String?
+  observacao String?
+  criadoEm   DateTime @default(now())
 
   @@index([empresaId])
 }

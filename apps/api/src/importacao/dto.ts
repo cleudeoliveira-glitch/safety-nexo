@@ -6,7 +6,7 @@ export class RiscoImportadoDto {
   @IsString() @Length(2, 200, { message: 'Todo risco precisa do nome do agente.' }) agente!: string;
   @IsString() @Length(2, 300, { message: 'Informe a fonte geradora de cada risco.' }) fonteGeradora!: string;
   @IsOptional() @IsString() @MaxLength(3000) medidasControle?: string;
-  @IsIn(['BAIXA', 'MEDIA', 'ALTA']) severidade!: string;
+  @IsIn(['1', '2', '3', '4', '5', 'BAIXA', 'MEDIA', 'ALTA']) severidade!: string;
   @IsOptional() @IsString() @MaxLength(60) intensidade?: string;
   @IsOptional() @IsString() @MaxLength(60) limiteTolerancia?: string;
 }

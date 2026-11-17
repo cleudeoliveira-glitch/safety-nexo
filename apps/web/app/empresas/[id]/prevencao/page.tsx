@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Ditado, EscolherFoto, FotoProtegida, ResultadoIa } from '@/components/Foto';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
@@ -319,6 +320,9 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
   const [medidas, setMedidas] = useState<Medida[]>([medidaVazia()]);
   const [pensando, setPensando] = useState(false);
   const [obsIa, setObsIa] = useState<string | null>(null);
+  const [abrirCat, setAbrirCat] = useState(false);
+  const router = useRouter();
+  const linkCat = (id: string) => `/empresas/${empresaId}/saude?investigacao=${id}#cat`;
 
   const carregar = useCallback(() => prevencao.investigacoes(empresaId).then(setLista).catch((e: Error) => avisar('erro', e.message)), [empresaId, avisar]);
   useEffect(() => { carregar(); listarCats(empresaId).then(setCats).catch(() => setCats([])); }, [empresaId, carregar]);
@@ -349,12 +353,14 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
   async function salvar(ev: React.FormEvent) {
     ev.preventDefault();
     try {
-      await prevencao.criarInvestigacao(empresaId, {
+      const inv = await prevencao.criarInvestigacao(empresaId, {
         catId: catId || undefined, relatoId: deRelato?.id, titulo, dataOcorrencia: dataOc, local, descricao, equipe,
         porques: porques.filter((p) => p.trim()), causas: causas.filter((c) => c.texto.trim()), conclusao: conclusao || undefined,
         medidas: medidas.filter((m) => m.descricao.trim()).map((m) => ({ descricao: m.descricao, responsavel: m.responsavel || undefined, prazo: m.prazo || undefined, prioridade: m.prioridade })),
       });
+      if (abrirCat && !catId) { router.push(linkCat(inv.id)); return; }
       avisar('ok', 'Investigação salva. As medidas entraram no plano de ação.');
+      setAbrirCat(false);
       setTitulo(''); setLocal(''); setDescricao(''); setEquipe(''); setPorques(['', '', '', '', '']); setCausas([]); setConclusao(''); setMedidas([medidaVazia()]); setCatId(''); setObsIa(null);
       await carregar(); aoMudar();
     } catch (e) { avisar('erro', (e as Error).message); }
@@ -433,7 +439,13 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
             </div>
             <button type="button" className="mt-2 text-sm font-semibold text-primary" onClick={() => setMedidas([...medidas, medidaVazia()])}>+ Adicionar medida</button>
           </div>
-          <div className="flex justify-end"><Botao type="submit">Salvar investigação</Botao></div>
+          {!catId && (
+            <label className="flex items-start gap-2 rounded-card border border-border bg-background p-3 text-sm">
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={abrirCat} onChange={(e) => setAbrirCat(e.target.checked)} />
+              <span>Alguém se machucou e ainda não tem CAT. <strong>Abrir a CAT logo depois de salvar</strong>, já com o local e a descrição desta investigação.</span>
+            </label>
+          )}
+          <div className="flex justify-end"><Botao type="submit">{abrirCat && !catId ? 'Salvar e abrir a CAT' : 'Salvar investigação'}</Botao></div>
         </form>
       </Cartao>
 
@@ -442,8 +454,10 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
           <ul className="divide-y divide-border text-sm">
             {lista.map((i) => (
               <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                <span><strong>{i.titulo}</strong> · {data(i.dataOcorrencia)} · {i.local} · {i.causas.length} causa(s)</span>
-                <span className="flex gap-2">
+                <span><strong>{i.titulo}</strong> · {data(i.dataOcorrencia)} · {i.local} · {i.causas.length} causa(s)
+                  {i.catId && <> · <Etiqueta cor="bg-success/15 text-success">CAT ligada</Etiqueta></>}</span>
+                <span className="flex flex-wrap gap-2">
+                  {!i.catId && <Link href={linkCat(i.id)} className="rounded-card border border-border bg-white px-4 py-2 text-sm font-semibold text-primary hover:border-primary">Abrir CAT</Link>}
                   <Botao variante="secundario" onClick={async () => { try { salvarArquivo(await prevencao.pdfInvestigacao(empresaId, i.id), `Investigacao-${empresa.razaoSocial}.pdf`); } catch (e) { avisar('erro', (e as Error).message); } }}>Baixar PDF</Botao>
                   <Botao variante="secundario" onClick={() => { if (window.confirm('Apagar esta investigação? As ações do plano continuam.')) prevencao.removerInvestigacao(empresaId, i.id).then(carregar).catch((e: Error) => avisar('erro', e.message)); }}>Apagar</Botao>
                 </span>
