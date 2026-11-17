@@ -5,6 +5,7 @@ import { DadosAno, relatorioPcmsoHtml, resumoAno } from './relatorio-pcmso';
 import { ContextoDocumentoService } from './contexto.service';
 import { renderPcmsoHtml } from './pcmso.template';
 import { PdfService } from './pdf.service';
+import { cidadeDoEndereco } from './secoes';
 
 @Injectable()
 export class PcmsoService {
@@ -61,7 +62,11 @@ export class PcmsoService {
   }
 
   async gerarPdf(consultoriaId: string, empresaId: string): Promise<{ pdf: Buffer; versao: number }> {
-    const { empresa, versao, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, 'PCMSO');
+    const { empresa, versao, historico, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, 'PCMSO');
+    const colaboradores = await this.prisma.colaborador.findMany({ where: { empresaId, dataDesligamento: null }, select: { gheId: true, cargo: true } });
+    const proximaRevisao = new Date(geradoEm);
+    proximaRevisao.setMonth(proximaRevisao.getMonth() + 12);
+    const divisao = Number((empresa.cnae ?? '').replace(/\D/g, '').slice(0, 2));
 
     const html = renderPcmsoHtml(
       {
@@ -83,8 +88,20 @@ export class PcmsoService {
         nome: ghe.nome,
         colaboradores: ghe._count.colaboradores,
         riscos: ghe.riscos.map((r) => r.agente),
+        funcoes: [...new Set(colaboradores.filter((c) => c.gheId === ghe.id).map((c) => c.cargo.trim()))].sort(),
         exames: ghe.exames,
       })),
+      {
+        controle: {
+          sigla: 'PCMSO', titulo: 'Programa de Controle Médico de Saúde Ocupacional (PCMSO)', versao, emitidoEm: geradoEm, proximaRevisao, historico,
+          responsavel: empresa.medicoPcmsoNome ? `${empresa.medicoPcmsoNome}${empresa.medicoPcmsoCrm ? `, CRM ${empresa.medicoPcmsoCrm}` : ''}` : null,
+        },
+        empresa: { razaoSocial: empresa.razaoSocial, cnae: empresa.cnae, grauRisco: empresa.grauRisco, endereco: empresa.endereco, numFuncionarios: empresa.numFuncionarios },
+        responsavelPgr: empresa.responsavelTecnicoNome,
+        representanteLegal: empresa.representanteLegalNome,
+        servicoSaude: divisao === 86 || divisao === 75,
+        local: cidadeDoEndereco(empresa.endereco) ?? empresa.consultoria.cidade ?? null,
+      },
     );
     const pdf = await this.pdf.render(html);
 
