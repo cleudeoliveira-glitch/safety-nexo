@@ -125,9 +125,13 @@ export class SaudeService {
     }
     const dataHora = new Date(dto.dataHora);
     if (dataHora > new Date()) throw new BadRequestException('A data do acidente não pode estar no futuro.');
+    const { investigacaoId, ...dados } = dto;
+    const investigacao = investigacaoId ? await this.prisma.investigacao.findFirst({ where: { id: investigacaoId, empresaId } }) : null;
+    if (investigacaoId && !investigacao) throw new NotFoundException('Investigação não encontrada nesta empresa');
+    if (investigacao?.catId) throw new BadRequestException('Essa investigação já tem uma CAT ligada.');
     const cat = await this.prisma.cat.create({
       data: {
-        ...dto,
+        ...dados,
         empresaId,
         dataHora,
         houveObito: dto.houveObito ?? dto.tipoCat === 'OBITO',
@@ -135,6 +139,7 @@ export class SaudeService {
         esocial: dto.esocial ? JSON.parse(JSON.stringify(dto.esocial)) : undefined,
       },
     });
+    if (investigacao) await this.prisma.investigacao.update({ where: { id: investigacao.id }, data: { catId: cat.id } });
     return { ...cat, prazo: prazoCat(cat.dataHora, cat.houveObito) };
   }
 

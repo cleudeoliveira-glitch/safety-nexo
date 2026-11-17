@@ -78,6 +78,7 @@ model Empresa {
   reunioesCipa   CipaReuniao[]
   espacosConfinados EspacoConfinado[]
   planosResgate  PlanoResgate[]
+  calculos       CalculoSalvo[]
   aprs           Apr[]
   permissoes     PermissaoTrabalho[]
   ddss           Dds[]
@@ -465,6 +466,7 @@ model Dds {
   data          DateTime
   duracaoMin    Int
   ministrante   String
+  local         String?  // onde foi feito (ex.: Pátio de carga)
   participantes String[] // ids de colaboradores
   createdAt     DateTime @default(now())
 
@@ -1313,6 +1315,22 @@ model Toxicologico {
   medicoCrm     String?
   medicoUf      String?
   createdAt     DateTime    @default(now())
+
+  @@index([empresaId])
+}
+
+// Resultado de uma calculadora de SST (CIPA, SESMT, brigada, ruído, calor, taxas) guardado na empresa.
+model CalculoSalvo {
+  id         String   @id @default(cuid())
+  empresaId  String
+  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tipo       String   // CIPA | SESMT | BRIGADA | RUIDO | CALOR | TAXAS
+  titulo     String
+  entradas   Json     // [{ rotulo, valor }]: o que foi digitado
+  resultado  Json     // [{ rotulo, valor }]: o que a conta deu
+  conclusao  String?
+  observacao String?
+  criadoEm   DateTime @default(now())
 
   @@index([empresaId])
 }

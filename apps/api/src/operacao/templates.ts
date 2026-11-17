@@ -164,13 +164,13 @@ export function permissaoHtml(
   );
 }
 
-export function ddsHtml(moldura: Moldura, dds: { tema: string; conteudo: string; data: Date; duracaoMin: number; ministrante: string }, participantes: Pessoa[]) {
+export function ddsHtml(moldura: Moldura, dds: { tema: string; conteudo: string; data: Date; duracaoMin: number; ministrante: string; local: string | null }, participantes: Pessoa[]) {
   return documentoHtml(
     moldura,
     `
     <section>
       <h2>${escape(dds.tema)}</h2>
-      <p class="meta">${data(dds.data)} · ${dds.duracaoMin} minutos · ministrado por ${escape(dds.ministrante)}</p>
+      <p class="meta">${data(dds.data)} · ${dds.duracaoMin} minutos${dds.local ? ` · ${escape(dds.local)}` : ''} · ministrado por ${escape(dds.ministrante)}</p>
       <p class="conteudo">${escape(dds.conteudo).replace(/\n/g, '<br>')}</p>
     </section>
     <section>

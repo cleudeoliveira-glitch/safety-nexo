@@ -254,7 +254,8 @@ export type Permissao = {
 };
 // Leitura do detector de gases no espaço confinado: O2 e LIE em %, H2S e CO em ppm.
 export type MedicaoGas = { hora: string; oxigenio: number; lie: number; h2s?: number | null; co?: number | null; outro?: string | null; responsavel: string };
-export type Dds = { id: string; tema: string; conteudo: string; data: string; duracaoMin: number; ministrante: string; participantes: string[] };
+export type Dds = { id: string; tema: string; conteudo: string; data: string; duracaoMin: number; ministrante: string; local?: string | null; participantes: string[] };
+export type SugestoesDds = { temRiscos: boolean; sugestoes: { categoria: string; tema: string; motivo: string }[] };
 // Tema da biblioteca de DDS: o que falar, a pergunta para a equipe, um caso para contar e a dinâmica vivencial.
 export type TemaDds = { categoria: string; tema: string; conteudo: string; pergunta: string; situacao: string; dinamica: string };
 
@@ -297,6 +298,18 @@ export const planosResgate = {
   pdf: (e: string, id: string) => baixarPdf(`/empresas/${e}/planos-resgate/${id}/pdf`, 'plano de resgate'),
 };
 
+// Resultado das calculadoras guardado na empresa, com memória de cálculo em PDF.
+export type TipoCalculo = 'CIPA' | 'SESMT' | 'BRIGADA' | 'RUIDO' | 'CALOR' | 'TAXAS';
+export type LinhaCalculo = { rotulo: string; valor: string };
+export type CalculoSalvo = { id: string; tipo: TipoCalculo; titulo: string; entradas: LinhaCalculo[]; resultado: LinhaCalculo[]; conclusao: string | null; observacao: string | null; criadoEm: string };
+export type NovoCalculo = { tipo: TipoCalculo; titulo: string; entradas: LinhaCalculo[]; resultado: LinhaCalculo[]; conclusao?: string; observacao?: string };
+export const calculos = {
+  listar: (e: string) => chamar<CalculoSalvo[]>('GET', `/empresas/${e}/calculos`),
+  criar: (e: string, d: NovoCalculo) => chamar<CalculoSalvo>('POST', `/empresas/${e}/calculos`, d),
+  excluir: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/calculos/${id}`),
+  pdf: (e: string, id: string) => baixarPdf(`/empresas/${e}/calculos/${id}/pdf`, 'memória de cálculo'),
+};
+
 export const buscarConteudoOperacao = () => chamar<ConteudoOperacao>('GET', '/operacao/conteudo');
 export const listarAprs = (empresaId: string) => chamar<Apr[]>('GET', `/empresas/${empresaId}/aprs`);
 export const criarApr = (empresaId: string, dados: Omit<Apr, 'id' | 'numero'>) => chamar<Apr>('POST', `/empresas/${empresaId}/aprs`, dados);
@@ -308,6 +321,7 @@ export const registrarMedicaoGas = (empresaId: string, id: string, dados: Medica
 export const encerrarPermissao = (empresaId: string, id: string) => chamar<Permissao>('POST', `/empresas/${empresaId}/permissoes/${id}/encerrar`);
 export const listarDds = (empresaId: string) => chamar<Dds[]>('GET', `/empresas/${empresaId}/dds`);
 export const criarDds = (empresaId: string, dados: Omit<Dds, 'id'>) => chamar<Dds>('POST', `/empresas/${empresaId}/dds`, dados);
+export const sugestoesDds = (empresaId: string) => chamar<SugestoesDds>('GET', `/empresas/${empresaId}/dds/sugestoes`);
 export const gerarPdfOperacao = (empresaId: string, tipo: 'aprs' | 'permissoes' | 'dds', id: string) =>
   baixarPdf(`/empresas/${empresaId}/${tipo}/${id}/pdf`, 'documento');
 
@@ -434,6 +448,7 @@ export type Cat = {
 export type NovaCat = Omit<Cat, 'id' | 'colaborador' | 'prazo' | 'enviadaEm' | 'recibo' | 'houveObito'> & {
   houveObito?: boolean; horasTrabalhadas?: string; registroPolicial?: boolean; testemunhas?: string;
   atendimentoData?: string; medicoNome?: string; medicoCrm?: string; cid?: string; diasTratamento?: number;
+  investigacaoId?: string;
 };
 export const listarCats = (empresaId: string) => chamar<Cat[]>('GET', `/empresas/${empresaId}/cats`);
 export const criarCat = (empresaId: string, dados: NovaCat) => chamar<Cat>('POST', `/empresas/${empresaId}/cats`, dados);

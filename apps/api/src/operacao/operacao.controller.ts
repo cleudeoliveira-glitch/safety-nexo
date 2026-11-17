@@ -61,6 +61,11 @@ export class OperacaoController {
     return this.operacao.listarDds(c, e);
   }
 
+  @Get('empresas/:empresaId/dds/sugestoes')
+  sugestoesDds(@ConsultoriaId() c: string, @Param('empresaId') e: string) {
+    return this.operacao.sugestoesDds(c, e);
+  }
+
   @Post('empresas/:empresaId/dds')
   criarDds(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Body() dto: CriarDdsDto) {
     return this.operacao.criarDds(c, e, dto);

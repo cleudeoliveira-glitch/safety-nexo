@@ -52,6 +52,8 @@ export class EsocialCatDto {
 
 export class CriarCatDto {
   @IsString() colaboradorId!: string;
+  // CAT aberta a partir de uma investigação: liga as duas.
+  @IsOptional() @IsString() investigacaoId?: string;
   @IsIn(['INICIAL', 'REABERTURA', 'OBITO']) tipoCat!: string;
   @IsIn(['TIPICO', 'TRAJETO', 'DOENCA']) tipoAcidente!: string;
   @IsDateString({}, { message: 'Informe a data e a hora do acidente.' }) dataHora!: string;

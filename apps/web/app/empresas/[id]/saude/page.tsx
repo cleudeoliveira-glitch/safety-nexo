@@ -14,10 +14,12 @@ import {
   Empresa,
   gerarAet,
   gerarCat,
+  Investigacao,
   listarAets,
   listarCats,
   listarColaboradores,
   marcarCatEnviada,
+  prevencao,
   RecomendacaoAet,
   salvarArquivo,
 } from '@/lib/api';
@@ -142,6 +144,13 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
 }) {
   const [chave, setChave] = useState(0);
   const [recibos, setRecibos] = useState<Record<string, string>>({});
+  // Vindo da investigação ("Abrir CAT"): já traz o local e o relato do acidente.
+  const [deInv, setDeInv] = useState<Investigacao | null>(null);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('investigacao');
+    if (!id) return;
+    prevencao.investigacoes(empresaId).then((l) => setDeInv(l.find((x) => x.id === id && !x.catId) ?? null)).catch(() => setDeInv(null));
+  }, [empresaId]);
 
   async function salvar(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
@@ -163,9 +172,11 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
         ...opcional('horasTrabalhadas'), ...opcional('testemunhas'), ...opcional('medicoNome'), ...opcional('medicoCrm'), ...opcional('cid'),
         ...(t('atendimentoData') ? { atendimentoData: t('atendimentoData') } : {}),
         ...(t('diasTratamento') ? { diasTratamento: Number(t('diasTratamento')) } : {}),
+        ...(deInv ? { investigacaoId: deInv.id } : {}),
       });
       setChave((k) => k + 1);
-      avisar('ok', 'CAT registrada. Baixe o PDF, transmita pelo eSocial (S-2210) e depois marque como enviada com o número do recibo.');
+      if (deInv) { setDeInv(null); window.history.replaceState(null, '', `${window.location.pathname}#cat`); }
+      avisar('ok', (deInv ? 'CAT registrada e ligada à investigação. ' : 'CAT registrada. ') + 'Baixe o PDF, transmita pelo eSocial (S-2210) e depois marque como enviada com o número do recibo.');
       await recarregar();
     } catch (e) {
       avisar('erro', (e as Error).message);
@@ -196,7 +207,10 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
         <Aviso tipo="info">
           A CAT deve ser comunicada até o primeiro dia útil seguinte ao acidente. Em caso de morte, imediatamente. A transmissão oficial é pelo eSocial (evento S-2210).
         </Aviso>
-        <form key={chave} className="mt-4 grid gap-4 md:grid-cols-3" onSubmit={salvar}>
+        {deInv && (
+          <div className="mt-3"><Aviso tipo="info">Abrindo a CAT da investigação <strong>{deInv.titulo}</strong> (ocorrência em {data(deInv.dataOcorrencia)}). O local e a descrição já vieram de lá. Escolha o acidentado e confira a data e a hora.</Aviso></div>
+        )}
+        <form key={`${chave}-${deInv?.id ?? ''}`} className="mt-4 grid gap-4 md:grid-cols-3" onSubmit={salvar}>
           <Selecao id="cat-colab" name="colaboradorId" rotulo="Acidentado(a)" required className="md:col-span-2">
             <option value="">Escolha o colaborador</option>
             {colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome} · {c.cargo}</option>)}
@@ -209,11 +223,11 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
             {TIPOS_ACIDENTE.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
           </Selecao>
           <Campo id="cat-horas" name="horasTrabalhadas" rotulo="Horas trabalhadas antes" placeholder="Ex.: 03:30" />
-          <Campo id="cat-local" name="local" rotulo="Local do acidente" required placeholder="Ex.: Setor de forno" className="md:col-span-3" />
+          <Campo id="cat-local" name="local" rotulo="Local do acidente" required placeholder="Ex.: Setor de forno" className="md:col-span-3" defaultValue={deInv?.local} />
           <Campo id="cat-parte" name="parteAtingida" rotulo="Parte do corpo atingida" required placeholder="Ex.: Mão direita" />
           <Campo id="cat-agente" name="agenteCausador" rotulo="Agente causador" required placeholder="Ex.: Bandeja quente" />
           <Campo id="cat-natureza" name="naturezaLesao" rotulo="Natureza da lesão" required placeholder="Ex.: Queimadura" />
-          <Texto id="cat-desc" name="descricao" rotulo="Como aconteceu" required ajuda="Descreva o que a pessoa fazia, o que deu errado e o resultado." />
+          <Texto id="cat-desc" name="descricao" rotulo="Como aconteceu" required ajuda="Descreva o que a pessoa fazia, o que deu errado e o resultado." defaultValue={deInv?.descricao} />
           <Selecao id="cat-afast" name="houveAfastamento" rotulo="Houve afastamento?" defaultValue="N">
             <option value="N">Não</option><option value="S">Sim</option>
           </Selecao>
