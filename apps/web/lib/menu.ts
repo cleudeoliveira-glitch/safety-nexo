@@ -63,6 +63,7 @@ export const MENU: GrupoMenu[] = [
     itens: [
       { nome: 'APR (análise de risco)', icone: 'escudo', rota: '/operacao#apr' },
       { nome: 'Permissão de trabalho', icone: 'chave', rota: '/operacao#pt' },
+      { nome: 'Espaços confinados e resgate', icone: 'alerta', rota: '/confinados' },
       { nome: 'DDS (registrar)', icone: 'fala', rota: '/operacao#dds' },
       { nome: 'Biblioteca de DDS (150 temas)', icone: 'livro', rota: '/dds', geral: true },
       { nome: 'Inspeção com imagem', icone: 'lista', rota: '/operacao#checklist' },

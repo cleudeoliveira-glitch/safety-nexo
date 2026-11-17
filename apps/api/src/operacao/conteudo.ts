@@ -64,6 +64,37 @@ export const TIPOS_PT = {
       'Diagrama ou esquema elétrico disponível',
     ],
   },
+  ICAMENTO: {
+    nome: 'Içamento de carga',
+    norma: 'NR-11, NR-12 e NR-18',
+    checklist: [
+      'Operador do guindaste, munck ou ponte rolante habilitado e com treinamento válido',
+      'Sinaleiro (rigger) definido e combinado com o operador',
+      'Peso da carga conhecido e abaixo da capacidade do equipamento no raio de trabalho',
+      'Equipamento inspecionado no dia (cabos, ganchos com trava, freios, limitadores)',
+      'Acessórios de amarração (cintas, correntes, manilhas) inspecionados e com capacidade identificada',
+      'Base do equipamento nivelada e patolas apoiadas em solo firme',
+      'Distância segura de redes elétricas',
+      'Área isolada e sinalizada: ninguém passa ou fica embaixo da carga',
+      'Vento e chuva dentro do limite do fabricante',
+      'Cabo guia para controlar a carga sem tocar nela',
+    ],
+  },
+  ESCAVACAO: {
+    nome: 'Escavação',
+    norma: 'NR-18',
+    checklist: [
+      'Redes enterradas (água, gás, energia, telefone) localizadas antes de cavar',
+      'Profundidade e tipo de solo avaliados por profissional habilitado',
+      'Talude ou escoramento definido em projeto quando o solo pode desmoronar',
+      'Material retirado e equipamentos afastados da borda da vala',
+      'Escada ou rampa de saída a cada trecho da vala',
+      'Bordas isoladas e sinalizadas, com iluminação à noite',
+      'Água acumulada esgotada e solo conferido depois de chuva',
+      'Atmosfera avaliada quando a vala for funda ou perto de rede de gás ou esgoto',
+      'Máquinas com sinal sonoro de ré e sinaleiro para manobras',
+    ],
+  },
 } as const;
 export type TipoPt = keyof typeof TIPOS_PT;
 export const ehTipoPt = (tipo: string): tipo is TipoPt => tipo in TIPOS_PT;
@@ -73,3 +104,46 @@ import { VIVENCIAS_DDS } from './vivencias-dds';
 
 // Cada tema sai com o texto para falar, a pergunta, uma situação para contar e a dinâmica vivencial.
 export const TEMAS_DDS = TEMAS_BASE.map((t) => ({ ...t, situacao: VIVENCIAS_DDS[t.tema]?.situacao ?? '', dinamica: VIVENCIAS_DDS[t.tema]?.dinamica ?? '' }));
+
+// Espaços confinados (NR-33): tipos comuns e os perigos que costumam ter.
+export const TIPOS_ESPACO = {
+  TANQUE: 'Tanque ou reservatório',
+  SILO: 'Silo ou moega',
+  POCO: 'Poço, cisterna ou poço de visita',
+  GALERIA: 'Galeria, túnel ou duto de cabos',
+  VASO: 'Vaso de pressão ou caldeira (parada)',
+  DUTO: 'Duto, tubulação ou chaminé',
+  CAIXA: 'Caixa de inspeção, esgoto ou gordura',
+  OUTRO: 'Outro',
+} as const;
+
+export const RISCOS_CONFINADO = {
+  POUCO_OXIGENIO: 'Falta de oxigênio',
+  EXCESSO_OXIGENIO: 'Excesso de oxigênio',
+  INFLAMAVEL: 'Gases ou vapores inflamáveis',
+  TOXICO: 'Gases tóxicos (H2S, CO e outros)',
+  POEIRA: 'Poeira que pode explodir ou sufocar',
+  ENGOLFAMENTO: 'Engolfamento (ficar soterrado por grãos, areia ou líquido)',
+  MECANICO: 'Partes móveis (agitadores, roscas, hélices)',
+  ELETRICO: 'Energia elétrica',
+  TEMPERATURA: 'Calor ou frio extremo',
+  QUEDA: 'Queda na entrada ou dentro do espaço',
+  BIOLOGICO: 'Agentes biológicos (esgoto, lodo)',
+  AFOGAMENTO: 'Afogamento',
+} as const;
+
+// Pontos de partida para o plano de resgate. A equipe ajusta ao local e ao que tem disponível.
+export const MODELOS_RESGATE = {
+  ALTURA: {
+    cenarios: 'Trabalhador fica suspenso pelo cinto depois de uma queda e não consegue sair sozinho.\nTrabalhador passa mal ou se machuca em cima do telhado, andaime ou plataforma.\nQueda de ferramenta ou material atinge alguém embaixo.',
+    equipamentos: ['Kit de resgate em altura (descensor, polia, cordas)', 'Tripé ou ponto de ancoragem para o resgate', 'Maca tipo envelope ou cesto', 'Cinto e talabarte reservas para o resgatista', 'Rádio ou celular com sinal no local', 'Kit de primeiros socorros'],
+    procedimento: '1. Quem viu avisa o vigia ou o líder e dispara o alerta combinado.\n2. O líder do resgate chama a equipe e liga para o SAMU (192) ou Bombeiros (193) se houver ferido.\n3. Ninguém sobe sem cinto, talabarte e ponto de ancoragem: a área é isolada embaixo.\n4. Converse com a vítima para saber se está consciente e peça para mexer as pernas, se conseguir.\n5. A vítima suspensa precisa ser retirada o quanto antes: ficar pendurada pelo cinto é perigoso em poucos minutos.\n6. Resgate pelo método treinado (descida assistida ou içamento) até o chão, sem pressa desnecessária e sem improviso.\n7. No chão, mantenha a pessoa deitada, aquecida e acompanhada até o socorro chegar.\n8. Registre o que aconteceu e abra a investigação.',
+    primeirosSocorros: 'Não deixe a vítima de pé logo depois do resgate. Mantenha deitada e aquecida, observe a respiração e chame o SAMU. Não dê água nem comida.',
+  },
+  ESPACO_CONFINADO: {
+    cenarios: 'Trabalhador desmaia dentro do espaço por falta de oxigênio ou gás tóxico.\nTrabalhador se machuca e não consegue sair pela abertura.\nO monitor de gases dispara alarme durante o trabalho.\nEngolfamento por grãos, areia ou líquido.',
+    equipamentos: ['Tripé com guincho de resgate', 'Cinto paraquedista com argola nas costas para cada entrante', 'Detector de gases calibrado', 'Ventilador ou exaustor com mangote', 'Máscara autônoma (ar mandado ou cilindro) para o resgatista', 'Maca tipo envelope', 'Rádio para falar com quem está dentro', 'Kit de primeiros socorros'],
+    procedimento: '1. Ao primeiro sinal de problema, o vigia manda todos saírem e não entra no espaço.\n2. O vigia tenta o resgate pelo lado de fora, puxando pelo guincho do tripé.\n3. Se não der, chama a equipe de resgate e liga para os Bombeiros (193) e o SAMU (192).\n4. Ninguém entra para socorrer sem máscara autônoma e sem medir a atmosfera: a maior parte das mortes em espaço confinado é de quem foi ajudar.\n5. Aumente a ventilação sem jogar oxigênio puro dentro do espaço.\n6. Retire a vítima pelo método treinado e leve para um lugar com ar fresco.\n7. A PET fica suspensa até a investigação terminar.',
+    primeirosSocorros: 'Leve a vítima para o ar livre, deite e observe se respira. Se não respirar, comece a massagem cardíaca se tiver treinamento e mantenha o SAMU na linha até chegar.',
+  },
+} as const;

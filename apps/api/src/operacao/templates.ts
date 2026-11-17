@@ -84,9 +84,42 @@ function medicoesHtml(medicoes: MedicaoGas[]) {
     </section>`;
 }
 
+export type DetalhesPt = {
+  equipamento?: string; pesoCargaKg?: number; capacidadeKg?: number; operador?: string; sinaleiro?: string;
+  profundidadeM?: number; tipoSolo?: string; contencao?: string;
+};
+const kg = (n?: number) => (n === undefined ? '________' : `${n.toLocaleString('pt-BR')} kg`);
+
+// Dados do içamento e da escavação que saem no PDF (em branco quando não foram preenchidos, para escrever à mão).
+function detalhesHtml(tipo: string | undefined, d: DetalhesPt) {
+  const linha = (rotulo: string, valor?: string) => `<p><strong>${rotulo}:</strong> ${escape(valor ?? '') || '________________'}</p>`;
+  if (tipo === 'ICAMENTO') {
+    const uso = d.pesoCargaKg && d.capacidadeKg ? Math.round((d.pesoCargaKg / d.capacidadeKg) * 100) : null;
+    return `<section>
+      <h2>Dados do içamento</h2>
+      ${linha('Equipamento', d.equipamento)}
+      <p><strong>Peso da carga (com acessórios):</strong> ${kg(d.pesoCargaKg)} · <strong>Capacidade no raio de trabalho:</strong> ${kg(d.capacidadeKg)}${uso !== null ? ` · <strong>Uso:</strong> ${uso}%` : ''}</p>
+      ${uso !== null && uso > 75 ? '<p class="alerta">A carga passa de 75% da capacidade: o recomendado é fazer o plano de rigging antes de içar.</p>' : ''}
+      ${linha('Operador', d.operador)}${linha('Sinaleiro (rigger)', d.sinaleiro)}
+    </section>`;
+  }
+  if (tipo === 'ESCAVACAO') {
+    return `<section>
+      <h2>Dados da escavação</h2>
+      <p><strong>Profundidade:</strong> ${d.profundidadeM !== undefined ? `${d.profundidadeM.toLocaleString('pt-BR')} m` : '________'} · <strong>Tipo de solo:</strong> ${escape(d.tipoSolo ?? '') || '________________'}</p>
+      ${linha('Contenção (talude, escoramento)', d.contencao)}
+      ${d.profundidadeM !== undefined && d.profundidadeM > 1.25 && !d.contencao ? '<p class="alerta">Escavação com mais de 1,25 m: a estabilidade do talude precisa estar garantida (escoramento ou talude) antes de alguém entrar.</p>' : ''}
+    </section>`;
+  }
+  return '';
+}
+
 export function permissaoHtml(
   moldura: Moldura,
-  pt: { tipo?: string; tipoNome: string; norma: string; atividade: string; local: string; inicio: Date; fim: Date; emitente: string; aprNumero: number | null; encerradaEm: Date | null; supervisorEntrada?: string | null; vigia?: string | null },
+  pt: {
+    tipo?: string; tipoNome: string; norma: string; atividade: string; local: string; inicio: Date; fim: Date; emitente: string; aprNumero: number | null;
+    encerradaEm: Date | null; supervisorEntrada?: string | null; vigia?: string | null; detalhes?: DetalhesPt; espaco?: string | null; planoResgate?: string | null;
+  },
   checklist: { item: string; ok: boolean }[],
   executantes: Pessoa[],
   medicoes: MedicaoGas[] = [],
@@ -100,8 +133,11 @@ export function permissaoHtml(
       <p><strong>Atividade:</strong> ${escape(pt.atividade)} · <strong>Local:</strong> ${escape(pt.local)}</p>
       <p><strong>Válida de</strong> ${dataHora(pt.inicio)} <strong>até</strong> ${dataHora(pt.fim)}
       ${pt.aprNumero ? ` · <strong>APR vinculada:</strong> nº ${pt.aprNumero}` : ''}</p>
+      ${pt.espaco ? `<p><strong>Espaço confinado:</strong> ${escape(pt.espaco)}</p>` : ''}
+      ${pt.planoResgate ? `<p><strong>Plano de resgate:</strong> ${escape(pt.planoResgate)}</p>` : ''}
       ${confinado ? `<p><strong>Supervisor de entrada:</strong> ${escape(pt.supervisorEntrada ?? '') || '________________'} · <strong>Vigia:</strong> ${escape(pt.vigia ?? '') || '________________'}</p>` : ''}
     </section>
+    ${detalhesHtml(pt.tipo, pt.detalhes ?? {})}
     <section>
       <h2>Verificações antes de liberar</h2>
       <table>
@@ -117,7 +153,7 @@ export function permissaoHtml(
     </section>
     <div class="assinaturas">
       ${assinatura(pt.emitente, 'Emitente da permissão')}
-      ${confinado ? `${assinatura(pt.supervisorEntrada ?? '', 'Supervisor de entrada')}${assinatura(pt.vigia ?? '', 'Vigia')}` : assinatura('', 'Responsável pela área')}
+      ${confinado ? `${assinatura(pt.supervisorEntrada ?? '', 'Supervisor de entrada')}${assinatura(pt.vigia ?? '', 'Vigia')}` : pt.tipo === 'ICAMENTO' ? `${assinatura(pt.detalhes?.operador ?? '', 'Operador do equipamento')}${assinatura(pt.detalhes?.sinaleiro ?? '', 'Sinaleiro')}` : assinatura('', 'Responsável pela área')}
     </div>
     <section class="encerramento">
       <h2>Encerramento</h2>
