@@ -81,6 +81,14 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   const [convite, setConvite] = useState<Convite | null>(null);
   const [anexos, setAnexos] = useState<AnexosLaudo | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
+  // A página é dividida em abas para não mostrar tudo de uma vez. O endereço (#ghes, #documentos...) abre a aba certa.
+  const [aba, setAba] = useState<Aba>('dados');
+  useEffect(() => {
+    const ler = () => { const a = ABA_DO_ENDERECO[window.location.hash.slice(1)]; if (a) setAba(a); };
+    ler();
+    window.addEventListener('hashchange', ler);
+    return () => window.removeEventListener('hashchange', ler);
+  }, []);
   useEffect(() => { const t = new URLSearchParams(window.location.search).get('aviso'); if (t) setAviso({ tipo: 'erro', texto: t }); }, []);
 
   const recarregar = useCallback(async () => {
@@ -200,8 +208,24 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
 
       {cliente && <Aviso tipo="info">Aqui você cadastra os colaboradores e abre o ASO e o EPI de cada um. Os programas e documentos são feitos pela sua consultoria.</Aviso>}
 
+      {!cliente && (
+        <nav className="sticky top-0 z-10 -mx-2 flex gap-1 overflow-x-auto rounded-card border border-border bg-white p-1 shadow-sm" aria-label="Partes do cadastro da empresa">
+          {ABAS.map((a) => {
+            const falta = a.id === 'dados' ? !empresa.cnae || !empresa.grauRisco || !empresa.endereco
+              : a.id === 'ghes' ? ghes.length === 0 || ghes.some((g) => g.riscos.length === 0)
+              : a.id === 'pessoas' ? colaboradores.filter((c) => !c.dataDesligamento).length === 0 : false;
+            return (
+              <button key={a.id} type="button" onClick={() => { setAba(a.id); history.replaceState(null, '', `#${a.id}`); }}
+                className={`flex-1 whitespace-nowrap rounded-card px-3 py-2 text-sm font-semibold transition ${aba === a.id ? 'bg-primary text-white' : 'text-primary hover:bg-primary/5'}`}>
+                {a.nome}{falta && <span className={`ml-1.5 inline-block h-2 w-2 rounded-full ${aba === a.id ? 'bg-white' : 'bg-warning'}`} title="Tem informação faltando" />}
+              </button>
+            );
+          })}
+        </nav>
+      )}
       {!cliente && (<>
-      <Cartao titulo="1. Dados da empresa" id="dados">
+      {aba === 'dados' && (
+      <Cartao titulo="Dados da empresa" id="dados">
         <form
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar(async (d) => {
@@ -251,8 +275,10 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
             }}>Excluir empresa</button>
         </div>
       </Cartao>
+      )}
 
-      <Cartao titulo="2. GHEs, riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
+      {aba === 'ghes' && (
+      <Cartao titulo="GHEs, riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
         {!cliente && <div className="mb-4"><CopiarDados empresaId={empresaId} aoCopiar={(t, erro) => { setAviso({ tipo: erro ? 'erro' : 'ok', texto: t }); if (!erro) recarregar(); }} /></div>}
         <FuncoesDaEmpresa ghes={ghes} colaboradores={colaboradores} />
         <details className="rounded-card border border-primary/30 bg-primary/5 p-4" open={ghes.length === 0}>
@@ -385,9 +411,11 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           ))}
         </div>
       </Cartao>
+      )}
       </>)}
 
-      <Cartao titulo="3. Colaboradores" id="colaboradores"
+      {(cliente || aba === 'pessoas') && (
+      <Cartao titulo="Colaboradores" id="colaboradores"
         acao={<Link href={`/empresas/${empresaId}/colaboradores`} className="rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">Abrir colaboradores →</Link>}>
         {(() => {
           const ativos = colaboradores.filter((c) => !c.dataDesligamento);
@@ -404,9 +432,10 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           );
         })()}
       </Cartao>
+      )}
 
-      {!cliente && (
-      <Cartao titulo="4. Médico responsável pelo PCMSO" id="medico">
+      {!cliente && aba === 'dados' && (
+      <Cartao titulo="Médico responsável pelo PCMSO" id="medico">
         <form
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar((d) => definirMedico(empresaId, { nome: texto(d, 'nome'), crm: texto(d, 'crm') }), 'Médico salvo.')}
@@ -418,9 +447,9 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       </Cartao>
       )}
 
-      {cipa && (
+      {cipa && (cliente || aba === 'pessoas') && (
         <Cartao
-          titulo="5. CIPA"
+          titulo="CIPA"
           id="cipa"
           acao={cipa.dimensionamento.situacao !== 'SEM_GRAU' && (
             <div className="flex flex-wrap gap-2">
@@ -464,7 +493,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       )}
 
       {!cliente && (<>
-      <Cartao titulo="6. Documentos" id="documentos">
+      {aba === 'documentos' && (
+      <Cartao titulo="Documentos" id="documentos">
         <p className="mb-4 text-sm text-text/60">Cada documento sai em PDF com a logo da empresa no cabeçalho e a da sua consultoria no rodapé.
           O LTCAT e o LIP usam as avaliações dos riscos físicos, químicos e biológicos de cada GHE; o LPP usa a periculosidade de cada GHE.
           O PGRTR é a versão do PGR para atividade rural (NR-31). O PPP e a ordem de serviço de cada pessoa também ficam na página do colaborador.</p>
@@ -507,8 +537,10 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Link href={`/empresas/${empresaId}/conectores`} className="rounded-card border border-border px-4 py-2 text-sm font-semibold text-text/70 hover:bg-primary/5">Importar do RH, terceiros e faltas →</Link>
         </div>
       </Cartao>
+      )}
 
-      <Cartao titulo="7. Acesso da empresa ao sistema" id="acessos">
+      {aba === 'dados' && (
+      <Cartao titulo="Acesso da empresa ao sistema" id="acessos">
         <p className="mb-4 text-sm text-text/60">
           Convide a empresa cliente. Ela recebe um link, cria a própria senha e vê só os dados dela: colaboradores, EPI, DDS, permissões de trabalho,
           treinamentos e vencimentos. Programas e documentos continuam com você.
@@ -552,10 +584,23 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           </ul>
         )}
       </Cartao>
+      )}
       </>)}
     </main>
   );
 }
+
+type Aba = 'dados' | 'ghes' | 'pessoas' | 'documentos';
+const ABAS: { id: Aba; nome: string }[] = [
+  { id: 'dados', nome: 'Dados e responsáveis' },
+  { id: 'ghes', nome: 'GHEs e riscos' },
+  { id: 'pessoas', nome: 'Colaboradores e CIPA' },
+  { id: 'documentos', nome: 'Documentos' },
+];
+// Endereços antigos (#medico, #cipa...) continuam funcionando: cada um abre a aba onde a parte está.
+const ABA_DO_ENDERECO: Record<string, Aba> = {
+  dados: 'dados', medico: 'dados', acessos: 'dados', ghes: 'ghes', pessoas: 'pessoas', colaboradores: 'pessoas', cipa: 'pessoas', documentos: 'documentos',
+};
 
 const dataBr = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 
