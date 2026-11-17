@@ -75,6 +75,8 @@ export const MENU: GrupoMenu[] = [
   {
     titulo: 'Programas',
     itens: [
+      // Fica à vista, fora de grupo, a pedido do Rodrigo: é o que mais procuram por causa da NR-01.
+      { nome: 'Psicossocial', icone: 'cerebro', rota: '/psicossocial', soConsultoria: true },
       assunto('Prevenção', 'check', [
         { nome: 'Relatos e denúncias', rota: '/prevencao#relatos' },
         { nome: 'Plano de ação', rota: '/prevencao#acoes' },
@@ -87,7 +89,6 @@ export const MENU: GrupoMenu[] = [
       ]),
       assunto('Saúde e ergonomia', 'coracao', [
         { nome: 'Ergonomia (AEP e AET)', rota: '/saude#aet' },
-        { nome: 'Psicossocial', rota: '/psicossocial', soConsultoria: true },
         { nome: 'Prontuário de saúde', rota: '/prontuario', soConsultoria: true },
       ]),
       assunto('CIPA', 'votar', [
