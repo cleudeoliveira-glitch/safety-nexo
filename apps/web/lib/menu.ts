@@ -76,7 +76,7 @@ export const MENU: GrupoMenu[] = [
     titulo: 'Programas',
     itens: [
       // Fica à vista, fora de grupo, a pedido do Rodrigo: é o que mais procuram por causa da NR-01.
-      { nome: 'Questionário psicossocial', icone: 'cerebro', rota: '/psicossocial', soConsultoria: true },
+      { nome: 'Psicossocial', icone: 'cerebro', rota: '/psicossocial', soConsultoria: true },
       assunto('Prevenção', 'check', [
         { nome: 'Relatos e denúncias', rota: '/prevencao#relatos' },
         { nome: 'Plano de ação', rota: '/prevencao#acoes' },
