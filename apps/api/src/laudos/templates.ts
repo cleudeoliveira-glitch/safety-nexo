@@ -288,80 +288,188 @@ export function pgrtrHtml(
   );
 }
 
-// Ordem de Serviço de SST (NR-01, item 1.4.1, alínea c).
+// Ordem de Serviço de SST por função (NR-01, item 1.4.1, alínea c), no formato que o Rodrigo usa:
+// descrição e atividades da função, obrigações, riscos por tipo, medidas, EPIs, treinamentos,
+// acidente, proibições, punições, medicina do trabalho, deveres das duas partes e termo de recebimento.
+export type RiscoOs = RiscoPgrtr & { possiveisLesoes?: string | null };
 export type DadosOs = {
-  colaborador: { nome: string; cpf: string | null; cargo: string; cbo: string | null };
-  ghe: { nome: string; descricao: string | null } | null;
-  riscos: RiscoPgrtr[];
+  colaborador: { nome: string; cpf: string | null; cargo: string; cbo: string | null; matricula?: string | null; dataAdmissao?: Date | null };
+  ghe: { nome: string; descricao: string | null; atividadesFuncao?: string | null } | null;
+  riscos: RiscoOs[];
   epis: string[];
 };
+export type CabecalhoOs = {
+  empresa: string;
+  pgr: { versao: number; data: Date } | null;
+  emitidoEm: Date;
+  local: string | null;
+  telefones: string | null; // contatos de emergência da empresa
+  medicoPcmso: string | null;
+};
 
-const DEVERES = [
-  'Seguir as regras de segurança e as instruções desta ordem de serviço',
-  'Usar os EPIs só para o que eles servem, guardar e cuidar bem deles',
-  'Avisar o superior quando o EPI estragar ou deixar de proteger',
-  'Fazer os exames médicos previstos no PCMSO',
-  'Participar dos treinamentos e diálogos de segurança',
-  'Comunicar imediatamente qualquer acidente, quase acidente ou condição insegura',
-  'Respeitar a sinalização e as áreas de acesso restrito',
+const OBRIGACOES = [
+  'Cumprir as normas e os procedimentos de segurança e saúde no trabalho da empresa, inclusive esta ordem de serviço;',
+  'Usar o EPI fornecido de forma correta durante toda a atividade, só para o fim a que se destina (NR-06);',
+  'Guardar, conservar e higienizar os EPIs recebidos, e pedir a troca quando estragarem ou deixarem de proteger;',
+  'Comunicar ao superior ou ao responsável pela segurança qualquer condição insegura, quase acidente ou acidente;',
+  'Participar dos treinamentos, diálogos de segurança (DDS) e campanhas para os quais for convocado;',
+  'Não remover nem desativar proteções de máquinas, equipamentos e instalações;',
+  'Comunicar defeitos em equipamentos e ferramentas antes de usá-los.',
 ];
 const PROIBICOES = [
-  'Operar máquinas, equipamentos ou veículos sem treinamento e autorização',
-  'Retirar ou desativar proteções e dispositivos de segurança',
-  'Fazer manutenção ou limpeza em máquinas energizadas ou em movimento',
-  'Trabalhar sob efeito de álcool ou outras substâncias',
-  'Fumar ou fazer fogo fora dos locais permitidos',
+  'Entrar em áreas onde o EPI é obrigatório sem estar usando o EPI;',
+  'Operar máquinas, equipamentos ou veículos sem treinamento e autorização;',
+  'Fazer serviço em eletricidade sem ser qualificado e autorizado (NR-10);',
+  'Trabalhar acima de 2 metros de altura sem treinamento e sem cinto de segurança ancorado (NR-35);',
+  'Retirar ou desativar proteções e dispositivos de segurança;',
+  'Fazer manutenção ou limpeza em máquinas energizadas ou em movimento;',
+  'Usar ferramentas ou equipamentos com defeito;',
+  'Ficar ou passar embaixo de cargas suspensas;',
+  'Trabalhar sob efeito de álcool ou outras drogas, ou consumi-los durante a jornada;',
+  'Fumar ou fazer fogo fora dos locais permitidos;',
+  'Correr, brincar ou fazer qualquer coisa que distraia a atenção no local de trabalho;',
+  'Portar arma de qualquer tipo durante a jornada, salvo quando a função exigir e houver autorização legal.',
 ];
+const TIPOS_OS: [string, string][] = [['FISICO', 'Físico'], ['QUIMICO', 'Químico'], ['BIOLOGICO', 'Biológico'], ['ERGONOMICO', 'Ergonômico'], ['ACIDENTE', 'Acidente']];
 
-function paginaOs(d: DadosOs, empresa: string): string {
+const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const unicos = (itens: string[]) => {
+  const vistos = new Set<string>();
+  return itens.map((i) => i.trim().replace(/[.;]+$/, '')).filter((i) => i && !vistos.has(semAcento(i)) && vistos.add(semAcento(i)));
+};
+// Medidas e EPIs vêm como texto livre no risco: separa por vírgula, ponto e vírgula ou linha.
+const partes = (t: string | null | undefined) => (t ?? '').split(/[;\n]|,(?![^(]*\))/).map((x) => x.trim()).filter(Boolean);
+
+// Treinamentos que a função precisa, a partir dos riscos (os mesmos critérios das referências do PGR).
+function treinamentosOs(riscos: RiscoOs[]): string[] {
+  const t = semAcento(riscos.map((r) => `${r.agente} ${r.fonteGeradora}`).join(' '));
+  const lista = ['Integração de segurança (na admissão)', 'NR-01: riscos da função e PGR', 'NR-06: uso, guarda e conservação dos EPIs'];
+  if (/eletric|choque/.test(t)) lista.push('NR-10: segurança em eletricidade (quando fizer serviço em instalações)');
+  if (/empilhadeir|ponte rolante|munck|guindaste|icamento|movimentacao de carga/.test(t)) lista.push('NR-11: operação de equipamentos de movimentação de cargas');
+  if (/maquin|prensa|serra|cilindr|esmeril|torno|betoneira|equipamento/.test(t)) lista.push('NR-12: segurança em máquinas e equipamentos');
+  if (/inflamav|combustiv|glp|solvente|thinner/.test(t)) lista.push('NR-20: inflamáveis e combustíveis');
+  if (/confinad|tanque|silo|cisterna/.test(t)) lista.push('NR-33: trabalhador autorizado em espaço confinado');
+  if (/altura|escada|andaime|telhado/.test(t)) lista.push('NR-35: trabalho em altura');
+  if (/incendio|solda|maçarico|macarico/.test(t)) lista.push('Prevenção e combate a princípio de incêndio');
+  lista.push('DDS: diálogo diário de segurança');
+  return lista;
+}
+
+function paginaOs(d: DadosOs, c: CabecalhoOs): string {
+  // O que a função faz vem do cadastro do GHE (funções e atividades). Texto com quebras de linha ou ";" vira lista.
+  const atividades = d.ghe?.atividadesFuncao ? d.ghe.atividadesFuncao.split(/\n|;\s*/).map((x) => x.trim()).filter(Boolean) : [];
+  const riscosPorTipo = TIPOS_OS.map(([tipo, nome]) => {
+    const rs = d.riscos.filter((r) => r.tipo === tipo);
+    return `<tr><th>${nome}</th><td>${
+      rs.length
+        ? rs.map((r) => `${escape(r.agente)} (${escape(r.fonteGeradora)})${r.possiveisLesoes ? `: pode causar ${escape(r.possiveisLesoes.charAt(0).toLowerCase() + r.possiveisLesoes.slice(1))}` : ''}`).join('<br>')
+        : `Sem exposição a risco ${nome.toLowerCase()} identificada no PGR.`
+    }</td></tr>`;
+  }).join('');
+  const medidas = unicos(d.riscos.flatMap((r) => [...partes(r.medidasEpc), ...partes(r.medidasControle)]));
+  const epis = unicos([...d.riscos.flatMap((r) => partes(r.medidasEpi)), ...d.epis]);
+  const col = d.colaborador;
   return `
-    <section>
-      <p class="objetivo">Esta ordem de serviço informa ao trabalhador os riscos da sua função na ${escape(empresa)}, como se proteger, o que é
-      obrigatório e o que é proibido, e o que fazer em caso de acidente. Ela atende à CLT (art. 157, II) e à NR-01 (item 1.4.1, alínea c),
-      e deve ser explicada ao trabalhador antes de ele começar a atividade e sempre que a função ou os riscos mudarem.</p>
-      <h2>Identificação</h2>
-      <table><tbody>
-        <tr><th>Trabalhador</th><td>${escape(d.colaborador.nome)}</td></tr>
-        <tr><th>CPF</th><td>${escape(d.colaborador.cpf)}</td></tr>
-        <tr><th>Cargo</th><td>${escape(d.colaborador.cargo)}${d.colaborador.cbo ? ` (CBO ${escape(d.colaborador.cbo)})` : ''}</td></tr>
-        <tr><th>Setor / GHE</th><td>${escape(d.ghe?.nome)}</td></tr>
-      </tbody></table>
-      ${d.ghe?.descricao ? `<h2>Atividades</h2><p>${escape(d.ghe.descricao).replace(/\n/g, '<br>')}</p>` : ''}
-      <h2>Riscos da atividade e medidas de prevenção</h2>
-      ${
-        d.riscos.length
-          ? `<table><thead><tr><th>Tipo</th><th>Risco</th><th>Fonte</th><th>Como se proteger</th></tr></thead><tbody>${d.riscos
-              .map((r) => `<tr><td>${TIPO[r.tipo] ?? r.tipo}</td><td>${escape(r.agente)}</td><td>${escape(r.fonteGeradora)}</td><td>${medidasPartes(r).map(([k, v]) => `${k}: ${escape(v)}`).join('<br/>')}</td></tr>`)
-              .join('')}</tbody></table>`
-          : '<p>Nenhum risco cadastrado para o GHE deste trabalhador.</p>'
-      }
-      <h2>EPIs de uso obrigatório</h2>
-      <p>${d.epis.length ? d.epis.map(escape).join(', ') : 'Conforme a ficha de EPI e as medidas acima.'}</p>
-      <h2>Deveres do trabalhador</h2>
-      <ul>${DEVERES.map((x) => `<li>${x}</li>`).join('')}</ul>
-      <h2>É proibido</h2>
-      <ul>${PROIBICOES.map((x) => `<li>${x}</li>`).join('')}</ul>
-      <h2>Em caso de acidente</h2>
-      <p>Pare o que está fazendo, peça socorro e avise na hora o seu superior ou o responsável pela segurança. Não mexa no local, a não ser para socorrer alguém.</p>
-      <p class="legal">Recusar sem motivo estas instruções ou o uso dos EPIs fornecidos é falta do empregado (CLT, art. 158, parágrafo único).</p>
-      <h2>Termo de ciência</h2>
-      <p>Declaro que recebi esta ordem de serviço, que ela me foi explicada e que entendi o que está escrito. Sei que posso tirar dúvidas a
-      qualquer momento com o meu superior ou com o responsável pela segurança, e que posso interromper uma atividade quando houver risco
-      grave e iminente, avisando o superior na hora (NR-01, item 1.4.3).</p>
-    </section>
-    <div class="assinaturas">
-      <div class="assinatura">${escape(d.colaborador.nome)}<span>Trabalhador · data ____/____/______</span></div>
-      <div class="assinatura">&nbsp;<span>Empresa</span></div>
+    <table class="ident"><tbody>
+      <tr><th>Empresa</th><td colspan="3">${escape(c.empresa)}</td></tr>
+      <tr><th>Colaborador</th><td>${escape(col.nome)}</td><th>Matrícula</th><td>${escape(col.matricula ?? '') || '________'}</td></tr>
+      <tr><th>Função</th><td>${escape(col.cargo)}</td><th>CBO</th><td>${escape(col.cbo ?? '') || '________'}</td></tr>
+      <tr><th>Setor / GHE</th><td>${escape(d.ghe?.nome ?? '') || '________'}</td><th>Início na função</th><td>${col.dataAdmissao ? col.dataAdmissao.toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '___/___/______'}</td></tr>
+      <tr><th>Base</th><td colspan="3">${c.pgr ? `PGR versão ${c.pgr.versao}, de ${dataBr(c.pgr.data)}` : 'PGR da empresa'} · OS emitida em ${dataBr(c.emitidoEm)} · revisão em 12 meses ou quando a função ou os riscos mudarem</td></tr>
+    </tbody></table>
+    <p class="objetivo">Esta ordem de serviço informa ao trabalhador os riscos da sua função, como se proteger, o que é obrigatório e o que é
+    proibido, e o que fazer em caso de acidente. Ela atende à CLT (art. 157, II) e à NR-01 (item 1.4.1, alínea c) e deve ser explicada
+    antes de o trabalhador começar a atividade e sempre que a função ou os riscos mudarem.</p>
+
+    <h2>1. Descrição da função</h2>
+    <p>${atividades.length ? escape(atividades[0]) : '<span class="falta">Descreva o que esta função faz no cadastro do GHE (funções e atividades).</span>'}</p>
+    ${!atividades.length && d.ghe?.descricao ? `<p>${escape(d.ghe.descricao).replace(/\n/g, '<br>')}</p>` : ''}
+    ${atividades.length > 1 ? `<h2>2. Atividades da função</h2><ul>${atividades.slice(1).map((x) => `<li>${escape(x)}</li>`).join('')}</ul>` : '<h2>2. Atividades da função</h2><p>Conforme a descrição acima e as orientações do superior imediato.</p>'}
+
+    <h2>3. Obrigações do empregado</h2>
+    <ul>${OBRIGACOES.map((x) => `<li>${x}</li>`).join('')}</ul>
+
+    <h2>4. Riscos das atividades</h2>
+    <table class="riscos"><tbody>${riscosPorTipo}</tbody></table>
+
+    <h2>5. Medidas de prevenção</h2>
+    ${medidas.length ? `<ul>${medidas.map((x) => `<li>${escape(x)}</li>`).join('')}</ul>` : '<p>Seguir os procedimentos da empresa e as orientações do superior e do responsável pela segurança.</p>'}
+
+    <h2>6. EPIs de uso obrigatório</h2>
+    ${epis.length ? `<ul class="duas-col">${epis.map((x) => `<li>${escape(x)} (com CA válido)</li>`).join('')}</ul>` : '<p>Conforme a ficha de EPI do trabalhador.</p>'}
+
+    <h2>7. Treinamentos obrigatórios</h2>
+    <ul class="duas-col">${treinamentosOs(d.riscos).map((x) => `<li>${escape(x)}</li>`).join('')}</ul>
+
+    <h2>8. Em caso de acidente</h2>
+    <p>Pare o que está fazendo, peça socorro e avise na hora o superior imediato ou o responsável pela segurança. Na falta deles, avise um
+    membro da CIPA ou o setor pessoal. Não mexa no local, a não ser para socorrer alguém. Todo acidente, mesmo pequeno, deve ser comunicado
+    para que a empresa emita a CAT até o primeiro dia útil seguinte (no caso de morte, imediatamente), como pede a Lei 8.213/91 (art. 22).</p>
+    <p class="destaque">Telefones de emergência: SAMU 192 · Bombeiros 193${c.telefones ? ` · ${escape(c.telefones)}` : ''}</p>
+
+    <h2>9. É proibido</h2>
+    <ul>${PROIBICOES.map((x) => `<li>${x}</li>`).join('')}</ul>
+
+    <h2>10. Punições</h2>
+    <p>A recusa sem motivo justo em cumprir esta ordem de serviço ou em usar os EPIs fornecidos é falta do empregado (CLT, art. 158, parágrafo
+    único, e NR-01, item 1.4.2.1). Conforme a gravidade e a repetição, a empresa pode aplicar:</p>
+    <ul>
+      <li>advertência verbal ou por escrito;</li>
+      <li>suspensão;</li>
+      <li>dispensa por justa causa (CLT, art. 482), quando as medidas anteriores não tiverem resolvido;</li>
+      <li>desconto no salário em caso de dano proposital ou extravio de EPI, conforme a CLT (art. 462, § 1º).</li>
+    </ul>
+
+    <h2>11. Medicina do trabalho</h2>
+    <p>O empregado deve fazer os exames médicos previstos no PCMSO (admissional, periódico, retorno ao trabalho, mudança de risco e demissional).
+    O médico${c.medicoPcmso ? ` responsável (${escape(c.medicoPcmso)})` : ' responsável'} informa ao trabalhador o resultado dos seus exames.</p>
+
+    <h2>12. Cabe à empresa (NR-01, item 1.4.1)</h2>
+    <ul>
+      <li>cumprir e fazer cumprir as normas de segurança e saúde no trabalho;</li>
+      <li>informar aos trabalhadores os riscos do trabalho, as medidas de prevenção, os resultados dos seus exames e das avaliações ambientais;</li>
+      <li>elaborar ordens de serviço de segurança e saúde e dar ciência delas aos empregados;</li>
+      <li>permitir que representantes dos trabalhadores acompanhem a fiscalização;</li>
+      <li>determinar o que fazer em caso de acidente ou doença relacionada ao trabalho, incluindo a análise das causas;</li>
+      <li>implementar as medidas de prevenção ouvindo os trabalhadores, na ordem de prioridade da norma.</li>
+    </ul>
+
+    <h2>13. Cabe ao empregado (NR-01, item 1.4.2)</h2>
+    <ul>
+      <li>cumprir as normas de segurança e saúde, inclusive as ordens de serviço da empresa;</li>
+      <li>fazer os exames médicos previstos;</li>
+      <li>colaborar com a empresa na aplicação das normas;</li>
+      <li>usar o EPI fornecido.</li>
+    </ul>
+    <p>O trabalhador pode interromper a atividade quando perceber risco grave e iminente para a sua vida ou saúde, avisando o superior na hora (NR-01, item 1.4.3).</p>
+
+    <div class="termo">
+    <h2>Termo de recebimento e compromisso</h2>
+    <p>Recebi da ${escape(c.empresa)} as orientações desta ordem de serviço e uma cópia dela. Ela me foi explicada, entendi o que está escrito
+    e me comprometo a seguir as orientações, que reconheço serem necessárias para a minha segurança e a dos meus colegas. Declaro também que
+    recebi os EPIs obrigatórios da minha função e me comprometo a usá-los durante toda a jornada, pedindo a troca sempre que precisar.</p>
+    <p class="local-data">${c.local ? `${escape(c.local)}, ` : ''}${c.emitidoEm.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' })}.</p>
+    <div class="assinaturas tres">
+      <div class="assinatura">${escape(col.nome)}<span>Colaborador${col.cpf ? ` · CPF ${escape(col.cpf)}` : ''}</span></div>
+      <div class="assinatura">&nbsp;<span>Segurança do trabalho</span></div>
+      <div class="assinatura">&nbsp;<span>Recursos humanos</span></div>
+    </div>
     </div>`;
 }
 
-const CSS_OS = `.objetivo { background: #F1F5F9; border-radius: 6px; padding: 6px 8px; } body { font-size: 11px; } h2 { font-size: 13px; margin: 10px 0 4px; } td, th { padding: 3px 6px; } .assinaturas { margin-top: 28px; } table { width: 100%; } tbody th { text-align: left; width: 28%; } ul { margin: 4px 0 8px; padding-left: 18px; } .legal { font-weight: 600; }`;
+const CSS_OS = `body { font-size: 11px; } h2 { font-size: 12.5px; margin: 12px 0 4px; } td, th { padding: 3px 6px; } table { width: 100%; }
+  .ident th { width: 16%; text-align: left; } .riscos th { width: 16%; text-align: left; vertical-align: top; }
+  ul { margin: 4px 0 8px; padding-left: 18px; } li { margin-bottom: 2px; line-height: 1.4; } p { line-height: 1.5; text-align: justify; }
+  .duas-col { columns: 2; column-gap: 24px; } .objetivo { background: #F1F5F9; border-radius: 6px; padding: 6px 8px; margin-top: 8px; }
+  .destaque { font-weight: 600; } .falta { color: #b45309; font-style: italic; } .local-data { margin-top: 18px; }
+  .termo { page-break-inside: avoid; }
+  .assinaturas.tres { grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-top: 36px; }`;
 
-export function osHtml(moldura: Moldura, lista: DadosOs[], empresa: string): string {
-  if (lista.length === 1) return documentoHtml(moldura, paginaOs(lista[0], empresa), CSS_OS);
-  // Uma ordem por trabalhador, cada uma em sua página com as duas logos.
+export function osHtml(moldura: Moldura, lista: DadosOs[], cab: CabecalhoOs): string {
+  if (lista.length === 1) return documentoHtml(moldura, paginaOs(lista[0], cab), CSS_OS);
+  // Uma ordem por trabalhador, cada uma começando em página nova, com as duas logos.
   const paginas = lista
-    .map((d, i) => `<div class="${i < lista.length - 1 ? 'quebra' : ''}">${cabecalhoHtml({ ...moldura, infos: [...moldura.infos, ['Trabalhador', d.colaborador.nome]] })}${paginaOs(d, empresa)}${rodapeHtml(moldura)}</div>`)
+    .map((d, i) => `<div class="${i < lista.length - 1 ? 'quebra' : ''}">${cabecalhoHtml({ ...moldura, infos: [] })}${paginaOs(d, cab)}${rodapeHtml(moldura)}</div>`)
     .join('');
   return folhaHtml(paginas, CSS_OS);
 }

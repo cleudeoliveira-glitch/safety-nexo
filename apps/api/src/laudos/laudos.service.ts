@@ -5,7 +5,7 @@ import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DadosOs, laudoHtml, osHtml, pgrtrHtml } from './templates';
 import { chaveFuncao, descricaoGhe, lerFuncoes } from '../empresas/ghe-ambiente';
-import { extrasDe } from '../documentos/secoes';
+import { cidadeDoEndereco, extrasDe } from '../documentos/secoes';
 
 const AVISO_LAUDO = 'Feito com o Safety Nexo.';
 const AVISO = 'Feito com o Safety Nexo.';
@@ -86,9 +86,11 @@ export class LaudosService {
 
   // Ordem de serviço de um trabalhador ou de todos (colaboradorId vazio).
   async ordemServico(consultoriaId: string, empresaId: string, colaboradorId?: string) {
-    const { empresa, logoEmpresa, consultoria } = await this.contexto.carregar(consultoriaId, empresaId, 'OS');
+    const { empresa, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, 'OS');
+    const pgr = await this.prisma.documento.findFirst({ where: { empresaId, tipo: 'PGR' }, orderBy: { versao: 'desc' }, select: { versao: true, geradoEm: true } });
+    const emergencia = (empresa.emergencia ?? {}) as { contatos?: string };
     const colaboradores = await this.prisma.colaborador.findMany({
-      where: { empresaId, ...(colaboradorId ? { id: colaboradorId } : {}) },
+      where: { empresaId, ...(colaboradorId ? { id: colaboradorId } : { dataDesligamento: null }) },
       orderBy: { nome: 'asc' },
       include: { ghe: { include: { riscos: true } }, entregasEpi: { select: { epi: true } } },
     });
@@ -96,12 +98,19 @@ export class LaudosService {
     const lista: DadosOs[] = colaboradores.map((c) => ({
       colaborador: c,
       // Na OS vale o que a função dele faz; sem isso, a descrição do GHE.
-      ghe: c.ghe ? { nome: c.ghe.nome, descricao: lerFuncoes(c.ghe.funcoes).find((f) => chaveFuncao(f.nome) === chaveFuncao(c.cargo))?.atividades || descricaoGhe(c.ghe) } : null,
+      ghe: c.ghe ? { nome: c.ghe.nome, descricao: descricaoGhe(c.ghe), atividadesFuncao: lerFuncoes(c.ghe.funcoes).find((f) => chaveFuncao(f.nome) === chaveFuncao(c.cargo))?.atividades ?? null } : null,
       riscos: c.ghe?.riscos ?? [],
       epis: [...new Set(c.entregasEpi.map((e) => e.epi))].sort(),
     }));
     return this.pdf.render(
-      osHtml({ titulo: 'Ordem de Serviço de Segurança e Saúde no Trabalho', logoEmpresa, consultoria, infos: identificacao(empresa), aviso: AVISO }, lista, empresa.razaoSocial),
+      osHtml({ titulo: 'Ordem de Serviço de Segurança e Saúde no Trabalho', logoEmpresa, consultoria, infos: identificacao(empresa), aviso: AVISO }, lista, {
+        empresa: empresa.razaoSocial,
+        pgr: pgr ? { versao: pgr.versao, data: pgr.geradoEm } : null,
+        emitidoEm: geradoEm,
+        local: cidadeDoEndereco(empresa.endereco) ?? empresa.consultoria.cidade ?? null,
+        telefones: emergencia.contatos?.trim() || null,
+        medicoPcmso: empresa.medicoPcmsoNome ? `${empresa.medicoPcmsoNome}${empresa.medicoPcmsoCrm ? `, CRM ${empresa.medicoPcmsoCrm}` : ''}` : null,
+      }),
     );
   }
 }
