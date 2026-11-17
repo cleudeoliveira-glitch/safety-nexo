@@ -39,6 +39,8 @@ export class PainelService {
         atestados: { where: { inicio: { gte: new Date(Date.now() - 180 * DIA_MS) } } },
         terceiros: { where: { OR: [{ fim: null }, { fim: { gte: new Date() } }] }, select: { razaoSocial: true, documentos: { where: { validade: { lt: new Date() } }, select: { tipo: true } } } },
         registrosSaude: { where: { proximaData: { not: null }, colaborador: { dataDesligamento: null } }, select: { tipo: true, titulo: true, data: true, proximaData: true, colaborador: { select: { id: true, nome: true } } } },
+        espacosConfinados: { where: { ativo: true }, select: { codigo: true, sinalizado: true, isolado: true } },
+        planosResgate: { select: { numero: true, titulo: true, ultimoSimulado: true } },
         reunioesCipa: { where: { tipo: 'ORDINARIA' }, orderBy: { data: 'desc' }, take: 1, select: { data: true } },
         turmas: { where: { norma: 'IT-17' }, select: { fim: true, validadeMeses: true, participantes: { select: { colaboradorId: true } } } },
       },
@@ -96,6 +98,12 @@ export class PainelService {
     pendencias.push(...this.pendenciasDosColaboradores(empresa.colaboradores, hoje));
     pendencias.push(...this.pendenciasDaCipa(empresa, hoje));
     pendencias.push(...this.pendenciasDeTreinamento(empresa.colaboradores, hoje));
+    // NR-33: espaço confinado sem sinalização ou sem bloqueio de entrada.
+    const semSinal = empresa.espacosConfinados.filter((x) => !x.sinalizado || !x.isolado).map((x) => x.codigo);
+    if (semSinal.length) pendencias.push({ titulo: `Espaço confinado sem sinalização ou bloqueio: ${semSinal.length}`, detalhe: `Sinalize e impeça a entrada de quem não é autorizado: ${semSinal.join(', ')}`, nivel: 'pendente' });
+    // Plano de resgate sem simulado no último ano.
+    const semSimulado = empresa.planosResgate.filter((p) => !p.ultimoSimulado || hoje.getTime() - p.ultimoSimulado.getTime() > 365 * DIA_MS);
+    if (semSimulado.length) pendencias.push({ titulo: `Simulado de resgate pendente: ${semSimulado.length} plano(s)`, detalhe: `Treine a equipe pelo menos uma vez por ano: ${semSimulado.map((p) => `nº ${p.numero} ${p.titulo}`).join(', ')}`, nivel: 'pendente' });
     // CIPA que já registra as atas aqui: avisa quando a reunião do mês passou (NR-05, 5.6.1).
     const ultimaReuniao = empresa.reunioesCipa[0]?.data;
     if (ultimaReuniao) {

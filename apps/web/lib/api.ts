@@ -243,11 +243,14 @@ export const reunioesCipa = {
 
 export type EtapaApr = { etapa: string; riscos: string; medidas: string; epis: string };
 export type Apr = { id: string; numero: number; atividade: string; local: string; data: string; responsavel: string; equipe: string[]; etapas: EtapaApr[] };
-export type TipoPt = 'ALTURA' | 'ESPACO_CONFINADO' | 'QUENTE' | 'ELETRICIDADE';
+export type TipoPt = 'ALTURA' | 'ESPACO_CONFINADO' | 'QUENTE' | 'ELETRICIDADE' | 'ICAMENTO' | 'ESCAVACAO';
+export type DetalhesPt = { equipamento?: string; pesoCargaKg?: number; capacidadeKg?: number; operador?: string; sinaleiro?: string; profundidadeM?: number; tipoSolo?: string; contencao?: string };
 export type Permissao = {
   id: string; numero: number; tipo: TipoPt; atividade: string; local: string; inicio: string; fim: string;
   executantes: string[]; emitente: string; checklist: { item: string; ok: boolean }[]; encerradaEm: string | null; apr: { numero: number } | null;
   supervisorEntrada?: string | null; vigia?: string | null; medicoes?: MedicaoGas[];
+  detalhes?: DetalhesPt; espacoId?: string | null; planoResgateId?: string | null;
+  espaco?: { codigo: string; nome: string } | null; planoResgate?: { numero: number; titulo: string } | null;
 };
 // Leitura do detector de gases no espaço confinado: O2 e LIE em %, H2S e CO em ppm.
 export type MedicaoGas = { hora: string; oxigenio: number; lie: number; h2s?: number | null; co?: number | null; outro?: string | null; responsavel: string };
@@ -258,13 +261,47 @@ export type TemaDds = { categoria: string; tema: string; conteudo: string; pergu
 export type ConteudoOperacao = {
   tiposPt: Record<TipoPt, { nome: string; norma: string; checklist: string[] }>;
   temasDds: TemaDds[];
+  tiposEspaco: Record<string, string>;
+  riscosConfinado: Record<string, string>;
+  modelosResgate: Record<TipoResgate, { cenarios: string; equipamentos: string[]; procedimento: string; primeirosSocorros: string }>;
+};
+
+// Inventário de espaços confinados (NR-33) e planos de resgate (NR-33 e NR-35).
+export type EspacoConfinado = {
+  id: string; codigo: string; nome: string; local: string; tipo: string; descricao: string | null; acessos: string | null; produtos: string | null;
+  riscos: string[]; medidasControle: string | null; sinalizado: boolean; isolado: boolean; ativo: boolean;
+};
+export type DadosEspaco = Omit<EspacoConfinado, 'id' | 'descricao' | 'acessos' | 'produtos' | 'medidasControle'> & { descricao?: string; acessos?: string; produtos?: string; medidasControle?: string };
+export type TipoResgate = 'ALTURA' | 'ESPACO_CONFINADO';
+export type PlanoResgate = {
+  id: string; numero: number; tipo: TipoResgate; titulo: string; local: string; espacoId: string | null; espaco: { codigo: string; nome: string } | null;
+  cenarios: string; equipe: string[]; equipeExterna: string | null; equipamentos: string[]; procedimento: string; primeirosSocorros: string | null;
+  telefones: { nome: string; numero: string }[]; hospital: string | null; ultimoSimulado: string | null; simuladoVencido: boolean;
+};
+export type DadosPlanoResgate = {
+  tipo: TipoResgate; titulo: string; local: string; espacoId?: string; cenarios: string; equipe: string[]; equipeExterna?: string; equipamentos: string[];
+  procedimento: string; primeirosSocorros?: string; telefones: { nome: string; numero: string }[]; hospital?: string; ultimoSimulado?: string;
+};
+export const confinados = {
+  listar: (e: string) => chamar<EspacoConfinado[]>('GET', `/empresas/${e}/espacos-confinados`),
+  criar: (e: string, d: DadosEspaco) => chamar<EspacoConfinado>('POST', `/empresas/${e}/espacos-confinados`, d),
+  editar: (e: string, id: string, d: DadosEspaco) => chamar<EspacoConfinado>('PUT', `/empresas/${e}/espacos-confinados/${id}`, d),
+  excluir: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/espacos-confinados/${id}`),
+  pdf: (e: string) => baixarPdf(`/empresas/${e}/espacos-confinados/pdf`, 'cadastro de espaços confinados'),
+};
+export const planosResgate = {
+  listar: (e: string) => chamar<PlanoResgate[]>('GET', `/empresas/${e}/planos-resgate`),
+  criar: (e: string, d: DadosPlanoResgate) => chamar<PlanoResgate>('POST', `/empresas/${e}/planos-resgate`, d),
+  editar: (e: string, id: string, d: DadosPlanoResgate) => chamar<PlanoResgate>('PUT', `/empresas/${e}/planos-resgate/${id}`, d),
+  excluir: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/planos-resgate/${id}`),
+  pdf: (e: string, id: string) => baixarPdf(`/empresas/${e}/planos-resgate/${id}/pdf`, 'plano de resgate'),
 };
 
 export const buscarConteudoOperacao = () => chamar<ConteudoOperacao>('GET', '/operacao/conteudo');
 export const listarAprs = (empresaId: string) => chamar<Apr[]>('GET', `/empresas/${empresaId}/aprs`);
 export const criarApr = (empresaId: string, dados: Omit<Apr, 'id' | 'numero'>) => chamar<Apr>('POST', `/empresas/${empresaId}/aprs`, dados);
 export const listarPermissoes = (empresaId: string) => chamar<Permissao[]>('GET', `/empresas/${empresaId}/permissoes`);
-export const criarPermissao = (empresaId: string, dados: Omit<Permissao, 'id' | 'numero' | 'encerradaEm' | 'apr'> & { aprId?: string }) =>
+export const criarPermissao = (empresaId: string, dados: Omit<Permissao, 'id' | 'numero' | 'encerradaEm' | 'apr' | 'espaco' | 'planoResgate'> & { aprId?: string }) =>
   chamar<Permissao>('POST', `/empresas/${empresaId}/permissoes`, dados);
 export const registrarMedicaoGas = (empresaId: string, id: string, dados: MedicaoGas) =>
   chamar<Permissao>('POST', `/empresas/${empresaId}/permissoes/${id}/medicoes`, dados);

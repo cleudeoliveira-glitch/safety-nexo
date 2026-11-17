@@ -76,6 +76,18 @@ export class MedicaoGasDto {
   responsavel!: string;
 }
 
+// Dados próprios do içamento e da escavação (todos opcionais; o checklist continua valendo).
+export class DetalhesPtDto {
+  @IsOptional() @IsString() @MaxLength(120) equipamento?: string;
+  @IsOptional() @IsNumber({}, { message: 'Peso da carga inválido.' }) @Min(0) @Max(1_000_000) pesoCargaKg?: number;
+  @IsOptional() @IsNumber({}, { message: 'Capacidade inválida.' }) @Min(0) @Max(1_000_000) capacidadeKg?: number;
+  @IsOptional() @IsString() @MaxLength(120) operador?: string;
+  @IsOptional() @IsString() @MaxLength(120) sinaleiro?: string;
+  @IsOptional() @IsNumber({}, { message: 'Profundidade inválida.' }) @Min(0) @Max(200) profundidadeM?: number;
+  @IsOptional() @IsString() @MaxLength(120) tipoSolo?: string;
+  @IsOptional() @IsString() @MaxLength(300) contencao?: string;
+}
+
 export class CriarPermissaoDto {
   @IsIn(Object.keys(TIPOS_PT), { message: 'Tipo de permissão inválido.' })
   tipo!: string;
@@ -126,6 +138,14 @@ export class CriarPermissaoDto {
   @ValidateNested({ each: true })
   @Type(() => MedicaoGasDto)
   medicoes?: MedicaoGasDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DetalhesPtDto)
+  detalhes?: DetalhesPtDto;
+
+  @IsOptional() @IsString() espacoId?: string;
+  @IsOptional() @IsString() planoResgateId?: string;
 }
 
 export class CriarDdsDto {

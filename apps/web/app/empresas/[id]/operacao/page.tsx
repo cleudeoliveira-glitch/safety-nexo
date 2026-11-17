@@ -14,6 +14,11 @@ import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   Apr,
   buscarConteudoOperacao,
+  confinados,
+  type DetalhesPt,
+  type EspacoConfinado,
+  type PlanoResgate,
+  planosResgate,
   buscarEmpresa,
   Colaborador,
   ConteudoOperacao,
@@ -229,8 +234,30 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
   const [tipo, setTipo] = useState<TipoPt>('ALTURA');
   const [marcados, setMarcados] = useState<string[]>([]);
   const [executantes, setExecutantes] = useState<string[]>([]);
+  const [espacos, setEspacos] = useState<EspacoConfinado[]>([]);
+  const [planos, setPlanos] = useState<PlanoResgate[]>([]);
+  const [peso, setPeso] = useState('');
+  const [capacidade, setCapacidade] = useState('');
   const itens = conteudo.tiposPt[tipo].checklist;
   const confinado = tipo === 'ESPACO_CONFINADO';
+  const icamento = tipo === 'ICAMENTO';
+  const escavacao = tipo === 'ESCAVACAO';
+  const comResgate = tipo === 'ALTURA' || confinado;
+  const planosDoTipo = planos.filter((p) => p.tipo === tipo);
+  const numero = (v: string) => (v.trim() ? Number(v.replace(',', '.')) : undefined);
+  const usoCarga = numero(peso) && numero(capacidade) ? Math.round((numero(peso)! / numero(capacidade)!) * 100) : null;
+
+  useEffect(() => {
+    confinados.listar(empresaId).then((l) => setEspacos(l.filter((x) => x.ativo))).catch(() => setEspacos([]));
+    planosResgate.listar(empresaId).then(setPlanos).catch(() => setPlanos([]));
+  }, [empresaId]);
+
+  function lerDetalhes(d: FormData): DetalhesPt | undefined {
+    const t = (k: string) => String(d.get(k) ?? '').trim() || undefined;
+    if (icamento) return { equipamento: t('equipamento'), pesoCargaKg: numero(peso), capacidadeKg: numero(capacidade), operador: t('operador'), sinaleiro: t('sinaleiro') };
+    if (escavacao) return { profundidadeM: numero(String(d.get('profundidade') ?? '')), tipoSolo: t('tipoSolo'), contencao: t('contencao') };
+    return undefined;
+  }
   const pendentes = itens.length - marcados.length;
 
   async function salvar(ev: React.FormEvent<HTMLFormElement>) {
@@ -249,8 +276,13 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
         emitente: String(d.get('emitente')).trim(),
         checklist: itens.map((item) => ({ item, ok: marcados.includes(item) })),
         ...(confinado ? { supervisorEntrada: String(d.get('supervisorEntrada')).trim(), vigia: String(d.get('vigia')).trim(), medicoes: lerMedicao(d) ? [lerMedicao(d)!] : [] } : {}),
+        ...(lerDetalhes(d) ? { detalhes: lerDetalhes(d) } : {}),
+        ...(confinado && d.get('espacoId') ? { espacoId: String(d.get('espacoId')) } : {}),
+        ...(comResgate && d.get('planoResgateId') ? { planoResgateId: String(d.get('planoResgateId')) } : {}),
       });
       form.reset();
+      setPeso('');
+      setCapacidade('');
       setMarcados([]);
       setExecutantes([]);
       avisar('ok', 'Permissão emitida. Baixe o PDF para as assinaturas.');
@@ -283,8 +315,50 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
             {confinado && <>
               <Campo id="pt-supervisor" name="supervisorEntrada" rotulo="Supervisor de entrada" required placeholder="Quem autoriza a entrada" />
               <Campo id="pt-vigia" name="vigia" rotulo="Vigia" required placeholder="Quem fica do lado de fora" />
+              <Selecao id="pt-espaco" name="espacoId" rotulo="Espaço confinado (do cadastro)">
+                <option value="">{espacos.length ? 'Escolha o espaço' : 'Nenhum espaço cadastrado ainda'}</option>
+                {espacos.map((x) => <option key={x.id} value={x.id}>{x.codigo} · {x.nome}</option>)}
+              </Selecao>
             </>}
+            {comResgate && (
+              <Selecao id="pt-resgate" name="planoResgateId" rotulo="Plano de resgate">
+                <option value="">{planosDoTipo.length ? 'Escolha o plano' : 'Nenhum plano deste tipo ainda'}</option>
+                {planosDoTipo.map((x) => <option key={x.id} value={x.id}>Nº {x.numero} · {x.titulo}</option>)}
+              </Selecao>
+            )}
           </div>
+          {comResgate && (
+            <p className="text-xs text-text/60">
+              {confinado ? 'O cadastro dos espaços e os' : 'Os'} planos de resgate ficam em{' '}
+              <Link href={`/empresas/${empresaId}/confinados`} className="font-semibold text-primary underline">Espaços confinados e resgate</Link>.
+            </p>
+          )}
+
+          {icamento && (
+            <fieldset className="grid gap-4 rounded-card border border-border p-3 md:grid-cols-3">
+              <legend className="px-1 text-sm font-semibold">Dados do içamento</legend>
+              <Campo id="pt-equip" name="equipamento" rotulo="Equipamento" placeholder="Ex.: Caminhão munck 20 t" />
+              <Campo id="pt-peso" rotulo="Peso da carga com acessórios (kg)" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="Ex.: 1200" />
+              <Campo id="pt-capacidade" rotulo="Capacidade no raio de trabalho (kg)" inputMode="decimal" value={capacidade} onChange={(e) => setCapacidade(e.target.value)} placeholder="Ex.: 3000" />
+              <Campo id="pt-operador" name="operador" rotulo="Operador" placeholder="Nome do operador" />
+              <Campo id="pt-sinaleiro" name="sinaleiro" rotulo="Sinaleiro (rigger)" placeholder="Nome do sinaleiro" />
+              {usoCarga !== null && (
+                <p className={`self-end pb-3 text-sm font-semibold ${usoCarga > 100 ? 'text-danger' : usoCarga > 75 ? 'text-[#c2410c]' : 'text-success'}`}>
+                  {usoCarga > 100 ? `A carga passa da capacidade (${usoCarga}%). Não pode içar.` : usoCarga > 75 ? `Usa ${usoCarga}% da capacidade: faça o plano de rigging.` : `Usa ${usoCarga}% da capacidade.`}
+                </p>
+              )}
+            </fieldset>
+          )}
+
+          {escavacao && (
+            <fieldset className="grid gap-4 rounded-card border border-border p-3 md:grid-cols-3">
+              <legend className="px-1 text-sm font-semibold">Dados da escavação</legend>
+              <Campo id="pt-prof" name="profundidade" rotulo="Profundidade (m)" inputMode="decimal" placeholder="Ex.: 1,8" />
+              <Campo id="pt-solo" name="tipoSolo" rotulo="Tipo de solo" placeholder="Ex.: Argiloso, úmido" />
+              <Campo id="pt-contencao" name="contencao" rotulo="Contenção" placeholder="Ex.: Escoramento de madeira" />
+              <p className="text-xs text-text/60 md:col-span-3">Acima de 1,25 m de profundidade, o talude precisa estar estável (escoramento ou talude conforme projeto) antes de alguém entrar na vala.</p>
+            </fieldset>
+          )}
 
           {confinado && (
             <fieldset className="rounded-card border border-border p-3">
@@ -324,7 +398,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
                   <span>
                     <strong>Nº {p.numero}</strong> · {conteudo.tiposPt[p.tipo]?.nome ?? p.tipo} · {p.atividade} · até {dataHora(p.fim)} ·{' '}
                     <span className={`font-semibold ${cor}`}>{rotulo}</span>
-                    {p.tipo === 'ESPACO_CONFINADO' && <span className="text-text/60"> · {p.medicoes?.length ?? 0} medição(ões)</span>}
+                    {p.tipo === 'ESPACO_CONFINADO' && <span className="text-text/60"> · {p.espaco ? `${p.espaco.codigo} · ` : ''}{p.medicoes?.length ?? 0} medição(ões)</span>}
                   </span>
                   <span className="flex gap-2">
                     {!p.encerradaEm && p.tipo === 'ESPACO_CONFINADO' && (

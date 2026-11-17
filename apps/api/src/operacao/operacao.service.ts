@@ -6,9 +6,9 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { TEMAS_DDS, TIPOS_PT, TipoPt } from './conteudo';
+import { MODELOS_RESGATE, RISCOS_CONFINADO, TEMAS_DDS, TIPOS_ESPACO, TIPOS_PT, TipoPt } from './conteudo';
 import { CriarAprDto, CriarDdsDto, CriarPermissaoDto, MedicaoGasDto } from './dto';
-import { aprHtml, ddsHtml, EtapaApr, permissaoHtml } from './templates';
+import { aprHtml, ddsHtml, DetalhesPt, EtapaApr, permissaoHtml } from './templates';
 
 const AVISO = 'Feito com o Safety Nexo.';
 
@@ -27,7 +27,7 @@ export class OperacaoService {
   ) {}
 
   conteudo() {
-    return { tiposPt: TIPOS_PT, temasDds: TEMAS_DDS };
+    return { tiposPt: TIPOS_PT, temasDds: TEMAS_DDS, tiposEspaco: TIPOS_ESPACO, riscosConfinado: RISCOS_CONFINADO, modelosResgate: MODELOS_RESGATE };
   }
 
   private async empresa(consultoriaId: string, empresaId: string) {
@@ -103,7 +103,11 @@ export class OperacaoService {
   // Permissão de Trabalho
   async listarPermissoes(consultoriaId: string, empresaId: string) {
     await this.empresa(consultoriaId, empresaId);
-    return this.prisma.permissaoTrabalho.findMany({ where: { empresaId }, orderBy: { numero: 'desc' }, include: { apr: { select: { numero: true } } } });
+    return this.prisma.permissaoTrabalho.findMany({
+      where: { empresaId },
+      orderBy: { numero: 'desc' },
+      include: { apr: { select: { numero: true } }, espaco: { select: { codigo: true, nome: true } }, planoResgate: { select: { numero: true, titulo: true } } },
+    });
   }
 
   async criarPermissao(consultoriaId: string, empresaId: string, dto: CriarPermissaoDto) {
@@ -114,6 +118,21 @@ export class OperacaoService {
     if (dto.aprId && !(await this.prisma.apr.findFirst({ where: { id: dto.aprId, empresaId } }))) {
       throw new NotFoundException('APR não encontrada nesta empresa');
     }
+    if (dto.espacoId && !(await this.prisma.espacoConfinado.findFirst({ where: { id: dto.espacoId, empresaId } }))) {
+      throw new NotFoundException('Espaço confinado não encontrado nesta empresa');
+    }
+    if (dto.planoResgateId && !(await this.prisma.planoResgate.findFirst({ where: { id: dto.planoResgateId, empresaId } }))) {
+      throw new NotFoundException('Plano de resgate não encontrado nesta empresa');
+    }
+    const d = dto.detalhes ?? {};
+    if (dto.tipo === 'ICAMENTO' && d.pesoCargaKg && d.capacidadeKg && d.pesoCargaKg > d.capacidadeKg) {
+      throw new BadRequestException('A carga é mais pesada que a capacidade do equipamento nesse raio. Não dá para liberar este içamento.');
+    }
+    const texto = (v?: string) => v?.trim() || undefined;
+    const detalhes = Object.fromEntries(Object.entries({
+      equipamento: texto(d.equipamento), pesoCargaKg: d.pesoCargaKg, capacidadeKg: d.capacidadeKg, operador: texto(d.operador), sinaleiro: texto(d.sinaleiro),
+      profundidadeM: d.profundidadeM, tipoSolo: texto(d.tipoSolo), contencao: texto(d.contencao),
+    }).filter(([, v]) => v !== undefined && v !== null));
     return this.prisma.permissaoTrabalho.create({
       data: {
         empresaId,
@@ -130,6 +149,9 @@ export class OperacaoService {
         supervisorEntrada: dto.supervisorEntrada?.trim() || null,
         vigia: dto.vigia?.trim() || null,
         medicoes: (dto.medicoes ?? []).map(medicao),
+        detalhes,
+        espacoId: dto.espacoId || null,
+        planoResgateId: dto.planoResgateId || null,
       },
     });
   }
@@ -154,14 +176,22 @@ export class OperacaoService {
 
   async pdfPermissao(consultoriaId: string, empresaId: string, ptId: string) {
     await this.empresa(consultoriaId, empresaId);
-    const pt = await this.prisma.permissaoTrabalho.findFirst({ where: { id: ptId, empresaId }, include: { apr: { select: { numero: true } } } });
+    const pt = await this.prisma.permissaoTrabalho.findFirst({
+      where: { id: ptId, empresaId },
+      include: { apr: { select: { numero: true } }, espaco: { select: { codigo: true, nome: true } }, planoResgate: { select: { numero: true, titulo: true } } },
+    });
     if (!pt) throw new NotFoundException('Permissão não encontrada');
     const tipo = TIPOS_PT[pt.tipo as TipoPt];
     const moldura = await this.moldura(consultoriaId, empresaId, `Permissão de Trabalho nº ${pt.numero}`, [['Emitente', pt.emitente]]);
     return this.pdf.render(
       permissaoHtml(
         moldura,
-        { ...pt, tipoNome: tipo?.nome ?? pt.tipo, norma: tipo?.norma ?? '', aprNumero: pt.apr?.numero ?? null },
+        {
+          ...pt, tipoNome: tipo?.nome ?? pt.tipo, norma: tipo?.norma ?? '', aprNumero: pt.apr?.numero ?? null,
+          detalhes: (pt.detalhes ?? {}) as DetalhesPt,
+          espaco: pt.espaco ? `${pt.espaco.codigo} · ${pt.espaco.nome}` : null,
+          planoResgate: pt.planoResgate ? `nº ${pt.planoResgate.numero} · ${pt.planoResgate.titulo}` : null,
+        },
         pt.checklist as { item: string; ok: boolean }[],
         await this.pessoas(pt.executantes),
         pt.medicoes as Medicao[],

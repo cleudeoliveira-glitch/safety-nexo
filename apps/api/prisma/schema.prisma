@@ -76,6 +76,8 @@ model Empresa {
   documentos     Documento[]
   eleicoesCipa   CipaEleicao[]
   reunioesCipa   CipaReuniao[]
+  espacosConfinados EspacoConfinado[]
+  planosResgate  PlanoResgate[]
   aprs           Apr[]
   permissoes     PermissaoTrabalho[]
   ddss           Dds[]
@@ -388,9 +390,69 @@ model PermissaoTrabalho {
   vigia       String?       // espaço confinado (NR-33): vigia do lado de fora
   medicoes    Json      @default("[]") // [{ hora, oxigenio, lie, h2s, co, outro, responsavel }]
   encerradaEm DateTime?
+  // Dados próprios de cada tipo: içamento (peso, capacidade, operador, sinaleiro) e escavação (profundidade, solo, contenção).
+  detalhes    Json      @default("{}")
+  espacoId    String?   // espaço confinado do inventário (NR-33)
+  espaco      EspacoConfinado? @relation(fields: [espacoId], references: [id], onDelete: SetNull)
+  planoResgateId String?
+  planoResgate   PlanoResgate? @relation(fields: [planoResgateId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
 
   @@unique([empresaId, numero])
+}
+
+// Inventário de espaços confinados (NR-33): cada espaço identificado, sinalizado e com os riscos conhecidos.
+model EspacoConfinado {
+  id              String   @id @default(cuid())
+  empresaId       String
+  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  codigo          String   // ex.: EC-01
+  nome            String   // ex.: Tanque de água potável
+  local           String
+  tipo            String   // TANQUE, SILO, POCO, GALERIA, VASO, DUTO, CAIXA, OUTRO
+  descricao       String?
+  acessos         String?  // ex.: boca de visita de 60 cm no topo
+  produtos        String?  // o que fica ou já ficou lá dentro
+  riscos          String[] // códigos de RISCOS_CONFINADO
+  medidasControle String?
+  sinalizado      Boolean  @default(false)
+  isolado         Boolean  @default(false) // entrada impedida a quem não é autorizado
+  ativo           Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  permissoes      PermissaoTrabalho[]
+  planosResgate   PlanoResgate[]
+
+  @@unique([empresaId, codigo])
+  @@index([empresaId])
+}
+
+// Plano de resgate (NR-35, emergência e salvamento; NR-33, emergência e resgate). Treinado em simulado.
+model PlanoResgate {
+  id               String   @id @default(cuid())
+  empresaId        String
+  empresa          Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  numero           Int
+  tipo             String   // ALTURA | ESPACO_CONFINADO
+  titulo           String
+  local            String
+  espacoId         String?
+  espaco           EspacoConfinado? @relation(fields: [espacoId], references: [id], onDelete: SetNull)
+  cenarios         String   // o que pode dar errado
+  equipe           String[] // ids de colaboradores da equipe de resgate
+  equipeExterna    String?  // empresa de resgate contratada, bombeiros etc.
+  equipamentos     String[]
+  procedimento     String   // passo a passo
+  primeirosSocorros String?
+  telefones        Json     @default("[]") // [{ nome, numero }]
+  hospital         String?
+  ultimoSimulado   DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  permissoes       PermissaoTrabalho[]
+
+  @@unique([empresaId, numero])
+  @@index([empresaId])
 }
 
 // Diálogo Diário de Segurança com lista de presença.
