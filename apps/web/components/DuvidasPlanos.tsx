@@ -47,7 +47,7 @@ const DUVIDAS: { pergunta: string; resposta: React.ReactNode }[] = [
     pergunta: 'Dá para trocar de plano depois?',
     resposta: (
       <>
-        Dá, para cima ou para baixo, quando quiser. Entre no sistema, abra <strong>Meu plano</strong> no menu e peça o novo plano. Se
+        Dá, para cima ou para baixo, quando quiser. Entre no sistema, abra <strong>Minha conta › Meu plano</strong> no menu e peça o novo plano. Se
         você descer para um plano com menos empresas do que já tem cadastradas, nenhuma é apagada. Você só não consegue cadastrar uma
         nova até ficar dentro do limite.
       </>
