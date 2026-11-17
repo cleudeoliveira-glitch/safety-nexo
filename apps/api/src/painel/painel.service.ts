@@ -1,3 +1,4 @@
+import { grau5 } from '../documentos/nivel-risco';
 import { situacaoAfastamento } from '../saude/saude.service';
 import { alertasInss } from '../conectores/absenteismo';
 import { dimensionarBrigada } from '../emergencia/it17';
@@ -186,7 +187,7 @@ export class PainelService {
         relatosNovos,
         pendenciasVencidas: pendencias.filter((p) => p.nivel === 'vencido').length,
         riscosPorTipo: riscos.reduce<Record<string, number>>((m, r) => ({ ...m, [r.tipo]: (m[r.tipo] ?? 0) + r._count._all }), {}),
-        riscosAltos: riscos.filter((r) => r.severidade === 'ALTA').reduce((t, r) => t + r._count._all, 0),
+        riscosAltos: riscos.filter((r) => Number(grau5(r.severidade)) >= 4).reduce((t, r) => t + r._count._all, 0),
       },
     };
   }

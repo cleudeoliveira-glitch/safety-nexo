@@ -1,3 +1,4 @@
+import { medidasPartes, nomeSeveridade } from '../documentos/nivel-risco';
 import { cabecalhoHtml, documentoHtml, escape, folhaHtml, Moldura, rodapeHtml } from '../documentos/layout';
 import { ANEXOS_NR15, ANEXOS_NR16, GRAUS, Grau, ehGrau } from './conteudo';
 
@@ -111,7 +112,7 @@ export function laudoHtml(moldura: Moldura, ghes: GheLaudo[], partes: { insalubr
 }
 
 // PGRTR: o mesmo inventário do PGR, com a base da NR-31 e os temas próprios do trabalho rural.
-export type RiscoPgrtr = { tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; severidade: string };
+export type RiscoPgrtr = { tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; medidasEpc?: string | null; medidasEpi?: string | null; severidade: string };
 export const TEMAS_RURAIS = [
   'Agrotóxicos, adjuvantes e produtos afins: armazenamento, preparo, aplicação e descarte de embalagens',
   'Máquinas, equipamentos e implementos agrícolas',
@@ -125,7 +126,6 @@ export const TEMAS_RURAIS = [
 ];
 
 export function pgrtrHtml(moldura: Moldura, ghes: { nome: string; descricao: string | null; colaboradores: number; riscos: RiscoPgrtr[] }[]): string {
-  const sev: Record<string, string> = { BAIXA: 'Baixa', MEDIA: 'Média', ALTA: 'Alta' };
   const inventario = ghes
     .map(
       (g) => `
@@ -135,7 +135,7 @@ export function pgrtrHtml(moldura: Moldura, ghes: { nome: string; descricao: str
         <table>
           <thead><tr><th>Tipo</th><th>Agente / perigo</th><th>Fonte geradora</th><th>Medidas de prevenção</th><th>Severidade</th></tr></thead>
           <tbody>${g.riscos
-            .map((r) => `<tr><td>${TIPO[r.tipo] ?? r.tipo}</td><td>${escape(r.agente)}</td><td>${escape(r.fonteGeradora)}</td><td>${escape(r.medidasControle)}</td><td>${sev[r.severidade] ?? r.severidade}</td></tr>`)
+            .map((r) => `<tr><td>${TIPO[r.tipo] ?? r.tipo}</td><td>${escape(r.agente)}</td><td>${escape(r.fonteGeradora)}</td><td>${medidasPartes(r).map(([k, v]) => `${k}: ${escape(v)}`).join('<br/>')}</td><td>${nomeSeveridade(r.severidade)}</td></tr>`)
             .join('')}</tbody>
         </table>
       </section>`,
@@ -199,7 +199,7 @@ function paginaOs(d: DadosOs): string {
       ${
         d.riscos.length
           ? `<table><thead><tr><th>Tipo</th><th>Risco</th><th>Fonte</th><th>Como se proteger</th></tr></thead><tbody>${d.riscos
-              .map((r) => `<tr><td>${TIPO[r.tipo] ?? r.tipo}</td><td>${escape(r.agente)}</td><td>${escape(r.fonteGeradora)}</td><td>${escape(r.medidasControle)}</td></tr>`)
+              .map((r) => `<tr><td>${TIPO[r.tipo] ?? r.tipo}</td><td>${escape(r.agente)}</td><td>${escape(r.fonteGeradora)}</td><td>${medidasPartes(r).map(([k, v]) => `${k}: ${escape(v)}`).join('<br/>')}</td></tr>`)
               .join('')}</tbody></table>`
           : '<p>Nenhum risco cadastrado para o GHE deste trabalhador.</p>'
       }

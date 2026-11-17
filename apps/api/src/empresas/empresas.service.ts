@@ -1,3 +1,4 @@
+import { grau5 } from '../documentos/nivel-risco';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CnaeService } from '../cnae/cnae.service';
 import { ehAdminPlataforma } from '../admin/admin-plataforma';
@@ -250,7 +251,7 @@ export class EmpresasService {
     await this.buscar(consultoriaId, empresaId);
     const ghe = await this.prisma.ghe.findFirst({ where: { id: gheId, empresaId } });
     if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
-    return this.prisma.gheRisco.create({ data: { ...dto, gheId } });
+    return this.prisma.gheRisco.create({ data: { ...dto, severidade: grau5(dto.severidade), probabilidade: grau5(dto.probabilidade), gheId } });
   }
 
   async ajustarRisco(consultoriaId: string, empresaId: string, gheId: string, riscoId: string, dto: UpdateGheRiscoDto) {
@@ -260,7 +261,7 @@ export class EmpresasService {
     const vazioVira = (v?: string) => (v === undefined ? undefined : v.trim() || null);
     return this.prisma.gheRisco.update({
       where: { id: riscoId },
-      data: { severidade: dto.severidade, probabilidade: dto.probabilidade, possiveisLesoes: vazioVira(dto.possiveisLesoes), medidasControle: vazioVira(dto.medidasControle) },
+      data: { severidade: dto.severidade && grau5(dto.severidade), probabilidade: dto.probabilidade && grau5(dto.probabilidade), possiveisLesoes: vazioVira(dto.possiveisLesoes), medidasControle: vazioVira(dto.medidasControle), medidasEpc: vazioVira(dto.medidasEpc), medidasEpi: vazioVira(dto.medidasEpi) },
     });
   }
 

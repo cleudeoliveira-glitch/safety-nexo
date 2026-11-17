@@ -56,7 +56,7 @@ export type RiscoEsocial = {
   codAgNoc?: string; unMed?: number; utilizEPC?: number; utilizEPI?: number;
   epiCompl?: { medProtecao: boolean; condFuncto: boolean; usoInint: boolean; przValid: boolean; periodicTroca: boolean; higienizacao: boolean };
 };
-export type Risco = { id: string; tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; severidade: string; probabilidade?: string; possiveisLesoes?: string | null } & Partial<AvaliacaoRisco>;
+export type Risco = { id: string; tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; medidasEpc?: string | null; medidasEpi?: string | null; severidade: string; probabilidade?: string; possiveisLesoes?: string | null } & Partial<AvaliacaoRisco>;
 export type Exame = {
   id: string;
   nome: string;
@@ -144,7 +144,7 @@ export const criarGhe = (empresaId: string, dados: DadosGhe) =>
   chamar<Ghe>('POST', `/empresas/${empresaId}/ghes`, dados);
 export const criarRisco = (empresaId: string, gheId: string, dados: Omit<Risco, 'id'>) =>
   chamar<Risco>('POST', `/empresas/${empresaId}/ghes/${gheId}/riscos`, dados);
-export const ajustarRisco = (empresaId: string, gheId: string, riscoId: string, dados: { severidade?: string; probabilidade?: string; possiveisLesoes?: string; medidasControle?: string }) =>
+export const ajustarRisco = (empresaId: string, gheId: string, riscoId: string, dados: { severidade?: string; probabilidade?: string; possiveisLesoes?: string; medidasControle?: string; medidasEpc?: string; medidasEpi?: string }) =>
   chamar<Risco>('PATCH', `/empresas/${empresaId}/ghes/${gheId}/riscos/${riscoId}`, dados);
 export const avaliarRisco = (empresaId: string, gheId: string, riscoId: string, dados: AvaliacaoRisco) =>
   chamar<Risco>('PUT', `/empresas/${empresaId}/ghes/${gheId}/riscos/${riscoId}/avaliacao`, dados);
@@ -843,11 +843,11 @@ export const fapRat = {
 
 // ---------- Documentos antigos lidos com IA ----------
 export type TipoRisco = 'FISICO' | 'QUIMICO' | 'BIOLOGICO' | 'ERGONOMICO' | 'ACIDENTE';
-export type RiscoLido = { tipo: TipoRisco; agente: string; fonteGeradora: string | null; medidasControle: string | null; severidade: 'BAIXA' | 'MEDIA' | 'ALTA' | null; intensidade: string | null; limiteTolerancia: string | null; pagina: number | null };
+export type RiscoLido = { tipo: TipoRisco; agente: string; fonteGeradora: string | null; medidasControle: string | null; severidade: string | null; intensidade: string | null; limiteTolerancia: string | null; pagina: number | null };
 export type GheLido = { nome: string; descricao: string | null; cargos: string[]; trabalhadores: number | null; riscos: RiscoLido[] };
 export type DocumentoLido = { tipoDocumento: string | null; empresa: string | null; cnpj: string | null; dataElaboracao: string | null; responsavelTecnico: string | null; ghes: GheLido[]; avisos: string[] };
 export type Leitura = { id: string; nomeArquivo: string; status: 'LENDO' | 'PRONTO' | 'ERRO' | 'IMPORTADO'; resultado: DocumentoLido | null; erro: string | null; criadoPorNome: string; createdAt: string; importadoEm: string | null; arquivoId: string | null };
-export type RiscoImportar = { tipo: TipoRisco; agente: string; fonteGeradora: string; medidasControle?: string; severidade: 'BAIXA' | 'MEDIA' | 'ALTA'; intensidade?: string; limiteTolerancia?: string };
+export type RiscoImportar = { tipo: TipoRisco; agente: string; fonteGeradora: string; medidasControle?: string; severidade: string; intensidade?: string; limiteTolerancia?: string };
 export const importarPdf = {
   situacao: (e: string) => chamar<{ iaLigada: boolean }>('GET', `/empresas/${e}/importar-pdf/situacao`),
   listar: (e: string) => chamar<Leitura[]>('GET', `/empresas/${e}/importar-pdf`),

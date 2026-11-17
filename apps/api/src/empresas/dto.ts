@@ -193,12 +193,16 @@ export class CreateGheRiscoDto {
   @IsString()
   medidasControle?: string;
 
+  @IsOptional() @IsString() @Length(0, 2000) medidasEpc?: string;
+  @IsOptional() @IsString() @Length(0, 2000) medidasEpi?: string;
+
+  // Matriz 5x5: de 1 a 5. BAIXA, MEDIA e ALTA (matriz antiga) ainda são aceitos e viram 2, 3 e 5.
   @IsOptional()
-  @IsIn(['BAIXA', 'MEDIA', 'ALTA'])
+  @IsIn(['1', '2', '3', '4', '5', 'BAIXA', 'MEDIA', 'ALTA'], { message: 'A severidade vai de 1 a 5.' })
   severidade?: string;
 
   @IsOptional()
-  @IsIn(['BAIXA', 'MEDIA', 'ALTA'])
+  @IsIn(['1', '2', '3', '4', '5', 'BAIXA', 'MEDIA', 'ALTA'], { message: 'A probabilidade vai de 1 a 5.' })
   probabilidade?: string;
 
   @IsOptional()
@@ -209,10 +213,12 @@ export class CreateGheRiscoDto {
 
 // Ajuste de um risco já cadastrado: classificação (NR-01, 1.5.4.4.2), lesões e medidas.
 export class UpdateGheRiscoDto {
-  @IsOptional() @IsIn(['BAIXA', 'MEDIA', 'ALTA']) severidade?: string;
-  @IsOptional() @IsIn(['BAIXA', 'MEDIA', 'ALTA']) probabilidade?: string;
+  @IsOptional() @IsIn(['1', '2', '3', '4', '5', 'BAIXA', 'MEDIA', 'ALTA'], { message: 'A severidade vai de 1 a 5.' }) severidade?: string;
+  @IsOptional() @IsIn(['1', '2', '3', '4', '5', 'BAIXA', 'MEDIA', 'ALTA'], { message: 'A probabilidade vai de 1 a 5.' }) probabilidade?: string;
   @IsOptional() @IsString() @Length(0, 500) possiveisLesoes?: string;
   @IsOptional() @IsString() @Length(0, 2000) medidasControle?: string;
+  @IsOptional() @IsString() @Length(0, 2000) medidasEpc?: string;
+  @IsOptional() @IsString() @Length(0, 2000) medidasEpi?: string;
 }
 
 export class CreateExameGheDto {

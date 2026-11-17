@@ -1,3 +1,4 @@
+import { pontosRisco } from '../documentos/nivel-risco';
 import { TEMAS_DDS, TemaDds } from './temas-dds';
 
 // Sugere temas de DDS a partir do que a empresa tem de risco: os riscos dos GHEs,
@@ -30,7 +31,6 @@ const PT_CATEGORIA: Record<string, [string, string]> = {
   // Içamento e escavação têm tema próprio na biblioteca: vai direto nele.
   ICAMENTO: ['tema:Movimentação de cargas com guindaste ou talha', 'içamento'], ESCAVACAO: ['tema:Escavações e valas', 'escavação'],
 };
-const PESO: Record<string, number> = { BAIXA: 1, MEDIA: 2, ALTA: 3 };
 
 export type RiscoParaDds = { ghe: string; tipo: string; agente: string; severidade: string; probabilidade: string };
 export type SugestaoDds = TemaDds & { motivo: string };
@@ -47,11 +47,11 @@ export function sugerirTemasDds(
     else atual.pontos += valor; // o primeiro motivo (o risco mais pesado) fica
   };
 
-  const ordenados = [...riscos].sort((a, b) => PESO[b.severidade] * PESO[b.probabilidade] - PESO[a.severidade] * PESO[a.probabilidade]);
+  const ordenados = [...riscos].sort((a, b) => pontosRisco(b.severidade, b.probabilidade) - pontosRisco(a.severidade, a.probabilidade));
   for (const r of ordenados) {
     const agente = r.agente.toLowerCase();
     for (const regra of REGRAS) {
-      if (regra.teste(r.tipo, agente)) somar(regra.categoria, (PESO[r.severidade] ?? 2) * (PESO[r.probabilidade] ?? 2), `Risco de ${r.agente.toLowerCase()} em ${r.ghe}`);
+      if (regra.teste(r.tipo, agente)) somar(regra.categoria, Math.ceil(pontosRisco(r.severidade, r.probabilidade) / 3), `Risco de ${r.agente.toLowerCase()} em ${r.ghe}`);
     }
   }
   if (extras.espacosConfinados) somar('Espaço confinado', 6, `${extras.espacosConfinados} espaço(s) confinado(s) cadastrado(s)`);

@@ -1,12 +1,14 @@
 import * as tokens from '@safety-nexo/design-tokens';
 import { documentoHtml, escape, Moldura } from './layout';
 import { FuncaoGhe } from '../empresas/ghe-ambiente';
-import { DECISAO_NIVEL, NOME_GRAU, NOME_NIVEL, Nivel, nivelRisco } from './nivel-risco';
+import { DECISAO_NIVEL, EXPLICA_SEVERIDADE, GRAUS, NOME_NIVEL, NOME_PROBABILIDADE, NOME_SEVERIDADE, Nivel, medidasPartes, nivelRisco, nomeProbabilidade, nomeSeveridade } from './nivel-risco';
+
+const NOME_PRIORIDADE: Record<string, string> = { BAIXA: 'Baixa', MEDIA: 'Média', ALTA: 'Alta' };
 
 // PGR conforme a NR-01 (1.5.7): inventário de riscos + plano de ação, datado e assinado.
 
 export type RiscoPdf = {
-  tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; severidade: string; probabilidade: string;
+  tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; medidasEpc?: string | null; medidasEpi?: string | null; severidade: string; probabilidade: string;
   possiveisLesoes: string | null; tipoAvaliacao?: string | null; intensidade?: string | null; limiteTolerancia?: string | null;
 };
 export type GhePdf = {
@@ -38,14 +40,19 @@ function avaliacao(r: RiscoPdf) {
   return 'Qualitativa (preliminar)';
 }
 
+// Matriz 5x5: probabilidade de cima (5, quase certa) para baixo; severidade da esquerda (1) para a direita (5).
 function matriz() {
-  const linhas = ['ALTA', 'MEDIA', 'BAIXA']
-    .map((p) => `<tr><th>${NOME_GRAU[p]}</th>${['BAIXA', 'MEDIA', 'ALTA'].map((s) => `<td class="c">${selo(nivelRisco(s, p))}</td>`).join('')}</tr>`)
+  const linhas = [...GRAUS].reverse()
+    .map((p) => `<tr><th>${p} · ${NOME_PROBABILIDADE[p]}</th>${GRAUS.map((s) => `<td class="c">${selo(nivelRisco(s, p))}<br/><span class="pts">${Number(s) * Number(p)}</span></td>`).join('')}</tr>`)
     .join('');
   return `
     <table class="matriz">
-      <thead><tr><th>Probabilidade ↓ / Severidade →</th><th class="c">Baixa</th><th class="c">Média</th><th class="c">Alta</th></tr></thead>
+      <thead><tr><th>Probabilidade ↓ / Severidade →</th>${GRAUS.map((s) => `<th class="c">${s} · ${NOME_SEVERIDADE[s]}</th>`).join('')}</tr></thead>
       <tbody>${linhas}</tbody>
+    </table>
+    <table>
+      <thead><tr><th>Severidade</th><th>Quer dizer</th></tr></thead>
+      <tbody>${GRAUS.map((s) => `<tr><td>${s} · ${NOME_SEVERIDADE[s]}</td><td>${EXPLICA_SEVERIDADE[s]}</td></tr>`).join('')}</tbody>
     </table>
     <table>
       <thead><tr><th>Nível</th><th>Decisão</th></tr></thead>
@@ -97,10 +104,10 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
                   <td>${escape(r.fonteGeradora)}</td>
                   <td>${r.possiveisLesoes ? escape(r.possiveisLesoes) : '<span class="falta">a informar</span>'}</td>
                   <td>${avaliacao(r)}</td>
-                  <td class="c">${NOME_GRAU[r.severidade] ?? escape(r.severidade)}</td>
-                  <td class="c">${NOME_GRAU[r.probabilidade] ?? escape(r.probabilidade)}</td>
+                  <td class="c">${nomeSeveridade(r.severidade)}</td>
+                  <td class="c">${nomeProbabilidade(r.probabilidade)}</td>
                   <td class="c">${selo(nivelRisco(r.severidade, r.probabilidade))}</td>
-                  <td>${r.medidasControle ? escape(r.medidasControle) : '<span class="falta">a definir</span>'}</td>
+                  <td>${medidasPartes(r).length ? medidasPartes(r).map(([k, v]) => `<strong>${k}:</strong> ${escape(v)}`).join('<br/>') : '<span class="falta">a definir</span>'}</td>
                 </tr>`,
               )
               .join('')}
@@ -118,7 +125,7 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
         <tbody>${extras.acoes
           .map(
             (a) => `<tr><td>${escape(a.descricao)}</td><td>${escape(a.local)}</td><td>${a.responsavel ? escape(a.responsavel) : '<span class="falta">a definir</span>'}</td>
-              <td>${a.prazo ? data(a.prazo) : '<span class="falta">a definir</span>'}</td><td>${NOME_GRAU[a.prioridade] ?? escape(a.prioridade)}</td>
+              <td>${a.prazo ? data(a.prazo) : '<span class="falta">a definir</span>'}</td><td>${NOME_PRIORIDADE[a.prioridade] ?? escape(a.prioridade)}</td>
               <td>${STATUS[a.status] ?? escape(a.status)}</td><td>${escape(a.origemTexto ?? 'Manual')}</td></tr>`,
           )
           .join('')}</tbody>
@@ -141,7 +148,7 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
       <h2>2. Como os riscos foram avaliados</h2>
       <p>Percorremos os setores, acompanhamos as atividades e conversamos com quem faz o trabalho. Para cada perigo encontrado, avaliamos
       o tamanho do dano que ele pode causar (severidade) e a chance de isso acontecer com as proteções que já existem hoje (probabilidade).
-      O cruzamento das duas coisas dá o nível de risco, que define o que resolver primeiro.</p>
+      Cada uma recebe uma nota de 1 a 5, e a multiplicação das duas (de 1 a 25) dá o nível de risco na matriz 5x5, que define o que resolver primeiro.</p>
       ${matriz()}
       <p>Na escolha das medidas, a preferência é sempre tirar o perigo do caminho ou trocá-lo por algo mais seguro. Quando isso não dá,
       vêm as proteções coletivas, depois a organização do trabalho, e o EPI fica como último recurso.</p>
@@ -181,6 +188,6 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
     corpo,
     `h3 { color: ${tokens.colors.primary}; font-size: 13px; margin: 14px 0 4px; }
      .ghe table { font-size: 10px; } .c { text-align: center; } .falta { color: ${tokens.colors.danger}; }
-     .matriz { width: auto; margin-bottom: 8px; } .matriz td, .matriz th { min-width: 80px; }`,
+     .matriz { width: 100%; margin-bottom: 8px; } .matriz td, .matriz th { min-width: 70px; font-size: 10px; } .matriz .pts { font-size: 9px; color: #64748b; }`,
   );
 }
