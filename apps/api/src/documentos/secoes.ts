@@ -188,3 +188,57 @@ export function identificacaoBasica(x: ExtrasDoc, total: number, responsavel: { 
 // serve o documento e em que norma ele se apoia, sem transformar um formulário em apostila.
 export const objetivoDoc = (texto: string) =>
   `<section style="background:#F1F5F9;border-radius:8px;padding:8px 12px;margin-bottom:10px"><h2 style="margin-top:0">Para que serve</h2><p style="margin:0;line-height:1.5">${texto}</p></section>`;
+
+// Cronograma anual de ações: 12 meses a partir da emissão, com P (previsto) e R (realizado).
+// É o quadro que todo programa costuma trazer: treinamentos, palestras, inspeções, revisão do programa etc.
+export type ItemCronograma = { acao: string; responsavel: string; meses: number[]; realizados?: number[] };
+const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+export const TODO_MES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+export const TRIMESTRAL = [0, 3, 6, 9];
+
+// Mês do cronograma (0 a 11) em que cai uma data, ou null se fora dos 12 meses.
+export function mesDoCronograma(inicio: Date, data: Date | null): number | null {
+  if (!data) return null;
+  const n = (data.getUTCFullYear() - inicio.getFullYear()) * 12 + (data.getUTCMonth() - inicio.getMonth());
+  return n >= 0 && n < 12 ? n : null;
+}
+
+export function cronogramaHtml(inicio: Date, itens: ItemCronograma[]): string {
+  const colunas = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(inicio.getFullYear(), inicio.getMonth() + i, 1);
+    return { mes: MESES[d.getMonth()], ano: d.getFullYear() };
+  });
+  const anos = colunas.reduce<{ ano: number; n: number }[]>((acc, c) => {
+    const ultimo = acc[acc.length - 1];
+    if (ultimo && ultimo.ano === c.ano) ultimo.n += 1;
+    else acc.push({ ano: c.ano, n: 1 });
+    return acc;
+  }, []);
+  const linhas = itens
+    .map((it, i) => {
+      const celulas = colunas
+        .map((_, m) => {
+          const r = it.realizados?.includes(m);
+          const p = it.meses.includes(m);
+          return `<td class="cm ${r ? 'r' : p ? 'p' : ''}">${r ? 'R' : p ? 'P' : ''}</td>`;
+        })
+        .join('');
+      return `<tr><td class="c">${String(i + 1).padStart(2, '0')}</td><td>${escape(it.acao)}</td><td>${escape(it.responsavel)}</td>${celulas}</tr>`;
+    })
+    .join('');
+  return `<table class="cronograma">
+    <thead>
+      <tr><th rowspan="2" class="c">Nº</th><th rowspan="2">Ação</th><th rowspan="2">Responsável</th>${anos.map((a) => `<th colspan="${a.n}" class="c">${a.ano}</th>`).join('')}</tr>
+      <tr>${colunas.map((c) => `<th class="cm">${c.mes}</th>`).join('')}</tr>
+    </thead>
+    <tbody>${linhas}</tbody>
+  </table>
+  <p class="nota">Legenda: <strong>P</strong> = previsto · <strong>R</strong> = realizado. O cronograma é acompanhado mês a mês e atualizado no sistema conforme as ações são feitas.</p>`;
+}
+
+export const CSS_CRONOGRAMA = `
+  .cronograma { font-size: 9px; } .cronograma td, .cronograma th { padding: 3px 4px; }
+  .cronograma .cm { width: 22px; text-align: center; padding: 3px 0; }
+  .cronograma td.p { background: #E0F2FE; font-weight: 700; color: #075985; }
+  .cronograma td.r { background: #DCFCE7; font-weight: 700; color: #166534; }
+`;

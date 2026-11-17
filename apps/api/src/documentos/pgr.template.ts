@@ -1,5 +1,6 @@
 import * as tokens from '@safety-nexo/design-tokens';
 import { documentoHtml, escape, Moldura } from './layout';
+import { CSS_CRONOGRAMA, ItemCronograma, TODO_MES, TRIMESTRAL, cronogramaHtml, mesDoCronograma } from './secoes';
 import { Controle, CSS_SECOES, blocoAssinaturas, controleDocumento, dataBr, lista, p, referenciasPelosRiscos, secoesNumeradas, tabelaDuasColunas, tabelaReferencias } from './secoes';
 import { FuncaoGhe } from '../empresas/ghe-ambiente';
 import { DECISAO_NIVEL, EXPLICA_SEVERIDADE, GRAUS, NOME_NIVEL, NOME_PROBABILIDADE, NOME_SEVERIDADE, Nivel, medidasPartes, nivelRisco, nomeProbabilidade, nomeSeveridade } from './nivel-risco';
@@ -16,7 +17,7 @@ export type GhePdf = {
   nome: string; descricao: string | null; riscos: RiscoPdf[]; colaboradores: number;
   setor?: string | null; funcoes?: FuncaoGhe[]; ambiente?: string;
 };
-export type AcaoPdf = { descricao: string; local: string | null; responsavel: string | null; prazo: Date | null; prioridade: string; status: string; origemTexto: string | null };
+export type AcaoPdf = { descricao: string; local: string | null; responsavel: string | null; prazo: Date | null; prioridade: string; status: string; origemTexto: string | null; feitaEm?: Date | null };
 export type ExtrasPgr = {
   processos: string | null;
   acoes: AcaoPdf[];
@@ -87,6 +88,35 @@ function ambientesHtml(ghes: GhePdf[]): string {
 }
 
 const ehPsicossocial = (r: RiscoPdf) => /^fatores psicossociais/i.test(r.agente);
+
+// Mês do cronograma em que cai um mês do calendário (0 = janeiro).
+const noMes = (inicio: Date, mesCalendario: number) => (mesCalendario - inicio.getMonth() + 12) % 12;
+
+// Cronograma do PGR: ações de rotina do programa + as ações do plano que vencem nos próximos 12 meses.
+function cronogramaPgr(inicio: Date, acoes: AcaoPdf[], nrs: string[]): ItemCronograma[] {
+  const itens: ItemCronograma[] = [
+    { acao: 'Apresentar o PGR aos trabalhadores e à CIPA ou ao representante da NR-05', responsavel: 'Empresa e responsável técnico', meses: [0] },
+    { acao: 'Elaborar ou atualizar o PCMSO com base nos riscos deste PGR', responsavel: 'Médico do PCMSO', meses: [0] },
+    { acao: 'Integração de segurança dos trabalhadores admitidos (sempre que houver admissão)', responsavel: 'Empresa', meses: TODO_MES },
+    { acao: 'Fornecer os EPIs, exigir o uso e manter as fichas de entrega atualizadas', responsavel: 'Empresa', meses: TODO_MES },
+    { acao: 'Treinamento de uso, guarda e conservação dos EPIs (NR-06)', responsavel: 'Responsável técnico', meses: [1, 7] },
+    ...(nrs.length ? [{ acao: `Treinamentos obrigatórios das normas aplicáveis (${nrs.join(', ')}), com reciclagem no prazo de cada norma`, responsavel: 'Empresa', meses: [2] }] : []),
+    { acao: 'Diálogos diários de segurança (DDS) com temas ligados aos riscos do inventário', responsavel: 'Encarregados', meses: TODO_MES },
+    { acao: 'Inspeções de segurança nos setores, com registro e fotos', responsavel: 'Responsável técnico e CIPA', meses: TRIMESTRAL },
+    { acao: 'Acompanhamento do plano de ação e da eficácia das medidas', responsavel: 'Responsável técnico', meses: [2, 5, 8, 11] },
+    { acao: 'Palestra de prevenção de acidentes (Abril Verde)', responsavel: 'Responsável técnico', meses: [noMes(inicio, 3)] },
+    { acao: 'SIPAT: semana interna de prevenção, quando houver CIPA ou representante', responsavel: 'CIPA e empresa', meses: [8] },
+    { acao: 'Simulado de abandono e de emergência', responsavel: 'Brigada e responsável técnico', meses: [5] },
+    { acao: 'Análise global do PGR: avaliar o ano e atualizar o inventário e o plano', responsavel: 'Responsável técnico', meses: [11] },
+  ];
+  for (const a of acoes.slice(0, 30)) {
+    const previsto = mesDoCronograma(inicio, a.prazo);
+    const feito = a.status === 'FEITA' ? mesDoCronograma(inicio, a.feitaEm ?? null) : null;
+    if (previsto === null && feito === null) continue;
+    itens.push({ acao: `Plano de ação: ${a.descricao}${a.local ? ` (${a.local})` : ''}`, responsavel: a.responsavel ?? 'a definir', meses: previsto !== null ? [previsto] : [], realizados: feito !== null ? [feito] : [] });
+  }
+  return itens;
+}
 
 export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPgr): string {
   const todos = ghes.flatMap((g) => g.riscos.map((r) => ({ ghe: g.nome, r, nivel: nivelRisco(r.severidade, r.probabilidade) })));
@@ -301,6 +331,11 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
         ${p('Cada ação concluída ganha data e foto de comprovação. Depois de concluída, o risco é avaliado de novo para confirmar que a medida funcionou.')}`,
     },
     {
+      titulo: 'Cronograma anual de ações',
+      html: `${p('O quadro abaixo distribui ao longo dos próximos 12 meses as ações de rotina do programa (treinamentos, palestras, inspeções, simulados e a revisão do PGR) e as ações do plano que têm prazo nesse período.')}
+        ${cronogramaHtml(extras.emitidoEm, cronogramaPgr(extras.emitidoEm, extras.acoes, referenciasPelosRiscos(todos.map((x) => x.r), e.cnae).map((r) => r[0]).filter((n) => ['NR-10', 'NR-11', 'NR-12', 'NR-20', 'NR-33', 'NR-35'].includes(n))))}`,
+    },
+    {
       titulo: 'Acompanhamento',
       html: `${p('Ter o plano não basta: é preciso conferir se ele está andando e se as medidas estão funcionando. O acompanhamento é feito assim:')}
         ${lista([
@@ -361,7 +396,7 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
   return documentoHtml(
     moldura,
     corpo,
-    `${CSS_SECOES}
+    `${CSS_SECOES}${CSS_CRONOGRAMA}
      .ghe table { font-size: 10px; } .c { text-align: center; }
      .matriz { width: 100%; margin-bottom: 8px; } .matriz td, .matriz th { min-width: 70px; font-size: 10px; } .matriz .pts { font-size: 9px; color: #64748b; }`,
   );

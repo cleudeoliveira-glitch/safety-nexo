@@ -1,4 +1,5 @@
 import { documentoHtml, escape, Moldura } from './layout';
+import { CSS_CRONOGRAMA, TODO_MES, TRIMESTRAL, cronogramaHtml } from './secoes';
 import { Controle, CSS_SECOES, blocoAssinaturas, controleDocumento, dataBr, lista, p, secoesNumeradas, tabelaDuasColunas, tabelaReferencias } from './secoes';
 
 export type ExamePdf = {
@@ -199,6 +200,26 @@ export function renderPcmsoHtml(moldura: Moldura, medico: Medico, ghes: GhePcmso
       ),
     },
     {
+      titulo: 'Cronograma anual de ações de saúde',
+      html: `${p('Além dos exames, o programa prevê ações de saúde ao longo do ano. O quadro abaixo mostra quando cada uma acontece nos próximos 12 meses.')}
+        ${cronogramaHtml(extras.controle.emitidoEm, (() => {
+          const ini = extras.controle.emitidoEm;
+          const noMes = (cal: number) => (cal - ini.getMonth() + 12) % 12;
+          return [
+            { acao: 'Exames admissionais, de retorno, de mudança de risco e demissionais (sempre que houver)', responsavel: 'Empresa e médico', meses: TODO_MES },
+            { acao: 'Exames periódicos, conforme o vencimento de cada trabalhador', responsavel: 'Empresa e médico', meses: TODO_MES },
+            { acao: 'Envio dos ASOs ao eSocial (S-2220) até o dia 15 do mês seguinte', responsavel: 'Setor pessoal', meses: TODO_MES },
+            { acao: 'Conferir e repor o material de primeiros socorros', responsavel: 'Empresa', meses: TRIMESTRAL },
+            { acao: 'Treinamento de primeiros socorros', responsavel: 'Empresa', meses: [2] },
+            { acao: extras.servicoSaude ? 'Conferir a vacinação (tétano, difteria, hepatite B) e campanha contra a gripe' : 'Campanha de vacinação contra a gripe', responsavel: 'Empresa e médico', meses: [noMes(3)] },
+            { acao: 'Palestra de saúde mental (Setembro Amarelo)', responsavel: 'Empresa e médico', meses: [noMes(8)] },
+            { acao: 'Palestras de prevenção do câncer (Outubro Rosa e Novembro Azul)', responsavel: 'Empresa e médico', meses: [noMes(9), noMes(10)] },
+            { acao: 'Relatório analítico anual do PCMSO', responsavel: 'Médico do PCMSO', meses: [11] },
+            { acao: 'Revisão do PCMSO junto com o PGR', responsavel: 'Médico do PCMSO', meses: [11] },
+          ];
+        })())}`,
+    },
+    {
       titulo: 'Revisão e vigência',
       html: `${p(`Este PCMSO passa a valer na data de emissão${extras.controle.proximaRevisao ? ` e deve ser revisto até ${dataBr(extras.controle.proximaRevisao)}` : ''}, junto com o relatório analítico. Ele também deve ser revisto antes disso quando:`)}
         ${lista(['o PGR for atualizado ou surgirem riscos novos;', 'mudar a estrutura da empresa, os setores ou as funções;', 'os resultados dos exames indicarem necessidade de ajuste;', 'mudar a NR-07 ou outra norma que se aplique.'])}`,
@@ -219,6 +240,6 @@ export function renderPcmsoHtml(moldura: Moldura, medico: Medico, ghes: GhePcmso
        { nome: medico.nome, papel: 'Médico responsável pelo PCMSO', registro: medico.crm ? `CRM ${medico.crm}` : null },
        { nome: extras.representanteLegal, papel: 'Representante da organização' },
      ])}`,
-    `${CSS_SECOES} .c { text-align: center; } .riscos { margin: 0 0 4px; } .ghe table { font-size: 10px; }`,
+    `${CSS_SECOES}${CSS_CRONOGRAMA} .c { text-align: center; } .riscos { margin: 0 0 4px; } .ghe table { font-size: 10px; }`,
   );
 }
