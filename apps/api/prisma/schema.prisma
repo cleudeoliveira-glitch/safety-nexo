@@ -1336,3 +1336,23 @@ model CalculoSalvo {
 
   @@index([empresaId])
 }
+
+// Celular (ou computador) de um ADM da plataforma que aceitou receber avisos na tela bloqueada (Web Push).
+model AvisoCelular {
+  id        String   @id @default(cuid())
+  usuarioId String
+  endpoint  String   @unique // endereço que o Google/Apple/Mozilla deu a este aparelho
+  p256dh    String
+  auth      String
+  aparelho  String?  // ex.: "iPhone", "Android", "Computador"
+  criadoEm  DateTime @default(now())
+
+  @@index([usuarioId])
+}
+
+// Configurações da plataforma guardadas no banco (ex.: as chaves dos avisos no celular, criadas sozinhas na 1ª vez).
+model ConfigPlataforma {
+  chave        String   @id
+  valor        String
+  atualizadoEm DateTime @updatedAt
+}

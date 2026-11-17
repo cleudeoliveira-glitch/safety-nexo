@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Aviso, Botao } from '@/components/ui';
+import { AvisosCelular } from '@/components/AvisosCelular';
 import { admin, ConsultoriaAdm, ConsultoriaAdmDetalhe, PainelAdm } from '@/lib/api';
 import { lerToken } from '@/lib/sessao';
 
@@ -98,6 +99,7 @@ export default function PainelAdmPage() {
         <p className="text-text/60">Todas as consultorias que usam o Safety Nexo: plano, uso e acesso. Só você vê esta tela.</p>
         <Link href="/admin/normas" className="mt-3 inline-block rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white">Publicar aviso de mudança nas normas</Link>
       </div>
+      <AvisosCelular />
       <ConvidarCliente />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -962,6 +962,10 @@ export const admin = {
     chamar<unknown>('PATCH', `/admin/consultorias/${id}`, dados),
   convites: () => chamar<{ link: string; whatsapp: string }>('GET', '/admin/convites'),
   linkSenha: (usuarioId: string) => chamar<{ link: string; whatsapp: string }>('POST', `/admin/usuarios/${usuarioId}/link-senha`),
+  avisosCelular: () => chamar<{ chavePublica: string; aparelhos: { endpoint: string; aparelho: string | null; criadoEm: string }[] }>('GET', '/admin/avisos-celular'),
+  ligarAvisosCelular: (d: { endpoint: string; keys: { p256dh: string; auth: string }; aparelho: string }) => chamar<{ ok: boolean }>('POST', '/admin/avisos-celular', d),
+  desligarAvisosCelular: (endpoint: string) => chamar<{ ok: boolean }>('DELETE', '/admin/avisos-celular', { endpoint }),
+  testarAvisosCelular: () => chamar<{ enviados: number; aparelhos: number }>('POST', '/admin/avisos-celular/teste'),
 };
 
 // ---------- Novidades: normas, prevenção, IA, votação da CIPA, espaço do trabalhador, e-mail ----------

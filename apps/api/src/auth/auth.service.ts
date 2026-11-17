@@ -5,6 +5,7 @@ import { ehAdminPlataforma } from '../admin/admin-plataforma';
 import { PrismaService } from '../prisma/prisma.service';
 import { emailLigado, emailMoldura, enviarEmail, WEB } from '../common/email';
 import { CadastroDto, EntrarDto, RedefinirDto } from './dto';
+import { PushService } from '../push/push';
 import { limparErrosLogin, loginTravado, registrarErroLogin } from '../common/protecao';
 
 // Senha falsa usada quando o e-mail não existe: a resposta demora o mesmo tempo e não revela quem tem conta.
@@ -24,6 +25,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly push: PushService,
   ) {}
 
   // Cadastro direto: cria a conta no plano Grátis, com 14 dias de tudo liberado. Não pede CNPJ.
@@ -51,6 +53,7 @@ export class AuthService {
         },
       },
     });
+    this.push.avisarAdmins({ titulo: 'Novo cadastro no Safety Nexo', corpo: `${usuario.nome} (${dto.nomeConsultoria.trim()}) acabou de criar a conta.`, url: '/admin', tag: 'cadastro' });
     return this.emitir(usuario);
   }
 
