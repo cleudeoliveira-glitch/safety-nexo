@@ -1,5 +1,6 @@
 import * as tokens from '@safety-nexo/design-tokens';
 import { documentoHtml, escape, Moldura } from './layout';
+import { Controle, CSS_SECOES, blocoAssinaturas, controleDocumento, dataBr, lista, p, referenciasPelosRiscos, secoesNumeradas, tabelaDuasColunas, tabelaReferencias } from './secoes';
 import { FuncaoGhe } from '../empresas/ghe-ambiente';
 import { DECISAO_NIVEL, EXPLICA_SEVERIDADE, GRAUS, NOME_NIVEL, NOME_PROBABILIDADE, NOME_SEVERIDADE, Nivel, medidasPartes, nivelRisco, nomeProbabilidade, nomeSeveridade } from './nivel-risco';
 
@@ -23,6 +24,12 @@ export type ExtrasPgr = {
   responsavel: { nome: string | null; registro: string | null };
   representanteLegal: string | null;
   emitidoEm: Date;
+  controle: Controle;
+  empresa: { razaoSocial: string; cnae: string | null; endereco: string | null; numFuncionarios: number };
+  funcoes: { funcao: string; ghe: string; quantidade: number }[]; // colaboradores ativos por função
+  terceiros: { razaoSocial: string; servico: string }[];
+  medicoPcmso: string | null;
+  local: string | null;
 };
 
 const TIPO: Record<string, string> = { FISICO: 'Físico', QUIMICO: 'Químico', BIOLOGICO: 'Biológico', ERGONOMICO: 'Ergonômico', ACIDENTE: 'Acidente' };
@@ -79,9 +86,15 @@ function ambientesHtml(ghes: GhePdf[]): string {
     .join('');
 }
 
+const ehPsicossocial = (r: RiscoPdf) => /^fatores psicossociais/i.test(r.agente);
+
 export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPgr): string {
   const todos = ghes.flatMap((g) => g.riscos.map((r) => ({ ghe: g.nome, r, nivel: nivelRisco(r.severidade, r.probabilidade) })));
   const prioritarios = todos.filter((x) => x.nivel === 'ALTO' || x.nivel === 'CRITICO');
+  const psicossociais = todos.filter((x) => ehPsicossocial(x.r));
+  const e = extras.empresa;
+  const totalTrabalhadores = ghes.reduce((t, g) => t + g.colaboradores, 0) || e.numFuncionarios;
+  const nomeEmpresa = escape(e.razaoSocial);
 
   const inventario = ghes
     .map(
@@ -135,59 +148,221 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
   const prioritariosHtml = prioritarios.length
     ? `<p>Estes são os riscos que pedem atenção primeiro:</p>
        <ul>${prioritarios.map((x) => `<li>${selo(x.nivel)} <strong>${escape(x.ghe)}</strong>: ${escape(x.r.agente)} (${escape(x.r.fonteGeradora)})</li>`).join('')}</ul>`
-    : '<p>Nenhum risco ficou em nível alto ou crítico.</p>';
+    : '<p>Nenhum risco ficou em nível alto ou crítico. Mesmo assim, as ações abaixo ajudam a manter os riscos sob controle.</p>';
 
-  const corpo = `
-    <section>
-      <h2>1. Processos e ambientes de trabalho</h2>
-      ${extras.processos ? `<p>${escape(extras.processos).replace(/\n/g, '<br>')}</p>` : ''}
-      ${ghes.length ? `<p>Cada grupo de exposição tem o seu ambiente:</p>${ambientesHtml(ghes)}` : '<p class="falta">Falta cadastrar os GHEs e descrever o ambiente de cada um.</p>'}
-    </section>
+  const funcoesTabela = extras.funcoes.length
+    ? `<table><thead><tr><th>Função</th><th>GHE</th><th class="c">Trabalhadores</th></tr></thead>
+        <tbody>${extras.funcoes.map((f) => `<tr><td>${escape(f.funcao)}</td><td>${escape(f.ghe)}</td><td class="c">${f.quantidade}</td></tr>`).join('')}
+        <tr><td colspan="2"><strong>Total</strong></td><td class="c"><strong>${extras.funcoes.reduce((t, f) => t + f.quantidade, 0)}</strong></td></tr></tbody></table>`
+    : `<p class="falta">Os colaboradores ainda não foram cadastrados no sistema. A empresa informou ${e.numFuncionarios} trabalhador(es).</p>`;
 
-    <section>
-      <h2>2. Como os riscos foram avaliados</h2>
-      <p>Percorremos os setores, acompanhamos as atividades e conversamos com quem faz o trabalho. Para cada perigo encontrado, avaliamos
-      o tamanho do dano que ele pode causar (severidade) e a chance de isso acontecer com as proteções que já existem hoje (probabilidade).
-      Cada uma recebe uma nota de 1 a 5, e a multiplicação das duas (de 1 a 25) dá o nível de risco na matriz 5x5, que define o que resolver primeiro.</p>
-      ${matriz()}
-      <p>Na escolha das medidas, a preferência é sempre tirar o perigo do caminho ou trocá-lo por algo mais seguro. Quando isso não dá,
-      vêm as proteções coletivas, depois a organização do trabalho, e o EPI fica como último recurso.</p>
-    </section>
+  const referencias = tabelaReferencias([
+    ['NR-01', 'Disposições gerais e gerenciamento de riscos ocupacionais (base deste programa)'],
+    ['NR-05', 'Comissão Interna de Prevenção de Acidentes e de Assédio (CIPA)'],
+    ['NR-06', 'Equipamentos de proteção individual (EPI)'],
+    ['NR-07', 'Programa de Controle Médico de Saúde Ocupacional (PCMSO)'],
+    ...referenciasPelosRiscos(todos.map((x) => x.r), e.cnae),
+    ['Lei 6.514/1977 e Portaria 3.214/1978', 'Capítulo V da CLT e aprovação das Normas Regulamentadoras'],
+  ]);
 
-    <section>
-      <h2>3. Inventário de riscos</h2>
-      ${inventario || '<p class="falta">Nenhum GHE cadastrado.</p>'}
-    </section>
+  const secoes = secoesNumeradas([
+    { titulo: 'Controle do documento', html: controleDocumento(extras.controle) },
+    {
+      titulo: 'Identificação',
+      html: `${tabelaDuasColunas(['Dado', 'Informação'], [
+        ['Empresa', nomeEmpresa],
+        ['Endereço', e.endereco ? escape(e.endereco) : '<span class="falta">não informado</span>'],
+        ['Representante legal', extras.representanteLegal ? escape(extras.representanteLegal) : '<span class="falta">não informado</span>'],
+        ['Responsável pela elaboração', extras.responsavel.nome ? `${escape(extras.responsavel.nome)}${extras.responsavel.registro ? ` · ${escape(extras.responsavel.registro)}` : ''}` : '<span class="falta">não informado</span>'],
+        ['Médico do PCMSO', extras.medicoPcmso ? escape(extras.medicoPcmso) : '<span class="falta">não informado</span>'],
+      ])}
+      <h3>Trabalhadores por função</h3>
+      ${funcoesTabela}`,
+    },
+    {
+      titulo: 'Introdução',
+      html: p(
+        `Todo trabalho tem riscos. Alguns são fáceis de ver, como uma máquina sem proteção ou um piso escorregadio. Outros aparecem
+        devagar, como o ruído que vai tirando a audição ao longo dos anos ou a postura que, aos poucos, vira dor nas costas. O Programa
+        de Gerenciamento de Riscos (PGR) existe para que a ${nomeEmpresa} conheça esses riscos, saiba o tamanho de cada um e tenha um
+        plano para controlá-los.`,
+        `Este documento é a parte escrita desse gerenciamento. Ele reúne o inventário de riscos, que mostra o que foi encontrado em cada
+        setor, e o plano de ação, que diz o que vai ser feito, por quem e até quando. Os dois juntos atendem ao que a NR-01 pede no item 1.5.7.`,
+        `O PGR não é um papel para guardar na gaveta. Ele só funciona se as ações saírem do papel, se as pessoas souberem dos riscos do seu
+        trabalho e se o documento for revisto sempre que alguma coisa mudar na empresa.`,
+      ),
+    },
+    {
+      titulo: 'Objetivo',
+      html: `${p(`O objetivo deste programa é proteger a saúde e a integridade física de quem trabalha na ${nomeEmpresa}. Para isso, ele busca:`)}
+        ${lista([
+          'identificar os perigos presentes nos ambientes e nas atividades de trabalho;',
+          'avaliar cada risco, considerando a gravidade do dano e a chance de ele acontecer;',
+          'definir as medidas de prevenção, dando preferência às que eliminam o perigo ou protegem todos ao mesmo tempo;',
+          'organizar essas medidas em um plano de ação com responsável, prazo e acompanhamento;',
+          'servir de base para o PCMSO, para os treinamentos e para as informações enviadas ao eSocial.',
+        ])}`,
+    },
+    {
+      titulo: 'Campo de aplicação',
+      html: `${p(
+        `Este PGR vale para todos os setores, funções e atividades da ${nomeEmpresa}${e.endereco ? `, no endereço ${escape(e.endereco)}` : ''}.
+        Ele abrange ${totalTrabalhadores} trabalhador(es), organizados em ${ghes.length} grupo(s) de exposição (GHE), que são os grupos de pessoas
+        expostas aos mesmos riscos de forma parecida.`,
+        ghes.length ? `Os grupos avaliados foram: ${ghes.map((g) => `<strong>${escape(g.nome)}</strong>`).join(', ')}.` : '',
+        `Atividades fora da rotina, como manutenção, limpeza pesada ou trabalho em horário diferente, também entram no gerenciamento e devem
+        ser tratadas antes de começar, com análise de risco ou permissão de trabalho quando for o caso.`,
+      )}
+      ${
+        extras.terceiros.length
+          ? `<p>Empresas terceirizadas que trabalham aqui: ${extras.terceiros.map((t) => `${escape(t.razaoSocial)} (${escape(t.servico)})`).join('; ')}.
+             Elas têm o próprio PGR, mas recebem desta empresa as informações sobre os riscos do local, como pede a NR-01 (item 1.5.8).</p>`
+          : ''
+      }`,
+    },
+    {
+      titulo: 'Referências normativas',
+      html: `${p('Este programa foi feito com base nas normas abaixo. Além da NR-01, entram as que têm relação com os riscos encontrados nesta empresa.')}${referencias}`,
+    },
+    {
+      titulo: 'Definições',
+      html: tabelaDuasColunas(['Termo', 'O que quer dizer neste documento'], [
+        ['Perigo', 'Aquilo que pode causar lesão ou doença: uma máquina, um produto químico, o ruído, uma postura, uma situação.'],
+        ['Risco', 'A combinação da gravidade do dano que o perigo pode causar com a chance de isso acontecer.'],
+        ['Fonte ou circunstância', 'Onde o perigo está ou em que situação ele aparece.'],
+        ['GHE (grupo de exposição)', 'Grupo de trabalhadores que fica exposto aos mesmos riscos, de forma parecida.'],
+        ['Severidade', 'O tamanho do dano que pode acontecer, de insignificante (1) a gravíssimo (5).'],
+        ['Probabilidade', 'A chance de o dano acontecer com as proteções que existem hoje, de rara (1) a quase certa (5).'],
+        ['Nível de risco', 'Resultado da severidade vezes a probabilidade. Define o que resolver primeiro.'],
+        ['Avaliação qualitativa', 'Feita pela observação do trabalho, sem medição com aparelho.'],
+        ['Avaliação quantitativa', 'Feita com medição (ruído, calor, poeira, vapores etc.), comparada com o limite da norma.'],
+        ['EPC', 'Equipamento de proteção coletiva, que protege todos de uma vez (proteção de máquina, exaustor, guarda-corpo).'],
+        ['EPI', 'Equipamento de proteção individual, usado pela pessoa (luva, protetor auricular, óculos, máscara).'],
+        ['Plano de ação', 'Lista do que vai ser feito para controlar os riscos, com responsável, prazo e situação.'],
+      ]),
+    },
+    {
+      titulo: 'Responsabilidades',
+      html: tabelaDuasColunas(['Quem', 'O que faz'], [
+        ['Empresa (empregador)', 'Implantar o PGR, garantir os recursos para as ações, nomear responsáveis, informar os trabalhadores sobre os riscos e manter o documento à disposição da fiscalização.'],
+        ['Responsável pela elaboração', 'Levantar e avaliar os riscos, propor as medidas, orientar a empresa na execução do plano e revisar o programa quando necessário.'],
+        ['Gestores e encarregados', 'Fazer as ações que estão sob sua responsabilidade, cobrar o uso das proteções e avisar quando algo mudar no setor.'],
+        ['Trabalhadores', 'Seguir as orientações de segurança, usar e cuidar dos EPIs, participar dos treinamentos e avisar sobre situações de risco. Quem vê risco grave e iminente pode interromper a atividade e comunicar o superior (NR-01, item 1.4.3).'],
+        ['CIPA ou representante da NR-05', 'Acompanhar o PGR, participar das inspeções, sugerir melhorias e ajudar a divulgar os riscos.'],
+        ['Médico do PCMSO', 'Usar os riscos deste PGR para planejar os exames e avisar a empresa quando os exames mostrarem relação entre trabalho e adoecimento.'],
+      ]),
+    },
+    {
+      titulo: 'Metodologia',
+      html: `${p(
+        `O levantamento começou pela conversa com a empresa e pelos documentos disponíveis. Depois, os setores foram percorridos e as
+        atividades acompanhadas, conversando com quem faz o trabalho. Para cada grupo de exposição foram registrados os perigos, onde eles
+        aparecem, que lesões ou doenças podem causar e as proteções que já existem.`,
+        `Cada risco recebeu duas notas, de 1 a 5: a severidade (o tamanho do dano) e a probabilidade (a chance de acontecer, considerando as
+        proteções atuais). Multiplicando as duas, chega-se a uma pontuação de 1 a 25, que leva ao nível de risco na matriz abaixo. Quando a
+        norma pede ou quando a observação não basta, o agente é medido com aparelho e o resultado é comparado com o limite de tolerância.`,
+      )}
+      ${matriz()}`,
+    },
+    {
+      titulo: 'Ordem de prioridade das medidas',
+      html: `${p('As medidas de prevenção seguem a ordem da NR-01 (item 1.5.5.1.2). Só se passa para o próximo degrau quando o anterior não resolve sozinho:')}
+        <ol>
+          <li><strong>Eliminar o perigo</strong> ou trocá-lo por algo menos perigoso.</li>
+          <li><strong>Proteção coletiva (EPC)</strong>: isolar a fonte, enclausurar, ventilar, proteger a máquina.</li>
+          <li><strong>Organização do trabalho</strong>: procedimentos, pausas, rodízio, sinalização, treinamento.</li>
+          <li><strong>Proteção individual (EPI)</strong>: último recurso, ou complemento das medidas acima.</li>
+        </ol>
+        ${p('Por isso, no inventário, as medidas de cada risco aparecem separadas em EPC, EPI e outras medidas.')}`,
+    },
+    {
+      titulo: 'Processos e ambientes de trabalho',
+      html: `${extras.processos ? `<p>${escape(extras.processos).replace(/\n/g, '<br>')}</p>` : ''}
+        ${ghes.length ? `<p>Cada grupo de exposição trabalha em um ambiente com características próprias:</p>${ambientesHtml(ghes)}` : '<p class="falta">Falta cadastrar os GHEs e descrever o ambiente de cada um.</p>'}`,
+    },
+    {
+      titulo: 'Inventário de riscos',
+      html: `${p('A seguir estão os riscos encontrados em cada grupo de exposição, com as funções, as atividades, a avaliação e as medidas de prevenção.')}
+        ${inventario || '<p class="falta">Nenhum GHE cadastrado.</p>'}`,
+    },
+    psicossociais.length > 0 && {
+      titulo: 'Fatores psicossociais',
+      html: `${p(
+        `A NR-01 pede que o gerenciamento de riscos inclua também os fatores ligados à organização do trabalho, como excesso de demanda,
+        pouca autonomia, falta de apoio e conflitos. Esses fatores foram levantados com um questionário aplicado aos trabalhadores, de forma
+        anônima, e o resultado de cada grupo entrou no inventário.`,
+      )}
+      <ul>${psicossociais.map((x) => `<li>${selo(x.nivel)} <strong>${escape(x.ghe)}</strong>: ${escape(x.r.agente.replace(/^fatores psicossociais:\s*/i, ''))}</li>`).join('')}</ul>
+      ${p('As medidas para esses fatores entram no plano de ação, como as dos demais riscos, e devem ser conversadas com os trabalhadores antes de serem colocadas em prática.')}`,
+    },
+    {
+      titulo: 'Plano de ação',
+      html: `${prioritariosHtml}${acoes}
+        ${p('Cada ação concluída ganha data e foto de comprovação. Depois de concluída, o risco é avaliado de novo para confirmar que a medida funcionou.')}`,
+    },
+    {
+      titulo: 'Acompanhamento',
+      html: `${p('Ter o plano não basta: é preciso conferir se ele está andando e se as medidas estão funcionando. O acompanhamento é feito assim:')}
+        ${lista([
+          'inspeções periódicas nos setores, com registro de fotos e do que foi encontrado;',
+          'conferência do plano de ação: o que foi feito, o que atrasou e por quê;',
+          'análise dos acidentes, quase acidentes e relatos dos trabalhadores, que podem mostrar riscos que ninguém tinha visto;',
+          'resultados dos exames do PCMSO, que podem indicar que alguma proteção não está funcionando;',
+          'controle da entrega e da troca dos EPIs, com atenção à validade do CA.',
+        ])}`,
+    },
+    {
+      titulo: 'Preparação para emergências',
+      html: p(
+        `A NR-01 pede que a empresa esteja preparada para responder a emergências, como incêndio, vazamento, choque elétrico ou acidente grave.
+        O que fazer em cada caso, quem faz e para onde ir estão no Plano de Emergência da empresa${extras.pontoEncontro ? `. O ponto de encontro é: <strong>${escape(extras.pontoEncontro)}</strong>` : ''}.`,
+        'Todos os trabalhadores devem conhecer as saídas, os extintores e o ponto de encontro. A brigada, quando exigida, deve estar treinada e os simulados, em dia.',
+      ),
+    },
+    {
+      titulo: 'Ligação com outros programas',
+      html: lista([
+        '<strong>PCMSO:</strong> os exames de cada função são definidos a partir dos riscos deste inventário.',
+        '<strong>Treinamentos:</strong> as normas ligadas aos riscos encontrados indicam quais treinamentos cada função precisa.',
+        '<strong>EPI:</strong> os equipamentos indicados aqui são os que entram na ficha de cada trabalhador.',
+        '<strong>LTCAT e laudos:</strong> as avaliações dos agentes físicos, químicos e biológicos servem de base para a aposentadoria especial, a insalubridade e a periculosidade.',
+        '<strong>eSocial:</strong> os agentes deste inventário são informados no evento S-2240.',
+      ]),
+    },
+    {
+      titulo: 'Revisão e vigência',
+      html: `${p(`Este PGR passa a valer na data de emissão${extras.controle.proximaRevisao ? ` e deve ser revisto até ${dataBr(extras.controle.proximaRevisao)}` : ''}. Ele precisa ser revisto antes disso sempre que:`)}
+        ${lista([
+          'uma medida de prevenção for implantada, para avaliar o risco que sobrou;',
+          'mudar algum processo, máquina, produto, setor ou a forma de organizar o trabalho;',
+          'alguma medida se mostrar insuficiente ou não estiver funcionando;',
+          'acontecer um acidente ou adoecimento relacionado ao trabalho;',
+          'mudar alguma norma que se aplique à empresa;',
+          'os trabalhadores ou a CIPA pedirem, com motivo.',
+        ])}
+        ${p('O histórico das versões fica guardado no sistema. A NR-01 pede que esse histórico seja mantido por, no mínimo, 20 anos.')}`,
+    },
+    {
+      titulo: 'Considerações finais',
+      html: p(
+        `Este programa retrata a empresa no momento em que foi elaborado, com base no que foi visto e nas informações passadas pela
+        ${nomeEmpresa}. Ele deve ficar disponível para os trabalhadores, para a CIPA e para a fiscalização.`,
+        'O resultado depende de todos: da empresa, que garante os recursos; dos gestores, que fazem as ações acontecer; e de cada trabalhador, que conhece o próprio trabalho melhor do que ninguém e deve ser ouvido.',
+      ),
+    },
+  ]);
 
-    <section>
-      <h2>4. Plano de ação</h2>
-      ${prioritariosHtml}
-      ${acoes}
-      <p>Cada ação concluída ganha data e foto de comprovação. O andamento é conferido nas visitas de inspeção e o plano é revisto junto com o PGR.</p>
-    </section>
-
-    <section>
-      <h2>5. Preparação para emergências</h2>
-      <p>O que fazer em caso de incêndio, acidente ou outra emergência está no Plano de Emergência da empresa${extras.pontoEncontro ? `. O ponto de encontro é: <strong>${escape(extras.pontoEncontro)}</strong>` : ''}.</p>
-    </section>
-
-    <section>
-      <h2>6. Revisão</h2>
-      <p>Este PGR vale por até 2 anos. Ele deve ser revisto antes disso se mudar algum processo, máquina ou setor, se acontecer um acidente
-      ou adoecimento ligado ao trabalho, ou se alguma medida não estiver funcionando.</p>
-    </section>
-
-    <p>Emitido em ${data(extras.emitidoEm)}.</p>
-    <div class="assinaturas">
-      <div class="assinatura">${escape(extras.responsavel.nome ?? '')}<span>Responsável pela elaboração${extras.responsavel.registro ? ` · ${escape(extras.responsavel.registro)}` : ''}</span></div>
-      <div class="assinatura">${escape(extras.representanteLegal ?? '')}<span>Representante da organização</span></div>
-    </div>`;
+  const corpo = `${secoes}
+    ${blocoAssinaturas(extras.local, extras.emitidoEm, [
+      { nome: extras.responsavel.nome, papel: 'Responsável pela elaboração', registro: extras.responsavel.registro },
+      { nome: extras.representanteLegal, papel: 'Representante da organização' },
+    ])}`;
 
   return documentoHtml(
     moldura,
     corpo,
-    `h3 { color: ${tokens.colors.primary}; font-size: 13px; margin: 14px 0 4px; }
-     .ghe table { font-size: 10px; } .c { text-align: center; } .falta { color: ${tokens.colors.danger}; }
+    `${CSS_SECOES}
+     .ghe table { font-size: 10px; } .c { text-align: center; }
      .matriz { width: 100%; margin-bottom: 8px; } .matriz td, .matriz th { min-width: 70px; font-size: 10px; } .matriz .pts { font-size: 9px; color: #64748b; }`,
   );
 }
