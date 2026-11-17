@@ -4,6 +4,7 @@ import { ConsultoriaId } from '../common/consultoria.decorator';
 import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../push/push';
 import { ehAdminPlataforma } from './admin-plataforma';
 import { ILIMITADO, PLANOS, planoPorCodigo } from './planos';
 
@@ -15,7 +16,10 @@ class PedidoPlanoDto {
 // A troca é feita pelo dono da plataforma no painel ADM (não há cobrança automática do SaaS).
 @Controller('meu-plano')
 export class MeuPlanoController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly push: PushService,
+  ) {}
 
   @Get()
   async ver(@ConsultoriaId() consultoriaId: string, @Sessao() sessao?: SessaoUsuario) {
@@ -51,7 +55,10 @@ export class MeuPlanoController {
 
   @Post('pedido')
   async pedir(@ConsultoriaId() consultoriaId: string, @Body() dto: PedidoPlanoDto, @Sessao() sessao: SessaoUsuario) {
-    await this.prisma.consultoria.update({ where: { id: consultoriaId }, data: { pedidoPlano: dto.plano, pedidoPlanoEm: new Date() } });
+    const c = await this.prisma.consultoria.update({ where: { id: consultoriaId }, data: { pedidoPlano: dto.plano, pedidoPlanoEm: new Date() } });
+    const plano = planoPorCodigo(dto.plano);
+    const preco = plano?.precoMensal ? ` (R$ ${plano.precoMensal}/mês)` : '';
+    this.push.avisarAdmins({ titulo: 'Novo pedido de plano', corpo: `${c.nome} pediu o plano ${plano?.nome ?? dto.plano}${preco}. Confira no Painel ADM.`, url: '/admin', tag: `plano-${consultoriaId}` });
     return this.ver(consultoriaId, sessao);
   }
 }

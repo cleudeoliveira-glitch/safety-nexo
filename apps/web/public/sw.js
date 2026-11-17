@@ -1,7 +1,8 @@
 // Service worker do Safety Nexo: guarda as telas e os arquivos do site para abrir sem internet.
 // Os dados (empresas, checklists e o que foi preenchido no campo) ficam no próprio aparelho, pela tela /campo.
 // Os modelos do reconhecimento facial também ficam guardados, para usar o rosto sem internet.
-const VERSAO = 'sn-v4';
+// Também recebe os avisos do Painel ADM (novo cadastro, pedido de plano), que aparecem com a tela bloqueada.
+const VERSAO = 'sn-v5';
 const ESSENCIAIS = ['/campo', '/material', '/calculadoras', '/manifest.webmanifest', '/logo.png', '/icone-192.png'];
 
 self.addEventListener('install', (e) => {
@@ -31,4 +32,34 @@ self.addEventListener('fetch', (e) => {
         .catch(() => caches.match(req).then((c) => c || caches.match('/campo'))),
     );
   }
+});
+
+// Aviso que chega pelo celular (mesmo com o site fechado e a tela bloqueada).
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { corpo: e.data ? e.data.text() : '' }; }
+  e.waitUntil(
+    self.registration.showNotification(d.titulo || 'Safety Nexo', {
+      body: d.corpo || 'Você tem uma novidade no Safety Nexo.',
+      icon: '/icone-192.png',
+      badge: '/icone-192.png',
+      tag: d.tag || undefined,
+      renotify: !!d.tag,
+      data: { url: d.url || '/admin' },
+    }),
+  );
+});
+
+// Tocou no aviso: abre (ou traz para frente) o site na tela certa.
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const destino = new URL((e.notification.data && e.notification.data.url) || '/admin', self.location.origin).href;
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((janelas) => {
+      for (const j of janelas) {
+        if (j.url.startsWith(self.location.origin) && 'focus' in j) { j.navigate(destino).catch(() => undefined); return j.focus(); }
+      }
+      return self.clients.openWindow(destino);
+    }),
+  );
 });
