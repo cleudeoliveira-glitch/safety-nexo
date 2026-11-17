@@ -9,10 +9,12 @@ export type Secao = { titulo: string; html: string };
 
 // Numera as seções na ordem e monta o sumário no começo. Seções vazias (null/false) são puladas,
 // assim a numeração nunca fica com buraco.
-export function secoesNumeradas(secoes: (Secao | null | false | undefined)[]): string {
+// Documentos curtos (plano de emergência, plano de resgate) usam sumario: false ou quebra: false,
+// para não gastar uma página só com o índice.
+export function secoesNumeradas(secoes: (Secao | null | false | undefined)[], opcoes: { sumario?: boolean; quebra?: boolean } = {}): string {
   const validas = secoes.filter((s): s is Secao => !!s);
-  const sumario = `
-    <section class="sumario">
+  const sumario = opcoes.sumario === false ? '' : `
+    <section class="sumario${opcoes.quebra === false ? ' sem-quebra' : ''}">
       <h2>Sumário</h2>
       <ol>${validas.map((s) => `<li>${escape(s.titulo)}</li>`).join('')}</ol>
     </section>`;
@@ -124,6 +126,7 @@ export function cidadeDoEndereco(endereco: string | null): string | null {
 
 export const CSS_SECOES = `
   .sumario { page-break-after: always; }
+  .sumario.sem-quebra { page-break-after: auto; }
   .sumario ol { line-height: 1.9; padding-left: 22px; }
   .secao { margin-bottom: 6px; }
   .secao p, .secao li { line-height: 1.55; text-align: justify; }
@@ -180,3 +183,8 @@ export function identificacaoBasica(x: ExtrasDoc, total: number, responsavel: { 
     ...extra,
   ]);
 }
+
+// Caixa curta no começo dos documentos de campo (APR, PT, inspeção, investigação): diz para que
+// serve o documento e em que norma ele se apoia, sem transformar um formulário em apostila.
+export const objetivoDoc = (texto: string) =>
+  `<section style="background:#F1F5F9;border-radius:8px;padding:8px 12px;margin-bottom:10px"><h2 style="margin-top:0">Para que serve</h2><p style="margin:0;line-height:1.5">${texto}</p></section>`;

@@ -1,3 +1,4 @@
+import { cidadeDoEndereco } from '../documentos/secoes';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
@@ -95,6 +96,12 @@ export class EmergenciaService {
           observacao: s.calculo.observacao,
           brigadistas: s.brigadistas.map((b) => ({ ...b, validade: data(b.validade) })),
           controles: s.controles,
+        },
+        {
+          razaoSocial: empresa.razaoSocial,
+          endereco: empresa.endereco,
+          responsavel: [empresa.responsavelTecnicoNome, empresa.responsavelTecnicoRegistro].filter(Boolean).join(' · ') || null,
+          local: cidadeDoEndereco(empresa.endereco) ?? empresa.consultoria.cidade ?? null,
         },
       ),
     );

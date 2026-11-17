@@ -1,3 +1,4 @@
+import { objetivoDoc } from '../documentos/secoes';
 import { documentoHtml, escape, folhaHtml, Moldura } from '../documentos/layout';
 
 const data = (d: Date | null | undefined) => (d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—');
@@ -28,6 +29,7 @@ export function planoAcaoHtml(m: Omit<Moldura, 'aviso'>, acoes: AcaoPdf[]) {
 export function investigacaoHtml(m: Moldura, inv: { titulo: string; dataOcorrencia: Date; local: string; descricao: string; equipe: string; porques: string[]; causas: { categoria: string; texto: string }[]; conclusao: string | null; vitima: string | null }, medidas: AcaoPdf[]) {
   const porCategoria = Object.entries(CATEGORIA).map(([id, nome]) => ({ nome, itens: inv.causas.filter((c) => c.categoria === id) })).filter((g) => g.itens.length);
   return documentoHtml(m, `
+    ${objetivoDoc('Investigar um acidente não é procurar culpado. É entender tudo o que contribuiu para ele acontecer, do jeito como o trabalho estava organizado até a condição do local, para que não se repita. A NR-01 (item 1.5.5.5) pede que a empresa analise os acidentes e as doenças relacionadas ao trabalho e use o resultado para rever o PGR. As medidas abaixo entram no plano de ação.')}
     <section>
       <h2>${escape(inv.titulo)}</h2>
       <p><strong>Data:</strong> ${data(inv.dataOcorrencia)} · <strong>Local:</strong> ${escape(inv.local)}${inv.vitima ? ` · <strong>Acidentado(a):</strong> ${escape(inv.vitima)}` : ''}</p>
