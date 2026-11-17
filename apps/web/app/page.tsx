@@ -33,6 +33,7 @@ const atalhos: { nome: string; texto: string; icone: NomeIcone; rota: string; so
   { nome: 'DDS', texto: '150 temas com dinâmica', icone: 'fala', rota: '/dds', geral: true },
   { nome: 'APR e PT', texto: 'Análise de risco e permissões', icone: 'escudo', rota: '/operacao#apr' },
   { nome: 'Treinamentos', texto: '28 NRs com certificado', icone: 'formatura', rota: '/treinamentos' },
+  { nome: 'Psicossocial', texto: 'Questionário NR-01 e envio ao PGR', icone: 'cerebro', rota: '/psicossocial', soConsultoria: true },
   { nome: 'CIPA', texto: 'Eleição, reuniões e atas', icone: 'votar', rota: '/cipa', soConsultoria: true },
   { nome: 'Registros de campo', texto: 'EPI pelo rosto, inspeção, DDS e APR', icone: 'cracha', rota: '/campo', geral: true },
   { nome: 'Almoxarifado', texto: 'Estoque e CA dos EPIs', icone: 'caixa', rota: '/almoxarifado' },
