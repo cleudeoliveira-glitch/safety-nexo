@@ -9,13 +9,16 @@ import { libera, planoMinimo, usePlano } from '@/lib/plano';
 import { Icone } from '@/components/Icone';
 import type { Empresa } from '@/lib/api';
 import { aoMudarFoco, empresasDaConta, escolherFoco, salvarFoco } from '@/lib/empresaFoco';
-import { enderecoDoItem, ItemMenu, MENU } from '@/lib/menu';
+import { enderecoDoItem, ItemMenu, MENU, TELAS_DO_MENU } from '@/lib/menu';
 import { lerToken, lerUsuario, sair, Usuario } from '@/lib/sessao';
 
 // Telas abertas por quem não entrou no sistema (ou de tela cheia) ficam sem o menu.
 const SEM_MENU = [/^\/relato\//, /^\/proposta\//, /^\/votar\//, /^\/meu\//, /^\/entrar/, /^\/cadastro/, /^\/esqueci-senha/, /^\/redefinir-senha/, /^\/planos/, /^\/assinar\//, /^\/assinatura\//, /^\/validar/, /^\/psicossocial\//, /^\/campo/, /\/lista\//];
 
 const CHAVE_FECHADOS = 'safety-nexo:menu-fechados';
+
+// Aba em que cada tela abre quando o endereço vem sem "#".
+const ABA_INICIAL: Record<string, string> = { operacao: 'apr', saude: 'aet', prevencao: 'relatos', conectores: 'rh', cultura: 'sipat' };
 
 function empresaDoEndereco(caminho: string): string | null {
   const m = caminho.match(/^\/empresas\/([^/#?]+)/);
@@ -54,6 +57,7 @@ function Menu({ caminho }: { caminho: string }) {
   const [fechados, setFechados] = useState<string[]>([]);
   const [ancora, setAncora] = useState('');
   const [erro, setErro] = useState(false);
+  const [abertoItem, setAbertoItem] = useState(''); // item com partes aberto por clique
 
   useEffect(() => {
     setUsuario(lerUsuario());
@@ -117,14 +121,89 @@ function Menu({ caminho }: { caminho: string }) {
     if (!empresaId && !item.geral) return false;
     const [rota, hash] = destino.split('#');
     if (rota !== caminho) return false;
-    if (!hash) return !ancora || !MENU.some((g) => g.itens.some((i) => enderecoDoItem(i, empresaId) === `${rota}${ancora}`));
+    if (!hash) return !ancora || !TELAS_DO_MENU.some((i) => enderecoDoItem(i, empresaId) === `${rota}${ancora}`);
     return ancora === `#${hash}` || (!ancora && primeiraAba(rota) === hash);
   }
 
   // Sem "#" no endereço, a tela abre na primeira aba: ela fica marcada no menu.
   function primeiraAba(rota: string) {
-    const item = MENU.flatMap((g) => g.itens).find((i) => enderecoDoItem(i, empresaId).startsWith(`${rota}#`));
+    const tela = rota.split('/').pop() ?? '';
+    if (ABA_INICIAL[tela]) return ABA_INICIAL[tela];
+    const item = TELAS_DO_MENU.find((i) => enderecoDoItem(i, empresaId).startsWith(`${rota}#`));
     return item ? item.rota.split('#')[1] : '';
+  }
+
+  const visivel = (i: ItemMenu) => !(cliente && i.soConsultoria);
+  const partesVisiveis = (item: ItemMenu) => (item.partes ?? []).filter(visivel);
+
+  // Mesma tela, outra aba: avisa a tela para trocar de aba.
+  function avisarAba() {
+    setTimeout(() => {
+      setAncora(window.location.hash);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    }, 60);
+  }
+
+  function linkDoItem(item: ItemMenu, filho: boolean) {
+    const marcado = ativo(item);
+    const travado = !empresaId && !item.geral;
+    const doPlano = !libera(plano, item.recurso); // o plano não libera: abre "Meu plano"
+    return (
+      <Link
+        href={doPlano ? `/plano?recurso=${item.recurso}` : enderecoDoItem(item, empresaId)}
+        title={doPlano ? `Faz parte do plano ${planoMinimo(item.recurso!)} ou maior` : travado ? 'Cadastre uma empresa para abrir' : undefined}
+        onClick={avisarAba}
+        aria-current={marcado ? 'page' : undefined}
+        className={`group flex items-center gap-3 rounded-lg transition ${filho ? 'py-1.5 pl-3 pr-2.5 text-[13px]' : 'px-2.5 py-2 text-sm'} ${
+          marcado
+            ? 'bg-white text-primary shadow-sm'
+            : travado
+              ? 'text-white/45 hover:bg-white/5'
+              : filho
+                ? 'text-white/75 hover:bg-white/10 hover:text-white'
+                : 'text-white/85 hover:bg-white/10 hover:text-white'
+        }`}
+      >
+        {filho ? (
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${marcado ? 'bg-success' : 'bg-menta/60'}`} />
+        ) : (
+          <Icone nome={item.icone} className={`h-[18px] w-[18px] shrink-0 ${marcado ? 'text-success' : 'text-menta/80 group-hover:text-menta'}`} />
+        )}
+        <span className="truncate font-medium">{item.nome}</span>
+        {doPlano && <Icone nome="cadeado" className="ml-auto h-4 w-4 shrink-0 text-white/50" />}
+      </Link>
+    );
+  }
+
+  // Item com partes: abre a lista logo abaixo e leva à primeira parte.
+  function itemComPartes(item: ItemMenu, partes: ItemMenu[]) {
+    const dentro = partes.some(ativo);
+    const expandido = dentro || abertoItem === item.nome;
+    const primeira = partes[0];
+    const travado = !empresaId && !primeira.geral;
+    const doPlano = !libera(plano, primeira.recurso);
+    return (
+      <>
+        <Link
+          href={doPlano ? `/plano?recurso=${primeira.recurso}` : enderecoDoItem(primeira, empresaId)}
+          title={travado ? 'Cadastre uma empresa para abrir' : undefined}
+          onClick={() => { setAbertoItem(item.nome); avisarAba(); }}
+          aria-expanded={expandido}
+          className={`group flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition ${
+            dentro ? 'bg-white/10 text-white' : travado ? 'text-white/45 hover:bg-white/5' : 'text-white/85 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          <Icone nome={item.icone} className={`h-[18px] w-[18px] shrink-0 ${dentro ? 'text-menta' : 'text-menta/80 group-hover:text-menta'}`} />
+          <span className="truncate font-medium">{item.nome}</span>
+          <Icone nome="seta" className={`ml-auto h-3.5 w-3.5 shrink-0 text-white/40 transition ${expandido ? 'rotate-90' : ''}`} />
+        </Link>
+        {expandido && (
+          <ul className="mb-1 ml-[1.15rem] mt-0.5 space-y-0.5 border-l border-white/15 pl-2">
+            {partes.map((p) => <li key={p.nome}>{linkDoItem(p, true)}</li>)}
+          </ul>
+        )}
+      </>
+    );
   }
 
   const conteudo = (
@@ -173,6 +252,14 @@ function Menu({ caminho }: { caminho: string }) {
             <Icone nome="mais" className="h-4 w-4" /> Nova empresa
           </Link>
         )}
+        <Link
+          href={libera(plano, 'offline') ? '/campo' : '/plano?recurso=offline'}
+          title={libera(plano, 'offline') ? 'Para usar na obra, mesmo sem internet' : `Faz parte do plano ${planoMinimo('offline')} ou maior`}
+          className="mt-2 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/25 transition hover:bg-white/10"
+        >
+          <Icone nome="sinal" className="h-4 w-4" /> Modo campo
+          {!libera(plano, 'offline') && <Icone nome="cadeado" className="h-4 w-4 text-white/60" />}
+        </Link>
       </div>
 
       {empresas && !empresa && !cliente && (
@@ -183,51 +270,29 @@ function Menu({ caminho }: { caminho: string }) {
 
       <nav className="menu-rolagem mt-3 flex-1 overflow-y-auto px-3 pb-4" aria-label="Menu principal">
         {MENU.map((grupo) => {
-          const itens = grupo.itens.filter((i) => !(cliente && i.soConsultoria));
+          const itens = grupo.itens.filter((i) => (i.partes ? partesVisiveis(i).length > 0 : visivel(i)));
           if (!itens.length) return null;
-          const fechado = fechados.includes(grupo.titulo);
+          const fechado = !!grupo.titulo && fechados.includes(grupo.titulo);
           return (
-            <div key={grupo.titulo} className="mt-3">
-              <button
-                type="button"
-                onClick={() => alternarGrupo(grupo.titulo)}
-                aria-expanded={!fechado}
-                className="flex w-full items-center justify-between px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/45 hover:text-white/70"
-              >
-                {grupo.titulo}
-                <Icone nome="seta" className={`h-3.5 w-3.5 transition ${fechado ? '' : 'rotate-90'}`} />
-              </button>
+            <div key={grupo.titulo || 'inicio'} className="mt-3">
+              {grupo.titulo && (
+                <button
+                  type="button"
+                  onClick={() => alternarGrupo(grupo.titulo)}
+                  aria-expanded={!fechado}
+                  className="flex w-full items-center justify-between px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/45 hover:text-white/70"
+                >
+                  {grupo.titulo}
+                  <Icone nome="seta" className={`h-3.5 w-3.5 transition ${fechado ? '' : 'rotate-90'}`} />
+                </button>
+              )}
               {!fechado && (
                 <ul className="mt-0.5 space-y-0.5">
                   {itens.map((item) => {
-                    const marcado = ativo(item);
-                    const travado = !empresaId && !item.geral;
-                    const doPlano = !libera(plano, item.recurso); // o plano não libera: abre "Meu plano"
+                    const partes = partesVisiveis(item);
                     return (
                       <li key={item.nome}>
-                        <Link
-                          href={doPlano ? `/plano?recurso=${item.recurso}` : enderecoDoItem(item, empresaId)}
-                          title={doPlano ? `Faz parte do plano ${planoMinimo(item.recurso!)} ou maior` : travado ? 'Cadastre uma empresa para abrir' : undefined}
-                          onClick={() => {
-                            // Mesma tela, outra aba: avisa a tela para trocar de aba.
-                            setTimeout(() => {
-                              setAncora(window.location.hash);
-                              window.dispatchEvent(new HashChangeEvent('hashchange'));
-                            }, 60);
-                          }}
-                          aria-current={marcado ? 'page' : undefined}
-                          className={`group flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition ${
-                            marcado
-                              ? 'bg-white text-primary shadow-sm'
-                              : travado
-                                ? 'text-white/45 hover:bg-white/5'
-                                : 'text-white/85 hover:bg-white/10 hover:text-white'
-                          }`}
-                        >
-                          <Icone nome={item.icone} className={`h-[18px] w-[18px] shrink-0 ${marcado ? 'text-success' : 'text-menta/80 group-hover:text-menta'}`} />
-                          <span className="truncate font-medium">{item.nome}</span>
-                          {doPlano && <Icone nome="cadeado" className="ml-auto h-4 w-4 shrink-0 text-white/50" />}
-                        </Link>
+                        {partes.length > 1 ? itemComPartes(item, partes) : linkDoItem(partes[0] ? { ...partes[0], nome: item.nome, icone: item.icone } : item, false)}
                       </li>
                     );
                   })}

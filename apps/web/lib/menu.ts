@@ -11,105 +11,121 @@ export type ItemMenu = {
   soConsultoria?: boolean;
   // Recurso do plano que a tela usa: sem ele, o menu mostra um cadeado.
   recurso?: string;
+  // Partes do mesmo assunto: aparecem logo abaixo do item quando ele está aberto.
+  partes?: ItemMenu[];
 };
 export type GrupoMenu = { titulo: string; itens: ItemMenu[] };
 
+// Item com partes: o clique leva à primeira parte que a pessoa pode abrir.
+function assunto(nome: string, icone: NomeIcone, partes: Omit<ItemMenu, 'icone'>[]): ItemMenu {
+  const comIcone = partes.map((p) => ({ ...p, icone }));
+  return { ...comIcone[0], nome, partes: comIcone, soConsultoria: comIcone.every((p) => p.soConsultoria) };
+}
+
+// Cada assunto aparece uma vez só. Telas do mesmo assunto ficam como partes do item.
 export const MENU: GrupoMenu[] = [
   {
-    titulo: 'Início',
+    titulo: '',
     itens: [
-      { nome: 'Painel (dashboard)', icone: 'casa', rota: '/', geral: true },
-      { nome: 'Dashboard de indicadores', icone: 'grafico', rota: '/ssma' },
-      { nome: 'Emitir documento', icone: 'documento', rota: '/emitir', geral: true },
-      { nome: 'Calculadoras de SST', icone: 'numero', rota: '/calculadoras', geral: true },
-      { nome: 'Visão geral das empresas', icone: 'grade', rota: '/geral', geral: true, soConsultoria: true },
-      { nome: 'Comercial', icone: 'cifrao', rota: '/comercial', geral: true, soConsultoria: true, recurso: 'proposta' },
-      { nome: 'Mudanças nas normas', icone: 'sino', rota: '/normas', geral: true, soConsultoria: true },
-      { nome: 'Meu plano', icone: 'coroa', rota: '/plano', geral: true, soConsultoria: true },
+      assunto('Painel', 'casa', [
+        { nome: 'Resumo', rota: '/', geral: true },
+        { nome: 'Indicadores', rota: '/ssma' },
+        { nome: 'Todas as empresas', rota: '/geral', geral: true, soConsultoria: true },
+      ]),
     ],
   },
   {
-    titulo: 'Cadastro da empresa',
+    titulo: 'A empresa',
     itens: [
-      { nome: 'Dados da empresa', icone: 'predio', rota: '#dados', soConsultoria: true },
-      { nome: 'GHEs, riscos e exames', icone: 'alerta', rota: '#ghes', soConsultoria: true },
-      { nome: 'Colaboradores, ASO e EPI', icone: 'pessoas', rota: '/colaboradores' },
-      { nome: 'Importar funcionários do RH', icone: 'upload', rota: '/conectores#rh' },
-      { nome: 'Trazer PGR antigo (IA)', icone: 'brilho', rota: '/importar-pdf', soConsultoria: true },
-    ],
-  },
-  {
-    titulo: 'Programas e laudos',
-    itens: [
-      { nome: 'PGR, PCMSO, LTCAT, LIP, LPP', icone: 'documento', rota: '#documentos', soConsultoria: true },
-      { nome: 'CIPA', icone: 'votar', rota: '#cipa', soConsultoria: true },
-      { nome: 'Ergonomia (AEP e AET)', icone: 'cadeira', rota: '/saude#aet' },
-      { nome: 'Acidentes (CAT)', icone: 'cruz', rota: '/saude#cat' },
-      { nome: 'Afastamentos', icone: 'calendario', rota: '/saude#afastamentos' },
-      { nome: 'Prontuário de saúde', icone: 'coracao', rota: '/prontuario', soConsultoria: true },
-      { nome: 'Psicossocial', icone: 'cerebro', rota: '/psicossocial', soConsultoria: true },
-    ],
-  },
-  {
-    titulo: 'Prevenção',
-    itens: [
-      { nome: 'Relatos e denúncias (QR code)', icone: 'qr', rota: '/prevencao#relatos' },
-      { nome: 'Plano de ação', icone: 'check', rota: '/prevencao#acoes' },
-      { nome: 'Investigação de acidentes', icone: 'lupa', rota: '/prevencao#investigacao', soConsultoria: true },
+      assunto('Cadastro da empresa', 'predio', [
+        { nome: 'Dados da empresa', rota: '#dados', soConsultoria: true },
+        { nome: 'GHEs, riscos e exames', rota: '#ghes', soConsultoria: true },
+        { nome: 'Trazer PGR antigo (IA)', rota: '/importar-pdf', soConsultoria: true },
+      ]),
+      assunto('Colaboradores', 'pessoas', [
+        { nome: 'Lista, ASO e EPI', rota: '/colaboradores' },
+        { nome: 'Importar do RH', rota: '/conectores#rh' },
+        { nome: 'Terceirizadas', rota: '/conectores#terceiros' },
+        { nome: 'Espaço do trabalhador', rota: '/trabalhador' },
+      ]),
+      assunto('Documentos', 'documento', [
+        { nome: 'Emitir documento', rota: '/emitir', geral: true },
+        { nome: 'Arquivo', rota: '/arquivo' },
+        { nome: 'Assinaturas', rota: '/assinaturas', recurso: 'assinatura' },
+        { nome: 'Histórico de alterações', rota: '/historico', soConsultoria: true },
+      ]),
     ],
   },
   {
     titulo: 'Dia a dia',
     itens: [
-      { nome: 'APR (análise de risco)', icone: 'escudo', rota: '/operacao#apr' },
-      { nome: 'Permissão de trabalho', icone: 'chave', rota: '/operacao#pt' },
-      { nome: 'Espaços confinados e resgate', icone: 'alerta', rota: '/confinados' },
-      { nome: 'DDS (registrar)', icone: 'fala', rota: '/operacao#dds' },
-      { nome: 'Biblioteca de DDS (150 temas)', icone: 'livro', rota: '/dds', geral: true },
-      { nome: 'Inspeção com imagem', icone: 'lista', rota: '/operacao#checklist' },
-      { nome: 'Registros de campo', icone: 'cracha', rota: '/campo', geral: true, recurso: 'offline' },
-      { nome: 'Almoxarifado de EPI', icone: 'caixa', rota: '/almoxarifado' },
+      assunto('APR e permissão de trabalho', 'escudo', [
+        { nome: 'APR', rota: '/operacao#apr' },
+        { nome: 'Permissão de trabalho', rota: '/operacao#pt' },
+        { nome: 'Espaços confinados e resgate', rota: '/confinados' },
+      ]),
+      assunto('DDS', 'fala', [
+        { nome: 'Registrar DDS', rota: '/operacao#dds' },
+        { nome: 'Biblioteca (150 temas)', rota: '/dds', geral: true },
+      ]),
+      { nome: 'Inspeções', icone: 'lista', rota: '/operacao#checklist' },
+      { nome: 'EPI e almoxarifado', icone: 'caixa', rota: '/almoxarifado' },
     ],
   },
   {
-    titulo: 'Pessoas e treinamentos',
+    titulo: 'Programas',
     itens: [
-      { nome: 'Treinamentos das NRs', icone: 'formatura', rota: '/treinamentos' },
-      { nome: 'Slides dos treinamentos', icone: 'livro', rota: '/material', geral: true },
-      { nome: 'Espaço do trabalhador', icone: 'cracha', rota: '/trabalhador' },
-      { nome: 'Eleição da CIPA', icone: 'votar', rota: '/cipa', soConsultoria: true },
-      { nome: 'Reuniões e atas da CIPA', icone: 'lista', rota: '/cipa#reunioes', soConsultoria: true },
-      { nome: 'SIPAT', icone: 'festa', rota: '/cultura#sipat' },
-      { nome: 'Programa 5S', icone: 'vassoura', rota: '/cultura#5s' },
+      assunto('Prevenção', 'check', [
+        { nome: 'Relatos e denúncias', rota: '/prevencao#relatos' },
+        { nome: 'Plano de ação', rota: '/prevencao#acoes' },
+      ]),
+      assunto('Acidentes e afastamentos', 'cruz', [
+        { nome: 'Acidentes (CAT)', rota: '/saude#cat' },
+        { nome: 'Investigação', rota: '/prevencao#investigacao', soConsultoria: true },
+        { nome: 'Afastamentos', rota: '/saude#afastamentos' },
+        { nome: 'Atestados e faltas', rota: '/conectores#faltas' },
+      ]),
+      assunto('Saúde e ergonomia', 'coracao', [
+        { nome: 'Ergonomia (AEP e AET)', rota: '/saude#aet' },
+        { nome: 'Psicossocial', rota: '/psicossocial', soConsultoria: true },
+        { nome: 'Prontuário de saúde', rota: '/prontuario', soConsultoria: true },
+      ]),
+      assunto('CIPA', 'votar', [
+        { nome: 'Dimensionamento', rota: '#cipa', soConsultoria: true },
+        { nome: 'Eleição', rota: '/cipa', soConsultoria: true },
+        { nome: 'Reuniões e atas', rota: '/cipa#reunioes', soConsultoria: true },
+      ]),
+      assunto('Treinamentos', 'formatura', [
+        { nome: 'Treinamentos das NRs', rota: '/treinamentos' },
+        { nome: 'Slides para aplicar', rota: '/material', geral: true },
+        { nome: 'SIPAT', rota: '/cultura#sipat' },
+        { nome: 'Programa 5S', rota: '/cultura#5s' },
+      ]),
       { nome: 'Emergência e brigada', icone: 'fogo', rota: '/emergencia' },
+      assunto('eSocial', 'nuvem', [
+        { nome: 'Desta empresa', rota: '/esocial', soConsultoria: true, recurso: 'esocial' },
+        { nome: 'De todas e multas', rota: '/esocial-geral', geral: true, soConsultoria: true, recurso: 'esocial' },
+        { nome: 'FAP e RAT', rota: '/fap', soConsultoria: true },
+      ]),
     ],
   },
   {
-    titulo: 'Governança',
+    titulo: 'Ferramentas',
     itens: [
-      { nome: 'eSocial', icone: 'nuvem', rota: '/esocial', soConsultoria: true, recurso: 'esocial' },
-      { nome: 'eSocial de todas e multas', icone: 'nuvem', rota: '/esocial-geral', geral: true, soConsultoria: true, recurso: 'esocial' },
-      { nome: 'FAP e RAT', icone: 'porcento', rota: '/fap', soConsultoria: true },
-      { nome: 'Terceirizadas', icone: 'aperto', rota: '/conectores#terceiros' },
-      { nome: 'Atestados e faltas', icone: 'relogio', rota: '/conectores#faltas' },
-    ],
-  },
-  {
-    titulo: 'Documentos',
-    itens: [
-      { nome: 'Arquivo de documentos', icone: 'pasta', rota: '/arquivo' },
-      { nome: 'Assinaturas', icone: 'caneta', rota: '/assinaturas', recurso: 'assinatura' },
-      { nome: 'Histórico de alterações', icone: 'relogio', rota: '/historico', soConsultoria: true },
-    ],
-  },
-  {
-    titulo: 'Conta',
-    itens: [
-      { nome: 'Meu perfil', icone: 'cracha', rota: '/perfil', geral: true },
-      { nome: 'Integrações', icone: 'sinal', rota: '/integracoes', geral: true, soConsultoria: true },
+      { nome: 'Calculadoras de SST', icone: 'numero', rota: '/calculadoras', geral: true },
+      { nome: 'Comercial', icone: 'cifrao', rota: '/comercial', geral: true, soConsultoria: true, recurso: 'proposta' },
+      { nome: 'Mudanças nas normas', icone: 'sino', rota: '/normas', geral: true, soConsultoria: true },
+      assunto('Minha conta', 'cracha', [
+        { nome: 'Meu perfil', rota: '/perfil', geral: true },
+        { nome: 'Meu plano', rota: '/plano', geral: true, soConsultoria: true },
+        { nome: 'Integrações', rota: '/integracoes', geral: true, soConsultoria: true },
+      ]),
     ],
   },
 ];
+
+// Todas as telas do menu, uma por linha (itens soltos e partes).
+export const TELAS_DO_MENU: ItemMenu[] = MENU.flatMap((g) => g.itens.flatMap((i) => i.partes ?? [i]));
 
 // Endereço final de um item para a empresa em foco. Sem empresa, os módulos levam ao cadastro da primeira.
 export function enderecoDoItem(item: ItemMenu, empresaId: string): string {
