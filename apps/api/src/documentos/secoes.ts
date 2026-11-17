@@ -128,9 +128,55 @@ export const CSS_SECOES = `
   .secao { margin-bottom: 6px; }
   .secao p, .secao li { line-height: 1.55; text-align: justify; }
   h3 { color: ${tokens.colors.primary}; font-size: 13px; margin: 14px 0 4px; }
+  h4 { font-size: 12px; margin: 10px 0 4px; color: #334155; }
   .ficha th { width: 32%; }
   .duas td:first-child { width: 30%; }
   .local-data { margin-top: 28px; }
   .falta { color: #b45309; font-style: italic; }
   .nota { font-size: 11px; color: #475569; }
 `;
+
+// Dados de cabeça que quase todo programa ou laudo usa, montados de uma vez a partir da empresa.
+export type ExtrasDoc = {
+  controle: Controle;
+  empresa: { razaoSocial: string; cnae: string | null; endereco: string | null; numFuncionarios: number };
+  formacao: string | null;
+  representanteLegal: string | null;
+  local: string | null;
+};
+type EmpresaDoc = {
+  razaoSocial: string; cnae: string | null; endereco: string | null; numFuncionarios: number; representanteLegalNome: string | null;
+  responsavelTecnicoNome: string | null; responsavelTecnicoFormacao: string | null; consultoria: { cidade: string | null };
+};
+export function extrasDe(sigla: string, titulo: string, e: EmpresaDoc, versao: number, historico: Revisao[], emitidoEm: Date, mesesRevisao: number | null, responsavel?: string | null): ExtrasDoc {
+  let proximaRevisao: Date | null = null;
+  if (mesesRevisao) {
+    proximaRevisao = new Date(emitidoEm);
+    proximaRevisao.setMonth(proximaRevisao.getMonth() + mesesRevisao);
+  }
+  return {
+    controle: {
+      sigla, titulo, versao, emitidoEm, proximaRevisao, historico,
+      responsavel: responsavel !== undefined ? responsavel : [e.responsavelTecnicoNome, e.responsavelTecnicoFormacao].filter(Boolean).join(', ') || null,
+    },
+    empresa: { razaoSocial: e.razaoSocial, cnae: e.cnae, endereco: e.endereco, numFuncionarios: e.numFuncionarios },
+    formacao: e.responsavelTecnicoFormacao,
+    representanteLegal: e.representanteLegalNome,
+    local: cidadeDoEndereco(e.endereco) ?? e.consultoria.cidade ?? null,
+  };
+}
+
+// Tabela de identificação padrão (empresa, endereço, CNAE, trabalhadores e responsável).
+export function identificacaoBasica(x: ExtrasDoc, total: number, responsavel: { nome: string | null; registro: string | null }, papel = 'Responsável técnico', extra: [string, string][] = []): string {
+  const e = x.empresa;
+  const falta = '<span class="falta">não informado</span>';
+  return tabelaDuasColunas(['Dado', 'Informação'], [
+    ['Empresa', escape(e.razaoSocial)],
+    ['Endereço', e.endereco ? escape(e.endereco) : falta],
+    ['CNAE', e.cnae ? escape(e.cnae) : falta],
+    ['Trabalhadores', String(total)],
+    [papel, responsavel.nome ? `${escape(responsavel.nome)}${x.formacao ? `, ${escape(x.formacao)}` : ''}${responsavel.registro ? ` · ${escape(responsavel.registro)}` : ''}` : falta],
+    ['Representante legal', x.representanteLegal ? escape(x.representanteLegal) : falta],
+    ...extra,
+  ]);
+}

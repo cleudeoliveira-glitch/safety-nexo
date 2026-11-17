@@ -5,6 +5,7 @@ import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DadosOs, laudoHtml, osHtml, pgrtrHtml } from './templates';
 import { chaveFuncao, descricaoGhe, lerFuncoes } from '../empresas/ghe-ambiente';
+import { extrasDe } from '../documentos/secoes';
 
 const AVISO_LAUDO = 'Feito com o Safety Nexo.';
 const AVISO = 'Feito com o Safety Nexo.';
@@ -35,8 +36,8 @@ export class LaudosService {
   }
 
   async laudo(consultoriaId: string, empresaId: string, tipo: TipoLaudo) {
-    const { empresa, versao, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, tipo);
-    const colaboradores = await this.prisma.colaborador.findMany({ where: { empresaId }, select: { gheId: true, cargo: true } });
+    const { empresa, versao, historico, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, tipo);
+    const colaboradores = await this.prisma.colaborador.findMany({ where: { empresaId, dataDesligamento: null }, select: { gheId: true, cargo: true } });
     const html = laudoHtml(
       { titulo: TITULOS[tipo], logoEmpresa, consultoria, infos: this.infos(empresa, versao, geradoEm), aviso: AVISO_LAUDO, capa: capaDe(tipo, empresa, versao, geradoEm, [responsavelTecnico(empresa)]) },
       empresa.ghes.map((g) => ({
@@ -50,6 +51,7 @@ export class LaudosService {
       })),
       { insalubridade: tipo === 'LIP', periculosidade: true },
       { nome: empresa.responsavelTecnicoNome, registro: empresa.responsavelTecnicoRegistro },
+      extrasDe(tipo, TITULOS[tipo], empresa, versao, historico, geradoEm, 12),
     );
     const pdf = await this.pdf.render(html);
     // Sem prazo fixo na lei: o painel lembra de revisar em 12 meses, como o LTCAT.
@@ -58,7 +60,9 @@ export class LaudosService {
   }
 
   async pgrtr(consultoriaId: string, empresaId: string) {
-    const { empresa, versao, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, 'PGRTR');
+    const { empresa, versao, historico, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, 'PGRTR');
+    const acoes = await this.prisma.acaoCorretiva.findMany({ where: { empresaId, NOT: { status: 'FEITA', feitaEm: { lt: new Date(geradoEm.getTime() - 365 * 24 * 3600 * 1000) } } }, orderBy: [{ status: 'asc' }, { prazo: 'asc' }] });
+    const titulo = 'Programa de Gerenciamento de Riscos no Trabalho Rural (PGRTR)';
     const html = pgrtrHtml(
       {
         titulo: 'Programa de Gerenciamento de Riscos no Trabalho Rural (PGRTR)',
@@ -69,6 +73,11 @@ export class LaudosService {
         capa: capaDe('PGRTR', empresa, versao, geradoEm, [responsavelTecnico(empresa)]),
       },
       empresa.ghes.map((g) => ({ nome: g.nome, descricao: descricaoGhe(g), colaboradores: g._count.colaboradores, riscos: g.riscos })),
+      {
+        ...extrasDe('PGRTR', titulo, empresa, versao, historico, geradoEm, 24),
+        responsavel: { nome: empresa.responsavelTecnicoNome, registro: empresa.responsavelTecnicoRegistro },
+        acoes,
+      },
     );
     const pdf = await this.pdf.render(html);
     await this.contexto.registrar(empresaId, 'PGRTR', versao, geradoEm, 24);
@@ -92,7 +101,7 @@ export class LaudosService {
       epis: [...new Set(c.entregasEpi.map((e) => e.epi))].sort(),
     }));
     return this.pdf.render(
-      osHtml({ titulo: 'Ordem de Serviço de Segurança e Saúde no Trabalho', logoEmpresa, consultoria, infos: identificacao(empresa), aviso: AVISO }, lista),
+      osHtml({ titulo: 'Ordem de Serviço de Segurança e Saúde no Trabalho', logoEmpresa, consultoria, infos: identificacao(empresa), aviso: AVISO }, lista, empresa.razaoSocial),
     );
   }
 }
