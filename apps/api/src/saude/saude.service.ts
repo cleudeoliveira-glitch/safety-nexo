@@ -1,3 +1,4 @@
+import { conferirApagado, jaFoiAoEsocial } from '../common/exclusao';
 import { capaDe, responsavelTecnico } from '../documentos/capa';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ContextoDocumentoService } from '../documentos/contexto.service';
@@ -116,6 +117,26 @@ export class SaudeService {
     if (enviado) throw new BadRequestException('Este afastamento já foi enviado ao eSocial e não pode ser apagado aqui.');
     const { count } = await this.prisma.afastamento.deleteMany({ where: { id, empresaId } });
     if (!count) throw new NotFoundException('Afastamento não encontrado');
+    return { ok: true };
+  }
+
+  async excluirAet(consultoriaId: string, empresaId: string, id: string) {
+    await this.empresa(consultoriaId, empresaId);
+    const { count } = await this.prisma.aet.deleteMany({ where: { id, empresaId } });
+    // As recomendações ainda abertas saem do plano de ação; as feitas ficam como histórico.
+    if (count) await this.prisma.acaoCorretiva.deleteMany({ where: { empresaId, origem: 'AET', origemId: id, status: { not: 'FEITA' } } });
+    return conferirApagado(count, 'Esta AET não foi encontrada. Talvez já tenha sido excluída.');
+  }
+
+  // CAT que já foi ao eSocial não pode sumir daqui: o registro precisa bater com o que o governo tem.
+  async excluirCat(consultoriaId: string, empresaId: string, id: string) {
+    await this.empresa(consultoriaId, empresaId);
+    const cat = await this.prisma.cat.findFirst({ where: { id, empresaId }, select: { enviadaEm: true, recibo: true } });
+    if (!cat) throw new NotFoundException('Esta CAT não foi encontrada. Talvez já tenha sido excluída.');
+    if (cat.enviadaEm || cat.recibo || (await jaFoiAoEsocial(this.prisma, empresaId, id))) {
+      throw new BadRequestException('Esta CAT já foi enviada ao eSocial, por isso não dá para apagar daqui. Se ela foi enviada errada, faça a exclusão no eSocial (S-3000) na tela do eSocial.');
+    }
+    await this.prisma.cat.delete({ where: { id } });
     return { ok: true };
   }
 

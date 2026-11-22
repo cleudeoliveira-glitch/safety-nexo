@@ -3,7 +3,7 @@
 import { grau5, nivelDoRisco, PROBABILIDADES, SEVERIDADES } from '@/lib/matriz';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
+import { AreaTexto, Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   atualizarEmpresa,
   AcessoEmpresa,
@@ -156,6 +156,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     lpp: ['LPP', 'Laudo de periculosidade gerado.'],
     pgrtr: ['PGRTR', 'PGRTR gerado.'],
     os: ['Ordens-de-servico', 'Ordens de serviço geradas, uma página por colaborador.'],
+    'mapa-risco': ['Mapa-de-risco', 'Mapa de risco gerado: uma folha por setor, para afixar.'],
     cipa: ['CIPA', 'Dimensionamento da CIPA gerado.'],
   };
   const [anoRelatorio, setAnoRelatorio] = useState(new Date().getFullYear() - 1);
@@ -266,7 +267,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Campo id="representante" name="representante" rotulo="Representante legal" defaultValue={empresa.representanteLegalNome ?? ''} placeholder="Quem assina o PPP pela empresa" />
           <Campo id="localPadrao" name="localPadrao" rotulo="Local padrão" className="md:col-span-2" defaultValue={empresa.localPadrao ?? ''} placeholder="Ex.: Unidade Centro, Rua das Flores, 120"
             dica="Já vem escrito no campo Local da APR, permissão de trabalho, DDS, inspeção e treinamento. Dá para trocar na hora." />
-          <Campo id="processos" name="processos" rotulo="Visão geral da empresa (opcional, vai no PGR)" className="md:col-span-3" defaultValue={empresa.descricaoProcessos ?? ''}
+          <AreaTexto id="processos" name="processos" rotulo="Visão geral da empresa (opcional, vai no PGR)" className="md:col-span-3" defaultValue={empresa.descricaoProcessos ?? ''}
             placeholder="Ex.: Padaria com produção, estoque e loja. Turno único, 8 h."
             dica="Só um resumo. O ambiente de cada setor é descrito no próprio GHE, logo abaixo." />
           <div className="flex items-end justify-end md:col-span-3"><Botao type="submit">Salvar dados</Botao></div>
@@ -316,11 +317,11 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
               return ok;
             };
             return (
-            <article key={ghe.id} id={`ghe-${ghe.id}`} className="scroll-mt-4 rounded-card border border-border p-4">
+            <article key={ghe.id} id={`ghe-${ghe.id}`} className="scroll-mt-20 min-w-0 rounded-card border border-border p-3 sm:p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <h3 className="font-semibold text-primary">
                   {ghe.codigo && !ghe.nome.includes(ghe.codigo) ? `${ghe.codigo} · ` : ''}{ghe.nome}
-                  <span className="text-sm font-normal text-text/60"> · {ghe._count.colaboradores} colaborador(es){ghe.unidade ? ` · ${ghe.unidade}` : ''}</span>
+                  <span className="block text-sm font-normal text-text/60 sm:inline"><span className="hidden sm:inline"> · </span>{ghe._count.colaboradores} colaborador(es){ghe.unidade ? ` · ${ghe.unidade}` : ''}</span>
                 </h3>
                 {!cliente && (
                   <span className="flex gap-4 text-sm">
@@ -349,10 +350,15 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                 {ghe.riscos.length === 0 ? (
                   <p className="text-sm text-warning">Nenhum risco. O PGR precisa de pelo menos um.</p>
                 ) : (
-                  <ul className="mt-1 space-y-1 text-sm">
+                  <ul className="mt-2 space-y-2 text-sm">
                     {ghe.riscos.map((r) => (
-                      <li key={r.id}>
-                        {r.agente} · {r.fonteGeradora} · <SeloNivel severidade={r.severidade} probabilidade={r.probabilidade ?? '3'} />
+                      <li key={r.id} className="min-w-0 rounded-card border border-border bg-white p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <p className="min-w-0 flex-1 break-words font-semibold">{r.agente}</p>
+                          <SeloNivel severidade={r.severidade} probabilidade={r.probabilidade ?? '3'} />
+                        </div>
+                        <p className="mt-0.5 break-words text-text/70"><span className="text-text/50">Fonte:</span> {r.fonteGeradora}</p>
+                        {r.possiveisLesoes && <p className="mt-0.5 break-words text-text/70"><span className="text-text/50">Lesões:</span> {r.possiveisLesoes}</p>}
                         {!cliente && <AjustarRisco risco={r} salvar={(dados) => agir(() => ajustarRisco(empresaId, ghe.id, r.id, dados), `Classificação de ${r.agente} salva.`)} />}
                         {AGENTES_LTCAT.includes(r.tipo) && (
                           <AvaliarRisco risco={r} anexos={anexos} salvar={(dados) => agir(() => avaliarRisco(empresaId, ghe.id, r.id, dados), `Avaliação de ${r.agente} salva.`)} />
@@ -384,16 +390,12 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                   </Selecao>
                   <Campo id={`agente-${ghe.id}`} name="agente" rotulo="Agente ou perigo" required placeholder="Ex.: Ruído" />
                   <Campo id={`fonte-${ghe.id}`} name="fonte" rotulo="Fonte geradora" required placeholder="Ex.: Misturadeira" />
-                  <Selecao id={`sev-${ghe.id}`} name="severidade" rotulo="Severidade (1 a 5)" defaultValue="3">
-                    {SEVERIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
-                  </Selecao>
-                  <Selecao id={`prob-${ghe.id}`} name="probabilidade" rotulo="Probabilidade (1 a 5)" defaultValue="3">
-                    {PROBABILIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
-                  </Selecao>
-                  <Campo id={`lesoes-${ghe.id}`} name="lesoes" rotulo="Possíveis lesões ou agravos" className="md:col-span-3" placeholder="Ex.: Perda auditiva, zumbido" />
-                  <Campo id={`epc-${ghe.id}`} name="epc" rotulo="Proteção coletiva (EPC)" className="md:col-span-2" placeholder="Ex.: Enclausuramento da misturadeira" />
-                  <Campo id={`epi-${ghe.id}`} name="epi" rotulo="EPI" className="md:col-span-2" placeholder="Ex.: Protetor auricular tipo plug" />
-                  <Campo id={`medidas-${ghe.id}`} name="medidas" rotulo="Outras medidas" className="md:col-span-3" placeholder="Ex.: Rodízio de tarefas, sinalização da área" />
+                  <EscolhaGrau id={`sev-${ghe.id}`} name="severidade" rotulo="Severidade (1 a 5)" lista={SEVERIDADES} inicial="3" />
+                  <EscolhaGrau id={`prob-${ghe.id}`} name="probabilidade" rotulo="Probabilidade (1 a 5)" lista={PROBABILIDADES} inicial="3" />
+                  <AreaTexto id={`lesoes-${ghe.id}`} name="lesoes" rotulo="Possíveis lesões ou agravos" className="md:col-span-3" placeholder="Ex.: Perda auditiva, zumbido" />
+                  <AreaTexto id={`epc-${ghe.id}`} name="epc" rotulo="Proteção coletiva (EPC)" className="md:col-span-2" placeholder="Ex.: Enclausurar a misturadeira" />
+                  <AreaTexto id={`epi-${ghe.id}`} name="epi" rotulo="EPI" className="md:col-span-2" placeholder="Ex.: Protetor auricular plug" />
+                  <AreaTexto id={`medidas-${ghe.id}`} name="medidas" rotulo="Outras medidas" className="md:col-span-3" placeholder="Ex.: Rodízio, sinalização" />
                   <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Adicionar risco</Botao></div>
                 </form>
 
@@ -585,6 +587,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Botao onClick={() => baixar('lpp')}>Gerar LPP</Botao>
           <Botao onClick={() => baixar('pgrtr')} title="Para empresas com atividade rural (NR-31)">Gerar PGRTR</Botao>
           <Botao variante="secundario" onClick={() => baixar('os')}>Ordens de serviço (todos)</Botao>
+          <Botao variante="secundario" title="Círculos por tipo e intensidade, uma folha por setor, com os riscos dos GHEs (CIPA)" onClick={() => baixar('mapa-risco')}>Mapa de risco</Botao>
           <Link href={`/empresas/${empresaId}/prontuario`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Prontuário: vacinas e exames →</Link>
           <Link href={`/empresas/${empresaId}/saude`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">AET e CAT →</Link>
           <Link href={`/empresas/${empresaId}/esocial`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">eSocial →</Link>
@@ -719,10 +722,25 @@ function SeloNivel({ severidade, probabilidade }: { severidade: string; probabil
   return <span className="rounded-full px-2 py-0.5 text-xs font-semibold text-white" style={{ background: n.fundo }} title={`Matriz 5x5: severidade ${grau5(severidade)} x probabilidade ${grau5(probabilidade)} = ${n.pontos}`}>Risco {n.nome.toLowerCase()} ({n.pontos})</span>;
 }
 
+// Severidade e probabilidade: a lista mostra só o número e o nome (cabe no celular)
+// e a explicação do que foi escolhido aparece logo abaixo, inteira.
+function EscolhaGrau({ id, name, rotulo, lista, inicial }: { id: string; name: string; rotulo: string; lista: [string, string, string][]; inicial: string }) {
+  const [valor, setValor] = useState(inicial);
+  const explicacao = lista.find(([v]) => v === valor)?.[2];
+  return (
+    <div>
+      <Selecao id={id} name={name} rotulo={rotulo} value={valor} onChange={(e) => setValor(e.target.value)}>
+        {lista.map(([v, n]) => <option key={v} value={v}>{v} · {n}</option>)}
+      </Selecao>
+      {explicacao && <p className="mt-1 text-xs text-text/60">{explicacao.charAt(0).toUpperCase() + explicacao.slice(1)}.</p>}
+    </div>
+  );
+}
+
 function AjustarRisco({ risco, salvar }: { risco: Risco; salvar: (dados: { severidade: string; probabilidade: string; possiveisLesoes: string; medidasControle: string; medidasEpc: string; medidasEpi: string }) => void }) {
   return (
-    <details className="ml-1 inline-block align-top">
-      <summary className="cursor-pointer text-xs font-semibold text-primary hover:underline">Classificar</summary>
+    <details className="mt-2">
+      <summary className="cursor-pointer text-sm font-semibold text-primary hover:underline">Classificar e editar medidas</summary>
       <form
         className="mt-2 grid gap-2 rounded-card border border-border p-3 md:grid-cols-2"
         onSubmit={(ev) => {
@@ -731,16 +749,12 @@ function AjustarRisco({ risco, salvar }: { risco: Risco; salvar: (dados: { sever
           salvar({ severidade: String(d.get('severidade')), probabilidade: String(d.get('probabilidade')), possiveisLesoes: String(d.get('lesoes') ?? ''), medidasControle: String(d.get('medidas') ?? ''), medidasEpc: String(d.get('epc') ?? ''), medidasEpi: String(d.get('epi') ?? '') });
         }}
       >
-        <Selecao id={`aj-sev-${risco.id}`} name="severidade" rotulo="Severidade (1 a 5)" defaultValue={grau5(risco.severidade)}>
-          {SEVERIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
-        </Selecao>
-        <Selecao id={`aj-prob-${risco.id}`} name="probabilidade" rotulo="Probabilidade (1 a 5)" defaultValue={grau5(risco.probabilidade)}>
-          {PROBABILIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
-        </Selecao>
-        <Campo id={`aj-les-${risco.id}`} name="lesoes" rotulo="Possíveis lesões ou agravos" className="md:col-span-2" defaultValue={risco.possiveisLesoes ?? ''} />
-        <Campo id={`aj-epc-${risco.id}`} name="epc" rotulo="Proteção coletiva (EPC)" defaultValue={risco.medidasEpc ?? ''} />
-        <Campo id={`aj-epi-${risco.id}`} name="epi" rotulo="EPI" defaultValue={risco.medidasEpi ?? ''} />
-        <Campo id={`aj-med-${risco.id}`} name="medidas" rotulo="Outras medidas" className="md:col-span-2" defaultValue={risco.medidasControle ?? ''} />
+        <EscolhaGrau id={`aj-sev-${risco.id}`} name="severidade" rotulo="Severidade (1 a 5)" lista={SEVERIDADES} inicial={grau5(risco.severidade)} />
+        <EscolhaGrau id={`aj-prob-${risco.id}`} name="probabilidade" rotulo="Probabilidade (1 a 5)" lista={PROBABILIDADES} inicial={grau5(risco.probabilidade)} />
+        <AreaTexto id={`aj-les-${risco.id}`} name="lesoes" rotulo="Possíveis lesões ou agravos" className="md:col-span-2" defaultValue={risco.possiveisLesoes ?? ''} />
+        <AreaTexto id={`aj-epc-${risco.id}`} name="epc" rotulo="Proteção coletiva (EPC)" defaultValue={risco.medidasEpc ?? ''} />
+        <AreaTexto id={`aj-epi-${risco.id}`} name="epi" rotulo="EPI" defaultValue={risco.medidasEpi ?? ''} />
+        <AreaTexto id={`aj-med-${risco.id}`} name="medidas" rotulo="Outras medidas" className="md:col-span-2" defaultValue={risco.medidasControle ?? ''} />
         <div className="flex justify-end md:col-span-2"><Botao type="submit" variante="secundario">Salvar classificação</Botao></div>
       </form>
     </details>
@@ -763,9 +777,9 @@ function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosL
   const simNao = (v: FormDataEntryValue | null) => (v === 'S' ? true : v === 'N' ? false : null);
   const valor = (v: boolean | null | undefined) => (v === true ? 'S' : v === false ? 'N' : '');
   return (
-    <details className="ml-1 inline">
-      <summary className={`inline cursor-pointer text-xs font-semibold hover:underline ${avaliado ? 'text-success' : 'text-warning'}`}>
-        {' '}· {avaliado ? `avaliado${risco.intensidade ? `: ${risco.intensidade}` : ''} (editar)` : 'falta avaliar para LTCAT/PPP'}
+    <details className="mt-1">
+      <summary className={`cursor-pointer text-sm font-semibold hover:underline ${avaliado ? 'text-success' : 'text-warning'}`}>
+        {avaliado ? `avaliado${risco.intensidade ? `: ${risco.intensidade}` : ''} (editar)` : 'falta avaliar para LTCAT/PPP'}
       </summary>
       <form
         className="mt-2 grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3"
@@ -1022,15 +1036,24 @@ function ConferirGhe({ ghe, colaboradores, irPara }: { ghe: Ghe; colaboradores: 
 function FuncoesDaEmpresa({ ghes, colaboradores }: { ghes: Ghe[]; colaboradores: Colaborador[] }) {
   const chave = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
   const ativos = colaboradores.filter((c) => !c.dataDesligamento);
-  const linhas = ghes.flatMap((g) => (g.funcoes ?? []).map((f) => ({ funcao: f.nome, cbo: f.cbo, ghe: g.nome, pessoas: ativos.filter((c) => chave(c.cargo) === chave(f.nome)).length })));
+  const linhas = ghes.flatMap((g) => (g.funcoes ?? []).filter((f) => f.nome?.trim()).map((f) => ({ funcao: f.nome, cbo: f.cbo, ghe: g.nome, pessoas: ativos.filter((c) => chave(c.cargo) === chave(f.nome)).length })));
   const conhecidas = new Set(linhas.map((l) => chave(l.funcao)));
+  // A mesma função em dois GHEs conta uma vez só. GHE sem função aparece no aviso logo abaixo.
+  const totalFuncoes = conhecidas.size;
+  const semFuncao = ghes.filter((g) => !(g.funcoes ?? []).some((f) => f.nome?.trim()));
   const soltas = [...new Set(ativos.map((c) => c.cargo).filter((c) => c && !conhecidas.has(chave(c))))].sort();
   return (
     <div className="mb-4 space-y-3">
       <div className="flex flex-wrap gap-6">
-        <p><span className="text-2xl font-bold text-primary">{ghes.length}</span> <span className="text-sm text-text/60">GHEs</span></p>
-        <p><span className="text-2xl font-bold text-primary">{linhas.length}</span> <span className="text-sm text-text/60">Funções</span></p>
+        <p><span className="text-2xl font-bold text-primary">{ghes.length}</span> <span className="text-sm text-text/60">{ghes.length === 1 ? 'GHE' : 'GHEs'}</span></p>
+        <p><span className="text-2xl font-bold text-primary">{totalFuncoes}</span> <span className="text-sm text-text/60">{totalFuncoes === 1 ? 'função' : 'funções'} nos GHEs</span></p>
       </div>
+      {semFuncao.length > 0 && (
+        <p className="text-sm text-warning">
+          {semFuncao.length === 1 ? `${semFuncao[0].nome} ainda está sem função.` : `${semFuncao.length} GHEs ainda estão sem função: ${semFuncao.map((g) => g.nome).join(', ')}.`}
+          {' '}Abra a etapa 2. Equipe {semFuncao.length === 1 ? 'dele' : 'de cada um'} e diga quais funções trabalham ali.
+        </p>
+      )}
       {(linhas.length > 0 || soltas.length > 0) && (
         <details className="rounded-card border border-border p-4">
           <summary className="cursor-pointer font-semibold text-primary">Funções da empresa</summary>

@@ -25,7 +25,7 @@ body{max-width:820px;margin-left:auto!important;margin-right:auto!important;back
 
 @Injectable()
 export class PdfService {
-  async render(html: string): Promise<Buffer> {
+  async render(html: string, opcoes: { paisagem?: boolean } = {}): Promise<Buffer> {
     // Na pré-visualização não abre o navegador: devolve a página pronta para mostrar na tela.
     if (emPrevia()) {
       const pagina = htmlDoPlano(html);
@@ -39,7 +39,7 @@ export class PdfService {
     try {
       const page = await browser.newPage();
       await page.setContent(htmlDoPlano(html), { waitUntil: 'load' });
-      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '12mm', bottom: '12mm' } });
+      const pdf = await page.pdf({ format: 'A4', landscape: !!opcoes.paisagem, printBackground: true, margin: { top: '12mm', bottom: '12mm' } });
       return Buffer.from(pdf);
     } finally {
       await browser.close();

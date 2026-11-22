@@ -191,9 +191,9 @@ async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
   return res.blob();
 }
 
-export type TipoDocumento = 'pgr' | 'pcmso' | 'ltcat' | 'lip' | 'lpp' | 'pgrtr' | 'os';
+export type TipoDocumento = 'pgr' | 'pcmso' | 'ltcat' | 'lip' | 'lpp' | 'pgrtr' | 'os' | 'mapa-risco';
 export const gerarDocumento = (empresaId: string, tipo: TipoDocumento) =>
-  baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo === 'os' ? 'as ordens de serviço' : tipo.toUpperCase());
+  baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo === 'os' ? 'as ordens de serviço' : tipo === 'mapa-risco' ? 'mapa de risco' : tipo.toUpperCase());
 
 // Relatório analítico anual do PCMSO (NR-07).
 export const gerarRelatorioPcmso = (empresaId: string, ano: number) =>
@@ -943,6 +943,7 @@ export type ConsultoriaAdm = {
   id: string; nome: string; cnpj: string | null; cidade: string | null; plano: string; limiteEmpresas: number;
   bloqueada: boolean; motivoBloqueio: string | null; observacaoAdm: string | null; criadaEm: string;
   pedidoPlano: string | null; pedidoPlanoEm: string | null; dono: boolean;
+  planoDesde: string | null; planoPagoAte: string | null;
   responsavel: { nome: string; email: string } | null;
   empresas: number; usuarios: number; colaboradores: number; documentos: number; ultimoAcesso: string | null;
 };
@@ -962,7 +963,7 @@ export type ConsultoriaAdmDetalhe = {
 export const admin = {
   painel: () => chamar<PainelAdm>('GET', '/admin/consultorias'),
   detalhe: (id: string) => chamar<ConsultoriaAdmDetalhe>('GET', `/admin/consultorias/${id}`),
-  atualizar: (id: string, dados: { plano?: string; limiteEmpresas?: number; bloqueada?: boolean; motivoBloqueio?: string; observacaoAdm?: string }) =>
+  atualizar: (id: string, dados: { plano?: string; limiteEmpresas?: number; bloqueada?: boolean; motivoBloqueio?: string; observacaoAdm?: string; renovarMeses?: 1 | 12; pagoAte?: string }) =>
     chamar<unknown>('PATCH', `/admin/consultorias/${id}`, dados),
   convites: () => chamar<{ link: string; whatsapp: string }>('GET', '/admin/convites'),
   linkSenha: (usuarioId: string) => chamar<{ link: string; whatsapp: string }>('POST', `/admin/usuarios/${usuarioId}/link-senha`),
@@ -1120,6 +1121,7 @@ export const meuEspaco = {
 export type MeuPlano = {
   plano: string; nomePlano: string; limiteEmpresas: number | null; empresas: number; acessoTotal: boolean;
   pedidoPlano: string | null; pedidoPlanoEm: string | null;
+  planoDesde?: string | null; planoPagoAte?: string | null; criadaEm?: string;
   emTeste?: boolean; testeAte?: string | null; recursos?: string[];
   limites?: { funcionarios: number | null; psicossocialMes: number | null; equipe: number | null } | null;
 };
@@ -1170,3 +1172,23 @@ export type Conferencia = {
   revisao: { ultimoPgr: string | null; venceEm: string | null; motivos: { texto: string; detalhe: string; base: string }[] };
 };
 export const conferirDocumentos = (empresaId: string) => chamar<Conferencia>('GET', `/empresas/${empresaId}/conferencia`);
+
+// Excluir documentos lançados errado (só a consultoria). Cada tela pergunta antes de apagar.
+type Ok = { ok: boolean };
+export const excluir = {
+  apr: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/aprs/${id}`),
+  permissao: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/permissoes/${id}`),
+  dds: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/dds/${id}`),
+  inspecao: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/inspecoes/${id}`),
+  turma: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/turmas/${id}`),
+  aet: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/aets/${id}`),
+  cat: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/cats/${id}`),
+  aso: (e: string, c: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/colaboradores/${c}/asos/${id}`),
+  entregaEpi: (e: string, c: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/colaboradores/${c}/epis/${id}`),
+  eleicaoCipa: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/cipa/eleicoes/${id}`),
+  psicossocial: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/psicossocial/${id}`),
+  proposta: (id: string) => chamar<Ok>('DELETE', `/comercial/propostas/${id}`),
+  contrato: (id: string) => chamar<Ok>('DELETE', `/comercial/contratos/${id}`),
+  servico: (id: string) => chamar<Ok>('DELETE', `/comercial/servicos/${id}`),
+  cobranca: (id: string) => chamar<Ok>('DELETE', `/comercial/cobrancas/${id}`),
+};

@@ -151,6 +151,15 @@ export class PsicossocialService {
     return { ok: true };
   }
 
+  // Apaga a avaliação com as respostas e o plano de ação. O que já foi levado ao PGR continua lá.
+  async excluir(consultoriaId: string, empresaId: string, id: string) {
+    await this.avaliacao(consultoriaId, empresaId, id);
+    await this.prisma.avaliacaoPsicossocial.delete({ where: { id } });
+    // As ações ainda abertas saem do plano de ação; as feitas ficam como histórico.
+    await this.prisma.acaoCorretiva.deleteMany({ where: { empresaId, origem: 'PSICOSSOCIAL', origemId: id, status: { not: 'FEITA' } } });
+    return { ok: true };
+  }
+
   async removerAcao(consultoriaId: string, empresaId: string, id: string, acaoId: string) {
     await this.avaliacao(consultoriaId, empresaId, id);
     const { count } = await this.prisma.acaoCorretiva.deleteMany({ where: { id: acaoId, empresaId, origem: 'PSICOSSOCIAL', origemId: id } });

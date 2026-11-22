@@ -247,6 +247,24 @@ export class ComercialService {
     return { ok: true };
   }
 
+  // Excluir de vez (lançado errado). Cobrança paga fica: ela é o histórico do que entrou no caixa.
+  async excluir(consultoriaId: string, tipo: 'proposta' | 'contrato' | 'servico' | 'cobranca', id: string) {
+    const onde = { id, consultoriaId };
+    if (tipo === 'cobranca') {
+      const c = await this.prisma.cobranca.findFirst({ where: onde, select: { status: true } });
+      if (!c) throw new NotFoundException('Esta cobrança não foi encontrada. Talvez já tenha sido excluída.');
+      if (c.status === 'PAGA') throw new BadRequestException('Esta cobrança já foi paga, então ela fica no histórico do caixa. Se foi marcada como paga por engano, fale com o suporte.');
+      await this.prisma.cobranca.delete({ where: { id } });
+      return { ok: true };
+    }
+    const { count } =
+      tipo === 'proposta' ? await this.prisma.proposta.deleteMany({ where: onde })
+        : tipo === 'contrato' ? await this.prisma.contrato.deleteMany({ where: onde })
+          : await this.prisma.servico.deleteMany({ where: onde });
+    if (!count) throw new NotFoundException('Não encontrei este registro. Talvez já tenha sido excluído.');
+    return { ok: true };
+  }
+
   async cancelarCobranca(consultoriaId: string, id: string) {
     const { count } = await this.prisma.cobranca.updateMany({ where: { id, consultoriaId, status: 'ABERTA' }, data: { status: 'CANCELADA' } });
     if (!count) throw new BadRequestException('Só dá para cancelar cobrança em aberto.');

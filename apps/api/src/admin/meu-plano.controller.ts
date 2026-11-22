@@ -38,6 +38,10 @@ export class MeuPlanoController {
       acessoTotal,
       pedidoPlano: c.pedidoPlano,
       pedidoPlanoEm: c.pedidoPlanoEm,
+      // Vigência do plano pago (de quando começou e até quando está pago) e a data do cadastro (início do teste).
+      planoDesde: c.planoDesde,
+      planoPagoAte: c.planoPagoAte,
+      criadaEm: c.createdAt,
       // O que o plano libera agora (o teste de 14 dias libera o Profissional).
       emTeste: sessao?.plano?.emTeste ?? false,
       testeAte: sessao?.plano?.testeAte ?? null,

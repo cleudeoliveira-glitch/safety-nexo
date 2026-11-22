@@ -4,6 +4,7 @@ import { emPrevia, mensagemUpgrade, planoAtual, Recurso, temRecurso } from '../c
 import { Response } from 'express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { LtcatService } from './ltcat.service';
+import { MapaRiscoService } from './mapa-risco.service';
 import { PcmsoService } from './pcmso.service';
 import { PgrService } from './pgr.service';
 
@@ -13,6 +14,7 @@ export class DocumentosController {
     private readonly pgr: PgrService,
     private readonly pcmso: PcmsoService,
     private readonly ltcat: LtcatService,
+    private readonly mapaRisco: MapaRiscoService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -38,6 +40,13 @@ export class DocumentosController {
   async gerarPcmso(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Res() res: Response) {
     const { pdf, versao } = await this.pcmso.gerarPdf(consultoriaId, empresaId);
     enviarPdf(res, pdf, `PCMSO-v${versao}.pdf`);
+  }
+
+  // Mapa de risco para afixar em cada setor (CIPA), com os riscos dos GHEs.
+  @Post('mapa-risco')
+  async gerarMapaRisco(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Res() res: Response) {
+    const { pdf, versao } = await this.mapaRisco.gerarPdf(consultoriaId, empresaId);
+    enviarPdf(res, pdf, `Mapa-de-risco-v${versao}.pdf`);
   }
 
   @Recurso('documentos', 'O relatório analítico do PCMSO')

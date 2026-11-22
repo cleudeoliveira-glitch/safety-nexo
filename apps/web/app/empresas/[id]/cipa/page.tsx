@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { VotacaoCelular } from '@/components/VotacaoCipa';
 import { ReunioesCipa } from '@/components/ReunioesCipa';
+import { MapaRisco } from '@/components/MapaRisco';
 import { rolarParaAncora } from '@/lib/abaDoEndereco';
 import { ehEmpresa } from '@/lib/sessao';
 import {
@@ -22,7 +23,9 @@ import {
   listarEleicoes,
   removerMembroCipa,
   salvarArquivo,
+  excluir,
 } from '@/lib/api';
+import { BotaoExcluir } from '@/components/BotaoExcluir';
 
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—');
 const dia = (iso: string | null) => iso?.slice(0, 10) ?? '';
@@ -94,7 +97,7 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
     <main className="mx-auto max-w-4xl space-y-6 p-6 md:p-10">
       <div>
         <Link href={`/empresas/${empresaId}#cipa`} className="text-sm text-primary">← Voltar à empresa</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">CIPA: eleição e reuniões</h1>
+        <h1 className="mt-4 text-3xl font-semibold text-primary">CIPA: eleição, reuniões e mapa de risco</h1>
         <p className="text-text/60">
           {empresa.razaoSocial}
           {eleicao && ` · ${eleicao.vagas.efetivos} titular(es) e ${eleicao.vagas.suplentes} suplente(s) eleitos pelos funcionários`}
@@ -129,6 +132,9 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
             <div className="flex flex-wrap gap-2">
               <Documento doc="edital" nome="Edital-CIPA">Baixar edital</Documento>
               <Documento doc="inscricao" nome="Ficha-inscricao-CIPA">Baixar ficha de inscrição</Documento>
+              <BotaoExcluir rotulo="Excluir esta eleição" pergunta={`Excluir a eleição da CIPA de ${data(eleicao.eleicaoEm)}? Candidatos, votos e membros saem junto. As atas de reunião continuam.`}
+                excluir={() => excluir.eleicaoCipa(empresaId, eleicao.id)} aoTerminar={async () => { setAviso({ tipo: 'ok', texto: 'Eleição excluída.' }); await recarregar(); }}
+                aoErrar={(m) => setAviso({ tipo: 'erro', texto: m })} />
             </div>
           </div>
         ) : (
@@ -332,6 +338,8 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
       )}
 
       <ReunioesCipa empresaId={empresaId} eleicao={eleicao} />
+
+      <MapaRisco empresaId={empresaId} nomeEmpresa={empresa.razaoSocial} />
     </main>
   );
 }

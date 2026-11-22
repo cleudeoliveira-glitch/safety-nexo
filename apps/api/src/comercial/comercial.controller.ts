@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Res } from '@nestjs/common';
 import { Recurso } from '../common/plano';
 import { Response } from 'express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
@@ -63,4 +63,10 @@ export class ComercialController {
   @Get('cobrancas/:id/pix') pix(@ConsultoriaId() c: string, @Param('id') id: string) { return this.comercial.pix(c, id); }
   @Recurso('cobranca', 'Contratos e cobranças')
   @Post('cobrancas/:id/pdf') async pdfCobranca(@ConsultoriaId() c: string, @Param('id') id: string, @Res() res: Response) { enviarPdf(res, await this.comercial.pdfCobranca(c, id), 'Cobranca.pdf'); }
+
+  // Excluir proposta, contrato, serviço ou cobrança lançados errado.
+  @Delete('propostas/:id') excluirProposta(@ConsultoriaId() c: string, @Param('id') id: string) { return this.comercial.excluir(c, 'proposta', id); }
+  @Delete('contratos/:id') excluirContrato(@ConsultoriaId() c: string, @Param('id') id: string) { return this.comercial.excluir(c, 'contrato', id); }
+  @Delete('servicos/:id') excluirServico(@ConsultoriaId() c: string, @Param('id') id: string) { return this.comercial.excluir(c, 'servico', id); }
+  @Delete('cobrancas/:id') excluirCobranca(@ConsultoriaId() c: string, @Param('id') id: string) { return this.comercial.excluir(c, 'cobranca', id); }
 }
