@@ -13,6 +13,7 @@ export type AmbienteGhe = {
   ceuAberto?: boolean | null;
   confinado?: boolean | null;
   maquinas?: string | null;
+  produtos?: string | null; // produtos químicos e materiais usados pela equipe (etapa 2 do GHE)
   ruidoFundo?: string | null;
   observacoes?: string | null;
 };
@@ -49,6 +50,7 @@ export function textoAmbiente(a: AmbienteGhe): string {
   if (texto) texto += '.';
   if (a.confinado) texto += ' Há espaço confinado neste setor (NR-33).';
   if (t(a.maquinas)) texto += ` Máquinas e equipamentos: ${minusculo(t(a.maquinas))}.`;
+  if (t(a.produtos)) texto += ` Produtos usados: ${minusculo(t(a.produtos))}.`;
   if (t(a.ruidoFundo)) texto += ` Ruído de fundo: ${minusculo(t(a.ruidoFundo))}.`;
   if (t(a.observacoes)) texto += ` ${t(a.observacoes)}`;
   texto = texto.replace(/\.\./g, '.').trim();
@@ -59,10 +61,12 @@ export function textoAmbiente(a: AmbienteGhe): string {
 export const chaveFuncao = (nome: string) => nome.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
 
 // Texto do GHE para os laudos (LTCAT, LIP, LPP, PGRTR, OS): setor, funções, ambiente e atividades, uma coisa por linha.
-export function descricaoGhe(g: { setor?: string | null; funcoes?: unknown; ambiente?: unknown; descricao?: string | null }): string | null {
+export function descricaoGhe(g: { setor?: string | null; funcoes?: unknown; ambiente?: unknown; descricao?: string | null; codigo?: string | null; unidade?: string | null }): string | null {
   const funcoes = lerFuncoes(g.funcoes);
   const ambiente = textoAmbiente(lerAmbiente(g.ambiente));
   const linhas = [
+    g.codigo ? `Código do grupo: ${g.codigo}.` : '',
+    g.unidade ? `Unidade: ${g.unidade}.` : '',
     g.setor ? `Setor: ${g.setor}.` : '',
     funcoes.length ? `Funções: ${funcoes.map((f) => (f.cbo ? `${f.nome} (CBO ${f.cbo})` : f.nome)).join(', ')}.` : '',
     ambiente ? `Ambiente: ${ambiente}` : '',
@@ -70,4 +74,10 @@ export function descricaoGhe(g: { setor?: string | null; funcoes?: unknown; ambi
     g.descricao ?? '',
   ].filter(Boolean);
   return linhas.length ? linhas.join('\n') : null;
+}
+
+// Nome do GHE nos documentos: com o código na frente, quando a consultora usa código (ex.: "GHE-03 · Soldagem").
+export function nomeGhe(g: { nome: string; codigo?: string | null }): string {
+  const codigo = g.codigo?.trim();
+  return codigo && !g.nome.includes(codigo) ? `${codigo} · ${g.nome}` : g.nome;
 }

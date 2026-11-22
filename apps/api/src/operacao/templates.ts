@@ -1,3 +1,4 @@
+import { objetivoDoc } from '../documentos/secoes';
 import { documentoHtml, escape, Moldura } from '../documentos/layout';
 
 export type AssinaturaToque = { imagem: string; assinadoEm: Date; testemunha: string | null };
@@ -26,15 +27,34 @@ function listaAssinaturas(pessoas: Pessoa[], vazio: string) {
 
 export type EtapaApr = { etapa: string; riscos: string; medidas: string; epis?: string };
 
-export function aprHtml(moldura: Moldura, apr: { atividade: string; local: string; data: Date; responsavel: string; etapas: EtapaApr[] }, equipe: Pessoa[]) {
+export type RiscoAmbiente = { tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; medidasEpc: string | null; medidasEpi: string | null };
+const TIPO_RISCO: Record<string, string> = { FISICO: 'Físico', QUIMICO: 'Químico', BIOLOGICO: 'Biológico', ERGONOMICO: 'Ergonômico', ACIDENTE: 'Acidente' };
+
+// Riscos que o PGR já levantou para o setor: a equipe considera junto com os riscos da atividade.
+function riscosDoAmbiente(amb: { setor: string; riscos: RiscoAmbiente[] } | null | undefined) {
+  if (!amb) return '';
+  const medidas = (r: RiscoAmbiente) => [r.medidasEpc, r.medidasControle].filter(Boolean).join('; ');
+  return `
+    <section>
+      <h2>Riscos do ambiente (${escape(amb.setor)}, conforme o PGR)</h2>
+      ${amb.riscos.length ? `<table>
+        <thead><tr><th>Tipo</th><th>Agente ou perigo</th><th>Fonte</th><th>Medidas</th><th>EPIs</th></tr></thead>
+        <tbody>${amb.riscos.map((r) => `<tr><td>${TIPO_RISCO[r.tipo] ?? escape(r.tipo)}</td><td>${escape(r.agente)}</td><td>${escape(r.fonteGeradora)}</td><td>${escape(medidas(r) || '—')}</td><td>${escape(r.medidasEpi ?? '—')}</td></tr>`).join('')}</tbody>
+      </table>` : '<p>Nenhum risco cadastrado para este setor no PGR.</p>'}
+    </section>`;
+}
+
+export function aprHtml(moldura: Moldura, apr: { atividade: string; local: string; data: Date; responsavel: string; etapas: EtapaApr[]; ambiente?: { setor: string; riscos: RiscoAmbiente[] } | null }, equipe: Pessoa[]) {
   const quebra = (t: string) => escape(t).replace(/\n/g, '<br>');
   return documentoHtml(
     moldura,
     `
+    ${objetivoDoc(`A Análise Preliminar de Risco (APR) é feita antes de começar uma atividade fora da rotina ou de risco mais alto. A equipe divide o trabalho em etapas, olha o que pode dar errado em cada uma e combina as medidas de controle antes de começar. É uma ferramenta do gerenciamento de riscos da NR-01 e é pedida, por exemplo, pela NR-35 (trabalho em altura) e pela NR-33 (espaço confinado). Se as condições mudarem durante o serviço, pare e refaça a análise.`)}
     <section>
       <h2>Atividade</h2>
       <p><strong>${escape(apr.atividade)}</strong> · ${escape(apr.local)} · ${data(apr.data)}</p>
     </section>
+    ${riscosDoAmbiente(apr.ambiente)}
     <section>
       <h2>Etapas, riscos e medidas de controle</h2>
       <table>
@@ -128,6 +148,7 @@ export function permissaoHtml(
   return documentoHtml(
     moldura,
     `
+    ${objetivoDoc(`A Permissão de Trabalho (PT) é a autorização por escrito para fazer um serviço de alto risco, com local, prazo e equipe definidos (${escape(pt.norma)}). Ela só vale depois que todas as verificações abaixo forem confirmadas, deve ficar no local enquanto o trabalho durar e precisa ser encerrada no fim do serviço ou do turno. Se algo mudar, o trabalho para e a permissão é revista.`)}
     <section>
       <h2>${escape(pt.tipoNome)} <span class="meta">${escape(pt.norma)}</span></h2>
       <p><strong>Atividade:</strong> ${escape(pt.atividade)} · <strong>Local:</strong> ${escape(pt.local)}</p>

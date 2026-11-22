@@ -24,13 +24,19 @@ export class ContextoDocumentoService {
     });
     if (!empresa) throw new NotFoundException('Empresa não encontrada');
 
-    const versao = (await this.prisma.documento.count({ where: { empresaId, tipo } })) + 1;
+    // Emissões anteriores: viram o histórico de revisões no próprio documento.
+    const historico = await this.prisma.documento.findMany({ where: { empresaId, tipo }, orderBy: { versao: 'asc' }, select: { versao: true, geradoEm: true } });
+    const versao = historico.length + 1;
     // Logos conforme o plano: Grátis sem logos; Start só a da empresa; do Essencial para cima as duas.
     const plano = planoAtual();
     const logoEmpresa = temRecurso(plano, 'logoEmpresa') ? await this.logos.comoDataUri(empresa.logoPath) : null;
-    const consultoria = { nome: empresa.consultoria.nome, logo: temRecurso(plano, 'logoConsultoria') ? await this.logos.comoDataUri(empresa.consultoria.logoPath) : null };
+    // Responsável técnico da empresa (nome e CREA): sai no rodapé de todos os documentos.
+    const responsavel = empresa.responsavelTecnicoNome?.trim()
+      ? [empresa.responsavelTecnicoNome.trim(), empresa.responsavelTecnicoRegistro?.trim()].filter(Boolean).join(' · ')
+      : null;
+    const consultoria = { nome: empresa.consultoria.nome, logo: temRecurso(plano, 'logoConsultoria') ? await this.logos.comoDataUri(empresa.consultoria.logoPath) : null, responsavel };
 
-    return { empresa, versao, logoEmpresa, consultoria, geradoEm: new Date() };
+    return { empresa, versao, historico, logoEmpresa, consultoria, geradoEm: new Date() };
   }
 
   async registrar(empresaId: string, tipo: string, versao: number, geradoEm: Date, validadeMeses: number) {

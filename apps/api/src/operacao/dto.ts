@@ -30,6 +30,11 @@ export class CriarAprDto {
   @Length(2, 200)
   local!: string;
 
+  // Setor (GHE) da atividade: os riscos já conhecidos do ambiente entram na APR.
+  @IsOptional()
+  @IsString()
+  gheId?: string;
+
   @IsDateString({}, { message: 'Informe a data da APR.' })
   data!: string;
 

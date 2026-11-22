@@ -14,7 +14,7 @@ export type BaseRosto = {
   turmas: { id: string; nome: string; norma: string | null }[];
 };
 export type BaseCampo = {
-  empresas: { id: string; razaoSocial: string }[]; modelos: ModeloChecklist[]; rosto?: Record<string, BaseRosto>; atualizadoEm: string;
+  empresas: { id: string; razaoSocial: string; localPadrao?: string | null }[]; modelos: ModeloChecklist[]; rosto?: Record<string, BaseRosto>; atualizadoEm: string;
   temasDds?: TemaDds[]; // biblioteca de DDS, para abrir o tema do dia sem internet
   pessoas?: Record<string, { id: string; nome: string; cargo: string }[]>; // funcionários de cada empresa (lista de presença do DDS)
 };
@@ -50,7 +50,7 @@ export async function prepararCampo(): Promise<BaseCampo> {
       if (cols.some((c) => c.cadastrado)) await rosto.baseCampo(e.id).then((b) => guardarRostosCampo(e.id, b)).catch(() => undefined);
     } catch { /* empresa sem acesso ao rosto */ }
   }));
-  const base: BaseCampo = { empresas: empresas.map((e) => ({ id: e.id, razaoSocial: e.razaoSocial })), modelos, rosto: rostoBase, atualizadoEm: new Date().toISOString(), temasDds: conteudo?.temasDds, pessoas };
+  const base: BaseCampo = { empresas: empresas.map((e) => ({ id: e.id, razaoSocial: e.razaoSocial, localPadrao: e.localPadrao ?? null })), modelos, rosto: rostoBase, atualizadoEm: new Date().toISOString(), temasDds: conteudo?.temasDds, pessoas };
   // Deixa o reconhecimento facial guardado no aparelho (modelos e configuração).
   configRosto().then(() => carregarFaceApi()).catch(() => undefined);
   gravar(BASE, base);

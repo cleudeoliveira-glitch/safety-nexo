@@ -17,6 +17,7 @@ import {
   Colaborador,
   criarExame,
   criarGhe,
+  examesPelosRiscos,
   atualizarGhe,
   excluirGhe,
   copiarGhe,
@@ -81,6 +82,17 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   const [convite, setConvite] = useState<Convite | null>(null);
   const [anexos, setAnexos] = useState<AnexosLaudo | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
+  // A página é dividida em abas para não mostrar tudo de uma vez. O endereço (#ghes, #documentos...) abre a aba certa.
+  const [aba, setAba] = useState<Aba>('dados');
+  // Etapa aberta em cada GHE (1 grupo, 2 equipe, 3 exposições, 4 conferir).
+  const [etapaGhe, setEtapaGhe] = useState<Record<string, EtapaGhe>>({});
+  const irPara = (gheId: string, etapa: EtapaGhe) => setEtapaGhe((x) => ({ ...x, [gheId]: etapa }));
+  useEffect(() => {
+    const ler = () => { const a = ABA_DO_ENDERECO[window.location.hash.slice(1)]; if (a) setAba(a); };
+    ler();
+    window.addEventListener('hashchange', ler);
+    return () => window.removeEventListener('hashchange', ler);
+  }, []);
   useEffect(() => { const t = new URLSearchParams(window.location.search).get('aviso'); if (t) setAviso({ tipo: 'erro', texto: t }); }, []);
 
   const recarregar = useCallback(async () => {
@@ -200,8 +212,24 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
 
       {cliente && <Aviso tipo="info">Aqui você cadastra os colaboradores e abre o ASO e o EPI de cada um. Os programas e documentos são feitos pela sua consultoria.</Aviso>}
 
+      {!cliente && (
+        <nav className="sticky top-0 z-10 -mx-2 flex gap-1 overflow-x-auto rounded-card border border-border bg-white p-1 shadow-sm" aria-label="Partes do cadastro da empresa">
+          {ABAS.map((a) => {
+            const falta = a.id === 'dados' ? !empresa.cnae || !empresa.grauRisco || !empresa.endereco
+              : a.id === 'ghes' ? ghes.length === 0 || ghes.some((g) => g.riscos.length === 0)
+              : a.id === 'pessoas' ? colaboradores.filter((c) => !c.dataDesligamento).length === 0 : false;
+            return (
+              <button key={a.id} type="button" onClick={() => { setAba(a.id); history.replaceState(null, '', `#${a.id}`); }}
+                className={`flex-1 whitespace-nowrap rounded-card px-3 py-2 text-sm font-semibold transition ${aba === a.id ? 'bg-primary text-white' : 'text-primary hover:bg-primary/5'}`}>
+                {a.nome}{falta && <span className={`ml-1.5 inline-block h-2 w-2 rounded-full ${aba === a.id ? 'bg-white' : 'bg-warning'}`} title="Tem informação faltando" />}
+              </button>
+            );
+          })}
+        </nav>
+      )}
       {!cliente && (<>
-      <Cartao titulo="1. Dados da empresa" id="dados">
+      {aba === 'dados' && (
+      <Cartao titulo="Dados da empresa" id="dados">
         <form
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar(async (d) => {
@@ -216,6 +244,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
               endereco: texto(d, 'endereco') || undefined,
               representanteLegalNome: texto(d, 'representante') || undefined,
               descricaoProcessos: texto(d, 'processos'),
+              localPadrao: texto(d, 'localPadrao'),
             });
             const logo = d.get('logo');
             if (logo instanceof File && logo.size > 0) await enviarLogoEmpresa(empresaId, logo);
@@ -229,12 +258,14 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Campo id="numFuncionarios" name="numFuncionarios" type="number" min={0} rotulo="Funcionários" defaultValue={empresa.numFuncionarios} />
           <Campo id="logo" name="logo" type="file" accept="image/png,image/jpeg" rotulo="Logo da empresa" className="md:col-span-2"
             dica={empresa.logoPath ? 'Logo já enviada. Envie outra para trocar.' : 'PNG ou JPG, até 2 MB. Sai no cabeçalho dos documentos.'} />
-          <Campo id="rtNome" name="rtNome" rotulo="Responsável técnico" defaultValue={empresa.responsavelTecnicoNome ?? ''} placeholder="Ex.: Cleude Oliveira" />
+          <Campo id="rtNome" name="rtNome" rotulo="Responsável técnico" defaultValue={empresa.responsavelTecnicoNome ?? ''} placeholder="Ex.: Cleude Oliveira" dica="Sai com o registro no rodapé de todos os documentos." />
           <Campo id="rtRegistro" name="rtRegistro" rotulo="Registro profissional" defaultValue={empresa.responsavelTecnicoRegistro ?? ''} placeholder="Ex.: CREA-SP 123456" />
           <Campo id="rtFormacao" name="rtFormacao" rotulo="Formação do responsável" defaultValue={empresa.responsavelTecnicoFormacao ?? ''} placeholder="Ex.: Engenheira de Segurança do Trabalho" />
           <Campo id="rtArt" name="rtArt" rotulo="ART ou TRT" defaultValue={empresa.responsavelTecnicoArt ?? ''} placeholder="Ex.: ART 2826543210" />
           <Campo id="endereco" name="endereco" rotulo="Endereço da empresa" className="md:col-span-2" defaultValue={empresa.endereco ?? ''} placeholder="Rua, número, bairro, cidade/UF, CEP" />
           <Campo id="representante" name="representante" rotulo="Representante legal" defaultValue={empresa.representanteLegalNome ?? ''} placeholder="Quem assina o PPP pela empresa" />
+          <Campo id="localPadrao" name="localPadrao" rotulo="Local padrão" className="md:col-span-2" defaultValue={empresa.localPadrao ?? ''} placeholder="Ex.: Unidade Centro, Rua das Flores, 120"
+            dica="Já vem escrito no campo Local da APR, permissão de trabalho, DDS, inspeção e treinamento. Dá para trocar na hora." />
           <Campo id="processos" name="processos" rotulo="Visão geral da empresa (opcional, vai no PGR)" className="md:col-span-3" defaultValue={empresa.descricaoProcessos ?? ''}
             placeholder="Ex.: Padaria com produção, estoque e loja. Turno único, 8 h."
             dica="Só um resumo. O ambiente de cada setor é descrito no próprio GHE, logo abaixo." />
@@ -251,143 +282,202 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
             }}>Excluir empresa</button>
         </div>
       </Cartao>
+      )}
 
-      <Cartao titulo="2. GHEs, riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
+      {aba === 'ghes' && (
+      <Cartao titulo="GHEs, riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
         {!cliente && <div className="mb-4"><CopiarDados empresaId={empresaId} aoCopiar={(t, erro) => { setAviso({ tipo: erro ? 'erro' : 'ok', texto: t }); if (!erro) recarregar(); }} /></div>}
         <FuncoesDaEmpresa ghes={ghes} colaboradores={colaboradores} />
         <details className="rounded-card border border-primary/30 bg-primary/5 p-4" open={ghes.length === 0}>
           <summary className="cursor-pointer font-semibold text-primary">+ Novo GHE (por setor e função)</summary>
           <div className="mt-4">
-            <FormGhe chave="novo" cargos={cargos} textoBotao="Adicionar GHE"
-              salvar={(dados) => salvarGhe(() => criarGhe(empresaId, dados), `GHE do setor ${dados.setor} cadastrado.`)} />
+            <FormGhe chave="novo" cargos={cargos} textoBotao="Salvar e ir para as exposições"
+              salvar={async (dados) => {
+                let novo: Ghe | null = null;
+                const ok = await salvarGhe(async () => { novo = await criarGhe(empresaId, dados); }, `GHE do setor ${dados.setor} cadastrado. Agora a etapa 3: os riscos a que o grupo fica exposto.`);
+                const criado = novo as Ghe | null;
+                if (ok && criado) {
+                  irPara(criado.id, 'exposicoes');
+                  setTimeout(() => document.getElementById(`ghe-${criado.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+                }
+                return ok;
+              }} />
           </div>
         </details>
 
         <div className="mt-6 space-y-6">
           {ghes.length === 0 && <p className="text-sm text-text/60">Nenhum GHE ainda. Comece pelo primeiro acima.</p>}
-          {ghes.map((ghe) => (
-            <article key={ghe.id} className="rounded-card border border-border p-4">
-              <h3 className="font-semibold text-primary">
-                {ghe.nome} <span className="text-sm font-normal text-text/60">· {ghe._count.colaboradores} colaborador(es)</span>
-              </h3>
-              <ResumoGhe ghe={ghe} cargos={cargos} salvar={(dados) => salvarGhe(() => atualizarGhe(empresaId, ghe.id, dados), `${ghe.nome} atualizado.`)}
-                excluir={() => confirm(`Excluir ${ghe.nome}? Os riscos e exames dele saem junto. Os colaboradores continuam cadastrados, só ficam sem GHE.`) && agir(() => excluirGhe(empresaId, ghe.id), `${ghe.nome} excluído.`)}
-                copiar={() => agir(() => copiarGhe(empresaId, ghe.id), `Cópia de ${ghe.nome} criada com os mesmos riscos e exames. Agora edite o setor e as funções da cópia.`)} />
-
-              <h4 className="mt-3 text-sm font-semibold">Riscos</h4>
-              {ghe.riscos.length === 0 ? (
-                <p className="text-sm text-warning">Nenhum risco. O PGR precisa de pelo menos um.</p>
-              ) : (
-                <ul className="mt-1 space-y-1 text-sm">
-                  {ghe.riscos.map((r) => (
-                    <li key={r.id}>
-                      {r.agente} · {r.fonteGeradora} · <SeloNivel severidade={r.severidade} probabilidade={r.probabilidade ?? '3'} />
-                      {!cliente && <AjustarRisco risco={r} salvar={(dados) => agir(() => ajustarRisco(empresaId, ghe.id, r.id, dados), `Classificação de ${r.agente} salva.`)} />}
-                      {AGENTES_LTCAT.includes(r.tipo) && (
-                        <AvaliarRisco risco={r} anexos={anexos} salvar={(dados) => agir(() => avaliarRisco(empresaId, ghe.id, r.id, dados), `Avaliação de ${r.agente} salva.`)} />
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <form
-                className="mt-3 grid gap-3 md:grid-cols-4"
-                onSubmit={enviar(
-                  (d) =>
-                    criarRisco(empresaId, ghe.id, {
-                      tipo: texto(d, 'tipo'),
-                      agente: texto(d, 'agente'),
-                      fonteGeradora: texto(d, 'fonte'),
-                      medidasControle: texto(d, 'medidas') || null,
-                      medidasEpc: texto(d, 'epc') || null,
-                      medidasEpi: texto(d, 'epi') || null,
-                      severidade: texto(d, 'severidade'),
-                      probabilidade: texto(d, 'probabilidade'),
-                      possiveisLesoes: texto(d, 'lesoes') || null,
-                    }),
-                  'Risco adicionado.',
+          {ghes.map((ghe) => {
+            const etapa = etapaGhe[ghe.id] ?? (ghe.riscos.length ? 'conferir' : 'exposicoes');
+            const inicial = { setor: ghe.setor ?? '', nome: ghe.nome, codigo: ghe.codigo ?? '', unidade: ghe.unidade ?? '', funcoes: ghe.funcoes ?? [], ambiente: ghe.ambiente ?? {}, descricao: ghe.descricao ?? undefined };
+            const salvarParte = (proxima: EtapaGhe) => async (dados: DadosGhe) => {
+              const ok = await salvarGhe(() => atualizarGhe(empresaId, ghe.id, dados), `${ghe.nome} atualizado.`);
+              if (ok) irPara(ghe.id, proxima);
+              return ok;
+            };
+            return (
+            <article key={ghe.id} id={`ghe-${ghe.id}`} className="scroll-mt-4 rounded-card border border-border p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h3 className="font-semibold text-primary">
+                  {ghe.codigo && !ghe.nome.includes(ghe.codigo) ? `${ghe.codigo} · ` : ''}{ghe.nome}
+                  <span className="text-sm font-normal text-text/60"> · {ghe._count.colaboradores} colaborador(es){ghe.unidade ? ` · ${ghe.unidade}` : ''}</span>
+                </h3>
+                {!cliente && (
+                  <span className="flex gap-4 text-sm">
+                    <button type="button" className="font-semibold text-primary hover:underline" title="Cria um GHE novo com os mesmos riscos, avaliações e exames, para um setor parecido"
+                      onClick={() => agir(() => copiarGhe(empresaId, ghe.id), `Cópia de ${ghe.nome} criada com os mesmos riscos e exames. Agora edite o setor e as funções da cópia.`)}>Copiar</button>
+                    <button type="button" className="text-danger hover:underline"
+                      onClick={() => confirm(`Excluir ${ghe.nome}? Os riscos e exames dele saem junto. Os colaboradores continuam cadastrados, só ficam sem GHE.`) && agir(() => excluirGhe(empresaId, ghe.id), `${ghe.nome} excluído.`)}>Excluir</button>
+                  </span>
                 )}
-              >
-                <Selecao id={`tipo-${ghe.id}`} name="tipo" rotulo="Tipo">
-                  {TIPOS_RISCO.map(([valor, nome]) => <option key={valor} value={valor}>{nome}</option>)}
-                </Selecao>
-                <Campo id={`agente-${ghe.id}`} name="agente" rotulo="Agente ou perigo" required placeholder="Ex.: Ruído" />
-                <Campo id={`fonte-${ghe.id}`} name="fonte" rotulo="Fonte geradora" required placeholder="Ex.: Misturadeira" />
-                <Selecao id={`sev-${ghe.id}`} name="severidade" rotulo="Severidade (1 a 5)" defaultValue="3">
-                  {SEVERIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
-                </Selecao>
-                <Selecao id={`prob-${ghe.id}`} name="probabilidade" rotulo="Probabilidade (1 a 5)" defaultValue="3">
-                  {PROBABILIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
-                </Selecao>
-                <Campo id={`lesoes-${ghe.id}`} name="lesoes" rotulo="Possíveis lesões ou agravos" className="md:col-span-3" placeholder="Ex.: Perda auditiva, zumbido" />
-                <Campo id={`epc-${ghe.id}`} name="epc" rotulo="Proteção coletiva (EPC)" className="md:col-span-2" placeholder="Ex.: Enclausuramento da misturadeira" />
-                <Campo id={`epi-${ghe.id}`} name="epi" rotulo="EPI" className="md:col-span-2" placeholder="Ex.: Protetor auricular tipo plug" />
-                <Campo id={`medidas-${ghe.id}`} name="medidas" rotulo="Outras medidas" className="md:col-span-3" placeholder="Ex.: Rodízio de tarefas, sinalização da área" />
-                <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Adicionar risco</Botao></div>
-              </form>
+              </div>
+              <EtapasGhe atual={etapa} ghe={ghe} mudar={(e) => irPara(ghe.id, e)} />
 
-              {anexos && (
-                <Periculosidade ghe={ghe} anexos={anexos}
-                  salvar={(dados) => agir(() => definirPericulosidade(empresaId, ghe.id, dados), `Periculosidade de ${ghe.nome} salva.`)} />
+              {etapa === 'grupo' && (
+                <div className="mt-3 rounded-card border border-border bg-background/60 p-4">
+                  <FormGhe chave={`${ghe.id}-grupo`} parte="grupo" cargos={cargos} inicial={inicial} textoBotao="Salvar e ir para a equipe" salvar={salvarParte('equipe')} />
+                </div>
               )}
-
-              <h4 className="mt-5 text-sm font-semibold">Exames do PCMSO</h4>
-              {ghe.exames.length === 0 ? (
-                <p className="text-sm text-warning">Nenhum exame programado.</p>
-              ) : (
-                <ul className="mt-1 space-y-1 text-sm">
-                  {ghe.exames.map((e) => (
-                    <li key={e.id}>
-                      {e.nome} · {MOMENTOS.filter(([campo]) => e[campo]).map(([, nome]) => nome.toLowerCase()).join(', ')}
-                      {e.periodicidadeMeses ? ` · a cada ${e.periodicidadeMeses} meses` : ''}
-                      {' · '}
-                      <CodigoExame id={e.id} valor={e.codigoEsocial ?? ''} salvar={(cod) => agir(() => salvarCodigoExame(empresaId, ghe.id, e.id, cod), `Código de ${e.nome} salvo.`)} />
-                    </li>
-                  ))}
-                </ul>
+              {etapa === 'equipe' && (
+                <div className="mt-3 rounded-card border border-border bg-background/60 p-4">
+                  <FormGhe chave={`${ghe.id}-equipe`} parte="equipe" cargos={cargos} inicial={inicial} textoBotao="Salvar e ir para as exposições" salvar={salvarParte('exposicoes')} />
+                </div>
               )}
-              <form
-                className="mt-3 grid gap-3 md:grid-cols-3"
-                onSubmit={enviar(
-                  (d) =>
-                    criarExame(empresaId, ghe.id, {
-                      nome: texto(d, 'nome'),
-                      tipo: texto(d, 'tipo'),
-                      admissional: d.has('admissional'),
-                      periodico: d.has('periodico'),
-                      retornoTrabalho: d.has('retornoTrabalho'),
-                      mudancaRisco: d.has('mudancaRisco'),
-                      demissional: d.has('demissional'),
-                      periodicidadeMeses: texto(d, 'periodicidade') ? Number(texto(d, 'periodicidade')) : null,
-                      codigoEsocial: texto(d, 'codigoEsocial') || undefined,
-                    }),
-                  'Exame programado.',
+              {etapa === 'conferir' && <ConferirGhe ghe={ghe} colaboradores={colaboradores} irPara={(e) => irPara(ghe.id, e)} />}
+              {etapa === 'exposicoes' && (<>
+                <h4 className="mt-3 text-sm font-semibold">Riscos</h4>
+                {ghe.riscos.length === 0 ? (
+                  <p className="text-sm text-warning">Nenhum risco. O PGR precisa de pelo menos um.</p>
+                ) : (
+                  <ul className="mt-1 space-y-1 text-sm">
+                    {ghe.riscos.map((r) => (
+                      <li key={r.id}>
+                        {r.agente} · {r.fonteGeradora} · <SeloNivel severidade={r.severidade} probabilidade={r.probabilidade ?? '3'} />
+                        {!cliente && <AjustarRisco risco={r} salvar={(dados) => agir(() => ajustarRisco(empresaId, ghe.id, r.id, dados), `Classificação de ${r.agente} salva.`)} />}
+                        {AGENTES_LTCAT.includes(r.tipo) && (
+                          <AvaliarRisco risco={r} anexos={anexos} salvar={(dados) => agir(() => avaliarRisco(empresaId, ghe.id, r.id, dados), `Avaliação de ${r.agente} salva.`)} />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 )}
-              >
-                <Campo id={`exame-${ghe.id}`} name="nome" rotulo="Exame" required placeholder="Ex.: Audiometria" />
-                <Selecao id={`exame-tipo-${ghe.id}`} name="tipo" rotulo="Tipo">
-                  <option value="CLINICO">Clínico</option>
-                  <option value="COMPLEMENTAR">Complementar</option>
-                </Selecao>
-                <Campo id={`exame-per-${ghe.id}`} name="periodicidade" type="number" min={1} max={60} rotulo="Periodicidade (meses)" placeholder="Ex.: 12" />
-                <EscolhaT27 id={`exame-cod-${ghe.id}`} className="md:col-span-3" />
-                <fieldset className="flex flex-wrap gap-4 text-sm md:col-span-2">
-                  <legend className="mb-1 font-semibold">Quando é feito</legend>
-                  {MOMENTOS.map(([campo, nome]) => (
-                    <label key={campo} className="flex items-center gap-1.5">
-                      <input type="checkbox" name={campo} defaultChecked={campo === 'admissional' || campo === 'periodico'} /> {nome}
-                    </label>
-                  ))}
-                </fieldset>
-                <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Adicionar exame</Botao></div>
-              </form>
+                <form
+                  className="mt-3 grid gap-3 md:grid-cols-4"
+                  onSubmit={enviar(
+                    (d) =>
+                      criarRisco(empresaId, ghe.id, {
+                        tipo: texto(d, 'tipo'),
+                        agente: texto(d, 'agente'),
+                        fonteGeradora: texto(d, 'fonte'),
+                        medidasControle: texto(d, 'medidas') || null,
+                        medidasEpc: texto(d, 'epc') || null,
+                        medidasEpi: texto(d, 'epi') || null,
+                        severidade: texto(d, 'severidade'),
+                        probabilidade: texto(d, 'probabilidade'),
+                        possiveisLesoes: texto(d, 'lesoes') || null,
+                      }),
+                    'Risco adicionado.',
+                  )}
+                >
+                  <Selecao id={`tipo-${ghe.id}`} name="tipo" rotulo="Tipo">
+                    {TIPOS_RISCO.map(([valor, nome]) => <option key={valor} value={valor}>{nome}</option>)}
+                  </Selecao>
+                  <Campo id={`agente-${ghe.id}`} name="agente" rotulo="Agente ou perigo" required placeholder="Ex.: Ruído" />
+                  <Campo id={`fonte-${ghe.id}`} name="fonte" rotulo="Fonte geradora" required placeholder="Ex.: Misturadeira" />
+                  <Selecao id={`sev-${ghe.id}`} name="severidade" rotulo="Severidade (1 a 5)" defaultValue="3">
+                    {SEVERIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
+                  </Selecao>
+                  <Selecao id={`prob-${ghe.id}`} name="probabilidade" rotulo="Probabilidade (1 a 5)" defaultValue="3">
+                    {PROBABILIDADES.map(([v, n, e]) => <option key={v} value={v}>{v} · {n} ({e})</option>)}
+                  </Selecao>
+                  <Campo id={`lesoes-${ghe.id}`} name="lesoes" rotulo="Possíveis lesões ou agravos" className="md:col-span-3" placeholder="Ex.: Perda auditiva, zumbido" />
+                  <Campo id={`epc-${ghe.id}`} name="epc" rotulo="Proteção coletiva (EPC)" className="md:col-span-2" placeholder="Ex.: Enclausuramento da misturadeira" />
+                  <Campo id={`epi-${ghe.id}`} name="epi" rotulo="EPI" className="md:col-span-2" placeholder="Ex.: Protetor auricular tipo plug" />
+                  <Campo id={`medidas-${ghe.id}`} name="medidas" rotulo="Outras medidas" className="md:col-span-3" placeholder="Ex.: Rodízio de tarefas, sinalização da área" />
+                  <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Adicionar risco</Botao></div>
+                </form>
+
+                {anexos && (
+                  <Periculosidade ghe={ghe} anexos={anexos}
+                    salvar={(dados) => agir(() => definirPericulosidade(empresaId, ghe.id, dados), `Periculosidade de ${ghe.nome} salva.`)} />
+                )}
+
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="text-sm font-semibold">Exames do PCMSO (vêm dos riscos acima)</h4>
+                  {!cliente && (
+                    <Botao type="button" variante="secundario" title="Cria os exames que os riscos deste GHE pedem pela NR-07. Os que já estão na lista ficam como estão."
+                      onClick={async () => {
+                        try {
+                          const { criados } = await examesPelosRiscos(empresaId, ghe.id);
+                          setAviso({ tipo: 'ok', texto: criados.length
+                            ? `Exames incluídos: ${criados.map((c) => `${c.nome} (${c.motivo})`).join('; ')}. Peça para o médico do PCMSO conferir.`
+                            : 'Os exames que os riscos pedem já estão na lista.' });
+                          await recarregar();
+                        } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+                      }}>Puxar exames pelos riscos</Botao>
+                  )}
+                </div>
+                {ghe.exames.length === 0 ? (
+                  <p className="text-sm text-warning">Nenhum exame programado. Use &quot;Puxar exames pelos riscos&quot; ou cadastre abaixo. Se ficar vazio, o PCMSO sai com os exames que os riscos pedem, marcados para o médico conferir.</p>
+                ) : (
+                  <ul className="mt-1 space-y-1 text-sm">
+                    {ghe.exames.map((e) => (
+                      <li key={e.id}>
+                        {e.nome} · {MOMENTOS.filter(([campo]) => e[campo]).map(([, nome]) => nome.toLowerCase()).join(', ')}
+                        {e.periodicidadeMeses ? ` · a cada ${e.periodicidadeMeses} meses` : ''}
+                        {' · '}
+                        <CodigoExame id={e.id} valor={e.codigoEsocial ?? ''} salvar={(cod) => agir(() => salvarCodigoExame(empresaId, ghe.id, e.id, cod), `Código de ${e.nome} salvo.`)} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <form
+                  className="mt-3 grid gap-3 md:grid-cols-3"
+                  onSubmit={enviar(
+                    (d) =>
+                      criarExame(empresaId, ghe.id, {
+                        nome: texto(d, 'nome'),
+                        tipo: texto(d, 'tipo'),
+                        admissional: d.has('admissional'),
+                        periodico: d.has('periodico'),
+                        retornoTrabalho: d.has('retornoTrabalho'),
+                        mudancaRisco: d.has('mudancaRisco'),
+                        demissional: d.has('demissional'),
+                        periodicidadeMeses: texto(d, 'periodicidade') ? Number(texto(d, 'periodicidade')) : null,
+                        codigoEsocial: texto(d, 'codigoEsocial') || undefined,
+                      }),
+                    'Exame programado.',
+                  )}
+                >
+                  <Campo id={`exame-${ghe.id}`} name="nome" rotulo="Exame" required placeholder="Ex.: Audiometria" />
+                  <Selecao id={`exame-tipo-${ghe.id}`} name="tipo" rotulo="Tipo">
+                    <option value="CLINICO">Clínico</option>
+                    <option value="COMPLEMENTAR">Complementar</option>
+                  </Selecao>
+                  <Campo id={`exame-per-${ghe.id}`} name="periodicidade" type="number" min={1} max={60} rotulo="Periodicidade (meses)" placeholder="Ex.: 12" />
+                  <EscolhaT27 id={`exame-cod-${ghe.id}`} className="md:col-span-3" />
+                  <fieldset className="flex flex-wrap gap-4 text-sm md:col-span-2">
+                    <legend className="mb-1 font-semibold">Quando é feito</legend>
+                    {MOMENTOS.map(([campo, nome]) => (
+                      <label key={campo} className="flex items-center gap-1.5">
+                        <input type="checkbox" name={campo} defaultChecked={campo === 'admissional' || campo === 'periodico'} /> {nome}
+                      </label>
+                    ))}
+                  </fieldset>
+                  <div className="flex items-end justify-end"><Botao type="submit" variante="secundario">Adicionar exame</Botao></div>
+                </form>
+                <div className="mt-4 flex justify-end"><Botao type="button" onClick={() => irPara(ghe.id, 'conferir')}>Próximo: conferir →</Botao></div>
+              </>)}
             </article>
-          ))}
+            );
+          })}
         </div>
       </Cartao>
+      )}
       </>)}
 
-      <Cartao titulo="3. Colaboradores" id="colaboradores"
+      {(cliente || aba === 'pessoas') && (
+      <Cartao titulo="Colaboradores" id="colaboradores"
         acao={<Link href={`/empresas/${empresaId}/colaboradores`} className="rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">Abrir colaboradores →</Link>}>
         {(() => {
           const ativos = colaboradores.filter((c) => !c.dataDesligamento);
@@ -404,9 +494,10 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           );
         })()}
       </Cartao>
+      )}
 
-      {!cliente && (
-      <Cartao titulo="4. Médico responsável pelo PCMSO" id="medico">
+      {!cliente && aba === 'dados' && (
+      <Cartao titulo="Médico responsável pelo PCMSO" id="medico">
         <form
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar((d) => definirMedico(empresaId, { nome: texto(d, 'nome'), crm: texto(d, 'crm') }), 'Médico salvo.')}
@@ -418,9 +509,9 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       </Cartao>
       )}
 
-      {cipa && (
+      {cipa && (cliente || aba === 'pessoas') && (
         <Cartao
-          titulo="5. CIPA"
+          titulo="CIPA"
           id="cipa"
           acao={cipa.dimensionamento.situacao !== 'SEM_GRAU' && (
             <div className="flex flex-wrap gap-2">
@@ -464,7 +555,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       )}
 
       {!cliente && (<>
-      <Cartao titulo="6. Documentos" id="documentos">
+      {aba === 'documentos' && (
+      <Cartao titulo="Documentos" id="documentos">
         <p className="mb-4 text-sm text-text/60">Cada documento sai em PDF com a logo da empresa no cabeçalho e a da sua consultoria no rodapé.
           O LTCAT e o LIP usam as avaliações dos riscos físicos, químicos e biológicos de cada GHE; o LPP usa a periculosidade de cada GHE.
           O PGRTR é a versão do PGR para atividade rural (NR-31). O PPP e a ordem de serviço de cada pessoa também ficam na página do colaborador.</p>
@@ -507,8 +599,10 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Link href={`/empresas/${empresaId}/conectores`} className="rounded-card border border-border px-4 py-2 text-sm font-semibold text-text/70 hover:bg-primary/5">Importar do RH, terceiros e faltas →</Link>
         </div>
       </Cartao>
+      )}
 
-      <Cartao titulo="7. Acesso da empresa ao sistema" id="acessos">
+      {aba === 'dados' && (
+      <Cartao titulo="Acesso da empresa ao sistema" id="acessos">
         <p className="mb-4 text-sm text-text/60">
           Convide a empresa cliente. Ela recebe um link, cria a própria senha e vê só os dados dela: colaboradores, EPI, DDS, permissões de trabalho,
           treinamentos e vencimentos. Programas e documentos continuam com você.
@@ -552,10 +646,23 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           </ul>
         )}
       </Cartao>
+      )}
       </>)}
     </main>
   );
 }
+
+type Aba = 'dados' | 'ghes' | 'pessoas' | 'documentos';
+const ABAS: { id: Aba; nome: string }[] = [
+  { id: 'dados', nome: 'Dados e responsáveis' },
+  { id: 'ghes', nome: 'GHEs e riscos' },
+  { id: 'pessoas', nome: 'Colaboradores e CIPA' },
+  { id: 'documentos', nome: 'Documentos' },
+];
+// Endereços antigos (#medico, #cipa...) continuam funcionando: cada um abre a aba onde a parte está.
+const ABA_DO_ENDERECO: Record<string, Aba> = {
+  dados: 'dados', medico: 'dados', acessos: 'dados', ghes: 'ghes', pessoas: 'pessoas', colaboradores: 'pessoas', cipa: 'pessoas', documentos: 'documentos',
+};
 
 const dataBr = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 
@@ -833,33 +940,80 @@ function LinkConvite({ convite, fechar }: { convite: Convite; fechar: () => void
 }
 
 // Setor, funções e ambiente do GHE, com o botão para editar.
-function ResumoGhe({ ghe, cargos, salvar, excluir, copiar }: { ghe: Ghe; cargos: string[]; salvar: (dados: DadosGhe) => Promise<boolean>; excluir: () => void; copiar: () => void }) {
-  const [editando, setEditando] = useState(false);
+type EtapaGhe = 'grupo' | 'equipe' | 'exposicoes' | 'conferir';
+const ETAPAS_GHE: [EtapaGhe, string][] = [['grupo', 'Grupo'], ['equipe', 'Equipe'], ['exposicoes', 'Exposições'], ['conferir', 'Conferir']];
+
+// O que falta em cada etapa do GHE: vira o pontinho amarelo na barra e a lista da conferência.
+function pendenciasGhe(ghe: Ghe) {
   const funcoes = ghe.funcoes ?? [];
   const amb = ghe.ambiente ?? {};
-  const temAmbiente = Object.values(amb).some((v) => v === true || (typeof v === 'string' && v.trim()));
-  if (editando) {
-    return (
-      <div className="mt-3 rounded-card border border-border bg-background/60 p-4">
-        <FormGhe chave={ghe.id} cargos={cargos} textoBotao="Salvar GHE" cancelar={() => setEditando(false)}
-          inicial={{ setor: ghe.setor ?? '', nome: ghe.nome, funcoes, ambiente: amb, descricao: ghe.descricao ?? undefined }}
-          salvar={async (dados) => { const ok = await salvar(dados); if (ok) setEditando(false); return ok; }} />
-      </div>
-    );
-  }
+  const temAmbiente = ['edificacao', 'piso', 'paredes', 'cobertura', 'iluminacao', 'ventilacao', 'observacoes'].some((c) => {
+    const v = (amb as Record<string, unknown>)[c];
+    return typeof v === 'string' && v.trim();
+  }) || !!amb.ceuAberto;
+  return {
+    grupo: [!ghe.setor && 'o setor', !temAmbiente && 'a descrição do ambiente (edificação, piso, iluminação, ventilação)'].filter(Boolean) as string[],
+    equipe: [!funcoes.length && 'as funções', funcoes.length > 0 && funcoes.some((f) => !f.atividades?.trim()) && 'o que cada função faz'].filter(Boolean) as string[],
+    exposicoes: [
+      !ghe.riscos.length && 'pelo menos um risco',
+      ghe.riscos.some((r) => !r.medidasEpc?.trim() && !r.medidasEpi?.trim() && !r.medidasControle?.trim()) && 'medidas de controle em algum risco',
+    ].filter(Boolean) as string[],
+  };
+}
+
+function EtapasGhe({ atual, ghe, mudar }: { atual: EtapaGhe; ghe: Ghe; mudar: (e: EtapaGhe) => void }) {
+  const falta = pendenciasGhe(ghe);
   return (
-    <div className="mt-2 space-y-1 text-sm">
-      {!ghe.setor || !funcoes.length ? (
-        <p className="text-warning">Complete o setor e as funções deste GHE. O PGR e o eSocial pedem isso.</p>
-      ) : (
-        <p><strong>Setor:</strong> {ghe.setor} · <strong>Funções:</strong> {funcoes.map((f) => f.nome).join(', ')}</p>
-      )}
-      {!temAmbiente && <p className="text-warning">Falta descrever o ambiente deste setor (edificação, piso, iluminação, ventilação, máquinas).</p>}
-      <div className="flex flex-wrap gap-4">
-        <button type="button" className="font-semibold text-primary hover:underline" onClick={() => setEditando(true)}>Editar setor, funções e ambiente</button>
-        <button type="button" className="font-semibold text-primary hover:underline" onClick={copiar} title="Cria um GHE novo com os mesmos riscos, avaliações e exames, para um setor parecido">Copiar GHE</button>
-        <button type="button" className="text-danger hover:underline" onClick={excluir}>Excluir GHE</button>
+    <nav className="mt-3 flex flex-wrap gap-1 rounded-card bg-background p-1" aria-label={`Etapas do ${ghe.nome}`}>
+      {ETAPAS_GHE.map(([id, nome], i) => {
+        const pendente = id !== 'conferir' && falta[id].length > 0;
+        return (
+          <button key={id} type="button" onClick={() => mudar(id)} aria-current={atual === id ? 'step' : undefined}
+            className={`flex-1 whitespace-nowrap rounded-card px-3 py-1.5 text-sm font-semibold transition ${atual === id ? 'bg-primary text-white' : 'text-primary hover:bg-primary/5'}`}>
+            {i + 1}. {nome}
+            {pendente && <span className={`ml-1.5 inline-block h-2 w-2 rounded-full ${atual === id ? 'bg-white' : 'bg-warning'}`} title="Tem informação faltando" />}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+// Etapa 4: confere o GHE e mostra para onde cada informação vai.
+function ConferirGhe({ ghe, colaboradores, irPara }: { ghe: Ghe; colaboradores: Colaborador[]; irPara: (e: EtapaGhe) => void }) {
+  const falta = pendenciasGhe(ghe);
+  const funcoes = ghe.funcoes ?? [];
+  const chave = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const ativos = colaboradores.filter((c) => !c.dataDesligamento && c.gheId === ghe.id);
+  const semPessoa = funcoes.filter((f) => !ativos.some((c) => chave(c.cargo) === chave(f.nome))).map((f) => f.nome);
+  const ambientais = ghe.riscos.filter((r) => AGENTES_LTCAT.includes(r.tipo));
+  const avaliados = ambientais.filter((r) => r.tipoAvaliacao);
+  const epis = [...new Set(ghe.riscos.flatMap((r) => (r.medidasEpi ?? '').split(/[;\n,]/).map((x) => x.trim()).filter(Boolean)))];
+  const prioritarios = ghe.riscos.filter((r) => nivelDoRisco(r.severidade, r.probabilidade ?? '3').pontos >= 15).length;
+  const etapas: [EtapaGhe, string, string[]][] = [['grupo', '1. Grupo', falta.grupo], ['equipe', '2. Equipe', falta.equipe], ['exposicoes', '3. Exposições', falta.exposicoes]];
+  const tudoOk = etapas.every(([, , f]) => !f.length);
+  return (
+    <div className="mt-3 space-y-4 text-sm">
+      <ul className="space-y-1">
+        {etapas.map(([id, nome, f]) => (
+          <li key={id}>
+            {f.length ? <span className="text-warning">⚠ {nome}: falta {f.join(' e ')}. </span> : <span className="text-success">✓ {nome} completo.</span>}
+            {f.length > 0 && <button type="button" className="font-semibold text-primary hover:underline" onClick={() => irPara(id)}>Completar</button>}
+          </li>
+        ))}
+        {semPessoa.length > 0 && <li className="text-text/70">Funções sem ninguém cadastrado ainda: {semPessoa.join(', ')}. Quem for cadastrado com essa função entra neste GHE sozinho.</li>}
+      </ul>
+      <div className="rounded-card border border-border p-3">
+        <p className="mb-2 font-semibold text-primary">Para onde vai o que está neste GHE</p>
+        <ul className="space-y-1.5">
+          <li><strong>PGR:</strong> {ghe.riscos.length} risco(s) no inventário{prioritarios ? `, ${prioritarios} com nível alto ou muito alto, que entram no plano de ação` : ''}.</li>
+          <li><strong>PCMSO:</strong> {ghe.exames.length ? `${ghe.exames.length} exame(s) programado(s)` : 'nenhum exame cadastrado. O PCMSO sai com os exames que os riscos pedem, marcados para o médico conferir'}.</li>
+          <li><strong>LTCAT:</strong> {ambientais.length ? `${avaliados.length} de ${ambientais.length} agente(s) físico, químico ou biológico com avaliação feita, com a conclusão por função` : 'sem agente físico, químico ou biológico neste grupo'}.</li>
+          <li><strong>Ordem de serviço:</strong> {ativos.length} pessoa(s) recebem os riscos da função{epis.length ? ` e a conferência dos EPIs exigidos (${epis.join(', ')}) com a ficha de cada um` : ''}.</li>
+          <li><strong>APR:</strong> ao escolher o setor &quot;{ghe.setor || ghe.nome}&quot; na APR, os riscos deste grupo entram como riscos do ambiente.</li>
+        </ul>
       </div>
+      {tudoOk && <p className="text-success">Tudo certo com este GHE. Os documentos já podem ser gerados na aba Documentos.</p>}
     </div>
   );
 }

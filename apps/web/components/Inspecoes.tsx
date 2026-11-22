@@ -181,12 +181,12 @@ empresaId: string; i: Inspecao; cliente: boolean; iaLigada: boolean; ocupado: bo
 // Inspeção com imagem: cada foto vira um item da inspeção (OK / Não OK). Os "Não OK" já viram ações 5W2H no plano de ação.
 type FotoAvaliada = FotoNova & { resposta: 'C' | 'NC' | ''; problema: string };
 
-function InspecaoComImagem({ empresaId, locais, cliente, recarregar, avisar, aoSalvar }: {
-  empresaId: string; locais: string[]; cliente: boolean; recarregar: () => Promise<void>; avisar: Avisar; aoSalvar: (id: string) => void;
+function InspecaoComImagem({ empresaId, locais, localPadrao = '', cliente, recarregar, avisar, aoSalvar }: {
+  empresaId: string; locais: string[]; localPadrao?: string; cliente: boolean; recarregar: () => Promise<void>; avisar: Avisar; aoSalvar: (id: string) => void;
 }) {
   const entrada = useRef<HTMLInputElement>(null);
   const [fotos, setFotos] = useState<FotoAvaliada[]>([]);
-  const [local, setLocal] = useState('');
+  const [local, setLocal] = useState(localPadrao);
   const [inspetor, setInspetor] = useState('');
   const [dataInsp, setDataInsp] = useState(hoje());
   const [salvando, setSalvando] = useState(false);
@@ -202,7 +202,7 @@ function InspecaoComImagem({ empresaId, locais, cliente, recarregar, avisar, aoS
     if (entrada.current) entrada.current.value = '';
   }
   const mudar = (i: number, campos: Partial<FotoAvaliada>) => setFotos((x) => x.map((f, j) => (j === i ? { ...f, ...campos } : f)));
-  function limpar() { fotos.forEach((f) => URL.revokeObjectURL(f.previa)); setFotos([]); setLocal(''); setDataInsp(hoje()); }
+  function limpar() { fotos.forEach((f) => URL.revokeObjectURL(f.previa)); setFotos([]); setLocal(localPadrao); setDataInsp(hoje()); }
 
   async function salvar() {
     if (!local.trim() || !inspetor.trim()) return avisar('erro', 'Preencha o local e quem fez a inspeção.');
@@ -288,8 +288,9 @@ function InspecaoComImagem({ empresaId, locais, cliente, recarregar, avisar, aoS
   );
 }
 
-export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: {
+export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, localPadrao = '', setores = [] }: {
   empresaId: string; lista: Inspecao[]; modelos: ModeloChecklist[]; recarregar: () => Promise<void>; avisar: Avisar;
+  localPadrao?: string; setores?: string[]; // local padrão da empresa e setores dos GHEs, como sugestão
 }) {
   const [modelo, setModelo] = useState('');
   const [itens, setItens] = useState<(Omit<ItemInspecao, 'resposta'> & { resposta: ItemInspecao['resposta'] | '' })[]>([]);
@@ -378,7 +379,7 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: 
 
   return (
     <div className="space-y-6">
-      <InspecaoComImagem empresaId={empresaId} locais={locais.map((l) => l[l.length - 1].local)} cliente={cliente} recarregar={recarregar} avisar={avisar} aoSalvar={setAberta} />
+      <InspecaoComImagem empresaId={empresaId} locais={[...new Set([...locais.map((l) => l[l.length - 1].local), ...setores])]} localPadrao={localPadrao} cliente={cliente} recarregar={recarregar} avisar={avisar} aoSalvar={setAberta} />
       <Cartao titulo="Nova inspeção pelos modelos das NRs">
         <form key={chave} className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-3">
@@ -391,8 +392,8 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar }: 
               ))}
             </Selecao>
             {!modelo && <Campo id="ck-titulo" name="titulo" rotulo="Nome da inspeção" required placeholder="Ex.: Inspeção do almoxarifado" className="md:col-span-3" />}
-            <Campo id="ck-local" name="local" rotulo="Local inspecionado" required placeholder="Ex.: Produção" list="ck-locais" />
-            <datalist id="ck-locais">{locais.map((l) => <option key={l[0].local} value={l[l.length - 1].local} />)}</datalist>
+            <Campo id="ck-local" name="local" rotulo="Local inspecionado" required placeholder="Ex.: Produção" list="ck-locais" defaultValue={localPadrao} />
+            <datalist id="ck-locais">{[...new Set([...locais.map((l) => l[l.length - 1].local), ...setores])].map((l) => <option key={l} value={l} />)}</datalist>
             <Campo id="ck-data" type="date" rotulo="Data" required value={dataInsp} onChange={(e) => setDataInsp(e.target.value)} />
             <Campo id="ck-inspetor" name="inspetor" rotulo="Inspetor(a)" required placeholder="Quem fez a inspeção" />
           </div>

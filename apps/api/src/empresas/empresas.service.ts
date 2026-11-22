@@ -6,6 +6,7 @@ import { conferirFuncionarios } from '../common/plano';
 import { PrismaService } from '../prisma/prisma.service';
 import { CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CopiarDadosDto, CreateGheDto, CreateGheRiscoDto, UpdateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 import { chaveFuncao, FuncaoGhe, lerFuncoes } from './ghe-ambiente';
+import { examesPelosRiscos } from './exames-por-risco';
 
 @Injectable()
 export class EmpresasService {
@@ -42,7 +43,8 @@ export class EmpresasService {
     await this.buscar(consultoriaId, empresaId);
     // CNAE novo sem grau informado: busca o grau pela NR-04.
     const grauRisco = dto.grauRisco ?? (dto.cnae ? await this.cnae.grauDeRisco(dto.cnae) : null) ?? undefined;
-    return this.prisma.empresa.update({ where: { id: empresaId }, data: { ...dto, grauRisco } });
+    const localPadrao = dto.localPadrao === undefined ? undefined : dto.localPadrao.trim() || null;
+    return this.prisma.empresa.update({ where: { id: empresaId }, data: { ...dto, grauRisco, localPadrao } });
   }
 
   async buscar(consultoriaId: string, empresaId: string) {
@@ -136,7 +138,7 @@ export class EmpresasService {
       if (existentes.has(g.nome.trim().toLowerCase())) { pulados.push(g.nome); continue; }
       await this.prisma.ghe.create({
         data: {
-          empresaId: destinoId, nome: g.nome, descricao: g.descricao, setor: g.setor, funcoes: g.funcoes ?? undefined, ambiente: g.ambiente ?? undefined, periculosidadeAnexo: g.periculosidadeAnexo, periculosidadeJustificativa: g.periculosidadeJustificativa,
+          empresaId: destinoId, nome: g.nome, codigo: g.codigo, unidade: g.unidade, descricao: g.descricao, setor: g.setor, funcoes: g.funcoes ?? undefined, ambiente: g.ambiente ?? undefined, periculosidadeAnexo: g.periculosidadeAnexo, periculosidadeJustificativa: g.periculosidadeJustificativa,
           riscos: { create: g.riscos.map(({ id: _i, gheId: _g, esocial, ...r }) => ({ ...r, esocial: esocial ?? undefined })) },
           exames: { create: g.exames.map(({ id: _i, gheId: _g, ...e }) => e) },
         },
@@ -164,7 +166,7 @@ export class EmpresasService {
     const nome = dto.nome?.trim() || `GHE ${String((await this.prisma.ghe.count({ where: { empresaId } })) + 1).padStart(2, '0')} · ${dto.setor.trim()}`;
     if (await this.prisma.ghe.findFirst({ where: { empresaId, nome } })) throw new BadRequestException(`Já existe um GHE com o nome "${nome}".`);
     const ghe = await this.prisma.ghe.create({
-      data: { empresaId, nome, setor: dto.setor.trim(), funcoes, ambiente: (dto.ambiente ?? {}) as object, descricao: dto.descricao?.trim() || null },
+      data: { empresaId, nome, codigo: dto.codigo?.trim() || null, unidade: dto.unidade?.trim() || null, setor: dto.setor.trim(), funcoes, ambiente: (dto.ambiente ?? {}) as object, descricao: dto.descricao?.trim() || null },
     });
     await this.vincularPorFuncao(empresaId, ghe.id, funcoes);
     return ghe;
@@ -181,7 +183,7 @@ export class EmpresasService {
     for (let n = 2; usados.has(nome); n++) nome = `${g.nome} (cópia ${n})`;
     return this.prisma.ghe.create({
       data: {
-        empresaId, nome, descricao: g.descricao, setor: g.setor, funcoes: [], ambiente: g.ambiente ?? undefined,
+        empresaId, nome, unidade: g.unidade, descricao: g.descricao, setor: g.setor, funcoes: [], ambiente: g.ambiente ?? undefined,
         periculosidadeAnexo: g.periculosidadeAnexo, periculosidadeJustificativa: g.periculosidadeJustificativa,
         riscos: { create: g.riscos.map(({ id: _i, gheId: _g, esocial, ...r }) => ({ ...r, esocial: esocial ?? undefined })) },
         exames: { create: g.exames.map(({ id: _i, gheId: _g, ...e }) => e) },
@@ -221,7 +223,7 @@ export class EmpresasService {
     }
     const ghe = await this.prisma.ghe.update({
       where: { id: gheId },
-      data: { nome, setor: dto.setor.trim(), funcoes, ambiente: (dto.ambiente ?? {}) as object, descricao: dto.descricao?.trim() || null },
+      data: { nome, codigo: dto.codigo?.trim() || null, unidade: dto.unidade?.trim() || null, setor: dto.setor.trim(), funcoes, ambiente: (dto.ambiente ?? {}) as object, descricao: dto.descricao?.trim() || null },
     });
     await this.vincularPorFuncao(empresaId, ghe.id, funcoes);
     return ghe;
@@ -300,6 +302,18 @@ export class EmpresasService {
     const ghe = await this.prisma.ghe.findFirst({ where: { id: gheId, empresaId } });
     if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
     return this.prisma.exameGhe.create({ data: { ...dto, gheId } });
+  }
+
+  // Puxa os exames do PCMSO pelos riscos do GHE. Só cria o que ainda não está na lista (pelo nome).
+  async sugerirExames(consultoriaId: string, empresaId: string, gheId: string) {
+    await this.buscar(consultoriaId, empresaId);
+    const ghe = await this.prisma.ghe.findFirst({ where: { id: gheId, empresaId }, include: { riscos: true, exames: true } });
+    if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
+    const chave = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    const jaTem = new Set(ghe.exames.map((e) => chave(e.nome)));
+    const novos = examesPelosRiscos(ghe.riscos).filter((e) => !jaTem.has(chave(e.nome)));
+    for (const { motivo: _m, ...e } of novos) await this.prisma.exameGhe.create({ data: { ...e, gheId } });
+    return { criados: novos.map((e) => ({ nome: e.nome, motivo: e.motivo })) };
   }
 
   async definirMedicoPcmso(consultoriaId: string, empresaId: string, dto: MedicoPcmsoDto) {

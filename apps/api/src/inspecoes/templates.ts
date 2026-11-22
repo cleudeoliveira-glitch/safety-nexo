@@ -1,3 +1,4 @@
+import { objetivoDoc } from '../documentos/secoes';
 import { documentoHtml, escape, Moldura } from '../documentos/layout';
 import type { RelatorioInspecaoIa } from '../ia/ia';
 import { grauDoModelo, MODELOS_CHECKLIST } from './modelos';
@@ -53,6 +54,7 @@ export function inspecaoHtml(moldura: Moldura, d: { modelo: string; titulo: stri
   return documentoHtml(
     moldura,
     `
+    ${objetivoDoc('Esta inspeção registra as condições de segurança encontradas no local, na data da visita, comparando com o que as normas pedem. Cada item não conforme deve virar uma ação no plano do PGR, com responsável e prazo, e ser conferido na próxima inspeção. Inspeções regulares fazem parte do acompanhamento exigido pela NR-01.')}
     <section>
       <p><strong>Inspeção:</strong> ${escape(d.titulo)} · <strong>Local:</strong> ${escape(d.local)} · <strong>Data:</strong> ${d.data.toLocaleDateString('pt-BR', { timeZone: 'UTC' })} · <strong>Inspetor(a):</strong> ${escape(d.inspetor)}${d.proximaInspecao ? ` · <strong>Próxima inspeção:</strong> ${d.proximaInspecao.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}` : ''}</p>
       <p class="resumo ${c.percentual >= 80 ? 'bom' : 'ruim'}"><strong>${c.percentual}% de conformidade</strong> · ${c.conformes} conforme(s), ${c.naoConformes} não conforme(s), ${d.itens.length - c.aplicaveis} não se aplica</p>

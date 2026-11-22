@@ -5,6 +5,9 @@ import { DadosAno, relatorioPcmsoHtml, resumoAno } from './relatorio-pcmso';
 import { ContextoDocumentoService } from './contexto.service';
 import { renderPcmsoHtml } from './pcmso.template';
 import { PdfService } from './pdf.service';
+import { cidadeDoEndereco } from './secoes';
+import { lerFuncoes, nomeGhe } from '../empresas/ghe-ambiente';
+import { examesPelosRiscos } from '../empresas/exames-por-risco';
 
 @Injectable()
 export class PcmsoService {
@@ -61,7 +64,11 @@ export class PcmsoService {
   }
 
   async gerarPdf(consultoriaId: string, empresaId: string): Promise<{ pdf: Buffer; versao: number }> {
-    const { empresa, versao, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, 'PCMSO');
+    const { empresa, versao, historico, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, 'PCMSO');
+    const colaboradores = await this.prisma.colaborador.findMany({ where: { empresaId, dataDesligamento: null }, select: { gheId: true, cargo: true } });
+    const proximaRevisao = new Date(geradoEm);
+    proximaRevisao.setMonth(proximaRevisao.getMonth() + 12);
+    const divisao = Number((empresa.cnae ?? '').replace(/\D/g, '').slice(0, 2));
 
     const html = renderPcmsoHtml(
       {
@@ -80,11 +87,25 @@ export class PcmsoService {
       },
       { nome: empresa.medicoPcmsoNome, crm: empresa.medicoPcmsoCrm },
       empresa.ghes.map((ghe) => ({
-        nome: ghe.nome,
+        nome: nomeGhe(ghe),
         colaboradores: ghe._count.colaboradores,
         riscos: ghe.riscos.map((r) => r.agente),
-        exames: ghe.exames,
+        // Funções do cadastro do GHE e, se faltar alguma, os cargos de quem está nele.
+        funcoes: [...new Set([...lerFuncoes(ghe.funcoes).map((f) => f.nome), ...colaboradores.filter((c) => c.gheId === ghe.id).map((c) => c.cargo.trim())])].sort(),
+        // Sem exame programado, o PCMSO já sai com os exames que os riscos do GHE pedem, marcados para o médico conferir.
+        exames: ghe.exames.length ? ghe.exames : examesPelosRiscos(ghe.riscos).map(({ motivo: _m, ...e }) => ({ ...e, sugerido: true })),
       })),
+      {
+        controle: {
+          sigla: 'PCMSO', titulo: 'Programa de Controle Médico de Saúde Ocupacional (PCMSO)', versao, emitidoEm: geradoEm, proximaRevisao, historico,
+          responsavel: empresa.medicoPcmsoNome ? `${empresa.medicoPcmsoNome}${empresa.medicoPcmsoCrm ? `, CRM ${empresa.medicoPcmsoCrm}` : ''}` : null,
+        },
+        empresa: { razaoSocial: empresa.razaoSocial, cnae: empresa.cnae, grauRisco: empresa.grauRisco, endereco: empresa.endereco, numFuncionarios: empresa.numFuncionarios },
+        responsavelPgr: empresa.responsavelTecnicoNome,
+        representanteLegal: empresa.representanteLegalNome,
+        servicoSaude: divisao === 86 || divisao === 75,
+        local: cidadeDoEndereco(empresa.endereco) ?? empresa.consultoria.cidade ?? null,
+      },
     );
     const pdf = await this.pdf.render(html);
 

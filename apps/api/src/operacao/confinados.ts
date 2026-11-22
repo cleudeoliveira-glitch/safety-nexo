@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Delete, Get, Injectable, NotFoundException, Param, Post, Put, Res } from '@nestjs/common';
+import { CSS_SECOES, p as par, secoesNumeradas, tabelaDuasColunas, tabelaReferencias } from '../documentos/secoes';
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsOptional, IsString, Length, MaxLength, ValidateNested } from 'class-validator';
 import { Response } from 'express';
@@ -225,35 +226,67 @@ type Plano = {
 
 export function planoHtml(moldura: Moldura, p: Plano, equipe: { nome: string; cargo: string }[]) {
   const altura = p.tipo === 'ALTURA';
-  return documentoHtml(
-    moldura,
-    `
-    <section>
-      <h2>${escape(p.titulo)} <span class="meta">${altura ? 'Trabalho em altura · NR-35' : 'Espaço confinado · NR-33'}</span></h2>
-      <p><strong>Local:</strong> ${escape(p.local)}${p.espaco ? ` · <strong>Espaço:</strong> ${escape(p.espaco.codigo)} · ${escape(p.espaco.nome)}` : ''}</p>
-      <p><strong>Último simulado:</strong> ${p.ultimoSimulado ? data(p.ultimoSimulado) : 'ainda não feito'}. O plano é treinado em simulado pelo menos uma vez por ano.</p>
-    </section>
-    <section class="telefones">
-      <h2>Telefones de emergência</h2>
-      <table><tbody>
+  const norma = altura ? 'NR-35' : 'NR-33';
+  const secoes = secoesNumeradas([
+    {
+      titulo: 'Objetivo',
+      html: par(
+        `Este plano diz como resgatar com rapidez e segurança alguém que passe mal ou se acidente ${altura ? 'durante um trabalho em altura' : 'dentro de um espaço confinado'}.
+        Ele precisa estar pronto antes de o trabalho começar, porque nesse tipo de situação cada minuto conta e quem entra para socorrer sem preparo
+        costuma virar a segunda vítima.`,
+      ),
+    },
+    {
+      titulo: 'Identificação',
+      html: `<table><tbody>
+        <tr><th>Plano</th><td>Nº ${p.numero} · ${escape(p.titulo)}</td></tr>
+        <tr><th>Tipo</th><td>${altura ? 'Trabalho em altura (NR-35)' : 'Espaço confinado (NR-33)'}</td></tr>
+        <tr><th>Local</th><td>${escape(p.local)}${p.espaco ? ` · ${escape(p.espaco.codigo)} · ${escape(p.espaco.nome)}` : ''}</td></tr>
+        <tr><th>Último simulado</th><td>${p.ultimoSimulado ? data(p.ultimoSimulado) : 'ainda não feito'}</td></tr>
+      </tbody></table>`,
+    },
+    {
+      titulo: 'Referências normativas',
+      html: tabelaReferencias(
+        altura
+          ? [['NR-35', 'Trabalho em altura, itens de emergência e salvamento'], ['NR-01, item 1.5.6', 'Preparação para emergências']]
+          : [['NR-33', 'Espaços confinados, itens de emergência e salvamento'], ['NR-01, item 1.5.6', 'Preparação para emergências'], ['ABNT NBR 16577', 'Espaço confinado: prevenção de acidentes, procedimentos e medidas de proteção']],
+      ),
+    },
+    {
+      titulo: 'Responsabilidades',
+      html: tabelaDuasColunas(['Quem', 'O que faz'], [
+        ['Empresa', 'Garantir a equipe treinada, os equipamentos de resgate no local e o simulado pelo menos uma vez por ano.'],
+        ['Equipe de resgate', 'Fazer o resgate seguindo este plano, sem entrar ou subir sem proteção.'],
+        [altura ? 'Supervisor do trabalho' : 'Supervisor de entrada', 'Confirmar, antes de liberar o trabalho, que a equipe e os equipamentos de resgate estão disponíveis.'],
+        ['Trabalhadores', 'Conhecer o plano, avisar na hora qualquer problema e nunca tentar um resgate sozinho.'],
+      ]),
+    },
+    {
+      titulo: 'Telefones de emergência',
+      html: `<table class="telefones"><tbody>
         ${p.telefones.map((t) => `<tr><th style="width:45%">${escape(t.nome)}</th><td><strong>${escape(t.numero)}</strong></td></tr>`).join('')}
         ${p.hospital ? `<tr><th>Hospital mais próximo</th><td>${escape(p.hospital)}</td></tr>` : ''}
-      </tbody></table>
-    </section>
-    <section><h2>O que pode dar errado</h2>${paragrafos(p.cenarios)}</section>
-    <section>
-      <h2>Equipe de resgate</h2>
-      ${equipe.length ? `<table><thead><tr><th>Nome</th><th>Função</th><th style="width:35%">Ciente</th></tr></thead><tbody>${equipe.map((x) => `<tr><td>${escape(x.nome)}</td><td>${escape(x.cargo)}</td><td></td></tr>`).join('')}</tbody></table>` : ''}
-      ${p.equipeExterna ? `<p><strong>Equipe de fora:</strong> ${escape(p.equipeExterna)}</p>` : ''}
-    </section>
-    <section>
-      <h2>Equipamentos de resgate no local</h2>
-      ${p.equipamentos.length ? `<ul>${p.equipamentos.map((x) => `<li>${escape(x)}</li>`).join('')}</ul>` : '<p>—</p>'}
-    </section>
-    <section><h2>Passo a passo do resgate</h2>${paragrafos(p.procedimento)}</section>
-    ${p.primeirosSocorros ? `<section><h2>Primeiros socorros</h2>${paragrafos(p.primeirosSocorros)}</section>` : ''}
-    <div class="assinaturas"><div class="assinatura">&nbsp;<span>Responsável pelo plano</span></div><div class="assinatura">&nbsp;<span>Responsável pela empresa</span></div></div>`,
-    '.telefones td, .telefones th { font-size: 13px; } th { text-align: left; }',
+      </tbody></table>`,
+    },
+    { titulo: 'O que pode dar errado', html: paragrafos(p.cenarios) },
+    {
+      titulo: 'Equipe de resgate',
+      html: `${equipe.length ? `<table><thead><tr><th>Nome</th><th>Função</th><th style="width:35%">Ciente</th></tr></thead><tbody>${equipe.map((x) => `<tr><td>${escape(x.nome)}</td><td>${escape(x.cargo)}</td><td></td></tr>`).join('')}</tbody></table>` : '<p class="falta">Equipe não cadastrada.</p>'}
+        ${p.equipeExterna ? `<p><strong>Equipe de fora:</strong> ${escape(p.equipeExterna)}</p>` : ''}`,
+    },
+    { titulo: 'Equipamentos de resgate no local', html: p.equipamentos.length ? `<ul>${p.equipamentos.map((x) => `<li>${escape(x)}</li>`).join('')}</ul>` : '<p>—</p>' },
+    { titulo: 'Passo a passo do resgate', html: paragrafos(p.procedimento) },
+    p.primeirosSocorros ? { titulo: 'Primeiros socorros', html: paragrafos(p.primeirosSocorros) } : null,
+    {
+      titulo: 'Simulados e revisão',
+      html: par(`O plano é treinado em simulado pelo menos uma vez por ano (${norma}), com registro de quem participou, do tempo de resposta e do que precisa melhorar. Ele deve ser revisto depois de cada simulado, de qualquer emergência real e sempre que mudar o local, a atividade ou a equipe.`),
+    },
+  ], { sumario: false });
+  return documentoHtml(
+    moldura,
+    `${secoes}<div class="assinaturas"><div class="assinatura">&nbsp;<span>Responsável pelo plano</span></div><div class="assinatura">&nbsp;<span>Responsável pela empresa</span></div></div>`,
+    `${CSS_SECOES} .telefones td, .telefones th { font-size: 13px; } th { text-align: left; }`,
   );
 }
 

@@ -7,6 +7,7 @@ import { TABELA_18_MOTIVOS_AFASTAMENTO } from '../esocial/tabelas';
 import { AtualizarCatEsocialDto, CriarAetDto, CriarAfastamentoDto, CriarCatDto } from './dto';
 import { prazoCat } from './prazo-cat';
 import { AetPdf, aetHtml, catHtml } from './templates';
+import { cidadeDoEndereco } from '../documentos/secoes';
 
 const AVISO = 'Feito com o Safety Nexo.';
 
@@ -50,7 +51,7 @@ export class SaudeService {
     const empresa = await this.empresa(consultoriaId, empresaId);
     const mesmoRt = empresa.responsavelTecnicoNome?.trim().toLowerCase() === aet.responsavel.trim().toLowerCase();
     const capa = capaDe('AET', empresa, undefined, new Date(), [mesmoRt ? responsavelTecnico(empresa, 'Responsável pela AET') : { papel: 'Responsável pela AET', nome: aet.responsavel }]);
-    return this.pdf.render(aetHtml({ ...moldura, capa }, { ...aet, recomendacoes: aet.recomendacoes as AetPdf['recomendacoes'] }));
+    return this.pdf.render(aetHtml({ ...moldura, capa }, { ...aet, recomendacoes: aet.recomendacoes as AetPdf['recomendacoes'] }, { razaoSocial: empresa.razaoSocial, local: cidadeDoEndereco(empresa.endereco) }));
   }
 
   // CAT
