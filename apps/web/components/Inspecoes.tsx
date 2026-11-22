@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { reduzirFoto } from '@/components/Foto';
 import { Botao, Campo, CardNumero, Cartao, Selecao } from '@/components/ui';
+import { BotaoExcluir } from '@/components/BotaoExcluir';
+import { lembrar, ultimo } from '@/lib/lembrar';
 import {
+  excluir,
   analisarInspecaoIa,
   criarInspecao,
   definirProximaInspecao,
@@ -18,7 +21,7 @@ import {
   removerFotoInspecao,
   salvarArquivo,
 } from '@/lib/api';
-import { ehEmpresa } from '@/lib/sessao';
+import { ehEmpresa, lerUsuario } from '@/lib/sessao';
 
 type Avisar = (tipo: 'erro' | 'ok', texto: string) => void;
 const MAX_FOTOS = 15;
@@ -187,7 +190,7 @@ function InspecaoComImagem({ empresaId, locais, localPadrao = '', cliente, recar
   const entrada = useRef<HTMLInputElement>(null);
   const [fotos, setFotos] = useState<FotoAvaliada[]>([]);
   const [local, setLocal] = useState(localPadrao);
-  const [inspetor, setInspetor] = useState('');
+  const [inspetor, setInspetor] = useState(() => ultimo('inspecao.inspetor') || lerUsuario()?.nome || '');
   const [dataInsp, setDataInsp] = useState(hoje());
   const [salvando, setSalvando] = useState(false);
 
@@ -217,6 +220,7 @@ function InspecaoComImagem({ empresaId, locais, localPadrao = '', cliente, recar
         ...(f.resposta === 'NC' ? { observacao: f.problema.trim() } : {}),
       }));
       const criada = await criarInspecao(empresaId, { modelo: 'LIVRE', titulo: 'Inspeção com imagem', local: local.trim(), data: dataInsp, inspetor: inspetor.trim(), itens });
+      lembrar({ 'inspecao.inspetor': inspetor });
       let extra = '';
       try {
         await enviarFotosInspecao(empresaId, criada.id, fotos.map((f, k) => ({ foto: f.foto, legenda: f.resposta === 'NC' ? `${itens[k].texto}: ${f.problema.trim()}` : itens[k].texto })));
@@ -249,7 +253,7 @@ function InspecaoComImagem({ empresaId, locais, localPadrao = '', cliente, recar
             <Campo id="img-local" rotulo="Local inspecionado" required value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex.: Almoxarifado" list="img-locais" />
             <datalist id="img-locais">{locais.map((l) => <option key={l} value={l} />)}</datalist>
             <Campo id="img-data" type="date" rotulo="Data" required value={dataInsp} onChange={(e) => setDataInsp(e.target.value)} />
-            <Campo id="img-inspetor" rotulo="Inspetor(a)" required value={inspetor} onChange={(e) => setInspetor(e.target.value)} placeholder="Quem fez a inspeção" />
+            <Campo id="img-inspetor" rotulo="Inspetor(a)" required value={inspetor} onChange={(e) => setInspetor(e.target.value)} placeholder="Quem fez a inspeção" list="nomes-pessoas" />
           </div>
           <ol className="space-y-3">
             {fotos.map((f, i) => (
@@ -335,6 +339,7 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
         try { await enviarFotosInspecao(empresaId, criada.id, fotos); textoFotos = ` ${fotos.length} foto(s) guardada(s).`; }
         catch (e) { textoFotos = ` As fotos não foram: ${(e as Error).message}. Inclua de novo na lista abaixo.`; }
       }
+      lembrar({ 'inspecao.inspetor': t('inspetor') });
       fotos.forEach((f) => URL.revokeObjectURL(f.previa));
       setModelo(''); setItens([]); setFotos([]); setProxima(''); setDataInsp(hoje()); setChave((k) => k + 1);
       setAberta(criada.id);
@@ -373,6 +378,8 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
           try { salvarArquivo(await gerarInspecao(empresaId, i.id), `Inspecao-${i.modelo}-${i.data.slice(0, 10)}.pdf`); }
           catch (e) { avisar('erro', (e as Error).message); }
         }}>Baixar relatório</Botao>
+        <BotaoExcluir pergunta={`Excluir a inspeção "${i.titulo}" de ${data(i.data)}? As fotos dela saem junto.`}
+          excluir={() => excluir.inspecao(empresaId, i.id)} aoTerminar={async () => { if (aberta === i.id) setAberta(null); avisar('ok', 'Inspeção excluída.'); await recarregar(); }} aoErrar={(m) => avisar('erro', m)} />
       </span>
     );
   }
@@ -395,7 +402,7 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
             <Campo id="ck-local" name="local" rotulo="Local inspecionado" required placeholder="Ex.: Produção" list="ck-locais" defaultValue={localPadrao} />
             <datalist id="ck-locais">{[...new Set([...locais.map((l) => l[l.length - 1].local), ...setores])].map((l) => <option key={l} value={l} />)}</datalist>
             <Campo id="ck-data" type="date" rotulo="Data" required value={dataInsp} onChange={(e) => setDataInsp(e.target.value)} />
-            <Campo id="ck-inspetor" name="inspetor" rotulo="Inspetor(a)" required placeholder="Quem fez a inspeção" />
+            <Campo id="ck-inspetor" name="inspetor" rotulo="Inspetor(a)" required placeholder="Quem fez a inspeção" list="nomes-pessoas" defaultValue={ultimo('inspecao.inspetor') || lerUsuario()?.nome || ''} />
           </div>
 
           {itens.length > 0 && (

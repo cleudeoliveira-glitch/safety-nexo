@@ -11,6 +11,7 @@ import { CriarAprDto, CriarDdsDto, CriarPermissaoDto, MedicaoGasDto } from './dt
 import { sugerirTemasDds } from './sugestoes-dds';
 import { aprHtml, ddsHtml, DetalhesPt, EtapaApr, permissaoHtml } from './templates';
 import { nomeGhe } from '../empresas/ghe-ambiente';
+import { apagarPresencas, conferirApagado } from '../common/exclusao';
 
 const AVISO = 'Feito com o Safety Nexo.';
 
@@ -204,6 +205,27 @@ export class OperacaoService {
         pt.medicoes as Medicao[],
       ),
     );
+  }
+
+  // Excluir: a APR some e as PTs ligadas a ela ficam guardadas, só sem o vínculo.
+  async excluirApr(consultoriaId: string, empresaId: string, id: string) {
+    await this.empresa(consultoriaId, empresaId);
+    const { count } = await this.prisma.apr.deleteMany({ where: { id, empresaId } });
+    return conferirApagado(count, 'Esta APR não foi encontrada. Talvez já tenha sido excluída.');
+  }
+
+  async excluirPermissao(consultoriaId: string, empresaId: string, id: string) {
+    await this.empresa(consultoriaId, empresaId);
+    const { count } = await this.prisma.permissaoTrabalho.deleteMany({ where: { id, empresaId } });
+    return conferirApagado(count, 'Esta permissão não foi encontrada. Talvez já tenha sido excluída.');
+  }
+
+  async excluirDds(consultoriaId: string, empresaId: string, id: string) {
+    await this.empresa(consultoriaId, empresaId);
+    const { count } = await this.prisma.dds.deleteMany({ where: { id, empresaId } });
+    conferirApagado(count, 'Este DDS não foi encontrado. Talvez já tenha sido excluído.');
+    await apagarPresencas(this.prisma, 'DDS', id);
+    return { ok: true };
   }
 
   // DDS

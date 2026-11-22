@@ -6,6 +6,7 @@ import { enviarPdf } from '../documentos/documentos.controller';
 import { CriarTurmaDto, ParticipantesDto } from './dto';
 import { TreinamentosService } from './treinamentos.service';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
+import { SoConsultoria } from '../common/exclusao';
 
 @PermiteEmpresa()
 @Controller()
@@ -51,5 +52,11 @@ export class TreinamentosController {
   @Post('empresas/:empresaId/turmas/:turmaId/certificados')
   async certificados(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('turmaId') t: string, @Res() res: Response) {
     enviarPdf(res, await this.treinamentos.gerarPdf(c, e, t, 'certificados'), 'Certificados.pdf');
+  }
+
+  @SoConsultoria()
+  @Delete('empresas/:empresaId/turmas/:turmaId')
+  excluir(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('turmaId') t: string) {
+    return this.treinamentos.excluir(c, e, t);
   }
 }

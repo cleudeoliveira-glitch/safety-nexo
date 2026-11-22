@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Res } from '@nestjs/common';
+import { SoConsultoria } from '../common/exclusao';
 import { Response } from 'express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { enviarPdf } from '../documentos/documentos.controller';
@@ -74,5 +75,23 @@ export class OperacaoController {
   @Post('empresas/:empresaId/dds/:id/pdf')
   async pdfDds(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Res() res: Response) {
     enviarPdf(res, await this.operacao.pdfDds(c, e, id), 'DDS.pdf');
+  }
+
+  @SoConsultoria()
+  @Delete('empresas/:empresaId/aprs/:id')
+  excluirApr(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) {
+    return this.operacao.excluirApr(c, e, id);
+  }
+
+  @SoConsultoria()
+  @Delete('empresas/:empresaId/permissoes/:id')
+  excluirPermissao(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) {
+    return this.operacao.excluirPermissao(c, e, id);
+  }
+
+  @SoConsultoria()
+  @Delete('empresas/:empresaId/dds/:id')
+  excluirDds(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) {
+    return this.operacao.excluirDds(c, e, id);
   }
 }

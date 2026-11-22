@@ -1,3 +1,4 @@
+import { jaFoiAoEsocial } from '../common/exclusao';
 import { registrarEntrega } from '../estoque/baixa';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { join } from 'path';
@@ -107,6 +108,38 @@ export class ColaboradoresService {
       }
       return tx.entregaEpi.update({ where: { id: entrega.id }, data: { devolvidoEm: data, motivoDevolucao: dto.motivo } });
     });
+  }
+
+  // ASO lançado errado. Se já foi ao eSocial (S-2220), a exclusão tem que ser feita lá primeiro.
+  async excluirAso(consultoriaId: string, empresaId: string, colaboradorId: string, asoId: string) {
+    await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    const aso = await this.prisma.aso.findFirst({ where: { id: asoId, colaboradorId } });
+    if (!aso) throw new NotFoundException('Este ASO não foi encontrado. Talvez já tenha sido excluído.');
+    if (await jaFoiAoEsocial(this.prisma, empresaId, asoId)) {
+      throw new BadRequestException('Este ASO já foi enviado ao eSocial, por isso não dá para apagar daqui. Faça a exclusão no eSocial (S-3000) na tela do eSocial e depois apague aqui.');
+    }
+    await this.prisma.aso.delete({ where: { id: aso.id } });
+    if (aso.arquivoPath) await guardaAso.apagar(aso.arquivoPath).catch(() => undefined);
+    return { ok: true };
+  }
+
+  // Entrega lançada errado: some da ficha. Se saiu do almoxarifado, a quantidade volta para o estoque.
+  async excluirEntregaEpi(consultoriaId: string, empresaId: string, colaboradorId: string, entregaId: string) {
+    const colaborador = await this.detalhar(consultoriaId, empresaId, colaboradorId);
+    const entrega = await this.prisma.entregaEpi.findFirst({ where: { id: entregaId, colaboradorId } });
+    if (!entrega) throw new NotFoundException('Esta entrega de EPI não foi encontrada. Talvez já tenha sido excluída.');
+    await this.prisma.$transaction(async (tx) => {
+      if (entrega.estoqueId && !entrega.devolvidoEm) {
+        const item = await tx.estoqueEpi.findFirst({ where: { id: entrega.estoqueId, empresaId } });
+        if (item) {
+          const atualizado = await tx.estoqueEpi.update({ where: { id: item.id }, data: { quantidade: { increment: entrega.quantidade } } });
+          await tx.movimentoEstoque.create({ data: { estoqueId: item.id, tipo: 'AJUSTE', quantidade: entrega.quantidade, saldo: atualizado.quantidade, observacao: `Entrega para ${colaborador.nome} excluída (lançada errado)` } });
+        }
+      }
+      await tx.presencaFacial.deleteMany({ where: { tipo: 'EPI', refId: entrega.id } });
+      await tx.entregaEpi.delete({ where: { id: entrega.id } });
+    });
+    return { ok: true };
   }
 
   // Dados do cadastro, editados pela ficha. Campo vazio apaga (menos nome e cargo, que são obrigatórios).

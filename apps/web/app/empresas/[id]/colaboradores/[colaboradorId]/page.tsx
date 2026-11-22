@@ -5,7 +5,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
 import { conferirNoAparelho, guardarCaptura } from '@/lib/rosto-offline';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { abrirAsoClinica, anexarAsoClinica, buscarColaborador, CATEGORIAS_CNH, ColaboradorDetalhe, devolverEpi, editarColaborador, Ghe, listarGhes, MOTIVOS_DEVOLUCAO, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarDesligamento, type SituacaoDemissional, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto } from '@/lib/api';
+import { abrirAsoClinica, anexarAsoClinica, buscarColaborador, CATEGORIAS_CNH, ColaboradorDetalhe, devolverEpi, editarColaborador, Ghe, listarGhes, MOTIVOS_DEVOLUCAO, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarDesligamento, type SituacaoDemissional, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto, excluir } from '@/lib/api';
+import { BotaoExcluir } from '@/components/BotaoExcluir';
+import { lembrar, ultimo } from '@/lib/lembrar';
 
 const TIPOS_ASO = [
   ['ADMISSIONAL', 'Admissional'],
@@ -207,14 +209,16 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
         <form
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar(
-            (d) =>
-              registrarAso(empresaId, colaboradorId, {
+            (d) => {
+              lembrar({ [`aso.medico.${empresaId}`]: texto(d, 'medicoNome'), [`aso.crm.${empresaId}`]: texto(d, 'medicoCrm') }, false);
+              return registrarAso(empresaId, colaboradorId, {
                 tipo: texto(d, 'tipo'),
                 dataExame: texto(d, 'dataExame'),
                 resultado: texto(d, 'resultado'),
                 medicoExaminadorNome: texto(d, 'medicoNome'),
                 medicoExaminadorCrm: texto(d, 'medicoCrm'),
-              }),
+              });
+            },
             'ASO registrado. Clique em "Baixar ASO" para gerar o PDF.',
           )}
         >
@@ -226,9 +230,10 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
             <option value="APTO">Apto</option>
             <option value="INAPTO">Inapto</option>
           </Selecao>
-          <Campo id="aso-medico" name="medicoNome" rotulo="Médico examinador" required placeholder="Ex.: Dr. João Souza"
+          <Campo id="aso-medico" name="medicoNome" rotulo="Médico examinador" required placeholder="Ex.: Dr. João Souza" defaultValue={ultimo(`aso.medico.${empresaId}`)}
+            dica="O sistema lembra o último médico usado nesta empresa."
             className="md:col-span-2" />
-          <Campo id="aso-crm" name="medicoCrm" rotulo="CRM" required placeholder="Ex.: 123456-SP" />
+          <Campo id="aso-crm" name="medicoCrm" rotulo="CRM" required placeholder="Ex.: 123456-SP" defaultValue={ultimo(`aso.crm.${empresaId}`)} />
           <div className="flex justify-end md:col-span-3"><Botao type="submit">Registrar ASO</Botao></div>
         </form>
 
@@ -260,6 +265,9 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
                   <Botao variante="secundario" onClick={() => baixar(() => gerarAso(empresaId, colaboradorId, a.id), `ASO-${colaborador.nome}-${a.dataExame.slice(0, 10)}.pdf`)}>
                     Baixar ASO
                   </Botao>
+                  <BotaoExcluir pergunta={`Excluir o ASO ${nomeDe(TIPOS_ASO, a.tipo).toLowerCase()} de ${data(a.dataExame)}?`}
+                    excluir={() => excluir.aso(empresaId, colaboradorId, a.id)} aoTerminar={async () => { setAviso({ tipo: 'ok', texto: 'ASO excluído.' }); await recarregar(); }}
+                    aoErrar={(m) => setAviso({ tipo: 'erro', texto: m })} />
                 </span>
               </li>
             ))}
@@ -372,6 +380,9 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
                     {!e.devolvidoEm && devolvendo !== e.id && (
                       <button type="button" className="text-primary hover:underline" onClick={() => setDevolvendo(e.id)}>Registrar devolução</button>
                     )}
+                    <BotaoExcluir pergunta={`Excluir a entrega de ${e.epi} (${data(e.dataEntrega)})? Use só se foi lançada errado. Se saiu do almoxarifado, a quantidade volta para o estoque.`}
+                      excluir={() => excluir.entregaEpi(empresaId, colaboradorId, e.id)} aoTerminar={async () => { setAviso({ tipo: 'ok', texto: `Entrega de ${e.epi} excluída.` }); await recarregar(); }}
+                      aoErrar={(m) => setAviso({ tipo: 'erro', texto: m })} />
                   </span>
                   {devolvendo === e.id && (
                     <form

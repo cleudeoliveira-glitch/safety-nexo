@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Put, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { SoConsultoria } from '../common/exclusao';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
@@ -74,5 +75,17 @@ export class ColaboradoresController {
   @Post('ppp')
   async pdfPpp(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Res() res: Response) {
     enviarPdf(res, await this.colaboradores.pdfPpp(c, e, id), 'PPP.pdf');
+  }
+
+  @SoConsultoria()
+  @Delete('asos/:asoId')
+  excluirAso(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Param('asoId') asoId: string) {
+    return this.colaboradores.excluirAso(c, e, id, asoId);
+  }
+
+  @SoConsultoria()
+  @Delete('epis/:entregaId')
+  excluirEntregaEpi(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Param('entregaId') entregaId: string) {
+    return this.colaboradores.excluirEntregaEpi(c, e, id, entregaId);
   }
 }
