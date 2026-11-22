@@ -4,7 +4,7 @@ import { ContextoDocumentoService } from './contexto.service';
 import { PdfService } from './pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { renderPgrHtml } from './pgr.template';
-import { lerAmbiente, lerFuncoes, textoAmbiente } from '../empresas/ghe-ambiente';
+import { lerAmbiente, lerFuncoes, nomeGhe, textoAmbiente } from '../empresas/ghe-ambiente';
 import { cidadeDoEndereco } from './secoes';
 
 @Injectable()
@@ -56,11 +56,11 @@ export class PgrService {
         capa: capaDe('PGR', empresa, versao, geradoEm, [responsavelTecnico(empresa)], 'revisão a cada 2 anos ou quando algo mudar'),
       },
       empresa.ghes.map((ghe) => ({
-        nome: ghe.nome,
+        nome: nomeGhe(ghe),
         descricao: ghe.descricao,
         setor: ghe.setor,
         funcoes: lerFuncoes(ghe.funcoes),
-        ambiente: textoAmbiente(lerAmbiente(ghe.ambiente)),
+        ambiente: ((t) => (t && ghe.unidade ? `Unidade ${ghe.unidade}. ${t}` : t))(textoAmbiente(lerAmbiente(ghe.ambiente))),
         colaboradores: ghe._count.colaboradores,
         riscos: ghe.riscos,
       })),

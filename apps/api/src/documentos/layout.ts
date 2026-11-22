@@ -6,7 +6,7 @@ import * as tokens from '@safety-nexo/design-tokens';
 export type Moldura = {
   titulo: string;
   logoEmpresa: string | null;
-  consultoria: { nome: string; logo: string | null };
+  consultoria: { nome: string; logo: string | null; responsavel?: string | null }; // responsavel: técnico da empresa, com o registro (CREA)
   infos: [rotulo: string, valor: string | number | null][];
   aviso: string;
   capa?: Capa; // programas e laudos (PGR, PCMSO, LTCAT, LIP, LPP, PGRTR, AET) abrem com capa
@@ -85,7 +85,7 @@ export function rodapeHtml(moldura: Pick<Moldura, 'consultoria' | 'aviso'>): str
   <footer>
     <div class="elaborado">
       ${moldura.consultoria.logo ? `<img src="${moldura.consultoria.logo}" alt="Logo da consultoria" />` : ''}
-      <span>Elaborado por <strong>${escape(moldura.consultoria.nome)}</strong></span>
+      <span>Elaborado por <strong>${escape(moldura.consultoria.nome)}</strong>${moldura.consultoria.responsavel ? ` · Responsável técnico: ${escape(moldura.consultoria.responsavel)}` : ''}</span>
     </div>
     <p>${escape(moldura.aviso)}</p>
   </footer>`;

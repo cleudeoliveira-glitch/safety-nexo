@@ -163,6 +163,7 @@ export class AmbienteGheDto {
   @IsOptional() @IsBoolean() ceuAberto?: boolean;
   @IsOptional() @IsBoolean() confinado?: boolean;
   @IsOptional() @IsString() @Length(0, 500) maquinas?: string;
+  @IsOptional() @IsString() @Length(0, 1000) produtos?: string;
   @IsOptional() @IsString() @Length(0, 200) ruidoFundo?: string;
   @IsOptional() @IsString() @Length(0, 2000) observacoes?: string;
 }
@@ -170,6 +171,8 @@ export class AmbienteGheDto {
 // GHE é criado por setor e função (NR-01, 1.5.7.3.2), nunca por pessoa.
 export class CreateGheDto {
   @IsOptional() @IsString() @Length(2, 200) nome?: string;
+  @IsOptional() @IsString() @Length(0, 30) codigo?: string;
+  @IsOptional() @IsString() @Length(0, 120) unidade?: string;
   @IsString() @Length(2, 120, { message: 'Informe o setor do GHE (ex.: Administrativo).' }) setor!: string;
   @IsArray() @ArrayMinSize(1, { message: 'Inclua pelo menos uma função no GHE. O GHE é formado por funções, não por pessoas.' })
   @ValidateNested({ each: true }) @Type(() => FuncaoGheDto) funcoes!: FuncaoGheDto[];
@@ -314,6 +317,17 @@ export class UpdateEmpresaDto {
   @IsString()
   @Length(2, 120)
   representanteLegalNome?: string;
+
+  // Antes ficava de fora aqui e a "visão geral" não era salva ao editar a empresa.
+  @IsOptional()
+  @IsString()
+  @Length(0, 4000)
+  descricaoProcessos?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 120)
+  localPadrao?: string;
 }
 
 export class CopiarDadosDto {

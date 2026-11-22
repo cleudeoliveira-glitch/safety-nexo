@@ -5,7 +5,7 @@ import { ContextoDocumentoService } from './contexto.service';
 import { ehAgenteLtcat, renderLtcatHtml } from './ltcat.template';
 import { PdfService } from './pdf.service';
 import { cidadeDoEndereco } from './secoes';
-import { descricaoGhe } from '../empresas/ghe-ambiente';
+import { descricaoGhe, nomeGhe } from '../empresas/ghe-ambiente';
 
 @Injectable()
 export class LtcatService {
@@ -36,7 +36,7 @@ export class LtcatService {
         capa: capaDe('LTCAT', empresa, versao, geradoEm, [responsavelTecnico(empresa)]),
       },
       empresa.ghes.map((g) => ({
-        nome: g.nome,
+        nome: nomeGhe(g),
         descricao: descricaoGhe(g),
         colaboradores: g._count.colaboradores,
         cargos: [...new Set(colaboradores.filter((c) => c.gheId === g.id).map((c) => c.cargo))].sort(),

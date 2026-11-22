@@ -296,8 +296,9 @@ export type DadosOs = {
   colaborador: { nome: string; cpf: string | null; cargo: string; cbo: string | null; matricula?: string | null; dataAdmissao?: Date | null };
   ghe: { nome: string; descricao: string | null; atividadesFuncao?: string | null } | null;
   riscos: RiscoOs[];
-  epis: string[];
+  entregas: EntregaOs[]; // EPIs em uso pelo trabalhador (ficha de EPI), a mais recente primeiro
 };
+export type EntregaOs = { epi: string; ca: string; dataEntrega: Date; validadeCa: Date | null };
 export type CabecalhoOs = {
   empresa: string;
   pgr: { versao: number; data: Date } | null;
@@ -355,6 +356,37 @@ function treinamentosOs(riscos: RiscoOs[]): string[] {
   return lista;
 }
 
+// Confere cada EPI que os riscos pedem com o que foi entregue (ficha de EPI), pelo nome.
+// "Protetor auricular tipo plug" bate com "Protetor auricular": basta as duas primeiras palavras que importam.
+const PALAVRAS_FRACAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'com', 'para', 'tipo', 'em', 'a', 'o']);
+const palavras = (t: string) => semAcento(t).replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((p) => p.length > 1 && !PALAVRAS_FRACAS.has(p));
+function bate(exigido: string, entregue: string): boolean {
+  const a = palavras(exigido); const b = palavras(entregue);
+  if (!a.length || !b.length) return false;
+  const curta = a.length <= b.length ? a : b; const longa = a.length <= b.length ? b : a;
+  return curta.slice(0, 2).every((p) => longa.some((q) => q.startsWith(p) || p.startsWith(q)));
+}
+// Data de entrega e validade do CA são datas sem hora (gravadas à meia-noite UTC).
+const dia = (d: Date) => d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+export function conferirEpis(exigidos: string[], entregas: EntregaOs[], hoje: Date) {
+  const usadas = new Set<EntregaOs>();
+  const linhas = exigidos.map((epi) => {
+    const e = entregas.find((x) => bate(epi, x.epi));
+    if (!e) return { epi, ok: false, situacao: 'Ainda não entregue. Entregar e registrar na ficha antes de começar a atividade.' };
+    usadas.add(e);
+    if (e.validadeCa && e.validadeCa < hoje) return { epi, ok: false, situacao: `Entregue em ${dia(e.dataEntrega)} (CA ${e.ca}), mas o CA venceu em ${dia(e.validadeCa)}. Trocar.` };
+    return { epi, ok: true, situacao: `Entregue em ${dia(e.dataEntrega)} · CA ${e.ca}` };
+  });
+  // EPIs entregues que não aparecem nos riscos também entram, para a lista ficar completa.
+  const vistos = new Set<string>();
+  for (const e of entregas) {
+    if (usadas.has(e) || vistos.has(semAcento(e.epi))) continue;
+    vistos.add(semAcento(e.epi));
+    linhas.push({ epi: e.epi, ok: true, situacao: `Entregue em ${dia(e.dataEntrega)} · CA ${e.ca}` });
+  }
+  return linhas;
+}
+
 function paginaOs(d: DadosOs, c: CabecalhoOs): string {
   // O que a função faz vem do cadastro do GHE (funções e atividades). Texto com quebras de linha ou ";" vira lista.
   const atividades = d.ghe?.atividadesFuncao ? d.ghe.atividadesFuncao.split(/\n|;\s*/).map((x) => x.trim()).filter(Boolean) : [];
@@ -367,7 +399,7 @@ function paginaOs(d: DadosOs, c: CabecalhoOs): string {
     }</td></tr>`;
   }).join('');
   const medidas = unicos(d.riscos.flatMap((r) => [...partes(r.medidasEpc), ...partes(r.medidasControle)]));
-  const epis = unicos([...d.riscos.flatMap((r) => partes(r.medidasEpi)), ...d.epis]);
+  const conferencia = conferirEpis(unicos(d.riscos.flatMap((r) => partes(r.medidasEpi))), d.entregas, c.emitidoEm);
   const col = d.colaborador;
   return `
     <table class="ident"><tbody>
@@ -396,7 +428,9 @@ function paginaOs(d: DadosOs, c: CabecalhoOs): string {
     ${medidas.length ? `<ul>${medidas.map((x) => `<li>${escape(x)}</li>`).join('')}</ul>` : '<p>Seguir os procedimentos da empresa e as orientações do superior e do responsável pela segurança.</p>'}
 
     <h2>6. EPIs de uso obrigatório</h2>
-    ${epis.length ? `<ul class="duas-col">${epis.map((x) => `<li>${escape(x)} (com CA válido)</li>`).join('')}</ul>` : '<p>Conforme a ficha de EPI do trabalhador.</p>'}
+    ${conferencia.length ? `<table class="epis"><thead><tr><th>EPI exigido pelos riscos da função</th><th>Situação na ficha de EPI</th></tr></thead><tbody>
+      ${conferencia.map((x) => `<tr><td>${escape(x.epi)}</td><td${x.ok ? '' : ' class="falta"'}>${escape(x.situacao)}</td></tr>`).join('')}
+    </tbody></table>` : '<p>Conforme a ficha de EPI do trabalhador.</p>'}
 
     <h2>7. Treinamentos obrigatórios</h2>
     <ul class="duas-col">${treinamentosOs(d.riscos).map((x) => `<li>${escape(x)}</li>`).join('')}</ul>
@@ -458,7 +492,7 @@ function paginaOs(d: DadosOs, c: CabecalhoOs): string {
 }
 
 const CSS_OS = `body { font-size: 11px; } h2 { font-size: 12.5px; margin: 12px 0 4px; } td, th { padding: 3px 6px; } table { width: 100%; }
-  .ident th { width: 16%; text-align: left; } .riscos th { width: 16%; text-align: left; vertical-align: top; }
+  .ident th { width: 16%; text-align: left; } .epis th:first-child { width: 45%; } .riscos th { width: 16%; text-align: left; vertical-align: top; }
   ul { margin: 4px 0 8px; padding-left: 18px; } li { margin-bottom: 2px; line-height: 1.4; } p { line-height: 1.5; text-align: justify; }
   .duas-col { columns: 2; column-gap: 24px; } .objetivo { background: #F1F5F9; border-radius: 6px; padding: 6px 8px; margin-top: 8px; }
   .destaque { font-weight: 600; } .falta { color: #b45309; font-style: italic; } .local-data { margin-top: 18px; }

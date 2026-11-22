@@ -28,6 +28,7 @@ export default function CampoPage() {
   const [respostas, setRespostas] = useState<Record<number, ItemInspecao['resposta']>>({});
   const [etapas, setEtapas] = useState<EtapaApr[]>([{ etapa: '', riscos: '', medidas: '', epis: '' }]);
   const [chave, setChave] = useState(0);
+  const localPadrao = base?.empresas.find((e) => e.id === empresaId)?.localPadrao ?? '';
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok' | 'info'; texto: string } | null>(null);
   const [logado, setLogado] = useState(true);
   const [fotos, setFotos] = useState<FotoGuardada[]>([]); // fotos da inspeção, guardadas no aparelho até enviar
@@ -161,7 +162,7 @@ export default function CampoPage() {
                 <option value="">Escolha</option>{base.modelos.map((m) => <option key={m.modelo} value={m.modelo}>{m.titulo}</option>)}
               </Selecao>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Campo id="cp-local" name="local" rotulo="Local" required />
+                <Campo key={`cp-local-${empresaId}`} id="cp-local" name="local" rotulo="Local" required defaultValue={localPadrao} />
                 <Campo id="cp-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
                 <Campo id="cp-insp" name="inspetor" rotulo="Inspetor(a)" required />
               </div>
@@ -281,7 +282,7 @@ export default function CampoPage() {
             }}>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Campo id="ca-ativ" name="atividade" rotulo="Atividade" required />
-                <Campo id="ca-local" name="local" rotulo="Local" required />
+                <Campo key={`ca-local-${empresaId}`} id="ca-local" name="local" rotulo="Local" required defaultValue={localPadrao} />
                 <Campo id="ca-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
                 <Campo id="ca-resp" name="resp" rotulo="Responsável" required />
                 <Campo id="ca-equipe" name="equipe" rotulo="Equipe (separe por vírgula)" className="sm:col-span-2" />

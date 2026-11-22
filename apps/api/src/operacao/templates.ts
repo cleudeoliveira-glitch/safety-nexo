@@ -27,7 +27,24 @@ function listaAssinaturas(pessoas: Pessoa[], vazio: string) {
 
 export type EtapaApr = { etapa: string; riscos: string; medidas: string; epis?: string };
 
-export function aprHtml(moldura: Moldura, apr: { atividade: string; local: string; data: Date; responsavel: string; etapas: EtapaApr[] }, equipe: Pessoa[]) {
+export type RiscoAmbiente = { tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; medidasEpc: string | null; medidasEpi: string | null };
+const TIPO_RISCO: Record<string, string> = { FISICO: 'Físico', QUIMICO: 'Químico', BIOLOGICO: 'Biológico', ERGONOMICO: 'Ergonômico', ACIDENTE: 'Acidente' };
+
+// Riscos que o PGR já levantou para o setor: a equipe considera junto com os riscos da atividade.
+function riscosDoAmbiente(amb: { setor: string; riscos: RiscoAmbiente[] } | null | undefined) {
+  if (!amb) return '';
+  const medidas = (r: RiscoAmbiente) => [r.medidasEpc, r.medidasControle].filter(Boolean).join('; ');
+  return `
+    <section>
+      <h2>Riscos do ambiente (${escape(amb.setor)}, conforme o PGR)</h2>
+      ${amb.riscos.length ? `<table>
+        <thead><tr><th>Tipo</th><th>Agente ou perigo</th><th>Fonte</th><th>Medidas</th><th>EPIs</th></tr></thead>
+        <tbody>${amb.riscos.map((r) => `<tr><td>${TIPO_RISCO[r.tipo] ?? escape(r.tipo)}</td><td>${escape(r.agente)}</td><td>${escape(r.fonteGeradora)}</td><td>${escape(medidas(r) || '—')}</td><td>${escape(r.medidasEpi ?? '—')}</td></tr>`).join('')}</tbody>
+      </table>` : '<p>Nenhum risco cadastrado para este setor no PGR.</p>'}
+    </section>`;
+}
+
+export function aprHtml(moldura: Moldura, apr: { atividade: string; local: string; data: Date; responsavel: string; etapas: EtapaApr[]; ambiente?: { setor: string; riscos: RiscoAmbiente[] } | null }, equipe: Pessoa[]) {
   const quebra = (t: string) => escape(t).replace(/\n/g, '<br>');
   return documentoHtml(
     moldura,
@@ -37,6 +54,7 @@ export function aprHtml(moldura: Moldura, apr: { atividade: string; local: strin
       <h2>Atividade</h2>
       <p><strong>${escape(apr.atividade)}</strong> · ${escape(apr.local)} · ${data(apr.data)}</p>
     </section>
+    ${riscosDoAmbiente(apr.ambiente)}
     <section>
       <h2>Etapas, riscos e medidas de controle</h2>
       <table>

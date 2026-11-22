@@ -36,6 +36,8 @@ import {
   gerarPdfOperacao,
   listarAprs,
   listarColaboradores,
+  listarGhes,
+  type Ghe,
   listarDds,
   listarPermissoes,
   Permissao,
@@ -68,10 +70,23 @@ const etapaVazia = (): EtapaApr => ({ etapa: '', riscos: '', medidas: '', epis: 
 const caixaTexto = 'w-full rounded-card border border-border bg-background px-3 py-2 text-sm';
 
 type Avisar = (tipo: 'erro' | 'ok', texto: string) => void;
+// O campo "Local" já vem com o local padrão da empresa; os setores dos GHEs aparecem como sugestão (lista "locais-empresa").
+type DaEmpresa = { localPadrao: string; ghes: Ghe[] };
+const TIPO_RISCO: Record<string, string> = { FISICO: 'físico', QUIMICO: 'químico', BIOLOGICO: 'biológico', ERGONOMICO: 'ergonômico', ACIDENTE: 'acidente' };
 
-function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar }: {
+function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, localPadrao, ghes }: {
   empresaId: string; colaboradores: Colaborador[]; aprs: Apr[]; recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
-}) {
+} & DaEmpresa) {
+  // Setor (GHE) da atividade: os riscos do ambiente vêm do PGR e entram na APR.
+  const [gheId, setGheId] = useState('');
+  const gheEscolhido = ghes.find((g) => g.id === gheId) ?? null;
+  function escolherSetor(id: string) {
+    setGheId(id);
+    const g = ghes.find((x) => x.id === id);
+    const campo = document.getElementById('apr-local') as HTMLInputElement | null;
+    // Troca o local pelo setor só se ele ainda estiver com o local padrão (ou vazio): não apaga o que a pessoa escreveu.
+    if (g?.setor && campo && (!campo.value.trim() || campo.value.trim() === localPadrao || ghes.some((x) => x.setor === campo.value.trim()))) campo.value = g.setor;
+  }
   const [etapas, setEtapas] = useState<EtapaApr[]>([etapaVazia()]);
   const [equipe, setEquipe] = useState<string[]>([]);
   const mudarEtapa = (i: number, campo: keyof EtapaApr, valor: string) => setEtapas(etapas.map((e, j) => (j === i ? { ...e, [campo]: valor } : e)));
@@ -102,6 +117,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar }: 
       await criarApr(empresaId, {
         atividade: String(d.get('atividade')).trim(),
         local: String(d.get('local')).trim(),
+        gheId: gheId || null,
         data: String(d.get('data')),
         responsavel: String(d.get('responsavel')).trim(),
         equipe,
@@ -110,6 +126,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar }: 
       form.reset();
       setEtapas([etapaVazia()]);
       setEquipe([]);
+      setGheId('');
       setFotoApr(null); setDicaIa(null);
       avisar('ok', 'APR salva. Baixe o PDF para colher as assinaturas da equipe.');
       await recarregar();
@@ -124,10 +141,31 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar }: 
         <form className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-2">
             <Campo id="apr-atividade" name="atividade" rotulo="Atividade" required placeholder="Ex.: Troca de telhas do galpão" />
-            <Campo id="apr-local" name="local" rotulo="Local" required placeholder="Ex.: Galpão de estoque" />
+            {ghes.length > 0 && (
+              <Selecao id="apr-ghe" rotulo="Setor (GHE) onde vai ser feita" value={gheId} onChange={(e) => escolherSetor(e.target.value)}
+                title="Os riscos que o PGR já tem para esse setor entram na APR como riscos do ambiente.">
+                <option value="">Fora dos setores cadastrados</option>
+                {ghes.map((g) => <option key={g.id} value={g.id}>{g.codigo ? `${g.codigo} · ` : ''}{g.nome}</option>)}
+              </Selecao>
+            )}
+            <Campo id="apr-local" name="local" rotulo="Local" required placeholder="Ex.: Galpão de estoque" defaultValue={localPadrao} list="locais-empresa" />
             <Campo id="apr-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
             <Campo id="apr-responsavel" name="responsavel" rotulo="Responsável" required placeholder="Ex.: Cleude Oliveira" />
           </div>
+
+          {gheEscolhido && (
+            <div className="rounded-card border border-border bg-background p-3 text-sm">
+              <p className="font-semibold text-primary">Riscos do ambiente ({gheEscolhido.setor || gheEscolhido.nome}), conforme o PGR</p>
+              {gheEscolhido.riscos.length ? (
+                <ul className="mt-1 list-disc pl-5">
+                  {gheEscolhido.riscos.map((r) => (
+                    <li key={r.id}>{r.agente} ({TIPO_RISCO[r.tipo] ?? r.tipo}) · {r.fonteGeradora}{r.medidasEpi ? ` · EPI: ${r.medidasEpi}` : ''}</li>
+                  ))}
+                </ul>
+              ) : <p className="text-text/60">Nenhum risco cadastrado para este setor ainda.</p>}
+              <p className="mt-1 text-xs text-text/60">Eles saem no PDF da APR. Nas etapas abaixo, escreva os riscos próprios desta atividade.</p>
+            </div>
+          )}
 
           {iaLigada && (
             <div className="space-y-2 rounded-card border border-primary/30 bg-primary/5 p-3 text-sm">
@@ -229,7 +267,7 @@ function NovaMedicao({ aoSalvar }: { aoSalvar: (m: MedicaoGas) => Promise<void> 
   );
 }
 
-function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarregar, avisar, baixar }: {
+function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarregar, avisar, baixar, localPadrao }: DaEmpresa & {
   empresaId: string; colaboradores: Colaborador[]; aprs: Apr[]; permissoes: Permissao[]; conteudo: ConteudoOperacao;
   recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
 }) {
@@ -310,7 +348,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
               {aprs.map((a) => <option key={a.id} value={a.id}>Nº {a.numero} · {a.atividade}</option>)}
             </Selecao>
             <Campo id="pt-atividade" name="atividade" rotulo="Atividade" required placeholder="Ex.: Troca de telhas" />
-            <Campo id="pt-local" name="local" rotulo="Local" required placeholder="Ex.: Galpão" />
+            <Campo id="pt-local" name="local" rotulo="Local" required placeholder="Ex.: Galpão" defaultValue={localPadrao} list="locais-empresa" />
             <Campo id="pt-inicio" name="inicio" type="datetime-local" rotulo="Válida a partir de" required />
             <Campo id="pt-fim" name="fim" type="datetime-local" rotulo="Válida até" required />
             <Campo id="pt-emitente" name="emitente" rotulo="Emitente" required placeholder="Quem libera o trabalho" />
@@ -427,7 +465,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
   );
 }
 
-function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar, baixar }: {
+function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar, baixar, localPadrao }: DaEmpresa & {
   empresaId: string; colaboradores: Colaborador[]; lista: Dds[]; conteudo: ConteudoOperacao;
   recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
 }) {
@@ -543,7 +581,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
           <div className="grid gap-4 md:grid-cols-4">
             <Campo id="dds-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
             <Campo id="dds-duracao" name="duracaoMin" type="number" min={1} rotulo="Duração (minutos)" required defaultValue={10} />
-            <Campo id="dds-local" name="local" rotulo="Local" placeholder="Ex.: Pátio de carga" />
+            <Campo id="dds-local" name="local" rotulo="Local" placeholder="Ex.: Pátio de carga" defaultValue={localPadrao} list="locais-empresa" />
             <Campo id="dds-ministrante" name="ministrante" rotulo="Ministrante" required placeholder="Quem conduziu" />
           </div>
           <EscolherPessoas titulo="Participantes" colaboradores={colaboradores} marcados={participantes} mudar={setParticipantes} />
@@ -588,6 +626,7 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
   const [dds, setDds] = useState<Dds[]>([]);
   const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
   const [modelos, setModelos] = useState<ModeloChecklist[]>([]);
+  const [ghes, setGhes] = useState<Ghe[]>([]);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
 
   const recarregar = useCallback(async () => {
@@ -596,7 +635,8 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
         buscarEmpresa(empresaId), buscarConteudoOperacao(), listarColaboradores(empresaId),
         listarAprs(empresaId), listarPermissoes(empresaId), listarDds(empresaId),
       ]);
-      const [ins, mod] = await Promise.all([listarInspecoes(empresaId), buscarModelosChecklist()]);
+      const [ins, mod, g] = await Promise.all([listarInspecoes(empresaId), buscarModelosChecklist(), ehEmpresa() ? Promise.resolve([]) : listarGhes(empresaId).catch(() => [])]);
+      setGhes(g);
       setEmpresa(e); setConteudo(ct); setColaboradores(c); setAprs(a); setPermissoes(p); setDds(d); setInspecoes(ins); setModelos(mod);
     } catch (e) {
       setAviso({ tipo: 'erro', texto: (e as Error).message });
@@ -620,7 +660,9 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
     return <main className="p-10">{aviso ? <Aviso tipo="erro">{aviso.texto}</Aviso> : 'Carregando…'}</main>;
   }
 
-  const comum = { empresaId, colaboradores, recarregar, avisar };
+  const localPadrao = empresa.localPadrao ?? '';
+  const setores = [...new Set(ghes.map((g) => g.setor).filter((x): x is string => !!x))];
+  const comum = { empresaId, colaboradores, recarregar, avisar, localPadrao, ghes };
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <div>
@@ -639,11 +681,12 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
       </div>
 
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
+      <datalist id="locais-empresa">{[...new Set([localPadrao, ...setores].filter(Boolean))].map((l) => <option key={l} value={l} />)}</datalist>
 
       {aba === 'apr' && <AbaApr {...comum} aprs={aprs} baixar={baixador('aprs')} />}
       {aba === 'pt' && <AbaPt {...comum} aprs={aprs} permissoes={permissoes} conteudo={conteudo} baixar={baixador('permissoes')} />}
       {aba === 'dds' && <AbaDds {...comum} lista={dds} conteudo={conteudo} baixar={baixador('dds')} />}
-      {aba === 'checklist' && <AbaChecklist empresaId={empresaId} lista={inspecoes} modelos={modelos} recarregar={recarregar} avisar={avisar} />}
+      {aba === 'checklist' && <AbaChecklist empresaId={empresaId} lista={inspecoes} modelos={modelos} recarregar={recarregar} avisar={avisar} localPadrao={localPadrao} setores={setores} />}
     </main>
   );
 }

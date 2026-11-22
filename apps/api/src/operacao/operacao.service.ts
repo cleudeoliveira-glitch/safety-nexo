@@ -10,6 +10,7 @@ import { MODELOS_RESGATE, RISCOS_CONFINADO, TEMAS_DDS, TIPOS_ESPACO, TIPOS_PT, T
 import { CriarAprDto, CriarDdsDto, CriarPermissaoDto, MedicaoGasDto } from './dto';
 import { sugerirTemasDds } from './sugestoes-dds';
 import { aprHtml, ddsHtml, DetalhesPt, EtapaApr, permissaoHtml } from './templates';
+import { nomeGhe } from '../empresas/ghe-ambiente';
 
 const AVISO = 'Feito com o Safety Nexo.';
 
@@ -79,12 +80,15 @@ export class OperacaoService {
   async criarApr(consultoriaId: string, empresaId: string, dto: CriarAprDto) {
     await this.empresa(consultoriaId, empresaId);
     const equipe = await this.conferirColaboradores(empresaId, dto.equipe);
+    const ghe = dto.gheId ? await this.prisma.ghe.findFirst({ where: { id: dto.gheId, empresaId }, select: { id: true } }) : null;
+    if (dto.gheId && !ghe) throw new BadRequestException('Esse setor (GHE) não é desta empresa.');
     return this.prisma.apr.create({
       data: {
         empresaId,
         numero: await this.proximoNumero('apr', empresaId),
         atividade: dto.atividade.trim(),
         local: dto.local.trim(),
+        gheId: ghe?.id ?? null,
         data: new Date(dto.data),
         responsavel: dto.responsavel.trim(),
         equipe,
@@ -95,10 +99,12 @@ export class OperacaoService {
 
   async pdfApr(consultoriaId: string, empresaId: string, aprId: string) {
     await this.empresa(consultoriaId, empresaId);
-    const apr = await this.prisma.apr.findFirst({ where: { id: aprId, empresaId } });
+    const apr = await this.prisma.apr.findFirst({ where: { id: aprId, empresaId }, include: { ghe: { include: { riscos: true } } } });
     if (!apr) throw new NotFoundException('APR não encontrada');
     const moldura = await this.moldura(consultoriaId, empresaId, `Análise Preliminar de Risco (APR) nº ${apr.numero}`, [['Responsável', apr.responsavel]]);
-    return this.pdf.render(aprHtml(moldura, { ...apr, etapas: apr.etapas as EtapaApr[] }, await this.pessoas(apr.equipe)));
+    // Riscos do ambiente: os que o PGR já levantou para o setor onde a atividade acontece.
+    const ambiente = apr.ghe ? { setor: nomeGhe(apr.ghe), riscos: apr.ghe.riscos } : null;
+    return this.pdf.render(aprHtml(moldura, { ...apr, etapas: apr.etapas as EtapaApr[], ambiente }, await this.pessoas(apr.equipe)));
   }
 
   // Permissão de Trabalho

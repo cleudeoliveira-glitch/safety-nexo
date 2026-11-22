@@ -158,7 +158,7 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
             <Campo id="tr-norma" name="norma" rotulo="Norma" defaultValue={modelo.norma ?? ''} placeholder="Ex.: NR-35" />
             <Campo id="tr-carga" name="cargaHoraria" type="number" min={1} rotulo="Carga horária (horas)" required defaultValue={modelo.cargaHoraria ?? ''} />
             <Campo id="tr-validade" name="validadeMeses" type="number" min={1} rotulo="Validade (meses)" defaultValue={modelo.validadeMeses ?? ''} />
-            <Campo id="tr-local" name="local" rotulo="Local" required placeholder="Ex.: Sala de treinamento" />
+            <Campo id="tr-local" name="local" rotulo="Local" required placeholder="Ex.: Sala de treinamento" defaultValue={empresa?.localPadrao ?? ''} />
             <Campo id="tr-inicio" name="inicio" type="date" rotulo="Início" required defaultValue={hoje()} />
             <Campo id="tr-fim" name="fim" type="date" rotulo="Fim" required defaultValue={hoje()} />
             <Campo id="tr-instrutor" name="instrutor" rotulo="Instrutor(a)" required placeholder="Ex.: Cleude Oliveira" />

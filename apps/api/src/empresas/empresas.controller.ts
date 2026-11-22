@@ -106,6 +106,12 @@ export class EmpresasController {
     return this.empresas.criarExame(consultoriaId, empresaId, gheId, dto);
   }
 
+  // Exames do PCMSO puxados dos riscos do GHE (o médico confere depois).
+  @Post(':empresaId/ghes/:gheId/exames/pelos-riscos')
+  sugerirExames(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('gheId') g: string) {
+    return this.empresas.sugerirExames(c, e, g);
+  }
+
   @Put(':empresaId/colaboradores/:colaboradorId/esocial')
   dadosEsocialColaborador(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('colaboradorId') id: string, @Body() dto: EsocialColaboradorDto) {
     return this.empresas.dadosEsocialColaborador(c, e, id, dto);

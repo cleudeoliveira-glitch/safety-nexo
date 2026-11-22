@@ -11,6 +11,7 @@ export type ExamePdf = {
   mudancaRisco: boolean;
   demissional: boolean;
   periodicidadeMeses: number | null;
+  sugerido?: boolean; // veio dos riscos do GHE e ainda não foi confirmado pelo médico
 };
 export type GhePcmso = { nome: string; colaboradores: number; riscos: string[]; funcoes?: string[]; exames: ExamePdf[] };
 export type Medico = { nome: string | null; crm: string | null };
@@ -53,7 +54,7 @@ function blocoGhe(ghe: GhePcmso): string {
             )
             .join('')}
         </tbody>
-      </table>`
+      </table>${ghe.exames.some((e) => e.sugerido) ? '<p class="falta">Exames puxados dos riscos deste grupo. O médico responsável confere e confirma no sistema.</p>' : ''}`
           : '<p class="falta">Nenhum exame programado para este GHE.</p>'
       }
     </section>`;

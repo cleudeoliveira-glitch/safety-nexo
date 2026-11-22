@@ -6,6 +6,8 @@ import { ContextoDocumentoService } from './contexto.service';
 import { renderPcmsoHtml } from './pcmso.template';
 import { PdfService } from './pdf.service';
 import { cidadeDoEndereco } from './secoes';
+import { lerFuncoes, nomeGhe } from '../empresas/ghe-ambiente';
+import { examesPelosRiscos } from '../empresas/exames-por-risco';
 
 @Injectable()
 export class PcmsoService {
@@ -85,11 +87,13 @@ export class PcmsoService {
       },
       { nome: empresa.medicoPcmsoNome, crm: empresa.medicoPcmsoCrm },
       empresa.ghes.map((ghe) => ({
-        nome: ghe.nome,
+        nome: nomeGhe(ghe),
         colaboradores: ghe._count.colaboradores,
         riscos: ghe.riscos.map((r) => r.agente),
-        funcoes: [...new Set(colaboradores.filter((c) => c.gheId === ghe.id).map((c) => c.cargo.trim()))].sort(),
-        exames: ghe.exames,
+        // Funções do cadastro do GHE e, se faltar alguma, os cargos de quem está nele.
+        funcoes: [...new Set([...lerFuncoes(ghe.funcoes).map((f) => f.nome), ...colaboradores.filter((c) => c.gheId === ghe.id).map((c) => c.cargo.trim())])].sort(),
+        // Sem exame programado, o PCMSO já sai com os exames que os riscos do GHE pedem, marcados para o médico conferir.
+        exames: ghe.exames.length ? ghe.exames : examesPelosRiscos(ghe.riscos).map(({ motivo: _m, ...e }) => ({ ...e, sugerido: true })),
       })),
       {
         controle: {

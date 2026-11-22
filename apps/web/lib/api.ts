@@ -26,6 +26,7 @@ export type Empresa = {
   medicoPcmsoCrm: string | null;
   responsavelTecnicoNome?: string | null;
   descricaoProcessos?: string | null;
+  localPadrao?: string | null; // já vem escrito no campo "Local" da APR, PT, DDS, inspeção e treinamento
   responsavelTecnicoRegistro?: string | null;
   responsavelTecnicoFormacao?: string | null;
   responsavelTecnicoArt?: string | null;
@@ -73,10 +74,10 @@ export type Exame = {
 export type FuncaoGhe = { nome: string; cbo?: string | null; atividades?: string | null };
 export type AmbienteGhe = {
   edificacao?: string; piso?: string; paredes?: string; cobertura?: string; peDireito?: string; iluminacao?: string; ventilacao?: string;
-  ceuAberto?: boolean; confinado?: boolean; maquinas?: string; ruidoFundo?: string; observacoes?: string;
+  ceuAberto?: boolean; confinado?: boolean; maquinas?: string; produtos?: string; ruidoFundo?: string; observacoes?: string;
 };
-export type DadosGhe = { setor: string; nome?: string; funcoes: FuncaoGhe[]; ambiente: AmbienteGhe; descricao?: string };
-export type Ghe = { id: string; nome: string; descricao: string | null; setor?: string | null; funcoes?: FuncaoGhe[] | null; ambiente?: AmbienteGhe | null; periculosidadeAnexo?: string | null; periculosidadeJustificativa?: string | null; riscos: Risco[]; exames: Exame[]; _count: { colaboradores: number } };
+export type DadosGhe = { setor: string; nome?: string; codigo?: string; unidade?: string; funcoes: FuncaoGhe[]; ambiente: AmbienteGhe; descricao?: string };
+export type Ghe = { id: string; nome: string; codigo?: string | null; unidade?: string | null; descricao: string | null; setor?: string | null; funcoes?: FuncaoGhe[] | null; ambiente?: AmbienteGhe | null; periculosidadeAnexo?: string | null; periculosidadeJustificativa?: string | null; riscos: Risco[]; exames: Exame[]; _count: { colaboradores: number } };
 export type Colaborador = { id: string; nome: string; cpf?: string | null; matricula?: string | null; codCateg?: string | null; dataAdmissao?: string | null; dataDesligamento?: string | null; cargo: string; cbo: string | null; gheId: string | null; cnhCategoria?: string | null; cnhValidade?: string | null };
 export const CATEGORIAS_CNH = ['A', 'B', 'C', 'D', 'E', 'AB', 'AC', 'AD', 'AE'] as const;
 export type Aso = {
@@ -150,6 +151,9 @@ export const avaliarRisco = (empresaId: string, gheId: string, riscoId: string, 
   chamar<Risco>('PUT', `/empresas/${empresaId}/ghes/${gheId}/riscos/${riscoId}/avaliacao`, dados);
 export const criarExame = (empresaId: string, gheId: string, dados: Omit<Exame, 'id'>) =>
   chamar<Exame>('POST', `/empresas/${empresaId}/ghes/${gheId}/exames`, dados);
+// Exames do PCMSO puxados dos riscos do GHE: cria só os que faltam e diz por que cada um entrou.
+export const examesPelosRiscos = (empresaId: string, gheId: string) =>
+  chamar<{ criados: { nome: string; motivo: string }[] }>('POST', `/empresas/${empresaId}/ghes/${gheId}/exames/pelos-riscos`);
 
 export const listarColaboradores = (empresaId: string) => chamar<Colaborador[]>('GET', `/empresas/${empresaId}/colaboradores`);
 // Página de colaboradores: cada um com o último ASO e quantos EPIs em uso estão com CA vencido.
@@ -242,7 +246,7 @@ export const reunioesCipa = {
 };
 
 export type EtapaApr = { etapa: string; riscos: string; medidas: string; epis: string };
-export type Apr = { id: string; numero: number; atividade: string; local: string; data: string; responsavel: string; equipe: string[]; etapas: EtapaApr[] };
+export type Apr = { id: string; numero: number; atividade: string; local: string; gheId?: string | null; data: string; responsavel: string; equipe: string[]; etapas: EtapaApr[] };
 export type TipoPt = 'ALTURA' | 'ESPACO_CONFINADO' | 'QUENTE' | 'ELETRICIDADE' | 'ICAMENTO' | 'ESCAVACAO';
 export type DetalhesPt = { equipamento?: string; pesoCargaKg?: number; capacidadeKg?: number; operador?: string; sinaleiro?: string; profundidadeM?: number; tipoSolo?: string; contencao?: string };
 export type Permissao = {

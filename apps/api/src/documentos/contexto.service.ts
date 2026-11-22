@@ -30,7 +30,11 @@ export class ContextoDocumentoService {
     // Logos conforme o plano: Grátis sem logos; Start só a da empresa; do Essencial para cima as duas.
     const plano = planoAtual();
     const logoEmpresa = temRecurso(plano, 'logoEmpresa') ? await this.logos.comoDataUri(empresa.logoPath) : null;
-    const consultoria = { nome: empresa.consultoria.nome, logo: temRecurso(plano, 'logoConsultoria') ? await this.logos.comoDataUri(empresa.consultoria.logoPath) : null };
+    // Responsável técnico da empresa (nome e CREA): sai no rodapé de todos os documentos.
+    const responsavel = empresa.responsavelTecnicoNome?.trim()
+      ? [empresa.responsavelTecnicoNome.trim(), empresa.responsavelTecnicoRegistro?.trim()].filter(Boolean).join(' · ')
+      : null;
+    const consultoria = { nome: empresa.consultoria.nome, logo: temRecurso(plano, 'logoConsultoria') ? await this.logos.comoDataUri(empresa.consultoria.logoPath) : null, responsavel };
 
     return { empresa, versao, historico, logoEmpresa, consultoria, geradoEm: new Date() };
   }

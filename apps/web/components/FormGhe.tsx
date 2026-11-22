@@ -12,8 +12,13 @@ const PISOS = ['Cerâmica', 'Porcelanato', 'Concreto', 'Concreto com pintura ep�
 const PAREDES = ['Alvenaria pintada', 'Alvenaria com azulejo', 'Divisórias', 'Chapa metálica', 'Sem paredes (aberto)', 'Vidro'];
 const COBERTURAS = ['Laje', 'Laje com forro', 'Telha metálica', 'Telha de fibrocimento', 'Telha cerâmica', 'Sem cobertura'];
 
+// O GHE é montado em etapas: 1. Grupo (nome, código, unidade, setor e ambiente) e 2. Equipe (funções, atividades,
+// máquinas e produtos). As exposições (riscos) e a conferência ficam no próprio GHE depois de salvo.
+export type ParteGhe = 'novo' | 'grupo' | 'equipe';
+
 type Props = {
   chave: string; // "novo" ou o id do GHE: deixa os ids dos campos únicos
+  parte?: ParteGhe; // novo: as duas etapas em sequência; grupo ou equipe: só aquela etapa de um GHE já salvo
   inicial?: DadosGhe;
   cargos: string[]; // funções já cadastradas nos colaboradores, como sugestão
   textoBotao: string;
@@ -23,9 +28,14 @@ type Props = {
 
 const vazio = (): FuncaoGhe => ({ nome: '', cbo: '', atividades: '' });
 
-export function FormGhe({ chave, inicial, cargos, textoBotao, salvar, cancelar }: Props) {
+export function FormGhe({ chave, parte = 'novo', inicial, cargos, textoBotao, salvar, cancelar }: Props) {
   const [setor, setSetor] = useState(inicial?.setor ?? '');
   const [nome, setNome] = useState(inicial?.nome ?? '');
+  const [codigo, setCodigo] = useState(inicial?.codigo ?? '');
+  const [unidade, setUnidade] = useState(inicial?.unidade ?? '');
+  const [passo, setPasso] = useState<1 | 2>(1); // só no GHE novo
+  const mostrarGrupo = parte === 'grupo' || (parte === 'novo' && passo === 1);
+  const mostrarEquipe = parte === 'equipe' || (parte === 'novo' && passo === 2);
   const [funcoes, setFuncoes] = useState<FuncaoGhe[]>(inicial?.funcoes?.length ? inicial.funcoes : [vazio()]);
   const [amb, setAmb] = useState<AmbienteGhe>(inicial?.ambiente ?? {});
   const [enviando, setEnviando] = useState(false);
@@ -37,25 +47,40 @@ export function FormGhe({ chave, inicial, cargos, textoBotao, salvar, cancelar }
 
   async function enviar(evento: React.FormEvent) {
     evento.preventDefault();
+    if (parte === 'novo' && passo === 1) { setPasso(2); return; }
     setEnviando(true);
     const ok = await salvar({
       setor: setor.trim(),
       nome: nome.trim() || undefined,
+      codigo: codigo.trim(),
+      unidade: unidade.trim(),
       funcoes: funcoes.filter((f) => f.nome.trim()).map((f) => ({ nome: f.nome.trim(), cbo: f.cbo?.trim() || undefined, atividades: f.atividades?.trim() || undefined })),
       ambiente: amb,
     });
     setEnviando(false);
-    if (ok && !inicial) { setSetor(''); setNome(''); setFuncoes([vazio()]); setAmb({}); }
+    if (ok && !inicial) { setSetor(''); setNome(''); setCodigo(''); setUnidade(''); setFuncoes([vazio()]); setAmb({}); setPasso(1); }
   }
 
   return (
     <form onSubmit={enviar} className="space-y-5">
+      {parte === 'novo' && (
+        <p className="text-sm font-semibold text-primary">
+          Etapa {passo} de 4 · {passo === 1 ? 'Grupo: nome, setor e ambiente' : 'Equipe: funções, atividades, máquinas e produtos'}
+          <span className="block text-xs font-normal text-text/60">Depois de salvar, você cadastra as exposições (etapa 3) e confere tudo (etapa 4).</span>
+        </p>
+      )}
+      {mostrarGrupo && (<>
       <div className="grid gap-4 md:grid-cols-2">
-        <Campo id={id('gs')} rotulo="Setor" required value={setor} onChange={(e) => setSetor(e.target.value)} placeholder="Ex.: Administrativo, Produção, Soldagem" />
         <Campo id={id('gn')} rotulo="Nome do GHE (opcional)" value={nome} onChange={(e) => setNome(e.target.value)}
           placeholder={inicial ? '' : 'Em branco, fica "GHE 01 · Setor"'} dica={inicial ? undefined : 'Deixe em branco para o sistema numerar sozinho.'} />
+        <Campo id={id('gc')} rotulo="Código (opcional)" value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Ex.: GHE-03" maxLength={30}
+          dica="Se você usa código, ele aparece na frente do nome nos documentos." />
+        <Campo id={id('gu')} rotulo="Unidade (opcional)" value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="Ex.: Matriz, Filial Campinas, Obra Rua A" />
+        <Campo id={id('gs')} rotulo="Setor" required value={setor} onChange={(e) => setSetor(e.target.value)} placeholder="Ex.: Administrativo, Produção, Soldagem" />
       </div>
+      </>)}
 
+      {mostrarEquipe && (
       <fieldset className="rounded-card border border-border p-4">
         <legend className="px-1 text-sm font-semibold text-primary">Funções deste GHE</legend>
         <p className="mb-3 text-xs text-text/60">O GHE é formado por funções, não por pessoas. Quem tiver uma destas funções entra no GHE sozinho.</p>
@@ -76,8 +101,14 @@ export function FormGhe({ chave, inicial, cargos, textoBotao, salvar, cancelar }
           ))}
         </div>
         <Botao type="button" variante="secundario" className="mt-3" onClick={() => setFuncoes((l) => [...l, vazio()])}>+ Outra função</Botao>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <Campo id={id('ga-maquinas')} rotulo="Máquinas e equipamentos que a equipe usa" value={amb.maquinas ?? ''} onChange={a('maquinas')} placeholder="Ex.: Máquina de solda, esmerilhadeira" />
+          <Campo id={id('ga-produtos')} rotulo="Produtos que a equipe usa" value={amb.produtos ?? ''} onChange={a('produtos')} placeholder="Ex.: Thinner, desengraxante, gás GLP" />
+        </div>
       </fieldset>
+      )}
 
+      {mostrarGrupo && (
       <fieldset className="rounded-card border border-border p-4">
         <legend className="px-1 text-sm font-semibold text-primary">Como é o ambiente deste setor</legend>
         <p className="mb-3 text-xs text-text/60">Cada GHE tem o seu ambiente. Escritório e solda não podem ter o mesmo texto no PGR. Escolha uma sugestão ou escreva do seu jeito.</p>
@@ -104,19 +135,20 @@ export function FormGhe({ chave, inicial, cargos, textoBotao, salvar, cancelar }
             <option value="MISTA">Natural e artificial</option>
             <option value="CLIMATIZADA">Ar-condicionado</option>
           </Selecao>
-          <Campo id={id('ga-maquinas')} rotulo="Máquinas e equipamentos" value={amb.maquinas ?? ''} onChange={a('maquinas')} placeholder="Ex.: Máquina de solda, esmerilhadeira" className="md:col-span-2" />
           <Campo id={id('ga-ruido')} rotulo="Ruído de fundo" value={amb.ruidoFundo ?? ''} onChange={a('ruidoFundo')} placeholder="Ex.: Alto, da esmerilhadeira" />
-          <div className="flex flex-wrap items-center gap-5 md:col-span-2">
+          <div className="flex flex-wrap items-center gap-5 md:col-span-3">
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!amb.ceuAberto} onChange={a('ceuAberto')} /> Trabalho a céu aberto</label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!amb.confinado} onChange={a('confinado')} /> Tem espaço confinado</label>
           </div>
           <Campo id={id('ga-obs')} rotulo="Outros detalhes do ambiente" value={amb.observacoes ?? ''} onChange={a('observacoes')} placeholder="Ex.: Fumaça de solda perto das bancadas" className="md:col-span-3" />
         </div>
       </fieldset>
+      )}
 
       <div className="flex flex-wrap justify-end gap-2">
         {cancelar && <Botao type="button" variante="secundario" onClick={cancelar}>Cancelar</Botao>}
-        <Botao type="submit" disabled={enviando}>{enviando ? 'Salvando…' : textoBotao}</Botao>
+        {parte === 'novo' && passo === 2 && <Botao type="button" variante="secundario" onClick={() => setPasso(1)}>← Voltar ao grupo</Botao>}
+        <Botao type="submit" disabled={enviando}>{parte === 'novo' && passo === 1 ? 'Próximo: equipe →' : enviando ? 'Salvando…' : textoBotao}</Botao>
       </div>
     </form>
   );

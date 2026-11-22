@@ -60,6 +60,7 @@ model Empresa {
   endereco                   String? // endereço da empresa, vai na capa dos programas e laudos
   representanteLegalNome     String? // assina o PPP pela empresa
   descricaoProcessos         String? // NR-01, 1.5.7.3.2, a: processos e ambientes de trabalho (vai no PGR)
+  localPadrao                String? // local que já vem escrito na APR, PT, DDS, inspeção e treinamento (ex.: Unidade Centro)
   // eSocial: dados extras dos responsáveis (S-2220 respMonit, S-2240 respReg) e ambiente de envio.
   medicoPcmsoCpf             String?
   medicoPcmsoUf              String?
@@ -163,6 +164,8 @@ model Ghe {
   empresaId     String
   empresa       Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   nome          String
+  codigo        String?  // código curto do grupo, como a consultora usa (ex.: GHE-03, ADM-01)
+  unidade       String?  // unidade, filial ou obra onde o grupo trabalha
   descricao     String?
   // NR-01, 1.5.7.3.2: o GHE é formado por setor e funções, nunca por pessoa.
   setor         String?
@@ -174,6 +177,7 @@ model Ghe {
   riscos        GheRisco[]
   exames        ExameGhe[]
   colaboradores Colaborador[]
+  aprs          Apr[]
 
   @@index([empresaId])
 }
@@ -363,6 +367,8 @@ model Apr {
   numero       Int                 // sequencial por empresa
   atividade    String
   local        String
+  gheId        String?             // setor (GHE) onde a atividade acontece: os riscos do ambiente vêm dele
+  ghe          Ghe?                @relation(fields: [gheId], references: [id], onDelete: SetNull)
   data         DateTime
   responsavel  String
   equipe       String[]            // ids de colaboradores
