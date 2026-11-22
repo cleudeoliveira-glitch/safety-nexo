@@ -191,9 +191,9 @@ async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
   return res.blob();
 }
 
-export type TipoDocumento = 'pgr' | 'pcmso' | 'ltcat' | 'lip' | 'lpp' | 'pgrtr' | 'os';
+export type TipoDocumento = 'pgr' | 'pcmso' | 'ltcat' | 'lip' | 'lpp' | 'pgrtr' | 'os' | 'mapa-risco';
 export const gerarDocumento = (empresaId: string, tipo: TipoDocumento) =>
-  baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo === 'os' ? 'as ordens de serviço' : tipo.toUpperCase());
+  baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo === 'os' ? 'as ordens de serviço' : tipo === 'mapa-risco' ? 'mapa de risco' : tipo.toUpperCase());
 
 // Relatório analítico anual do PCMSO (NR-07).
 export const gerarRelatorioPcmso = (empresaId: string, ano: number) =>

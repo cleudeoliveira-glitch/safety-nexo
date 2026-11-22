@@ -95,6 +95,7 @@ export const MENU: GrupoMenu[] = [
         { nome: 'Dimensionamento', rota: '#cipa', soConsultoria: true },
         { nome: 'Eleição', rota: '/cipa', soConsultoria: true },
         { nome: 'Reuniões e atas', rota: '/cipa#reunioes', soConsultoria: true },
+        { nome: 'Mapa de risco', rota: '/cipa#mapa', soConsultoria: true },
       ]),
       assunto('Treinamentos', 'formatura', [
         { nome: 'Treinamentos das NRs', rota: '/treinamentos' },
