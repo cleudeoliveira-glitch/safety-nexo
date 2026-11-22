@@ -6,6 +6,7 @@ import { Aviso, Botao } from '@/components/ui';
 import { AvisosCelular } from '@/components/AvisosCelular';
 import { admin, ConsultoriaAdm, ConsultoriaAdmDetalhe, PainelAdm } from '@/lib/api';
 import { lerToken } from '@/lib/sessao';
+import { dataBr, diasAte, paraCampoData } from '@/lib/vigencia';
 
 const ILIMITADO = 100000;
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
@@ -69,6 +70,16 @@ export default function PainelAdmPage() {
     const motivo = window.prompt(`Bloquear "${c.nome}"? Ninguém dessa consultoria (nem as empresas clientes dela) vai conseguir entrar.\n\nMotivo (opcional, ex.: falta de pagamento):`);
     if (motivo === null) return;
     alterar(c, { bloqueada: true, motivoBloqueio: motivo }, `${c.nome} foi bloqueada.`);
+  }
+
+  function mudarVencimento(c: ConsultoriaAdm) {
+    const atual = paraCampoData(c.planoPagoAte);
+    const texto = window.prompt(`Pago até que dia? (formato DD/MM/AAAA, deixe vazio para apagar)`, atual ? dataBr(c.planoPagoAte) : '');
+    if (texto === null) return;
+    const m = texto.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (texto.trim() && !m) { setErro('Data inválida. Use DD/MM/AAAA, por exemplo 15/12/2026.'); return; }
+    const iso = m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
+    alterar(c, { pagoAte: iso }, iso ? `Vencimento de ${c.nome} ajustado.` : `Vencimento de ${c.nome} apagado.`);
   }
 
   function anotar(c: ConsultoriaAdm) {
@@ -193,6 +204,7 @@ export default function PainelAdmPage() {
                     <span className="mt-1 block text-xs text-text/50">
                       {c.dono ? 'Sua conta: acesso total, sem limite' : `Até ${c.limiteEmpresas >= ILIMITADO ? 'ilimitadas' : c.limiteEmpresas} empresa${c.limiteEmpresas === 1 ? '' : 's'}`}
                     </span>
+                    {!c.dono && c.plano !== 'FREE' && <VencimentoAdm c={c} renovar={(meses) => alterar(c, { renovarMeses: meses }, `${c.nome} renovado por ${meses === 1 ? '1 mês' : '1 ano'}.`)} mudar={() => mudarVencimento(c)} />}
                     {c.pedidoPlano && (
                       <span className="mt-1 block rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-[#c2410c]">
                         Pediu o {painel.planos.find((p) => p.codigo === c.pedidoPlano)?.nome ?? c.pedidoPlano}
@@ -277,7 +289,7 @@ export default function PainelAdmPage() {
         {lista.length === 0 && <p className="p-6 text-sm text-text/60">Nenhuma consultoria encontrada.</p>}
       </section>
       <p className="text-xs text-text/50">
-        O plano é trocado aqui manualmente quando o cliente paga. Ao trocar, o limite de empresas acompanha o plano. Bloquear impede o login da consultoria e das empresas clientes dela; nada é apagado.
+        O plano é trocado aqui manualmente quando o cliente paga. Ao trocar, o limite de empresas acompanha o plano. No primeiro plano pago o 1º mês começa no dia da troca; a cada pagamento, use "+1 mês" ou "+1 ano" para estender o vencimento. Bloquear impede o login da consultoria e das empresas clientes dela; nada é apagado.
       </p>
     </main>
   );
@@ -302,5 +314,23 @@ function ConvidarCliente() {
         </div>
       </div>
     </section>
+  );
+}
+
+// Vencimento do plano pago na linha da consultoria, com a renovação a um toque.
+function VencimentoAdm({ c, renovar, mudar }: { c: ConsultoriaAdm; renovar: (meses: 1 | 12) => void; mudar: () => void }) {
+  const faltam = c.planoPagoAte ? diasAte(c.planoPagoAte) : null;
+  const cor = faltam === null ? 'text-text/60' : faltam < 0 ? 'text-danger' : faltam <= 7 ? 'text-[#c2410c]' : 'text-text/70';
+  return (
+    <span className="mt-1 block text-xs">
+      <span className={`block font-semibold ${cor}`}>
+        {c.planoPagoAte ? `Pago até ${dataBr(c.planoPagoAte)}${faltam !== null && faltam < 0 ? ' (vencido)' : ''}` : 'Sem vencimento lançado'}
+      </span>
+      <span className="mt-1 flex gap-2">
+        <button type="button" onClick={() => renovar(1)} className="font-semibold text-primary hover:underline">+1 mês</button>
+        <button type="button" onClick={() => renovar(12)} className="font-semibold text-primary hover:underline">+1 ano</button>
+        <button type="button" onClick={mudar} className="text-text/60 hover:text-primary">mudar data</button>
+      </span>
+    </span>
   );
 }

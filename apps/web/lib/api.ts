@@ -943,6 +943,7 @@ export type ConsultoriaAdm = {
   id: string; nome: string; cnpj: string | null; cidade: string | null; plano: string; limiteEmpresas: number;
   bloqueada: boolean; motivoBloqueio: string | null; observacaoAdm: string | null; criadaEm: string;
   pedidoPlano: string | null; pedidoPlanoEm: string | null; dono: boolean;
+  planoDesde: string | null; planoPagoAte: string | null;
   responsavel: { nome: string; email: string } | null;
   empresas: number; usuarios: number; colaboradores: number; documentos: number; ultimoAcesso: string | null;
 };
@@ -962,7 +963,7 @@ export type ConsultoriaAdmDetalhe = {
 export const admin = {
   painel: () => chamar<PainelAdm>('GET', '/admin/consultorias'),
   detalhe: (id: string) => chamar<ConsultoriaAdmDetalhe>('GET', `/admin/consultorias/${id}`),
-  atualizar: (id: string, dados: { plano?: string; limiteEmpresas?: number; bloqueada?: boolean; motivoBloqueio?: string; observacaoAdm?: string }) =>
+  atualizar: (id: string, dados: { plano?: string; limiteEmpresas?: number; bloqueada?: boolean; motivoBloqueio?: string; observacaoAdm?: string; renovarMeses?: 1 | 12; pagoAte?: string }) =>
     chamar<unknown>('PATCH', `/admin/consultorias/${id}`, dados),
   convites: () => chamar<{ link: string; whatsapp: string }>('GET', '/admin/convites'),
   linkSenha: (usuarioId: string) => chamar<{ link: string; whatsapp: string }>('POST', `/admin/usuarios/${usuarioId}/link-senha`),
@@ -1114,6 +1115,7 @@ export const meuEspaco = {
 export type MeuPlano = {
   plano: string; nomePlano: string; limiteEmpresas: number | null; empresas: number; acessoTotal: boolean;
   pedidoPlano: string | null; pedidoPlanoEm: string | null;
+  planoDesde?: string | null; planoPagoAte?: string | null; criadaEm?: string;
   emTeste?: boolean; testeAte?: string | null; recursos?: string[];
   limites?: { funcionarios: number | null; psicossocialMes: number | null; equipe: number | null } | null;
 };
