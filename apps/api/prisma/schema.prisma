@@ -31,6 +31,14 @@ model Consultoria {
   testeAte        DateTime? // até quando vale o teste com tudo liberado (14 dias depois do cadastro)
   planoDesde      DateTime? // início da assinatura do plano pago atual (o ADM marca ao trocar o plano)
   planoPagoAte    DateTime? // vencimento: até quando o plano está pago (o ADM renova mês a mês ou por ano)
+  // Cobrança automática do plano pelo Asaas (cartão todo mês, Pix Automático ou boleto).
+  asaasClienteId    String?
+  asaasAssinaturaId String?   @unique
+  assinaturaPlano   String?   // plano escolhido no pagamento (vira o plano da conta quando o pagamento cai)
+  assinaturaForma   String?   // CARTAO, PIX ou BOLETO
+  assinaturaStatus  String?   // AGUARDANDO (1º pagamento), ATIVA, ATRASADA, CANCELADA
+  pixAutomatico     Boolean   @default(false) // o cliente autorizou o Pix Automático no banco
+  avisosPlano       String[]  @default([]) // e-mails de vencimento já mandados (ex.: 2026-12-10:DEPOIS1)
   termosAceitosEm DateTime? // aceite dos termos de uso e da política de privacidade no cadastro (LGPD)
   termosVersao    String?
   createdAt DateTime  @default(now())
@@ -41,6 +49,7 @@ model Consultoria {
   contratos Contrato[]
   servicos  Servico[]
   cobrancas Cobranca[]
+  pagamentosPlano PagamentoPlano[]
 }
 
 model Empresa {
@@ -1363,4 +1372,24 @@ model ConfigPlataforma {
   chave        String   @id
   valor        String
   atualizadoEm DateTime @updatedAt
+}
+
+// Cada cobrança do plano do Safety Nexo feita pelo Asaas (uma por mês). O aviso do Asaas atualiza o status.
+model PagamentoPlano {
+  id            String      @id @default(cuid())
+  consultoriaId String
+  consultoria   Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  asaasId       String      @unique
+  assinaturaId  String?
+  plano         String
+  valorCentavos Int
+  forma         String?     // CREDIT_CARD, PIX, BOLETO... como o Asaas manda
+  vencimento    DateTime
+  status        String      // PENDENTE, PAGO, ATRASADO, ESTORNADO, CANCELADO
+  pagoEm        DateTime?
+  linkFatura    String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([consultoriaId, vencimento])
 }

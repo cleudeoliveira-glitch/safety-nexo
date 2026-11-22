@@ -40,10 +40,34 @@ export function Moldura({ children }: { children: React.ReactNode }) {
       <Menu caminho={caminho} />
       <div className="min-w-0 pb-20">
         {/* O painel já tem o próprio "Como usar?" no alto. */}
+        <FaixaPlano />
         <AjudaDaTela caminho={caminho} barra={caminho !== '/'} />
         {children}
       </div>
       <WhatsAppDuvidas caminho={caminho} />
+    </div>
+  );
+}
+
+// Faixa no alto quando o plano venceu: aviso na tolerância e "só para consulta" depois dela.
+function FaixaPlano() {
+  const plano = usePlano();
+  const [cliente, setCliente] = useState(false);
+  useEffect(() => { setCliente(lerUsuario()?.papel === 'EMPRESA'); }, []);
+  if (!plano?.situacao || plano.situacao === 'EM_DIA') return null;
+  const dia = (d?: string | null) => (d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '');
+  const ultimoDia = plano.consultaDesde ? dia(new Date(new Date(plano.consultaDesde).getTime() - 86400000).toISOString()) : '';
+  const consulta = plano.situacao === 'CONSULTA';
+  if (cliente && !consulta) return null;
+  return (
+    <div className={`${consulta ? 'bg-danger/10 text-danger' : 'bg-warning/15 text-[#9a3412]'} px-4 py-2.5 text-sm`} role="status">
+      {cliente ? (
+        <span>Por enquanto este acesso está só para consulta: você pode ver e baixar tudo. Fale com a sua consultoria.</span>
+      ) : consulta ? (
+        <span><strong>Conta só para consulta.</strong> O plano venceu em {dia(plano.pagoAte)}. Você vê e baixa tudo, mas para criar ou mudar algo é preciso pagar. Nada foi apagado. <Link href="/plano" className="font-semibold underline">Pagar agora</Link></span>
+      ) : (
+        <span><strong>O seu plano venceu em {dia(plano.pagoAte)}.</strong> Tudo funciona normalmente até {ultimoDia}; depois a conta fica só para consulta até o pagamento. <Link href="/plano" className="font-semibold underline">Pagar agora</Link></span>
+      )}
     </div>
   );
 }

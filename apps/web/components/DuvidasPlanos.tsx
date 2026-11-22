@@ -1,8 +1,8 @@
 // Dúvidas frequentes: aparecem na página de Planos e na tela de entrada.
 // As respostas seguem o que o sistema faz hoje: teste de 14 dias sem cartão (common/plano.ts),
-// troca de plano pedida em "Meu plano" e liberada à mão no painel ADM, sem cobrança automática
-// (admin/meu-plano.controller.ts), vencimento e vigência mês a mês em "Meu plano" (admin/vigencia.ts),
-// e nada é apagado quando o plano muda (termos, item 4).
+// pagamento em "Meu plano" pelo Asaas (cartão todo mês, Pix Automático ou boleto, pagamentos/pagamentos.ts),
+// 5 dias de tolerância e depois só consulta (common/plano.ts), cancelamento volta para o Grátis no fim do mês pago,
+// vencimento e vigência mês a mês em "Meu plano" (admin/vigencia.ts) e nada é apagado quando o plano muda (termos, item 4).
 // Se alguma dessas regras mudar, ajuste o texto aqui.
 
 type Duvida = { pergunta: string; resposta: React.ReactNode };
@@ -147,8 +147,8 @@ export const DUVIDAS_PLANOS: Duvida[] = [
     pergunta: 'Posso cancelar quando quiser?',
     resposta: (
       <>
-        Pode. Não existe cobrança automática, então nada é descontado sem você saber. É só avisar a gente que não vai renovar. A conta
-        volta para o plano Grátis e continua sua.
+        Pode. Em <strong>Minha conta › Meu plano</strong> tem o botão para cancelar a cobrança automática. O plano continua valendo
+        até o dia que já está pago e depois a conta volta para o Grátis. Ela continua sua, com tudo o que você fez.
       </>
     ),
   },
@@ -166,7 +166,8 @@ export const DUVIDAS_PLANOS: Duvida[] = [
     pergunta: 'Dá para trocar de plano depois?',
     resposta: (
       <>
-        Dá, para cima ou para baixo, quando quiser. Entre no sistema, abra <strong>Minha conta › Meu plano</strong> no menu e peça o novo plano. Se
+        Dá, para cima ou para baixo, quando quiser. Entre no sistema, abra <strong>Minha conta › Meu plano</strong> no menu e escolha o novo plano. Se o
+        mês atual já está pago, a nova mensalidade começa no dia seguinte ao vencimento, sem pagar duas vezes. Se
         você descer para um plano com menos empresas do que já tem cadastradas, nenhuma é apagada. Você só não consegue cadastrar uma
         nova até ficar dentro do limite.
       </>
@@ -176,9 +177,30 @@ export const DUVIDAS_PLANOS: Duvida[] = [
     pergunta: 'Quando acontece a cobrança?',
     resposta: (
       <>
-        Só depois que você pede o plano. Quando o pedido chega pelo <strong>Meu plano</strong>, a nossa equipe fala com você para
-        combinar o pagamento, mensal ou anual (no anual, 2 meses saem de graça), e libera o plano em seguida. Nada é cobrado antes
-        disso.
+        Só depois que você escolhe o plano em <strong>Meu plano</strong>. A primeira mensalidade vence no mesmo dia e o plano é liberado
+        assim que o pagamento cai. Depois disso, a cobrança acontece todo mês no mesmo dia. Nada é cobrado durante o teste. Quer pagar
+        o ano de uma vez (2 meses saem de graça)? Chame a gente no WhatsApp.
+      </>
+    ),
+  },
+  {
+    pergunta: 'Quais as formas de pagamento?',
+    resposta: (
+      <>
+        Cartão de crédito, Pix ou boleto. No cartão, você cadastra uma vez e a mensalidade é cobrada sozinha todo mês. No Pix, ao pagar
+        o primeiro, o seu banco oferece o Pix Automático: aceitando, os meses seguintes saem sozinhos da conta, sem precisar lembrar. No
+        boleto, a fatura chega por e-mail todo mês e nela também dá para pagar com Pix ou cartão. O pagamento é feito na página segura
+        do Asaas, e os dados do cartão não ficam com o Safety Nexo.
+      </>
+    ),
+  },
+  {
+    pergunta: 'E se o pagamento atrasar?',
+    resposta: (
+      <>
+        Você tem 5 dias de tolerância, com aviso na tela e por e-mail, e tudo funciona normalmente. Depois disso, a conta fica só
+        para consulta: você continua vendo e baixando tudo o que já fez, mas não consegue criar nem mudar nada até pagar. Nada é
+        apagado. Assim que o pagamento cai, tudo volta a funcionar na hora.
       </>
     ),
   },
@@ -187,7 +209,7 @@ export const DUVIDAS_PLANOS: Duvida[] = [
     resposta: (
       <>
         Em <strong>Minha conta › Meu plano</strong> aparece a data de vencimento, quantos dias faltam e a vigência de cada mês, de que
-        dia a que dia. Faltando 7 dias, a tela já avisa para você renovar com calma.
+        dia a que dia, além dos pagamentos já feitos. Se você paga no Pix ou no boleto, também chega um e-mail 3 dias antes.
       </>
     ),
   },

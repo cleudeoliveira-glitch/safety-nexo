@@ -38,11 +38,12 @@ import { IaModule } from './ia/ia.controller';
 import { PrevencaoModule } from './prevencao/prevencao.controller';
 import { PortalModule } from './portal/portal';
 import { AvisosModule } from './avisos/avisos';
+import { PagamentosModule } from './pagamentos/pagamentos';
 import { ContaModule } from './conta/conta';
 import { PushModule } from './push/push';
 
 @Module({
-  imports: [PushModule, AuthModule, AdminModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule, PresencaModule, NormasModule, IaModule, PrevencaoModule, PortalModule, AvisosModule, ContaModule, CalculosModule],
+  imports: [PushModule, AuthModule, AdminModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule, PresencaModule, NormasModule, IaModule, PrevencaoModule, PortalModule, AvisosModule, PagamentosModule, ContaModule, CalculosModule],
   controllers: [HealthController],
 })
 export class AppModule {}

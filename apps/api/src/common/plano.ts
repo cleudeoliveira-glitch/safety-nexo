@@ -33,16 +33,57 @@ export const RECURSOS_POR_PLANO: Record<CodigoPlano, { recursos: Recurso[]; limi
 };
 
 // Plano que vale agora: o teste de 14 dias libera o Profissional; a consultoria do dono da plataforma tem tudo.
-export type PlanoEfetivo = { codigo: string; nome: string; emTeste: boolean; testeAte: Date | null; dono: boolean; recursos: Recurso[]; limites: Limites };
+// situacao: EM_DIA; TOLERANCIA (venceu há até 5 dias: só aviso); CONSULTA (passou da tolerância: vê e baixa, não cria nem muda).
+export type SituacaoPlano = 'EM_DIA' | 'TOLERANCIA' | 'CONSULTA';
+export type PlanoEfetivo = {
+  codigo: string; nome: string; emTeste: boolean; testeAte: Date | null; dono: boolean; recursos: Recurso[]; limites: Limites;
+  situacao: SituacaoPlano; pagoAte: Date | null; consultaDesde: Date | null;
+};
 
-export function planoEfetivo(c: { plano: string; testeAte: Date | null }, dono: boolean): PlanoEfetivo {
+// Dias de tolerância depois do vencimento, com aviso na tela e por e-mail, antes de a conta ficar só para consulta.
+export const TOLERANCIA_DIAS = 5;
+const DIA = 86_400_000;
+const hojeBrasilia = () => {
+  const x = new Date(Date.now() - 3 * 3600_000);
+  return Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate(), 12);
+};
+const meioDiaDe = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12);
+
+// Situação do pagamento de um plano pago. Sem data de vencimento (plano liberado à mão, sem data) nada trava.
+export function situacaoPlano(c: { plano: string; planoPagoAte?: Date | null; assinaturaStatus?: string | null }, dono = false): { situacao: SituacaoPlano; consultaDesde: Date | null; diasVencido: number } {
+  if (dono || c.plano === 'FREE' || !c.planoPagoAte) return { situacao: 'EM_DIA', consultaDesde: null, diasVencido: 0 };
+  const fim = meioDiaDe(c.planoPagoAte);
+  const diasVencido = Math.round((hojeBrasilia() - fim) / DIA);
+  const consultaDesde = new Date(fim + (TOLERANCIA_DIAS + 1) * DIA);
+  // Quem cancelou não fica só para consulta: volta para o Grátis no dia seguinte ao vencimento (tarefa diária).
+  if (diasVencido <= 0 || c.assinaturaStatus === 'CANCELADA') return { situacao: 'EM_DIA', consultaDesde, diasVencido };
+  return { situacao: diasVencido <= TOLERANCIA_DIAS ? 'TOLERANCIA' : 'CONSULTA', consultaDesde, diasVencido };
+}
+
+export function planoEfetivo(c: { plano: string; testeAte: Date | null; planoPagoAte?: Date | null; assinaturaStatus?: string | null }, dono: boolean): PlanoEfetivo {
   const codigo = (planoPorCodigo(c.plano)?.codigo ?? 'FREE') as CodigoPlano;
   const nome = planoPorCodigo(codigo)!.nome;
-  if (dono) return { codigo, nome, emTeste: false, testeAte: null, dono: true, ...RECURSOS_POR_PLANO.ENTERPRISE };
+  if (dono) return { codigo, nome, emTeste: false, testeAte: null, dono: true, situacao: 'EM_DIA', pagoAte: null, consultaDesde: null, ...RECURSOS_POR_PLANO.ENTERPRISE };
   const emTeste = codigo === 'FREE' && !!c.testeAte && c.testeAte.getTime() > Date.now();
   const base = RECURSOS_POR_PLANO[emTeste ? 'PROFISSIONAL' : codigo];
-  return { codigo, nome, emTeste, testeAte: c.testeAte, dono: false, ...base };
+  const { situacao, consultaDesde } = situacaoPlano({ plano: codigo, planoPagoAte: c.planoPagoAte, assinaturaStatus: c.assinaturaStatus });
+  return { codigo, nome, emTeste, testeAte: c.testeAte, dono: false, situacao, pagoAte: c.planoPagoAte ?? null, consultaDesde, ...base };
 }
+
+// Conta só para consulta: deixa ler, baixar PDF e ver a prévia; trava criar, mudar e apagar.
+// Ficam liberados o pagamento do plano, a sessão (entrar/sair) e as preferências de aviso.
+const LIBERADO_NA_CONSULTA = [/^\/meu-plano(\/|$)/, /^\/auth(\/|$)/, /^\/pagamentos(\/|$)/, /^\/push(\/|$)/, /^\/avisos\/preferencia$/];
+const SO_BAIXAR = /\/(pdf|relatorio|cartaz|programacao|lista)(\/[^/]+)*$/;
+export function travaConsulta(metodo: string, caminho: string, previa: boolean): boolean {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(metodo.toUpperCase())) return false;
+  if (previa || SO_BAIXAR.test(caminho)) return false;
+  return !LIBERADO_NA_CONSULTA.some((r) => r.test(caminho));
+}
+const dataBr = (d: Date) => d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+export const mensagemConsulta = (p: PlanoEfetivo, cliente: boolean) =>
+  cliente
+    ? 'Por enquanto este acesso está só para consulta. Você pode ver e baixar tudo o que já foi feito. Fale com a sua consultoria.'
+    : `Sua conta está só para consulta porque o plano venceu em ${p.pagoAte ? dataBr(p.pagoAte) : '-'}. Você pode ver e baixar tudo o que já fez, mas para criar ou mudar algo é preciso pagar em "Meu plano". Nada foi apagado.`;
 
 export const temRecurso = (p: PlanoEfetivo | undefined, r: Recurso) => !p || p.recursos.includes(r);
 
