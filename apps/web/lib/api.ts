@@ -1155,3 +1155,23 @@ export const conta = {
   enviarLogo: (arq: File) => { const f = new FormData(); f.append('arquivo', arq); return chamar<unknown>('PUT', '/consultoria/logo', f); },
   integracoes: () => chamar<Integracoes>('GET', '/integracoes'),
 };
+
+// Excluir documentos lançados errado (só a consultoria). Cada tela pergunta antes de apagar.
+type Ok = { ok: boolean };
+export const excluir = {
+  apr: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/aprs/${id}`),
+  permissao: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/permissoes/${id}`),
+  dds: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/dds/${id}`),
+  inspecao: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/inspecoes/${id}`),
+  turma: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/turmas/${id}`),
+  aet: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/aets/${id}`),
+  cat: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/cats/${id}`),
+  aso: (e: string, c: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/colaboradores/${c}/asos/${id}`),
+  entregaEpi: (e: string, c: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/colaboradores/${c}/epis/${id}`),
+  eleicaoCipa: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/cipa/eleicoes/${id}`),
+  psicossocial: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/psicossocial/${id}`),
+  proposta: (id: string) => chamar<Ok>('DELETE', `/comercial/propostas/${id}`),
+  contrato: (id: string) => chamar<Ok>('DELETE', `/comercial/contratos/${id}`),
+  servico: (id: string) => chamar<Ok>('DELETE', `/comercial/servicos/${id}`),
+  cobranca: (id: string) => chamar<Ok>('DELETE', `/comercial/cobrancas/${id}`),
+};

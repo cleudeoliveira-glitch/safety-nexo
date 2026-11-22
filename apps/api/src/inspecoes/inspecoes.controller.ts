@@ -7,6 +7,7 @@ import { enviarPdf } from '../documentos/documentos.controller';
 import { CriarInspecaoDto, FotosInspecaoDto, ProximaInspecaoDto } from './dto';
 import { InspecoesService, MAX_FOTOS } from './inspecoes.service';
 import { MODELOS_CHECKLIST } from './modelos';
+import { SoConsultoria } from '../common/exclusao';
 
 // Checklists: a empresa cliente também faz as inspeções do dia a dia (com fotos).
 // A análise da IA tem custo: só a consultoria pede.
@@ -63,5 +64,11 @@ export class InspecoesController {
   @Post('empresas/:empresaId/inspecoes/:id/pdf')
   async pdf(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Res() res: Response) {
     enviarPdf(res, await this.inspecoes.gerarPdf(c, e, id), 'Inspecao.pdf');
+  }
+
+  @SoConsultoria()
+  @Delete('empresas/:empresaId/inspecoes/:id')
+  excluir(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) {
+    return this.inspecoes.excluir(c, e, id);
   }
 }

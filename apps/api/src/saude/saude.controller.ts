@@ -6,6 +6,7 @@ import { ConsultoriaId } from '../common/consultoria.decorator';
 import { enviarPdf } from '../documentos/documentos.controller';
 import { AtualizarCatEsocialDto, CriarAetDto, CriarAfastamentoDto, CriarCatDto, EncerrarAfastamentoDto, EnvioCatDto } from './dto';
 import { SaudeService } from './saude.service';
+import { SoConsultoria } from '../common/exclusao';
 
 @Controller('empresas/:empresaId')
 export class SaudeController {
@@ -87,5 +88,17 @@ export class SaudeController {
   @Post('cats/:id/pdf')
   async pdfCat(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Res() res: Response) {
     enviarPdf(res, await this.saude.pdfCat(c, e, id), 'CAT.pdf');
+  }
+
+  @SoConsultoria()
+  @Delete('aets/:id')
+  excluirAet(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) {
+    return this.saude.excluirAet(c, e, id);
+  }
+
+  @SoConsultoria()
+  @Delete('cats/:id')
+  excluirCat(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) {
+    return this.saude.excluirCat(c, e, id);
   }
 }
