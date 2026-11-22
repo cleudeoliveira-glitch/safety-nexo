@@ -1,11 +1,12 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Req } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 import { AuthService } from '../auth/auth.service';
 import { WEB } from '../common/email';
 import { PrismaService } from '../prisma/prisma.service';
 import { ehAdminPlataforma, SomenteAdmin } from './admin-plataforma';
 import { ILIMITADO, PLANOS, planoPorCodigo } from './planos';
+import { fimDoPeriodo, hojeMeioDia, meioDia, somarDias } from './vigencia';
 
 class AtualizarConsultoriaDto {
   @IsOptional() @IsIn(PLANOS.map((p) => p.codigo)) plano?: string;
@@ -13,6 +14,10 @@ class AtualizarConsultoriaDto {
   @IsOptional() @IsBoolean() bloqueada?: boolean;
   @IsOptional() @IsString() @MaxLength(500) motivoBloqueio?: string;
   @IsOptional() @IsString() @MaxLength(2000) observacaoAdm?: string;
+  // Pagamento recebido: estende o vencimento em 1 mês (mensal) ou 12 meses (anual).
+  @IsOptional() @IsIn([1, 12]) renovarMeses?: number;
+  // Acerto manual do vencimento (AAAA-MM-DD). Vazio apaga a data.
+  @IsOptional() @IsString() @Matches(/^(\d{4}-\d{2}-\d{2})?$/, { message: 'Data inválida.' }) pagoAte?: string;
 }
 
 type Contagem = { consultoriaId: string; total: bigint };
@@ -78,6 +83,8 @@ export class AdminController {
       observacaoAdm: c.observacaoAdm,
       pedidoPlano: c.pedidoPlano,
       pedidoPlanoEm: c.pedidoPlanoEm,
+      planoDesde: c.planoDesde,
+      planoPagoAte: c.planoPagoAte,
       // Consultoria do dono da plataforma: acesso total, não paga plano e não entra na receita.
       dono: c.usuarios.some((u) => ehAdminPlataforma(u.email)),
       criadaEm: c.createdAt,
@@ -146,6 +153,37 @@ export class AdminController {
       // Plano trocado: o pedido feito em "Meu plano" foi atendido.
       dados.pedidoPlano = null;
       dados.pedidoPlanoEm = null;
+      if (plano.precoMensal === 0) {
+        // Voltou para o Grátis: não há vigência paga.
+        dados.planoDesde = null;
+        dados.planoPagoAte = null;
+      } else if (!atual.planoPagoAte || atual.plano === 'FREE') {
+        // Primeiro plano pago: o primeiro mês começa hoje.
+        const hoje = hojeMeioDia();
+        dados.planoDesde = hoje;
+        dados.planoPagoAte = fimDoPeriodo(hoje, 1);
+      }
+      // Troca entre planos pagos mantém as datas que já estavam pagas.
+    }
+    if (dto.renovarMeses) {
+      const hoje = hojeMeioDia();
+      const pagoAte = atual.planoPagoAte ? meioDia(atual.planoPagoAte) : null;
+      // Renovação em dia continua do vencimento; atrasada recomeça hoje.
+      const emDia = !!pagoAte && !!atual.planoDesde && pagoAte >= somarDias(hoje, -1);
+      if (emDia) {
+        // Conta os meses a partir do início, para o vencimento cair sempre no mesmo dia do mês.
+        const desde = meioDia(atual.planoDesde!);
+        let meses = 1;
+        while (fimDoPeriodo(desde, meses) < pagoAte! && meses < 600) meses++;
+        dados.planoPagoAte = fimDoPeriodo(desde, meses + dto.renovarMeses);
+      } else {
+        dados.planoDesde = hoje;
+        dados.planoPagoAte = fimDoPeriodo(hoje, dto.renovarMeses);
+      }
+    }
+    if (dto.pagoAte !== undefined) {
+      dados.planoPagoAte = dto.pagoAte ? meioDia(`${dto.pagoAte}T12:00:00Z`) : null;
+      if (dto.pagoAte && !atual.planoDesde) dados.planoDesde = hojeMeioDia();
     }
     if (dto.limiteEmpresas !== undefined) dados.limiteEmpresas = dto.limiteEmpresas;
     if (dto.bloqueada !== undefined) {

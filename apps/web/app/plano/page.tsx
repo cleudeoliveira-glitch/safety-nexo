@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { GradePlanos, InclusoEmTodos } from '@/components/Planos';
 import { Aviso, Botao } from '@/components/ui';
+import { VigenciaPlano } from '@/components/VigenciaPlano';
 import { MeuPlano, meuPlano } from '@/lib/api';
 import { PLANOS_SITE, textoLimite } from '@/lib/planos';
 import { esquecerRecursos, planoMinimo } from '@/lib/plano';
@@ -89,6 +90,14 @@ export default function PaginaMeuPlano() {
               {dados.pedidoPlano && (
                 <p className="mt-3 text-sm text-text/70">Pedido em andamento: plano <strong>{nomeDo(dados.pedidoPlano)}</strong>, feito em {data(dados.pedidoPlanoEm)}. A equipe do Safety Nexo vai confirmar.</p>
               )}
+              <VigenciaPlano
+                gratis={dados.plano === 'FREE'}
+                planoDesde={dados.planoDesde}
+                planoPagoAte={dados.planoPagoAte}
+                emTeste={dados.emTeste}
+                testeAte={dados.testeAte}
+                criadaEm={dados.criadaEm}
+              />
             </>
           )}
         </section>
