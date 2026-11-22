@@ -1,7 +1,46 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ouvirPrevia, type PedidoPrevia } from '@/lib/previa';
+
+// No celular a folha A4 não cabe na tela: o texto se ajusta à largura e as tabelas largas
+// ficam numa faixa que desliza para o lado, sem espremer as colunas nem cortar o texto.
+// O PDF final não muda: continua em folha A4, igual ao do computador.
+const CSS_CELULAR = `<style id="sn-celular">
+@media (max-width: 700px) {
+  html, body { max-width: 100% !important; overflow-x: hidden; }
+  html body { margin: 14px !important; font-size: 13px; }
+  h1 { font-size: 18px !important; }
+  img { max-width: 100%; height: auto; }
+  p, li, td, th, div, span { overflow-wrap: break-word; }
+  .info, .assinaturas { grid-template-columns: 1fr !important; }
+  .sn-rolar { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 6px 0 12px; }
+  .sn-larga { border-right: 3px solid #e2e8f0; }
+  .sn-rolar > table { margin-top: 0; }
+  .sn-rolar.sn-larga > table { min-width: 560px; }
+  .sn-rolar > table.cronograma { min-width: 640px; }
+  .sn-marca-teste span, .sn-previa span { font-size: 30px !important; }
+}
+</style>`;
+
+function ajustarParaCelular(html: string): string {
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('table').forEach((t) => {
+      if (t.parentElement?.classList.contains('sn-rolar')) return;
+      const faixa = doc.createElement('div');
+      // Tabela de duas ou três colunas cabe na tela; só as largas ganham a faixa que desliza.
+      const colunas = Math.max(0, ...Array.from(t.rows).slice(0, 3).map((r) => Array.from(r.cells).reduce((n, c) => n + (c.colSpan || 1), 0)));
+      faixa.className = colunas > 3 ? 'sn-rolar sn-larga' : 'sn-rolar';
+      t.replaceWith(faixa);
+      faixa.appendChild(t);
+    });
+    doc.head.insertAdjacentHTML('beforeend', CSS_CELULAR);
+    return '<!doctype html>' + doc.documentElement.outerHTML;
+  } catch {
+    return html;
+  }
+}
 
 // Janela da pré-visualização: mostra o documento inteiro antes de gerar o PDF.
 export function PreviaDocumento() {
@@ -19,6 +58,8 @@ export function PreviaDocumento() {
     return () => { document.body.style.overflow = antes; };
   }, [pedido]);
 
+  const html = useMemo(() => (pedido ? ajustarParaCelular(pedido.html) : ''), [pedido]);
+
   if (!pedido) return null;
 
   const responder = (autorizou: boolean) => {
@@ -29,17 +70,18 @@ export function PreviaDocumento() {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-black/60 p-2 md:p-6" role="dialog" aria-modal="true" aria-label={`Pré-visualização: ${pedido.nome}`}>
       <div className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-card bg-white shadow-xl">
-        <div className="border-b border-border px-4 py-3">
+        <div className="border-b border-border px-4 py-2 md:py-3">
           <p className="text-base font-semibold text-primary">Confira o documento antes de gerar o PDF</p>
-          <p className="text-sm text-text/70">Leia com calma: {pedido.nome}. Se estiver tudo certo, autorize. Se não, volte e corrija.</p>
+          <p className="hidden text-sm text-text/70 md:block">Leia com calma: {pedido.nome}. Se estiver tudo certo, autorize. Se não, volte e corrija.</p>
+          <p className="mt-1 text-xs text-text/60 md:hidden">{pedido.nome}: leia com calma. Tabelas largas deslizam para o lado. O PDF sai em folha A4.</p>
         </div>
-        <iframe title={`Pré-visualização: ${pedido.nome}`} srcDoc={pedido.html} sandbox="" className="min-h-0 w-full flex-1 bg-background" />
-        <div className="flex flex-col-reverse gap-2 border-t border-border p-3 sm:flex-row sm:justify-end">
-          <button type="button" onClick={() => responder(false)} className="rounded-card border border-border bg-white px-4 py-3 text-sm font-semibold text-text hover:border-primary">
-            Voltar e corrigir
+        <iframe title={`Pré-visualização: ${pedido.nome}`} srcDoc={html} sandbox="" className="min-h-0 w-full flex-1 bg-background" />
+        <div className="flex gap-2 border-t border-border p-3 sm:justify-end">
+          <button type="button" onClick={() => responder(false)} className="flex-1 rounded-card border border-border bg-white px-3 py-3 text-sm font-semibold text-text hover:border-primary sm:flex-none sm:px-4">
+            <span className="sm:hidden">Corrigir</span><span className="hidden sm:inline">Voltar e corrigir</span>
           </button>
-          <button type="button" onClick={() => responder(true)} className="rounded-card bg-primary px-4 py-3 text-sm font-semibold text-white hover:opacity-90">
-            Está correto, gerar PDF
+          <button type="button" onClick={() => responder(true)} className="flex-1 rounded-card bg-primary px-3 py-3 text-sm font-semibold text-white hover:opacity-90 sm:flex-none sm:px-4">
+            <span className="sm:hidden">Está certo, gerar</span><span className="hidden sm:inline">Está correto, gerar PDF</span>
           </button>
         </div>
       </div>

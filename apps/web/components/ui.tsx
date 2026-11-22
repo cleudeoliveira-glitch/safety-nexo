@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CampoAjuda, Ajuda } from './CampoAjuda';
 import { Icone, NomeIcone } from './Icone';
 import { ajudaDoCampo } from '@/lib/ajudaCampos';
@@ -8,7 +8,7 @@ import { VOLTOU_PARA_CORRIGIR } from '@/lib/previa';
 
 export function Cartao({ titulo, children, id, acao }: { titulo: string; children: React.ReactNode; id?: string; acao?: React.ReactNode }) {
   return (
-    <section id={id} className="rounded-card border border-border bg-white p-6 shadow-sm">
+    <section id={id} className="rounded-card border border-border bg-white p-4 shadow-sm sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">{titulo}</h2>
         {acao}
@@ -58,7 +58,7 @@ export function Campo({ id, rotulo, ajuda, dica, className, icone, type, ...inpu
   }
   return (
     <div className={className}>
-      <Rotulo htmlFor={id} rotulo={rotulo} />
+      <Rotulo htmlFor={id} rotulo={rotulo} ajuda={ajuda} />
       <div className="relative">
         <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-primary/70">
           <Icone nome={icone ?? iconePadrao(type)} className="h-5 w-5" />
@@ -72,19 +72,51 @@ export function Campo({ id, rotulo, ajuda, dica, className, icone, type, ...inpu
         )}
       </div>
       {dica && <p className="mt-1 text-xs text-text/60">{dica}</p>}
+      {/* No celular o exemplo comprido não cabe dentro do campo: aparece inteiro logo abaixo. */}
+      {!dica && typeof input.placeholder === 'string' && input.placeholder.length > 30 && (
+        <p className="mt-1 text-xs text-text/50 sm:hidden">{input.placeholder}</p>
+      )}
     </div>
   );
 }
 
 type SelecaoProps = React.SelectHTMLAttributes<HTMLSelectElement> & { id: string; rotulo: string; ajuda?: Ajuda };
 
-export function Selecao({ id, rotulo, ajuda, className, children, ...select }: SelecaoProps) {
+export function Selecao({ id, rotulo, ajuda, className, children, onChange, ...select }: SelecaoProps) {
+  // No celular a opção escolhida pode ser maior que a caixa: o texto inteiro aparece logo abaixo.
+  const ref = useRef<HTMLSelectElement>(null);
+  const [escolhida, setEscolhida] = useState('');
+  useEffect(() => {
+    const el = ref.current;
+    const texto = el?.options[el.selectedIndex]?.text ?? '';
+    if (texto !== escolhida) setEscolhida(texto);
+  });
   return (
     <div className={className}>
-      <Rotulo htmlFor={id} rotulo={rotulo} />
-      <select id={id} className="campo-sn w-full" {...select}>
+      <Rotulo htmlFor={id} rotulo={rotulo} ajuda={ajuda} />
+      <select id={id} ref={ref} className="campo-sn w-full" onChange={(e) => { setEscolhida(e.target.options[e.target.selectedIndex]?.text ?? ''); onChange?.(e); }} {...select}>
         {children}
       </select>
+      {escolhida.length > 30 && <p className="mt-1 text-xs text-text/70 sm:hidden">{escolhida}</p>}
+    </div>
+  );
+}
+
+type AreaTextoProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & { id: string; rotulo: string; ajuda?: Ajuda; dica?: string };
+
+// Campo de texto que cresce com o que é escrito: no celular o texto inteiro fica à vista, sem cortar.
+export function AreaTexto({ id, rotulo, ajuda, dica, className, onInput, rows = 2, ...area }: AreaTextoProps) {
+  const crescer = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + 4}px`;
+  };
+  return (
+    <div className={className}>
+      <Rotulo htmlFor={id} rotulo={rotulo} ajuda={ajuda} />
+      <textarea id={id} rows={rows} ref={crescer} className="campo-sn block w-full resize-y leading-snug"
+        onInput={(e) => { crescer(e.currentTarget); onInput?.(e); }} {...area} />
+      {dica && <p className="mt-1 text-xs text-text/60">{dica}</p>}
     </div>
   );
 }
