@@ -33,7 +33,7 @@ const CATEGORIAS: [RegExp, string][] = [
   [/^(PGR|PCMSO|LTCAT|LIP|LPP|PGRTR)\b/i, 'Programas e laudos'],
   [/^(ASO|Ficha-EPI|PPP|Comprovante-facial)/i, 'Funcionários'],
   [/^(AET|CAT)/i, 'Saúde ocupacional'],
-  [/CIPA|Edital|Ata|Cedula|Ficha-de-inscricao|Certificado/i, 'CIPA'],
+  [/CIPA|Mapa-de-risco|Edital|Ata|Cedula|Ficha-de-inscricao|Certificado/i, 'CIPA'],
   [/^(APR|Permissao|DDS|Inspecao|Ordem)/i, 'Operação diária'],
   [/^SIPAT|^Auditoria-5S/i, 'Pessoas e cultura'],
   [/Lista-de-presenca|Certificados/i, 'Treinamentos'],

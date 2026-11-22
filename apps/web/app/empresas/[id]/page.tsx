@@ -156,6 +156,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     lpp: ['LPP', 'Laudo de periculosidade gerado.'],
     pgrtr: ['PGRTR', 'PGRTR gerado.'],
     os: ['Ordens-de-servico', 'Ordens de serviço geradas, uma página por colaborador.'],
+    'mapa-risco': ['Mapa-de-risco', 'Mapa de risco gerado: uma folha por setor, para afixar.'],
     cipa: ['CIPA', 'Dimensionamento da CIPA gerado.'],
   };
   const [anoRelatorio, setAnoRelatorio] = useState(new Date().getFullYear() - 1);
@@ -585,6 +586,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Botao onClick={() => baixar('lpp')}>Gerar LPP</Botao>
           <Botao onClick={() => baixar('pgrtr')} title="Para empresas com atividade rural (NR-31)">Gerar PGRTR</Botao>
           <Botao variante="secundario" onClick={() => baixar('os')}>Ordens de serviço (todos)</Botao>
+          <Botao variante="secundario" title="Círculos por tipo e intensidade, uma folha por setor, com os riscos dos GHEs (CIPA)" onClick={() => baixar('mapa-risco')}>Mapa de risco</Botao>
           <Link href={`/empresas/${empresaId}/prontuario`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Prontuário: vacinas e exames →</Link>
           <Link href={`/empresas/${empresaId}/saude`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">AET e CAT →</Link>
           <Link href={`/empresas/${empresaId}/esocial`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">eSocial →</Link>

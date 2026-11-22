@@ -5,12 +5,13 @@ import { DocumentosController } from './documentos.controller';
 import { PcmsoService } from './pcmso.service';
 import { PdfService } from './pdf.service';
 import { LtcatService } from './ltcat.service';
+import { MapaRiscoService } from './mapa-risco.service';
 import { PgrService } from './pgr.service';
 
 @Module({
   imports: [LogosModule],
   controllers: [DocumentosController],
-  providers: [ContextoDocumentoService, PdfService, PgrService, PcmsoService, LtcatService],
+  providers: [ContextoDocumentoService, PdfService, PgrService, PcmsoService, LtcatService, MapaRiscoService],
   exports: [ContextoDocumentoService, PdfService],
 })
 export class DocumentosModule {}
