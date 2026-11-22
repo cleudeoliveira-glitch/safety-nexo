@@ -6,8 +6,10 @@ import { Guarda } from '../common/guarda';
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
 import { analisarFoto } from '../ia/ia';
+import { grau5, nivelRisco, pontosRisco } from '../documentos/nivel-risco';
+import { PRAZO_POR_NIVEL, SUGESTAO_POR_TIPO } from './hierarquia';
 import { PrismaService } from '../prisma/prisma.service';
-import { AcaoDto, AtualizarAcaoDto, InvestigacaoDto, RelatoPublicoDto, TratarRelatoDto } from './dto';
+import { AcaoDto, AtualizarAcaoDto, EficaciaDto, InvestigacaoDto, RelatoPublicoDto, TratarRelatoDto } from './dto';
 import { cartazHtml, investigacaoHtml, planoAcaoHtml } from './templates';
 
 const guarda = new Guarda('prevencao', process.env.PREVENCAO_DIR ?? join(__dirname, '..', '..', 'storage', 'prevencao'));
@@ -130,28 +132,32 @@ export class PrevencaoService {
 
   // ---------- Plano de ação ----------
 
+  // Plano de ação único da empresa: relatos, inspeções, investigações, psicossocial, AET e riscos do PGR.
   async acoes(consultoriaId: string, empresaId: string) {
     await this.empresa(consultoriaId, empresaId);
-    const [proprias, psico] = await Promise.all([
-      this.prisma.acaoCorretiva.findMany({ where: { empresaId }, orderBy: [{ status: 'asc' }, { prazo: 'asc' }, { criadoEm: 'desc' }] }),
-      this.prisma.acaoPsicossocial.findMany({ where: { avaliacao: { empresaId } }, include: { avaliacao: { select: { titulo: true } } } }),
-    ]);
-    // As ações do psicossocial aparecem juntas, mas continuam sendo cuidadas na tela do psicossocial.
-    // As que já foram enviadas ao PGR (viraram ação da empresa) não aparecem de novo.
-    const enviadas = proprias.filter((p) => p.origem === 'PSICOSSOCIAL');
-    const jaEnviada = (a: (typeof psico)[number]) => enviadas.some((p) => p.origemId === a.avaliacaoId && p.descricao === a.acao && (!a.setor || p.local === a.setor));
-    const dePsico = psico.filter((a) => !jaEnviada(a)).map((a) => ({
-      id: a.id, empresaId, origem: 'PSICOSSOCIAL', origemId: a.avaliacaoId, origemTexto: `Psicossocial: ${a.avaliacao.titulo}`,
-      descricao: a.acao, local: a.setor, responsavel: a.responsavel, prazo: a.prazo, prioridade: 'MEDIA', esforco: 'MEDIO',
-      status: a.feita ? 'FEITA' : 'ABERTA', feitaEm: null, feitaPor: null, observacao: null, temEvidencia: false, criadoEm: a.criadoEm, somenteLeitura: true,
+    const lista = await this.prisma.acaoCorretiva.findMany({
+      where: { empresaId }, orderBy: [{ status: 'asc' }, { prazo: 'asc' }, { criadoEm: 'desc' }],
+      include: { risco: { select: { agente: true, severidade: true, probabilidade: true, ghe: { select: { nome: true } } } } },
+    });
+    return lista.map(({ evidenciaPath, risco, ...a }) => ({
+      ...a, temEvidencia: !!evidenciaPath, somenteLeitura: false,
+      risco: risco ? { agente: risco.agente, ghe: risco.ghe.nome, severidade: grau5(risco.severidade), probabilidade: grau5(risco.probabilidade) } : null,
     }));
-    return [...proprias.map(({ evidenciaPath, ...a }) => ({ ...a, temEvidencia: !!evidenciaPath, somenteLeitura: false })), ...dePsico];
+  }
+
+  private async riscoDaEmpresa(empresaId: string, riscoId: string) {
+    const r = await this.prisma.gheRisco.findFirst({ where: { id: riscoId, ghe: { empresaId } }, include: { ghe: { select: { nome: true } } } });
+    if (!r) throw new BadRequestException('Risco não encontrado nesta empresa.');
+    return r;
   }
 
   async criarAcao(consultoriaId: string, empresaId: string, d: AcaoDto) {
     await this.empresa(consultoriaId, empresaId);
+    const risco = d.riscoId ? await this.riscoDaEmpresa(empresaId, d.riscoId) : null;
     return this.prisma.acaoCorretiva.create({
       data: {
+        hierarquia: d.hierarquia ?? null, riscoId: risco?.id ?? null,
+        nivelAntes: risco ? `${grau5(risco.severidade)}x${grau5(risco.probabilidade)}` : null,
         empresaId, descricao: d.descricao.trim(), local: d.local?.trim() || null, responsavel: d.responsavel?.trim() || null,
         prazo: d.prazo ? new Date(d.prazo) : null, prioridade: d.prioridade ?? 'MEDIA', esforco: d.esforco ?? 'MEDIO',
         origem: d.origem ?? 'MANUAL', origemId: d.origemId ?? null, origemTexto: d.origemTexto?.trim() || null,
@@ -178,12 +184,55 @@ export class PrevencaoService {
         ...(d.prazo !== undefined ? { prazo: d.prazo ? new Date(d.prazo) : null } : {}),
         ...(d.prioridade ? { prioridade: d.prioridade } : {}),
         ...(d.esforco ? { esforco: d.esforco } : {}),
+        ...(d.hierarquia ? { hierarquia: d.hierarquia } : {}),
         ...(d.observacao !== undefined ? { observacao: d.observacao.trim() || null } : {}),
         ...(d.status ? { status: d.status } : {}),
         ...(fechando ? { feitaEm: new Date(), feitaPor: quem } : {}),
         ...(reabrindo ? { feitaEm: null, feitaPor: null } : {}),
       },
     });
+  }
+
+  // Reavaliação depois da ação feita (NR-01, 1.5.5.2): nível antes e depois, e o inventário é atualizado.
+  async eficacia(consultoriaId: string, empresaId: string, id: string, quem: string, d: EficaciaDto) {
+    const a = await this.acao(consultoriaId, empresaId, id);
+    if (a.status !== 'FEITA') throw new BadRequestException('Primeiro conclua a ação. Depois avalie se ela funcionou.');
+    const depois = `${d.severidade}x${d.probabilidade}`;
+    let antes = a.nivelAntes;
+    if (a.riscoId) {
+      const r = await this.prisma.gheRisco.findUnique({ where: { id: a.riscoId } });
+      if (r) {
+        antes = antes ?? `${grau5(r.severidade)}x${grau5(r.probabilidade)}`;
+        await this.prisma.gheRisco.update({ where: { id: r.id }, data: { severidade: d.severidade, probabilidade: d.probabilidade } });
+      }
+    }
+    const [sa, pa] = (antes ?? '').split('x');
+    const eficaz = antes ? pontosRisco(d.severidade, d.probabilidade) < pontosRisco(sa, pa) : nivelRisco(d.severidade, d.probabilidade) === 'BAIXO';
+    const nota = d.observacao?.trim() ? `Eficácia (${quem}): ${d.observacao.trim()}` : null;
+    return this.prisma.acaoCorretiva.update({
+      where: { id },
+      data: { nivelAntes: antes, nivelDepois: depois, eficaz, verificadaEm: new Date(), ...(nota ? { observacao: [a.observacao, nota].filter(Boolean).join('\n') } : {}) },
+    });
+  }
+
+  // Cria uma ação para cada risco moderado ou acima do inventário que ainda não tem ação aberta.
+  async acoesDosRiscos(consultoriaId: string, empresaId: string) {
+    await this.empresa(consultoriaId, empresaId);
+    const riscos = await this.prisma.gheRisco.findMany({ where: { ghe: { empresaId } }, include: { ghe: { select: { nome: true } }, acoes: { where: { status: { not: 'FEITA' } }, select: { id: true } } } });
+    const hoje = new Date(); hoje.setUTCHours(12, 0, 0, 0);
+    const novas = riscos.flatMap((r) => {
+      const nivel = nivelRisco(r.severidade, r.probabilidade);
+      if (nivel === 'BAIXO' || r.acoes.length) return [];
+      const sug = SUGESTAO_POR_TIPO[r.tipo] ?? SUGESTAO_POR_TIPO.ACIDENTE;
+      const prazo = new Date(hoje.getTime() + PRAZO_POR_NIVEL[nivel] * 86_400_000);
+      return [{
+        empresaId, origem: 'RISCO', origemId: r.id, origemTexto: `Inventário de riscos · ${r.ghe.nome}`, riscoId: r.id,
+        descricao: `Controlar ${r.agente} (${r.fonteGeradora}): ${sug.texto}.`, local: r.ghe.nome, hierarquia: sug.hierarquia,
+        prioridade: nivel === 'MODERADO' ? 'MEDIA' : 'ALTA', prazo, nivelAntes: `${grau5(r.severidade)}x${grau5(r.probabilidade)}`,
+      }];
+    });
+    if (novas.length) await this.prisma.acaoCorretiva.createMany({ data: novas });
+    return { criadas: novas.length };
   }
 
   async removerAcao(consultoriaId: string, empresaId: string, id: string) {

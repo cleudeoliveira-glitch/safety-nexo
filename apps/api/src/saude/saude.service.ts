@@ -39,9 +39,19 @@ export class SaudeService {
 
   async criarAet(consultoriaId: string, empresaId: string, dto: CriarAetDto) {
     await this.empresa(consultoriaId, empresaId);
-    return this.prisma.aet.create({
+    const aet = await this.prisma.aet.create({
       data: { ...dto, empresaId, data: new Date(dto.data), recomendacoes: dto.recomendacoes.map((r) => ({ ...r })) },
     });
+    // As recomendações entram no plano de ação único da empresa (o mesmo do PGR).
+    const ehData = (v?: string) => !!v && /^\d{4}-\d{2}-\d{2}/.test(v);
+    await this.prisma.acaoCorretiva.createMany({
+      data: dto.recomendacoes.filter((r) => r.recomendacao.trim()).map((r) => ({
+        empresaId, origem: 'AET', origemId: aet.id, origemTexto: `AET: ${aet.posto}`, descricao: r.recomendacao.trim(), local: aet.posto,
+        responsavel: r.responsavel?.trim() || null, prazo: ehData(r.prazo) ? new Date(`${r.prazo!.slice(0, 10)}T12:00:00Z`) : null,
+        observacao: r.prazo?.trim() && !ehData(r.prazo) ? `Prazo indicado na AET: ${r.prazo.trim()}` : null,
+      })),
+    });
+    return aet;
   }
 
   async pdfAet(consultoriaId: string, empresaId: string, id: string) {
@@ -113,6 +123,8 @@ export class SaudeService {
   async excluirAet(consultoriaId: string, empresaId: string, id: string) {
     await this.empresa(consultoriaId, empresaId);
     const { count } = await this.prisma.aet.deleteMany({ where: { id, empresaId } });
+    // As recomendações ainda abertas saem do plano de ação; as feitas ficam como histórico.
+    if (count) await this.prisma.acaoCorretiva.deleteMany({ where: { empresaId, origem: 'AET', origemId: id, status: { not: 'FEITA' } } });
     return conferirApagado(count, 'Esta AET não foi encontrada. Talvez já tenha sido excluída.');
   }
 

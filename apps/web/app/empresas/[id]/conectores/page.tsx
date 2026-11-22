@@ -275,12 +275,12 @@ function AbaFaltas({ empresaId, colaboradores, cliente, avisar }: { empresaId: s
         <form key={chave} className="grid gap-4 md:grid-cols-3" onSubmit={(ev) => {
           ev.preventDefault(); const d = new FormData(ev.currentTarget);
           agir(async () => {
-            await atestados.criar(empresaId, {
+            const novo = await atestados.criar(empresaId, {
               colaboradorId: texto(d, 'colab'), inicio: texto(d, 'inicio'), tipo: texto(d, 'tipo'),
               dias: porHoras ? 0 : Number(texto(d, 'dias') || 0), horas: porHoras ? Number(texto(d, 'horas').replace(',', '.')) : undefined,
               cid: texto(d, 'cid') || undefined, medico: texto(d, 'medico') || undefined, observacao: texto(d, 'obs') || undefined,
             });
-            return 'Atestado lançado.';
+            return novo.afastamentoCriado ? 'Atestado lançado. Como passa de 15 dias, o afastamento também foi registrado em Acidentes e afastamentos.' : 'Atestado lançado.';
           });
         }}>
           <Selecao id="at-colab" name="colab" rotulo="Funcionário" required>

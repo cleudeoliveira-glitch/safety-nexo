@@ -61,3 +61,10 @@ export function medidasPartes(r: MedidasRisco): [string, string][] {
   return ([['EPC', r.medidasEpc], ['EPI', r.medidasEpi], ['Outras medidas', r.medidasControle]] as [string, string | null | undefined][])
     .filter((x): x is [string, string] => !!x[1]?.trim());
 }
+
+// "5x4" (gravidade x chance) vira "Crítico (20)" para o leitor do documento.
+export function textoNivel(sxp: string | null | undefined): string {
+  const [s, p] = (sxp ?? '').split('x');
+  if (!s || !p) return 'sem registro';
+  return `${NOME_NIVEL[nivelRisco(s, p)]} (${pontosRisco(s, p)})`;
+}

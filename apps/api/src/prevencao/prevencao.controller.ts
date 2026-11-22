@@ -8,7 +8,7 @@ import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
 import { DocumentosModule } from '../documentos/documentos.module';
 import { enviarPdf } from '../documentos/documentos.controller';
 import { PrismaService } from '../prisma/prisma.service';
-import { AcaoDto, AtualizarAcaoDto, InvestigacaoDto, RelatoPublicoDto, TratarRelatoDto } from './dto';
+import { AcaoDto, AtualizarAcaoDto, EficaciaDto, InvestigacaoDto, RelatoPublicoDto, TratarRelatoDto } from './dto';
 import { PrevencaoService } from './prevencao.service';
 
 const FOTO = FileInterceptor('foto', { limits: { fileSize: 10_000_000 } });
@@ -52,9 +52,14 @@ export class PrevencaoEmpresaController {
 // Só a consultoria: novo QR, análise da IA, apagar ação e investigação de acidente.
 @Controller('empresas/:empresaId')
 export class PrevencaoConsultoriaController {
-  constructor(private readonly p: PrevencaoService) {}
+  constructor(private readonly p: PrevencaoService, private readonly prisma: PrismaService) {}
   @Post('relatos/qr/novo') novoQr(@ConsultoriaId() c: string, @Param('empresaId') e: string) { return this.p.qr(c, e, true); }
   @Post('relatos/:id/ia') ia(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.p.analisarRelato(c, e, id); }
+  @Put('acoes/:id/eficacia') async eficacia(@Sessao() s: SessaoUsuario, @Param('empresaId') e: string, @Param('id') id: string, @Body() d: EficaciaDto) {
+    const u = await this.prisma.usuario.findUnique({ where: { id: s.sub }, select: { nome: true } });
+    return this.p.eficacia(s.consultoriaId, e, id, u?.nome ?? '—', d);
+  }
+  @Post('acoes/dos-riscos') dosRiscos(@ConsultoriaId() c: string, @Param('empresaId') e: string) { return this.p.acoesDosRiscos(c, e); }
   @Delete('acoes/:id') remover(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.p.removerAcao(c, e, id); }
   @Get('investigacoes') investigacoes(@ConsultoriaId() c: string, @Param('empresaId') e: string) { return this.p.investigacoes(c, e); }
   @Post('investigacoes') criarInv(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Body() d: InvestigacaoDto) { return this.p.criarInvestigacao(c, e, d); }

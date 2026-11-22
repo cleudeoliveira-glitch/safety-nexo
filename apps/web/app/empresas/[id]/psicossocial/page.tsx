@@ -150,6 +150,7 @@ function Resultado({ empresaId, r, agir }: { empresaId: string; r: ResultadoPs; 
       )}
 
       <Cartao titulo="Plano de ação">
+        <p className="mb-3 text-xs text-text/60">Estas ações ficam também no <a className="text-primary underline" href={`/empresas/${empresaId}/prevencao#acoes`}>plano de ação da empresa</a>, junto com as outras. É um plano só, e é ele que sai no PGR.</p>
         {r.acoes.length > 0 && (
           <ul className="mb-4 divide-y divide-border text-sm">
             {r.acoes.map((a) => (

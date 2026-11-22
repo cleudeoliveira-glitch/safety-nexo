@@ -9,5 +9,6 @@ import { SugestoesTreinamentoController, SugestoesTreinamentoService } from './s
   imports: [DocumentosModule, EsocialModule],
   controllers: [TreinamentosController, SugestoesTreinamentoController],
   providers: [TreinamentosService, SugestoesTreinamentoService],
+  exports: [SugestoesTreinamentoService],
 })
 export class TreinamentosModule {}

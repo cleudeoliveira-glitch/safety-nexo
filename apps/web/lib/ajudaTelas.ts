@@ -24,7 +24,7 @@ export const GUIAS: GuiaTela[] = [
         titulo: 'Como usar',
         passos: [
           'Escolha a empresa no alto do menu da esquerda (no celular, o menu abre pelo botão ☰).',
-          'Olhe o círculo "Saúde da Empresa": é quanto do cadastro está completo. A meta é 100%.',
+          'Olhe o círculo "Cadastro completo": é quanto do cadastro já foi preenchido. A meta é 100%.',
           'Em "O que fazer hoje", cada linha diz o próximo passo. Vermelho é vencido, laranja é pendente.',
           'Em "Indicadores da empresa" você vê, em números, o que está em dia (ASO, EPI, treinamentos, DDS) e os acidentes do mês.',
           'Use o "Acesso rápido" para abrir os módulos mais usados. Os outros ficam no menu.',

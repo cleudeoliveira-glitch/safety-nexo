@@ -219,7 +219,7 @@ export class EmpresasService {
       if (await this.prisma.ghe.findFirst({ where: { empresaId, nome, NOT: { id: gheId } } })) throw new BadRequestException(`Já existe um GHE com o nome "${nome}".`);
       // O psicossocial guarda o setor pelo nome do GHE: acompanha a troca para não perder respostas.
       await this.prisma.respostaPsicossocial.updateMany({ where: { setor: atual.nome, avaliacao: { empresaId } }, data: { setor: nome } });
-      await this.prisma.acaoPsicossocial.updateMany({ where: { setor: atual.nome, avaliacao: { empresaId } }, data: { setor: nome } });
+      await this.prisma.acaoCorretiva.updateMany({ where: { empresaId, local: atual.nome }, data: { local: nome } });
     }
     const ghe = await this.prisma.ghe.update({
       where: { id: gheId },

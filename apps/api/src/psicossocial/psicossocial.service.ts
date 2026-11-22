@@ -61,8 +61,11 @@ export class PsicossocialService {
 
   async listar(consultoriaId: string, empresaId: string) {
     await this.empresa(consultoriaId, empresaId);
-    const lista = await this.prisma.avaliacaoPsicossocial.findMany({ where: { empresaId }, orderBy: { criadoEm: 'desc' }, include: { _count: { select: { respostas: true, acoes: true } } } });
-    return lista.map((a) => ({ ...a, link: `${WEB()}/psicossocial/${a.token}`, sigla: questionario(a.questionario)?.sigla ?? a.questionario }));
+    const lista = await this.prisma.avaliacaoPsicossocial.findMany({ where: { empresaId }, orderBy: { criadoEm: 'desc' }, include: { _count: { select: { respostas: true } } } });
+    // As ações ficam no plano de ação único da empresa: conta por avaliação.
+    const contagem = await this.prisma.acaoCorretiva.groupBy({ by: ['origemId'], where: { empresaId, origem: 'PSICOSSOCIAL' }, _count: { _all: true } });
+    const acoesDe = (id: string) => contagem.find((c) => c.origemId === id)?._count._all ?? 0;
+    return lista.map((a) => ({ ...a, _count: { ...a._count, acoes: acoesDe(a.id) }, link: `${WEB()}/psicossocial/${a.token}`, sigla: questionario(a.questionario)?.sigla ?? a.questionario }));
   }
 
   async criar(sessao: SessaoUsuario, empresaId: string, dto: CriarAvaliacaoDto) {
@@ -93,10 +96,12 @@ export class PsicossocialService {
     const a = await this.avaliacao(consultoriaId, empresaId, id);
     const q = questionario(a.questionario);
     if (!q) throw new BadRequestException('Questionário desconhecido.');
-    const [respostas, acoes] = await Promise.all([
+    const [respostas, doPlano] = await Promise.all([
       this.prisma.respostaPsicossocial.findMany({ where: { avaliacaoId: id }, select: { setor: true, valores: true } }),
-      this.prisma.acaoPsicossocial.findMany({ where: { avaliacaoId: id }, orderBy: { criadoEm: 'asc' } }),
+      this.prisma.acaoCorretiva.findMany({ where: { empresaId, origem: 'PSICOSSOCIAL', origemId: id }, orderBy: { criadoEm: 'asc' } }),
     ]);
+    // Mesmo formato de antes para a tela: a ação mora no plano de ação da empresa.
+    const acoes = doPlano.map((x) => ({ id: x.id, setor: x.local, dimensao: x.tema ?? '', acao: x.descricao, responsavel: x.responsavel, prazo: x.prazo, feita: x.status === 'FEITA', status: x.status }));
     const porSetor = new Map<string, Record<string, number>[]>();
     for (const r of respostas) porSetor.set(r.setor, [...(porSetor.get(r.setor) ?? []), r.valores as Record<string, number>]);
     const comPgr = q.dimensoes.some((d) => d.pgr);
@@ -126,14 +131,22 @@ export class PsicossocialService {
     };
   }
 
+  // As ações do psicossocial são gravadas direto no plano de ação único da empresa (o mesmo do PGR).
   async criarAcao(consultoriaId: string, empresaId: string, id: string, dto: AcaoDto) {
-    await this.avaliacao(consultoriaId, empresaId, id);
-    return this.prisma.acaoPsicossocial.create({ data: { avaliacaoId: id, setor: dto.setor || null, dimensao: dto.dimensao, acao: dto.acao, responsavel: dto.responsavel || null, prazo: dto.prazo ? new Date(`${dto.prazo.slice(0, 10)}T12:00:00Z`) : null } });
+    const a = await this.avaliacao(consultoriaId, empresaId, id);
+    const nomeTema = questionario(a.questionario)?.dimensoes.find((d) => d.id === dto.dimensao)?.nome;
+    return this.prisma.acaoCorretiva.create({
+      data: {
+        empresaId, origem: 'PSICOSSOCIAL', origemId: id, origemTexto: `Avaliação psicossocial "${a.titulo}"${nomeTema ? ` · ${nomeTema}` : ''}`,
+        tema: dto.dimensao, hierarquia: 'ADMINISTRATIVA', descricao: dto.acao, local: dto.setor || null, responsavel: dto.responsavel || null,
+        prazo: dto.prazo ? new Date(`${dto.prazo.slice(0, 10)}T12:00:00Z`) : null,
+      },
+    });
   }
 
   async marcarAcao(consultoriaId: string, empresaId: string, id: string, acaoId: string, feita: boolean) {
     await this.avaliacao(consultoriaId, empresaId, id);
-    const { count } = await this.prisma.acaoPsicossocial.updateMany({ where: { id: acaoId, avaliacaoId: id }, data: { feita } });
+    const { count } = await this.prisma.acaoCorretiva.updateMany({ where: { id: acaoId, empresaId, origem: 'PSICOSSOCIAL', origemId: id }, data: feita ? { status: 'FEITA', feitaEm: new Date() } : { status: 'ABERTA', feitaEm: null, feitaPor: null } });
     if (!count) throw new NotFoundException('Ação não encontrada');
     return { ok: true };
   }
@@ -142,12 +155,14 @@ export class PsicossocialService {
   async excluir(consultoriaId: string, empresaId: string, id: string) {
     await this.avaliacao(consultoriaId, empresaId, id);
     await this.prisma.avaliacaoPsicossocial.delete({ where: { id } });
+    // As ações ainda abertas saem do plano de ação; as feitas ficam como histórico.
+    await this.prisma.acaoCorretiva.deleteMany({ where: { empresaId, origem: 'PSICOSSOCIAL', origemId: id, status: { not: 'FEITA' } } });
     return { ok: true };
   }
 
   async removerAcao(consultoriaId: string, empresaId: string, id: string, acaoId: string) {
     await this.avaliacao(consultoriaId, empresaId, id);
-    const { count } = await this.prisma.acaoPsicossocial.deleteMany({ where: { id: acaoId, avaliacaoId: id } });
+    const { count } = await this.prisma.acaoCorretiva.deleteMany({ where: { id: acaoId, empresaId, origem: 'PSICOSSOCIAL', origemId: id } });
     if (!count) throw new NotFoundException('Ação não encontrada');
     return { ok: true };
   }
@@ -224,11 +239,16 @@ export class PsicossocialService {
         if (existente) await this.prisma.gheRisco.update({ where: { id: existente.id }, data: dados });
         else await this.prisma.gheRisco.create({ data: { ...dados, gheId: ghe.id } });
         riscos++;
-        // As ações do plano do psicossocial passam para o plano de ação da empresa, que é o que sai no PGR.
-        for (const descricao of medidasPlano.length ? medidasPlano : [pgr.medida]) {
-          if (existentes.has(chave(descricao, s.setor))) continue;
-          await this.prisma.acaoCorretiva.create({ data: { empresaId, origem: 'PSICOSSOCIAL', origemId: id, origemTexto: `${origemTexto} · ${d.nome}`, descricao, local: s.setor, prioridade: c.nivel === 'MODERADO' ? 'MEDIA' : 'ALTA' } });
-          existentes.add(chave(descricao, s.setor)); acoes++;
+        // As ações do psicossocial já estão no plano de ação da empresa (o que sai no PGR).
+        // Sem nenhuma ação para o tema, entra a medida sugerida, ligada ao risco do inventário.
+        if (!medidasPlano.length && !existentes.has(chave(pgr.medida, s.setor))) {
+          const risco = await this.prisma.gheRisco.findFirst({ where: { gheId: ghe.id, agente }, select: { id: true, severidade: true, probabilidade: true } });
+          await this.prisma.acaoCorretiva.create({ data: {
+            empresaId, origem: 'PSICOSSOCIAL', origemId: id, origemTexto: `${origemTexto} · ${d.nome}`, descricao: pgr.medida, local: s.setor, tema: d.id,
+            hierarquia: 'ADMINISTRATIVA', prioridade: c.nivel === 'MODERADO' ? 'MEDIA' : 'ALTA',
+            riscoId: risco?.id ?? null, nivelAntes: risco ? `${grau5(risco.severidade)}x${grau5(risco.probabilidade)}` : null,
+          } });
+          existentes.add(chave(pgr.medida, s.setor)); acoes++;
         }
       }
     }
