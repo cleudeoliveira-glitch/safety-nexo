@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { VotacaoCelular } from '@/components/VotacaoCipa';
 import { ReunioesCipa } from '@/components/ReunioesCipa';
+import { MapaRisco } from '@/components/MapaRisco';
 import { rolarParaAncora } from '@/lib/abaDoEndereco';
 import { ehEmpresa } from '@/lib/sessao';
 import {
@@ -94,7 +95,7 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
     <main className="mx-auto max-w-4xl space-y-6 p-6 md:p-10">
       <div>
         <Link href={`/empresas/${empresaId}#cipa`} className="text-sm text-primary">← Voltar à empresa</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">CIPA: eleição e reuniões</h1>
+        <h1 className="mt-4 text-3xl font-semibold text-primary">CIPA: eleição, reuniões e mapa de risco</h1>
         <p className="text-text/60">
           {empresa.razaoSocial}
           {eleicao && ` · ${eleicao.vagas.efetivos} titular(es) e ${eleicao.vagas.suplentes} suplente(s) eleitos pelos funcionários`}
@@ -332,6 +333,8 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
       )}
 
       <ReunioesCipa empresaId={empresaId} eleicao={eleicao} />
+
+      <MapaRisco empresaId={empresaId} nomeEmpresa={empresa.razaoSocial} />
     </main>
   );
 }
