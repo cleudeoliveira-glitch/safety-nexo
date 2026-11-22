@@ -10,7 +10,7 @@ const seta = (v: number | null) => (v == null ? 'sem mês anterior para comparar
 export function painelSsmaHtml(m: Moldura & { qr?: string }, d: Dados) {
   const a = d.atual; const e = d.estrategico;
   return documentoHtml(m, `
-    <h2>Saúde da empresa: ${d.saude == null ? '-' : `${d.saude}%`}</h2>
+    <h2>Em dia (média): ${d.saude == null ? '-' : `${d.saude}%`}</h2>
     <p class="meta">Média dos itens em dia abaixo (itens sem dado ficam de fora).</p>
     <table><tr><th>Item</th><th>Em dia</th><th>%</th></tr>
     ${d.emDia.map((x) => `<tr><td>${escape(x.item)}</td><td>${x.de ? `${x.ok} de ${x.de}` : 'sem registro'}</td><td>${x.pct == null ? '-' : `${x.pct}%`}</td></tr>`).join('')}</table>

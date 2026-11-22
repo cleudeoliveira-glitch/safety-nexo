@@ -723,7 +723,7 @@ export type Absenteismo = {
 export const atestados = {
   tipos: (e: string) => chamar<Record<string, string>>('GET', `/empresas/${e}/atestados/tipos`),
   listar: (e: string, ano: number) => chamar<Atestado[]>('GET', `/empresas/${e}/atestados?ano=${ano}`),
-  criar: (e: string, d: AtestadoDados) => chamar<Atestado>('POST', `/empresas/${e}/atestados`, d),
+  criar: (e: string, d: AtestadoDados) => chamar<Atestado & { afastamentoCriado?: boolean }>('POST', `/empresas/${e}/atestados`, d),
   remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/atestados/${id}`),
   indicadores: (e: string, ano: number) => chamar<Absenteismo>('GET', `/empresas/${e}/absenteismo?ano=${ano}`),
   jornada: (e: string, horas: number) => chamar<{ jornadaDiariaHoras: number }>('PUT', `/empresas/${e}/absenteismo/jornada`, { jornadaDiariaHoras: horas }),
@@ -1018,8 +1018,12 @@ export type AcaoCorretiva = {
   id: string; origem: string; origemId: string | null; origemTexto: string | null; descricao: string; local: string | null; responsavel: string | null;
   prazo: string | null; prioridade: Prioridade; esforco: Esforco; status: 'ABERTA' | 'ANDAMENTO' | 'FEITA'; feitaEm: string | null; feitaPor: string | null;
   observacao: string | null; temEvidencia: boolean; criadoEm: string; somenteLeitura: boolean;
+  tema: string | null; hierarquia: Hierarquia | null; riscoId: string | null; nivelAntes: string | null; nivelDepois: string | null; eficaz: boolean | null; verificadaEm: string | null;
+  risco: { agente: string; ghe: string; severidade: string; probabilidade: string } | null;
 };
-export type NovaAcao = { descricao: string; local?: string; responsavel?: string; prazo?: string; prioridade?: Prioridade; esforco?: Esforco; origem?: string; origemId?: string; origemTexto?: string };
+// Hierarquia de controle da NR-01: primeiro eliminar o perigo, por último o EPI.
+export type Hierarquia = 'ELIMINAR' | 'SUBSTITUIR' | 'EPC' | 'ADMINISTRATIVA' | 'EPI';
+export type NovaAcao = { descricao: string; local?: string; responsavel?: string; prazo?: string; prioridade?: Prioridade; esforco?: Esforco; origem?: string; origemId?: string; origemTexto?: string; hierarquia?: Hierarquia; riscoId?: string };
 export type CategoriaCausa = 'METODO' | 'MAQUINA' | 'MATERIAL' | 'PESSOAS' | 'AMBIENTE' | 'GESTAO';
 export const CATEGORIAS_CAUSA: Record<CategoriaCausa, string> = { METODO: 'Método (como o trabalho é feito)', MAQUINA: 'Máquina ou equipamento', MATERIAL: 'Material', PESSOAS: 'Pessoas (treino, cansaço, pressa)', AMBIENTE: 'Ambiente (piso, luz, calor)', GESTAO: 'Gestão (regras, supervisão)' };
 export type Investigacao = { id: string; catId: string | null; relatoId: string | null; titulo: string; dataOcorrencia: string; local: string; descricao: string; equipe: string; porques: string[]; causas: { categoria: CategoriaCausa; texto: string }[]; conclusao: string | null; criadoEm: string };
@@ -1043,8 +1047,10 @@ export const prevencao = {
   analisarRelato: (e: string, id: string) => chamar<AnaliseFotoIa>('POST', `/empresas/${e}/relatos/${id}/ia`),
   acoes: (e: string) => chamar<AcaoCorretiva[]>('GET', `/empresas/${e}/acoes`),
   criarAcao: (e: string, d: NovaAcao) => chamar<AcaoCorretiva>('POST', `/empresas/${e}/acoes`, d),
-  atualizarAcao: (e: string, id: string, d: Partial<Pick<AcaoCorretiva, 'descricao' | 'responsavel' | 'prazo' | 'prioridade' | 'esforco' | 'status' | 'observacao'>>) => chamar<AcaoCorretiva>('PUT', `/empresas/${e}/acoes/${id}`, d),
+  atualizarAcao: (e: string, id: string, d: Partial<Pick<AcaoCorretiva, 'descricao' | 'responsavel' | 'prazo' | 'prioridade' | 'esforco' | 'status' | 'observacao' | 'hierarquia'>>) => chamar<AcaoCorretiva>('PUT', `/empresas/${e}/acoes/${id}`, d),
   removerAcao: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/acoes/${id}`),
+  eficacia: (e: string, id: string, d: { severidade: string; probabilidade: string; observacao?: string }) => chamar<AcaoCorretiva>('PUT', `/empresas/${e}/acoes/${id}/eficacia`, d),
+  acoesDosRiscos: (e: string) => chamar<{ criadas: number }>('POST', `/empresas/${e}/acoes/dos-riscos`),
   evidencia: (e: string, id: string, foto: Blob) => chamar<{ ok: boolean }>('POST', `/empresas/${e}/acoes/${id}/evidencia`, comFoto({}, foto)),
   verEvidencia: (e: string, id: string) => imagemProtegida(`/empresas/${e}/acoes/${id}/evidencia`),
   acoesDaInspecao: (e: string, inspecaoId: string) => chamar<{ criadas: number }>('POST', `/empresas/${e}/acoes/da-inspecao/${inspecaoId}`),
@@ -1155,3 +1161,12 @@ export const conta = {
   enviarLogo: (arq: File) => { const f = new FormData(); f.append('arquivo', arq); return chamar<unknown>('PUT', '/consultoria/logo', f); },
   integracoes: () => chamar<Integracoes>('GET', '/integracoes'),
 };
+
+// Conferência entre documentos: o que não bate entre PGR, PCMSO, LTCAT, treinamentos, EPI, ASO e eSocial.
+export type GravidadeConferencia = 'ALTA' | 'MEDIA' | 'BAIXA';
+export type ItemConferencia = { id: string; grupo: string; gravidade: GravidadeConferencia; titulo: string; detalhe: string; onde: string[]; corrigir: string; link: string };
+export type Conferencia = {
+  nota: number; faixa: string; conferidoEm: string; itens: ItemConferencia[]; semDados: boolean;
+  revisao: { ultimoPgr: string | null; venceEm: string | null; motivos: { texto: string; detalhe: string; base: string }[] };
+};
+export const conferirDocumentos = (empresaId: string) => chamar<Conferencia>('GET', `/empresas/${empresaId}/conferencia`);

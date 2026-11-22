@@ -39,7 +39,7 @@ export class SsmaService {
       this.prisma.atestado.findMany({ where: { empresaId: e, inicio: { gte: ini, lte: fimData }, colaborador: filtroColab }, select: { inicio: true, dias: true, cid: true } }),
       this.prisma.horasTrabalhadas.findMany({ where: { empresaId: e, mes: { in: meses } } }),
       this.prisma.dds.findMany({ where: { empresaId: e, data: { gte: new Date(hoje.getTime() - 30 * DIA) } }, select: { participantes: true } }),
-      this.prisma.acaoPsicossocial.findMany({ where: { avaliacao: { empresaId: e }, ...(setor ? { OR: [{ setor }, { setor: null }] } : {}) }, select: { feita: true } }),
+      this.prisma.acaoCorretiva.findMany({ where: { empresaId: e, ...(setor ? { OR: [{ local: setor }, { local: null }] } : {}) }, select: { status: true } }),
       this.prisma.fapRat.findFirst({ where: { empresaId: e }, orderBy: { ano: 'desc' } }),
     ]);
 
@@ -88,7 +88,7 @@ export class SsmaService {
       { item: 'EPI (CA válido)', ok: epiOk, de: comEpi.length, pct: pct(epiOk, comEpi.length) },
       { item: 'Treinamentos', ok: treinOk, de: comTrein.length, pct: pct(treinOk, comTrein.length) },
       { item: 'DDS nos últimos 30 dias', ok: noDds, de: total, pct: pct(noDds, total) },
-      { item: 'Plano de ação psicossocial', ok: acoes.filter((a) => a.feita).length, de: acoes.length, pct: pct(acoes.filter((a) => a.feita).length, acoes.length) },
+      { item: 'Plano de ação', ok: acoes.filter((a) => a.status === 'FEITA').length, de: acoes.length, pct: pct(acoes.filter((a) => a.status === 'FEITA').length, acoes.length) },
     ];
     const validos = emDia.filter((x) => x.pct != null);
     const saude = validos.length ? Math.round(validos.reduce((s, x) => s + (x.pct as number), 0) / validos.length) : null;

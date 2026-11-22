@@ -1,4 +1,6 @@
+import { textoNivel } from './nivel-risco';
 import * as tokens from '@safety-nexo/design-tokens';
+import { NOME_HIERARQUIA } from '../prevencao/hierarquia';
 import { documentoHtml, escape, Moldura } from './layout';
 import { CSS_CRONOGRAMA, ItemCronograma, TODO_MES, TRIMESTRAL, cronogramaHtml, mesDoCronograma } from './secoes';
 import { Controle, CSS_SECOES, blocoAssinaturas, controleDocumento, dataBr, lista, p, referenciasPelosRiscos, secoesNumeradas, tabelaDuasColunas, tabelaReferencias } from './secoes';
@@ -17,7 +19,7 @@ export type GhePdf = {
   nome: string; descricao: string | null; riscos: RiscoPdf[]; colaboradores: number;
   setor?: string | null; funcoes?: FuncaoGhe[]; ambiente?: string;
 };
-export type AcaoPdf = { descricao: string; local: string | null; responsavel: string | null; prazo: Date | null; prioridade: string; status: string; origemTexto: string | null; feitaEm?: Date | null };
+export type AcaoPdf = { descricao: string; local: string | null; responsavel: string | null; prazo: Date | null; prioridade: string; status: string; origemTexto: string | null; feitaEm?: Date | null; hierarquia?: string | null; nivelAntes?: string | null; nivelDepois?: string | null; eficaz?: boolean | null };
 export type ExtrasPgr = {
   processos: string | null;
   acoes: AcaoPdf[];
@@ -164,12 +166,12 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
 
   const acoes = extras.acoes.length
     ? `<table>
-        <thead><tr><th>O que fazer</th><th>Onde</th><th>Responsável</th><th>Prazo</th><th>Prioridade</th><th>Situação</th><th>Origem</th></tr></thead>
+        <thead><tr><th>O que fazer</th><th>Tipo de medida</th><th>Onde</th><th>Responsável</th><th>Prazo</th><th>Prioridade</th><th>Situação</th><th>Origem</th></tr></thead>
         <tbody>${extras.acoes
           .map(
-            (a) => `<tr><td>${escape(a.descricao)}</td><td>${escape(a.local)}</td><td>${a.responsavel ? escape(a.responsavel) : '<span class="falta">a definir</span>'}</td>
+            (a) => `<tr><td>${escape(a.descricao)}</td><td>${a.hierarquia ? escape(NOME_HIERARQUIA[a.hierarquia] ?? a.hierarquia) : '<span class="falta">a definir</span>'}</td><td>${escape(a.local)}</td><td>${a.responsavel ? escape(a.responsavel) : '<span class="falta">a definir</span>'}</td>
               <td>${a.prazo ? data(a.prazo) : '<span class="falta">a definir</span>'}</td><td>${NOME_PRIORIDADE[a.prioridade] ?? escape(a.prioridade)}</td>
-              <td>${STATUS[a.status] ?? escape(a.status)}</td><td>${escape(a.origemTexto ?? 'Manual')}</td></tr>`,
+              <td>${STATUS[a.status] ?? escape(a.status)}${a.nivelDepois ? `<br/><span class="meta">Risco antes: ${textoNivel(a.nivelAntes)}; depois: ${textoNivel(a.nivelDepois)}. ${a.eficaz ? 'A medida funcionou.' : 'Não baixou: rever a medida.'}</span>` : ''}</td><td>${escape(a.origemTexto ?? 'Manual')}</td></tr>`,
           )
           .join('')}</tbody>
       </table>`
@@ -328,7 +330,7 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
     {
       titulo: 'Plano de ação',
       html: `${prioritariosHtml}${acoes}
-        ${p('Cada ação concluída ganha data e foto de comprovação. Depois de concluída, o risco é avaliado de novo para confirmar que a medida funcionou.')}`,
+        ${p('Cada ação concluída ganha data e foto de comprovação. Depois de concluída, o risco é avaliado de novo para confirmar que a medida funcionou. A coluna "Tipo de medida" segue a ordem da NR-01: primeiro eliminar o perigo, depois trocar por algo menos perigoso, proteção coletiva, organização do trabalho e, por último, EPI.')}`,
     },
     {
       titulo: 'Cronograma anual de ações',

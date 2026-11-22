@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+import { HIERARQUIA } from './hierarquia';
 import { ArrayMaxSize, IsArray, IsDateString, IsIn, IsOptional, IsString, Length, MaxLength, ValidateNested } from 'class-validator';
 
 // DENUNCIA: canal de denúncia de assédio e abuso (Lei 14.457/2022 e NR-01). É sempre anônima e só a consultoria vê.
@@ -24,9 +25,18 @@ export class AcaoDto {
   @IsOptional() @IsDateString() prazo?: string;
   @IsOptional() @IsIn(['ALTA', 'MEDIA', 'BAIXA']) prioridade?: string;
   @IsOptional() @IsIn(['RAPIDO', 'MEDIO', 'DEMORADO']) esforco?: string;
-  @IsOptional() @IsIn(['MANUAL', 'RELATO', 'INSPECAO', 'INVESTIGACAO', 'IA']) origem?: string;
+  @IsOptional() @IsIn(['MANUAL', 'RELATO', 'INSPECAO', 'INVESTIGACAO', 'IA', 'RISCO']) origem?: string;
   @IsOptional() @IsString() @MaxLength(60) origemId?: string;
   @IsOptional() @IsString() @MaxLength(200) origemTexto?: string;
+  @IsOptional() @IsIn(HIERARQUIA as unknown as string[]) hierarquia?: string;
+  @IsOptional() @IsString() @MaxLength(60) riscoId?: string;
+}
+
+// Depois de feita: o risco é avaliado de novo para ver se a medida funcionou.
+export class EficaciaDto {
+  @IsIn(['1', '2', '3', '4', '5']) severidade!: string;
+  @IsIn(['1', '2', '3', '4', '5']) probabilidade!: string;
+  @IsOptional() @IsString() @MaxLength(2000) observacao?: string;
 }
 
 export class AtualizarAcaoDto {
@@ -37,6 +47,7 @@ export class AtualizarAcaoDto {
   @IsOptional() @IsIn(['RAPIDO', 'MEDIO', 'DEMORADO']) esforco?: string;
   @IsOptional() @IsIn(['ABERTA', 'ANDAMENTO', 'FEITA']) status?: string;
   @IsOptional() @IsString() @MaxLength(2000) observacao?: string;
+  @IsOptional() @IsIn(HIERARQUIA as unknown as string[]) hierarquia?: string;
 }
 
 export class CausaDto {

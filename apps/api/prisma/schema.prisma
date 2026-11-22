@@ -178,6 +178,7 @@ model Ghe {
   exames        ExameGhe[]
   colaboradores Colaborador[]
   aprs          Apr[]
+  atualizadoEm  DateTime @default(now()) @updatedAt
 
   @@index([empresaId])
 }
@@ -212,6 +213,9 @@ model GheRisco {
   // eSocial S-2240: código da Tabela 24, unidade de medida, uso de EPC/EPI e requisitos da NR-06.
   esocial             Json?
 
+  acoes               AcaoCorretiva[]
+  // Quando mudou: base do aviso de revisão do PGR (NR-01, 1.5.4.4.6).
+  atualizadoEm        DateTime @default(now()) @updatedAt
   @@index([gheId])
 }
 
@@ -653,6 +657,7 @@ model Afastamento {
   acidenteTransito Int?        // 1 atropelamento, 2 colisão, 3 outros
   observacao       String?
   catId            String?     // CAT que originou, quando houver
+  atestadoId       String?     // atestado que originou (lançado sozinho quando passa de 15 dias)
   createdAt        DateTime    @default(now())
 
   @@index([empresaId])
@@ -939,7 +944,6 @@ model AvaliacaoPsicossocial {
   criadoEm     DateTime @default(now())
   encerradaEm  DateTime?
   respostas    RespostaPsicossocial[]
-  acoes        AcaoPsicossocial[]
 
   @@index([empresaId])
 }
@@ -951,21 +955,6 @@ model RespostaPsicossocial {
   setor       String
   valores     Json     // { "1": 0, "2": 1, ... }
   dia         DateTime @db.Date // só o dia, para não identificar pela hora
-
-  @@index([avaliacaoId])
-}
-
-model AcaoPsicossocial {
-  id          String   @id @default(cuid())
-  avaliacaoId String
-  avaliacao   AvaliacaoPsicossocial @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
-  setor       String?
-  dimensao    String
-  acao        String
-  responsavel String?
-  prazo       DateTime? @db.Date
-  feita       Boolean  @default(false)
-  criadoEm    DateTime @default(now())
 
   @@index([avaliacaoId])
 }
@@ -1251,6 +1240,17 @@ model AcaoCorretiva {
   feitaPor      String?
   observacao    String?
   evidenciaPath String?   // foto de "resolvido"
+  // Plano de ação único: o psicossocial guarda aqui o tema (dimensão) da ação.
+  tema          String?
+  // Hierarquia de controle da NR-01 (1.5.5.1.2): ELIMINAR | SUBSTITUIR | EPC | ADMINISTRATIVA | EPI
+  hierarquia    String?
+  // Risco do inventário que a ação controla; com ele dá para medir a eficácia (nível antes e depois).
+  riscoId       String?
+  risco         GheRisco? @relation(fields: [riscoId], references: [id], onDelete: SetNull)
+  nivelAntes    String?   // "severidade x probabilidade" quando a ação foi criada, ex.: "4x4"
+  nivelDepois   String?   // reavaliação depois de feita, ex.: "4x2"
+  eficaz        Boolean?
+  verificadaEm  DateTime?
   criadoEm      DateTime  @default(now())
 
   @@index([empresaId])

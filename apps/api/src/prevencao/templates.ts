@@ -1,4 +1,6 @@
+import { textoNivel } from '../documentos/nivel-risco';
 import { objetivoDoc } from '../documentos/secoes';
+import { NOME_HIERARQUIA } from './hierarquia';
 import { documentoHtml, escape, folhaHtml, Moldura } from '../documentos/layout';
 
 const data = (d: Date | null | undefined) => (d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—');
@@ -6,7 +8,7 @@ const PRIORIDADE: Record<string, string> = { ALTA: 'Alta', MEDIA: 'Média', BAIX
 const ESFORCO: Record<string, string> = { RAPIDO: 'Rápido', MEDIO: 'Médio', DEMORADO: 'Demorado' };
 export const CATEGORIA: Record<string, string> = { METODO: 'Método', MAQUINA: 'Máquina', MATERIAL: 'Material', PESSOAS: 'Pessoas', AMBIENTE: 'Ambiente', GESTAO: 'Gestão' };
 
-type AcaoPdf = { descricao: string; origemTexto: string | null; local: string | null; responsavel: string | null; prazo: Date | null; prioridade: string; esforco: string; status: string; feitaEm: Date | null };
+type AcaoPdf = { descricao: string; origemTexto: string | null; local: string | null; responsavel: string | null; prazo: Date | null; prioridade: string; esforco: string; status: string; feitaEm: Date | null; hierarquia?: string | null; nivelAntes?: string | null; nivelDepois?: string | null; eficaz?: boolean | null };
 
 function tabelaAcoes(acoes: AcaoPdf[]) {
   const hoje = new Date();
@@ -14,8 +16,9 @@ function tabelaAcoes(acoes: AcaoPdf[]) {
     <thead><tr><th>Nº</th><th>Ação</th><th>Origem</th><th>Responsável</th><th>Prazo</th><th>Prioridade</th><th>Situação</th></tr></thead>
     <tbody>${acoes.map((a, i) => {
       const atrasada = a.status !== 'FEITA' && a.prazo && new Date(a.prazo) < hoje;
-      const sit = a.status === 'FEITA' ? `<span class="ok">Feita ${data(a.feitaEm)}</span>` : atrasada ? '<span class="atraso">Atrasada</span>' : a.status === 'ANDAMENTO' ? 'Em andamento' : 'A fazer';
-      return `<tr><td>${i + 1}</td><td>${escape(a.descricao)}${a.local ? `<br/><span class="meta">${escape(a.local)}</span>` : ''}</td><td>${escape(a.origemTexto || 'Manual')}</td><td>${escape(a.responsavel)}</td><td>${data(a.prazo)}</td><td>${PRIORIDADE[a.prioridade] ?? a.prioridade} · ${ESFORCO[a.esforco] ?? ''}</td><td>${sit}</td></tr>`;
+      const efic = a.nivelDepois ? `<br/><span class="meta">Risco antes: ${textoNivel(a.nivelAntes)}; depois: ${textoNivel(a.nivelDepois)}. ${a.eficaz ? 'A medida funcionou.' : 'Não baixou: rever a medida.'}</span>` : '';
+      const sit = (a.status === 'FEITA' ? `<span class="ok">Feita ${data(a.feitaEm)}</span>` : atrasada ? '<span class="atraso">Atrasada</span>' : a.status === 'ANDAMENTO' ? 'Em andamento' : 'A fazer') + efic;
+      return `<tr><td>${i + 1}</td><td>${escape(a.descricao)}${a.local ? `<br/><span class="meta">${escape(a.local)}</span>` : ''}${a.hierarquia ? `<br/><span class="meta">${escape(NOME_HIERARQUIA[a.hierarquia] ?? a.hierarquia)}</span>` : ''}</td><td>${escape(a.origemTexto || 'Manual')}</td><td>${escape(a.responsavel)}</td><td>${data(a.prazo)}</td><td>${PRIORIDADE[a.prioridade] ?? a.prioridade} · ${ESFORCO[a.esforco] ?? ''}</td><td>${sit}</td></tr>`;
     }).join('')}</tbody></table>`;
 }
 const CSS = `.ok { color: #10B981; font-weight: 600; } .atraso { color: #EF4444; font-weight: 600; } td:nth-child(2) { width: 38%; }`;

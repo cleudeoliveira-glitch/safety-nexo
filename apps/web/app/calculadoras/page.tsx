@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { buscarEmpresa } from '@/lib/api';
+import { lerFoco } from '@/lib/empresaFoco';
 import { Icone, NomeIcone } from '@/components/Icone';
 import { Campo, CardNumero, Selecao } from '@/components/ui';
 import { dimensionarCipa } from '@/lib/calculos/cipa';
@@ -23,8 +25,17 @@ const CALCS: { id: Calc; nome: string; norma: string; icone: NomeIcone }[] = [
 const num = (v: string) => { const n = Number(v.replace(',', '.')); return Number.isFinite(n) ? n : NaN; };
 const fmt = (n: number, casas = 2) => n.toLocaleString('pt-BR', { maximumFractionDigits: casas, minimumFractionDigits: 0 });
 
+// Dados da empresa em foco que já servem de ponto de partida para as contas.
+type Base = { nome: string; grau: string | null; empregados: number | null };
+
 export default function Calculadoras() {
   const [aba, setAba] = useState<Calc>('cipa');
+  const [base, setBase] = useState<Base | null>(null);
+  useEffect(() => {
+    const id = lerFoco();
+    if (!id) return;
+    buscarEmpresa(id).then((e) => setBase({ nome: e.razaoSocial, grau: e.grauRisco ? String(e.grauRisco) : null, empregados: e.numFuncionarios || null })).catch(() => setBase(null));
+  }, []);
   const atual = CALCS.find((c) => c.id === aba)!;
   return (
     <ProvedorCalculos>
@@ -46,12 +57,15 @@ export default function Calculadoras() {
       </div>
       <section className="rounded-card border border-border bg-white p-5 shadow-sm sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-primary">{atual.nome} <span className="text-sm font-normal text-text/50">· {atual.norma}</span></h2>
-        {aba === 'cipa' && <CalcCipa />}
-        {aba === 'sesmt' && <CalcSesmt />}
+        {base && ['cipa', 'sesmt', 'taxas'].includes(aba) && (
+          <p className="mb-4 rounded-card bg-background px-3 py-2 text-xs text-text/70">Já preenchido com os dados de <strong>{base.nome}</strong>. Pode mudar à vontade para simular outra situação.</p>
+        )}
+        {aba === 'cipa' && <CalcCipa key={`c${base?.nome}`} base={base} />}
+        {aba === 'sesmt' && <CalcSesmt key={`s${base?.nome}`} base={base} />}
         {aba === 'brigada' && <CalcBrigada />}
         {aba === 'ruido' && <CalcRuido />}
         {aba === 'calor' && <CalcCalor />}
-        {aba === 'taxas' && <CalcTaxas />}
+        {aba === 'taxas' && <CalcTaxas key={`t${base?.nome}`} base={base} />}
       </section>
       <p className="text-xs text-text/50">As contas seguem as normas citadas em cada calculadora. Confira sempre com o texto da norma em vigor antes de usar num documento.</p>
       <ListaCalculosSalvos />
@@ -72,9 +86,9 @@ function Resultado({ children }: { children: React.ReactNode }) {
   return <div className="mt-5 space-y-3">{children}</div>;
 }
 
-function CalcCipa() {
-  const [grau, setGrau] = useState('3');
-  const [n, setN] = useState('');
+function CalcCipa({ base }: { base: Base | null }) {
+  const [grau, setGrau] = useState(base?.grau ?? '3');
+  const [n, setN] = useState(base?.empregados ? String(base.empregados) : '');
   const empregados = Math.floor(num(n));
   const r = n && empregados >= 0 ? dimensionarCipa(Number(grau), empregados) : null;
   return (
@@ -105,9 +119,9 @@ function CalcCipa() {
   );
 }
 
-function CalcSesmt() {
-  const [grau, setGrau] = useState('3');
-  const [n, setN] = useState('');
+function CalcSesmt({ base }: { base: Base | null }) {
+  const [grau, setGrau] = useState(base?.grau ?? '3');
+  const [n, setN] = useState(base?.empregados ? String(base.empregados) : '');
   const empregados = Math.floor(num(n));
   const r = n && empregados >= 0 ? dimensionarSesmt(Number(grau), empregados) : null;
   return (
@@ -274,11 +288,11 @@ function CalcCalor() {
   );
 }
 
-function CalcTaxas() {
+function CalcTaxas({ base }: { base: Base | null }) {
   const [acid, setAcid] = useState('');
   const [dias, setDias] = useState('');
   const [hht, setHht] = useState('');
-  const [func, setFunc] = useState('');
+  const [func, setFunc] = useState(base?.empregados ? String(base.empregados) : '');
   const [horasMes, setHorasMes] = useState('176');
   const h = num(hht) > 0 ? num(hht) : num(func) > 0 && num(horasMes) > 0 ? num(func) * num(horasMes) : NaN;
   const tf = h > 0 && num(acid) >= 0 ? (num(acid) * 1_000_000) / h : null;

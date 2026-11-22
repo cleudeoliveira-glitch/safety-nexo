@@ -14,7 +14,7 @@ import { ehEmpresa, lerToken, lerUsuario } from '@/lib/sessao';
 const passosTour: PassoTour[] = [
   { alvo: 'empresa', titulo: 'Escolha a empresa', texto: 'Cada empresa cliente tem seus dados e documentos. Troque aqui para ver outra. Todos os módulos ficam no menu da esquerda.' },
   { alvo: 'hoje', titulo: 'O que fazer hoje', texto: 'Aqui aparece o que falta para os documentos ficarem completos e o que está vencendo.' },
-  { alvo: 'saude', titulo: 'Saúde da Empresa', texto: 'Mostra quanto da empresa já está preenchido. A meta é 100%.' },
+  { alvo: 'saude', titulo: 'Cadastro completo', texto: 'Mostra quanto da empresa já está preenchido. A meta é 100%.' },
   { alvo: 'gerar', titulo: 'Gere o documento', texto: 'Com os dados completos, o PGR sai em PDF com a logo da empresa cliente.' },
   { alvo: 'ajuda', titulo: 'Ajuda sempre à mão', texto: 'Toda tela tem o botão "Como usar esta tela?" no alto (no celular, o "Ajuda" na barra de cima). O "?" do lado de cada campo explica o que preencher. Tudo junto fica na Central de ajuda, no fim do menu.' },
 ];
@@ -168,10 +168,10 @@ export default function Home() {
                 </div>
                 <div>
                   <p className="font-semibold">
-                    Saúde da Empresa
+                    Cadastro completo
                     <CampoAjuda
                       alinhar="direita"
-                      titulo="Saúde da Empresa"
+                      titulo="Cadastro completo"
                       ajuda={{
                         oQueE: 'Percentual dos itens já preenchidos: dados da empresa, GHEs, riscos, colaboradores e PGR em dia.',
                         exemplo: '80% quer dizer que falta um dos cinco itens. Veja qual em "O que fazer hoje".',

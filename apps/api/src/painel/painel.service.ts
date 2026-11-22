@@ -1,4 +1,5 @@
 import { grau5 } from '../documentos/nivel-risco';
+import { gatilhosRevisaoPgr } from '../conferencia/revisao';
 import { situacaoAfastamento } from '../saude/saude.service';
 import { alertasInss } from '../conectores/absenteismo';
 import { dimensionarBrigada } from '../emergencia/it17';
@@ -85,6 +86,11 @@ export class PainelService {
 
     const pgr = ultimos.get('PGR');
     if (!pgr) pendencias.push({ titulo: 'Gere o primeiro PGR', detalhe: 'Nenhum PGR emitido para esta empresa', nivel: 'pendente' });
+    // NR-01, 1.5.4.4.6: algo mudou depois do último PGR (o prazo de 2 anos já aparece no vencimento abaixo).
+    if (pgr) {
+      const motivos = (await gatilhosRevisaoPgr(this.prisma, empresaId, hoje)).motivos.filter((m) => m.base !== 'prazo de 2 anos');
+      if (motivos.length) pendencias.push({ titulo: 'Revise o PGR', detalhe: `${motivos.map((m) => m.texto).join('; ')}. Veja em Documentos > Conferência`, nivel: motivos.some((m) => m.base === 'acidente ou doença do trabalho') ? 'vencido' : 'pendente' });
+    }
 
     // O PCMSO vem depois do PGR: só aparece como tarefa quando o PGR já existe.
     if (pgr) {
