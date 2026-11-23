@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { BotaoLuvaSol } from '@/components/LuvaSol';
+import { DitadoVoz } from '@/components/DitadoVoz';
 import { useCallback, useEffect, useState } from 'react';
 import { RostoCampo } from '@/components/RostoCampo';
 import { AjudaDaTela, BotaoComoUsar } from '@/components/AjudaDaTela';
@@ -86,6 +88,7 @@ export default function CampoPage() {
           <p className="mt-1 text-sm text-text/70">Entrega de EPI, inspeção, DDS e APR. Funciona sem internet: guarda no celular e envia quando a internet voltar.</p>
         </div>
         <BotaoComoUsar />
+        <BotaoLuvaSol />
         <AjudaDaTela caminho="/campo" barra={false} aba={aba} />
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${online ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>{online ? 'Com internet' : 'Sem internet: guardando no aparelho'}</span>
       </div>
@@ -302,6 +305,7 @@ export default function CampoPage() {
           </Cartao>
         )}
       </>)}
+      <DitadoVoz />
     </main>
   );
 }

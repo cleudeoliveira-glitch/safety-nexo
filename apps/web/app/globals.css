@@ -88,3 +88,19 @@ form.tentou-salvar :is(input, select, textarea):invalid {
   border-color: var(--color-danger) !important;
   box-shadow: 0 0 0 2px rgb(239 68 68 / 0.15);
 }
+
+/* Modo luva e sol: letras e botões maiores, mais contraste e sem textos apagados.
+   Liga e desliga pelo botão "Luva e sol" (fica guardado no aparelho). */
+html.luva-sol { font-size: 118%; }
+html.luva-sol body { background: #ffffff; color: #000000; }
+html.luva-sol main [class*='text-text\/'] { color: #111827 !important; }
+html.luva-sol main button,
+html.luva-sol main a.rounded-card,
+html.luva-sol main a.rounded-full { min-height: 52px; }
+html.luva-sol main .border-border { border-color: #6b7280 !important; }
+html.luva-sol main input[type='checkbox'],
+html.luva-sol main input[type='radio'] { width: 1.75rem; height: 1.75rem; }
+html.luva-sol .campo-sn,
+html.luva-sol main input:not([type='checkbox']):not([type='radio']),
+html.luva-sol main select,
+html.luva-sol main textarea { border-width: 3px; border-color: #000000; }

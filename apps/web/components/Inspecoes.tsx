@@ -1,5 +1,6 @@
 'use client';
 
+import { ResumoWhatsApp, resumoInspecao } from '@/components/ResumoWhatsApp';
 import { useEffect, useRef, useState } from 'react';
 import { reduzirFoto } from '@/components/Foto';
 import { Botao, Campo, CardNumero, Cartao, Selecao } from '@/components/ui';
@@ -305,8 +306,8 @@ function InspecaoComImagem({ empresaId, locais, localPadrao = '', cliente, recar
   );
 }
 
-export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, localPadrao = '', setores = [] }: {
-  empresaId: string; lista: Inspecao[]; modelos: ModeloChecklist[]; recarregar: () => Promise<void>; avisar: Avisar;
+export function AbaChecklist({ empresaId, nomeEmpresa = 'empresa', lista, modelos, recarregar, avisar, localPadrao = '', setores = [] }: {
+  empresaId: string; nomeEmpresa?: string; lista: Inspecao[]; modelos: ModeloChecklist[]; recarregar: () => Promise<void>; avisar: Avisar;
   localPadrao?: string; setores?: string[]; // local padrão da empresa e setores dos GHEs, como sugestão
 }) {
   const [modelo, setModelo] = useState('');
@@ -408,6 +409,7 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
           try { salvarArquivo(await gerarInspecao(empresaId, i.id), `Inspecao-${i.modelo}-${i.data.slice(0, 10)}.pdf`); }
           catch (e) { avisar('erro', (e as Error).message); }
         }}>Baixar relatório</Botao>
+        <ResumoWhatsApp texto={resumoInspecao(nomeEmpresa, i)} pdf={() => gerarInspecao(empresaId, i.id)} nomeArquivo={`Inspecao-${i.modelo}-${i.data.slice(0, 10)}`} />
         <BotaoExcluir pergunta={`Excluir a inspeção "${i.titulo}" de ${data(i.data)}? As fotos dela saem junto.`}
           excluir={() => excluir.inspecao(empresaId, i.id)} aoTerminar={async () => { if (aberta === i.id) setAberta(null); avisar('ok', 'Inspeção excluída.'); await recarregar(); }} aoErrar={(m) => avisar('erro', m)} />
       </span>

@@ -17,6 +17,7 @@ import { ehEmpresa } from '@/lib/sessao';
 import { AbasDaTela, TopoTela } from '@/components/TopoTela';
 import { BotaoAoLado, NovoRegistro, useNovo } from '@/components/NovoRegistro';
 import { PassosDoForm } from '@/components/PassosDoForm';
+import { ResumoWhatsApp, resumoDds, resumoPt } from '@/components/ResumoWhatsApp';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   Apr,
@@ -88,7 +89,7 @@ const porValor = (id: string, valor: string) => { const el = document.getElement
 
 type Avisar = (tipo: 'erro' | 'ok', texto: string) => void;
 // O campo "Local" já vem com o local padrão da empresa; os setores dos GHEs aparecem como sugestão (lista "locais-empresa").
-type DaEmpresa = { localPadrao: string; ghes: Ghe[] };
+type DaEmpresa = { localPadrao: string; ghes: Ghe[]; nomeEmpresa: string };
 const TIPO_RISCO: Record<string, string> = { FISICO: 'físico', QUIMICO: 'químico', BIOLOGICO: 'biológico', ERGONOMICO: 'ergonômico', ACIDENTE: 'acidente' };
 
 function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, localPadrao, ghes }: {
@@ -348,7 +349,7 @@ function NovaMedicao({ aoSalvar }: { aoSalvar: (m: MedicaoGas) => Promise<void> 
   );
 }
 
-function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarregar, avisar, baixar, localPadrao }: DaEmpresa & {
+function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarregar, avisar, baixar, localPadrao, nomeEmpresa }: DaEmpresa & {
   empresaId: string; colaboradores: Colaborador[]; aprs: Apr[]; permissoes: Permissao[]; conteudo: ConteudoOperacao;
   recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
 }) {
@@ -447,8 +448,16 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
     }
   }
 
-  const situacao = (p: Permissao) =>
-    p.encerradaEm ? ['Encerrada', 'text-text/60'] : new Date(p.fim) < new Date() ? ['Vencida: encerre', 'text-danger'] : ['Aberta', 'text-success'];
+  // Contagem regressiva: a lista se atualiza a cada minuto e mostra quanto falta para a PT vencer.
+  const agora = useAgoraPorMinuto();
+  const situacao = (p: Permissao): [string, string] => {
+    if (p.encerradaEm) return ['Encerrada', 'text-text/60'];
+    const falta = new Date(p.fim).getTime() - agora;
+    if (falta <= 0) return ['Vencida: encerre', 'text-danger'];
+    if (new Date(p.inicio).getTime() > agora) return ['Ainda não começou', 'text-text/60'];
+    return [`Aberta: faltam ${tempoQueFalta(falta)}`, falta <= 30 * 60000 ? 'text-danger' : falta <= 2 * 3600000 ? 'text-[#c2410c]' : 'text-success'];
+  };
+  useAvisoPtVencendo(permissoes, agora);
 
   return (
     <div className="space-y-6">
@@ -555,7 +564,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
       </Cartao>
       </NovoRegistro>
 
-      <Cartao titulo="Permissões emitidas">
+      <Cartao titulo="Permissões emitidas" acao={<LigarAvisoPt />}>
         {permissoes.length === 0 ? <p className="text-sm text-text/60">Nenhuma permissão ainda.</p> : (
           <ul className="divide-y divide-border text-sm">
             {permissoes.map((p) => {
@@ -581,6 +590,8 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
                       }}>Encerrar</Botao>
                     )}
                     <Botao variante="secundario" onClick={() => baixar(p.id, `Permissao-${p.numero}`)}>Baixar PT</Botao>
+                    <ResumoWhatsApp texto={resumoPt(nomeEmpresa, { ...p, tipoNome: conteudo.tiposPt[p.tipo]?.nome ?? p.tipo })}
+                      pdf={() => gerarPdfOperacao(empresaId, 'permissoes', p.id)} nomeArquivo={`Permissao-${p.numero}`} />
                     <BotaoExcluir pergunta={`Excluir a permissão de trabalho nº ${p.numero} (${p.atividade})?`}
                       excluir={() => excluir.permissao(empresaId, p.id)} aoTerminar={async () => { avisar('ok', `Permissão nº ${p.numero} excluída.`); await recarregar(); }} aoErrar={(m) => avisar('erro', m)} />
                   </span>
@@ -594,7 +605,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
   );
 }
 
-function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar, baixar, localPadrao }: DaEmpresa & {
+function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar, baixar, localPadrao, nomeEmpresa }: DaEmpresa & {
   empresaId: string; colaboradores: Colaborador[]; lista: Dds[]; conteudo: ConteudoOperacao;
   recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
 }) {
@@ -752,6 +763,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
                   <Link href={`/empresas/${empresaId}/lista/dds/${d.id}`} className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white">Lista para assinar</Link>
                   {rostoDds && <Botao variante="secundario" onClick={() => setCamera(d)}>Presença pelo rosto</Botao>}
                   <Botao variante="secundario" onClick={() => baixar(d.id, `DDS-${d.data.slice(0, 10)}`)}>Baixar lista de presença</Botao>
+                  <ResumoWhatsApp texto={resumoDds(nomeEmpresa, d)} pdf={() => gerarPdfOperacao(empresaId, 'dds', d.id)} nomeArquivo={`DDS-${d.data.slice(0, 10)}`} />
                   <BotaoExcluir pergunta={`Excluir o DDS "${d.tema}" de ${data(d.data)}? As assinaturas da lista de presença saem junto.`}
                     excluir={() => excluir.dds(empresaId, d.id)} aoTerminar={async () => { avisar('ok', 'DDS excluído.'); await recarregar(); }} aoErrar={(m) => avisar('erro', m)} />
                 </span>
@@ -817,7 +829,7 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
 
   const localPadrao = empresa.localPadrao ?? '';
   const setores = [...new Set(ghes.map((g) => g.setor).filter((x): x is string => !!x))];
-  const comum = { empresaId, colaboradores, recarregar, avisar, localPadrao, ghes };
+  const comum = { empresaId, colaboradores, recarregar, avisar, localPadrao, ghes, nomeEmpresa: empresa?.razaoSocial ?? 'empresa' };
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <TopoTela empresaId={empresaId} titulo={TITULOS[aba][0]} empresa={empresa.razaoSocial} frase={TITULOS[aba][1]} />
@@ -832,7 +844,45 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
       {aba === 'apr' && <AbaApr {...comum} aprs={aprs} baixar={baixador('aprs')} />}
       {aba === 'pt' && <AbaPt {...comum} aprs={aprs} permissoes={permissoes} conteudo={conteudo} baixar={baixador('permissoes')} />}
       {aba === 'dds' && <AbaDds {...comum} lista={dds} conteudo={conteudo} baixar={baixador('dds')} />}
-      {aba === 'checklist' && <AbaChecklist empresaId={empresaId} lista={inspecoes} modelos={modelos} recarregar={recarregar} avisar={avisar} localPadrao={localPadrao} setores={setores} />}
+      {aba === 'checklist' && <AbaChecklist empresaId={empresaId} nomeEmpresa={empresa?.razaoSocial ?? 'empresa'} lista={inspecoes} modelos={modelos} recarregar={recarregar} avisar={avisar} localPadrao={localPadrao} setores={setores} />}
     </main>
+  );
+}
+
+// Hora atual que muda a cada minuto (para a contagem regressiva da PT).
+function useAgoraPorMinuto() {
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 30000); return () => clearInterval(t); }, []);
+  return agora;
+}
+function tempoQueFalta(ms: number) {
+  const min = Math.ceil(ms / 60000);
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+// Aviso no celular 30 minutos antes de a PT vencer, enquanto o sistema estiver aberto.
+// Usa a notificação do próprio aparelho (a pessoa autoriza uma vez). Cada PT avisa uma vez só.
+function useAvisoPtVencendo(permissoes: Permissao[], agora: number) {
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
+    for (const p of permissoes) {
+      const falta = new Date(p.fim).getTime() - agora;
+      const chave = `safety-nexo:aviso-pt:${p.id}`;
+      if (p.encerradaEm || falta <= 0 || falta > 30 * 60000) continue;
+      try { if (localStorage.getItem(chave)) continue; localStorage.setItem(chave, '1'); } catch { /* sem memória no aparelho: avisa assim mesmo */ }
+      new Notification(`PT nº ${p.numero} vence em ${tempoQueFalta(falta)}`, { body: `${p.atividade} · ${p.local}. Encerre ou emita outra para o próximo turno.`, tag: chave });
+    }
+  }, [permissoes, agora]);
+}
+
+function LigarAvisoPt() {
+  const [estado, setEstado] = useState<NotificationPermission | 'sem'>('default');
+  useEffect(() => { setEstado(typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'sem'); }, []);
+  if (estado === 'sem' || estado === 'denied') return null;
+  if (estado === 'granted') return <span className="text-xs text-text/60">🔔 Aviso 30 min antes ligado</span>;
+  return (
+    <button type="button" onClick={async () => setEstado(await Notification.requestPermission())}
+      className="min-h-[44px] text-sm font-semibold text-primary hover:underline">🔔 Avisar 30 min antes de vencer</button>
   );
 }
