@@ -1,9 +1,10 @@
-import { BadRequestException, Body, Controller, Get, Headers, Injectable, Ip, Logger, NotFoundException, Param, Post, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Injectable, Ip, Logger, NotFoundException, Param, Post, ServiceUnavailableException } from '@nestjs/common';
 import { IsOptional, IsString, Length, MaxLength } from 'class-validator';
 import { Cobranca, Consultoria, Empresa } from '@prisma/client';
-import { randomBytes, timingSafeEqual } from 'crypto';
+import { randomBytes } from 'crypto';
 import * as QRCode from 'qrcode';
 import { Publica } from '../auth/publica.decorator';
+import { conferirSegredo } from '../common/segredo';
 import { emailLigado, emailMoldura, enviarEmail, WEB } from '../common/email';
 import { escape } from '../documentos/layout';
 import { PdfService } from '../documentos/pdf.service';
@@ -241,10 +242,7 @@ export class TarefaReguaController {
   constructor(private readonly r: ReguaCobrancaService) {}
   @Post('regua-cobranca')
   rodar(@Headers('x-tarefa-segredo') segredo?: string) {
-    const certo = process.env.TAREFAS_SEGREDO;
-    if (!certo) throw new ServiceUnavailableException('Falta TAREFAS_SEGREDO no servidor.');
-    const a = Buffer.from(segredo ?? ''); const b = Buffer.from(certo);
-    if (a.length !== b.length || !timingSafeEqual(a, b)) throw new UnauthorizedException('Segredo da tarefa incorreto.');
+    conferirSegredo(segredo, process.env.TAREFAS_SEGREDO, 'Falta TAREFAS_SEGREDO no servidor.', 'Segredo da tarefa incorreto.');
     return this.r.rodar();
   }
 }

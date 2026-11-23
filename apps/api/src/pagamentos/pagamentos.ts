@@ -1,6 +1,5 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Headers, HttpCode, Injectable, Logger, Module, NotFoundException, Post, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Headers, HttpCode, Injectable, Logger, Module, NotFoundException, Post, ServiceUnavailableException } from '@nestjs/common';
 import { IsIn, IsString, Matches } from 'class-validator';
-import { timingSafeEqual } from 'crypto';
 import { ehAdminPlataforma } from '../admin/admin-plataforma';
 import { ILIMITADO, PLANOS, planoPorCodigo } from '../admin/planos';
 import { fimDoPeriodo, hojeMeioDia, meioDia, somarDias } from '../admin/vigencia';
@@ -8,6 +7,7 @@ import { Publica } from '../auth/publica.decorator';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { emailLigado, emailMoldura, enviarEmail, WEB } from '../common/email';
 import { situacaoPlano, TOLERANCIA_DIAS } from '../common/plano';
+import { conferirSegredo } from '../common/segredo';
 import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push';
@@ -271,12 +271,6 @@ export class PagamentoPlanoController {
     return this.s.assinar(c, sessao, dto);
   }
   @Post('cancelar') cancelar(@ConsultoriaId() c: string) { return this.s.cancelar(c); }
-}
-
-function conferirSegredo(recebido: string | undefined, certo: string | undefined, falta: string) {
-  if (!certo) throw new ServiceUnavailableException(falta);
-  const a = Buffer.from(recebido ?? ''); const b = Buffer.from(certo);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) throw new UnauthorizedException('Segredo incorreto.');
 }
 
 // O Asaas avisa aqui cada mudança de pagamento. Configurar no Asaas: Integrações > Webhooks,
