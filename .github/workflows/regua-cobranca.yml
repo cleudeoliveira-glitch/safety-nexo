@@ -19,6 +19,7 @@ jobs:
         env:
           SEGREDO: ${{ secrets.TAREFAS_SEGREDO }}
         run: |
+          if [ -z "$SEGREDO" ]; then echo "::error::Falta o segredo TAREFAS_SEGREDO no GitHub (Settings > Secrets and variables > Actions)."; exit 1; fi
           curl -sS --fail-with-body --max-time 600 --retry 3 --retry-delay 30 \
             -X POST -H "x-tarefa-segredo: $SEGREDO" \
             https://safety-nexo-api.onrender.com/tarefas/regua-cobranca
@@ -27,6 +28,7 @@ jobs:
         env:
           SEGREDO: ${{ secrets.TAREFAS_SEGREDO }}
         run: |
+          if [ -z "$SEGREDO" ]; then echo "::error::Falta o segredo TAREFAS_SEGREDO no GitHub (Settings > Secrets and variables > Actions)."; exit 1; fi
           curl -sS --fail-with-body --max-time 600 --retry 3 --retry-delay 30 \
             -X POST -H "x-tarefa-segredo: $SEGREDO" \
             https://safety-nexo-api.onrender.com/tarefas/avisos-plano

@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Headers, Injectable, Logger, Module, Post, Put, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
-import { timingSafeEqual } from 'crypto';
+import { Body, Controller, Get, Headers, Injectable, Logger, Module, Post, Put, ServiceUnavailableException } from '@nestjs/common';
 import { IsBoolean } from 'class-validator';
 import { Publica } from '../auth/publica.decorator';
 import { ConsultoriaId } from '../common/consultoria.decorator';
+import { conferirSegredo } from '../common/segredo';
 import { enviarEmail, WEB } from '../common/email';
 import { escape } from '../documentos/layout';
 import { NormasModule, NormasService } from '../normas/normas';
@@ -112,10 +112,7 @@ export class TarefasController {
   constructor(private readonly a: AvisosService) {}
   @Post('avisos-semanais')
   enviar(@Headers('x-tarefa-segredo') segredo?: string) {
-    const certo = process.env.TAREFAS_SEGREDO;
-    if (!certo) throw new ServiceUnavailableException('Falta TAREFAS_SEGREDO no servidor.');
-    const a = Buffer.from(segredo ?? ''); const b = Buffer.from(certo);
-    if (a.length !== b.length || !timingSafeEqual(a, b)) throw new UnauthorizedException('Segredo da tarefa incorreto.');
+    conferirSegredo(segredo, process.env.TAREFAS_SEGREDO, 'Falta TAREFAS_SEGREDO no servidor.', 'Segredo da tarefa incorreto.');
     return this.a.enviarTodos();
   }
 }

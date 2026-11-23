@@ -514,7 +514,9 @@ export class DiagnosticoService {
     return [{
       id: 'tarefas', grupo: GRUPOS.pagamentos, titulo: 'Tarefas automáticas com atraso', situacao: algumaFalhou ? 'falha' : 'atencao',
       resumo: `${problemas.length} de ${lista.length} tarefas automáticas não rodaram como deviam.`, detalhes: [...problemas, ...ok],
-      comoResolver: 'No GitHub, aba Actions: veja se as tarefas estão ligadas e se o segredo TAREFAS_SEGREDO é igual ao do Render. Logo depois de ligar o Diagnóstico é normal aparecer "ainda não rodou" até a próxima execução.',
+      comoResolver: problemas.some((p) => p.includes('401'))
+        ? 'O segredo das tarefas no GitHub está diferente do que está no Render. Abra o Render (safety-nexo-api > Environment), copie o valor de TAREFAS_SEGREDO e cole o mesmo valor no GitHub em Settings > Secrets and variables > Actions > TAREFAS_SEGREDO (botão de lápis > Update secret). Depois rode a tarefa de novo em Actions > Run workflow.'
+        : 'No GitHub, aba Actions: veja se as tarefas estão ligadas e se o segredo TAREFAS_SEGREDO é igual ao do Render. Logo depois de ligar o Diagnóstico é normal aparecer "ainda não rodou" até a próxima execução.',
       pedido: montarPedido({ titulo: 'Tarefas agendadas do GitHub não estão rodando', achado: problemas.join('; '), ondeOlhar: lista.map((t) => `${t.arquivo} → POST ${t.rota}`).filter((v, i, a) => a.indexOf(v) === i), oQueFazer: 'Confira os workflows e os logs no GitHub Actions, descubra por que falharam e corrija.' }),
     }];
   }
