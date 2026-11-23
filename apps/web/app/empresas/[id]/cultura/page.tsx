@@ -1,5 +1,6 @@
 'use client';
 
+import { NovoRegistro, useNovo } from '@/components/NovoRegistro';
 import { TopoTela } from '@/components/TopoTela';
 import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
 import { useCallback, useEffect, useState } from 'react';
@@ -14,6 +15,7 @@ const texto = (d: FormData, c: string) => String(d.get(c) ?? '').trim();
 
 function AbaSipat({ empresaId, colaboradores, agir, baixar }: { empresaId: string; colaboradores: Colaborador[]; agir: Agir; baixar: (g: () => Promise<Blob>, n: string) => void }) {
   const [lista, setLista] = useState<Sipat[]>([]);
+  const novo = useNovo(lista.length === 0);
   const [presenca, setPresenca] = useState<{ sipat: string; ativ: string; marcados: Set<string> } | null>(null);
   const [chave, setChave] = useState(0);
   const carregar = useCallback(async () => setLista(await sipat.listar(empresaId)), [empresaId]);
@@ -22,6 +24,7 @@ function AbaSipat({ empresaId, colaboradores, agir, baixar }: { empresaId: strin
 
   return (
     <div className="space-y-6">
+      <NovoRegistro rotulo="Nova SIPAT" {...novo}>
       <Cartao titulo="Nova SIPAT">
         <p className="mb-4 text-sm text-text/60">A Semana Interna de Prevenção de Acidentes do Trabalho é organizada todo ano pela CIPA. Monte a programação, imprima o cartaz e marque quem participou.</p>
         <form key={chave} className="grid gap-4 md:grid-cols-4" onSubmit={(ev) => {
@@ -34,6 +37,7 @@ function AbaSipat({ empresaId, colaboradores, agir, baixar }: { empresaId: strin
           <div className="flex justify-end md:col-span-4"><Botao type="submit">Criar SIPAT</Botao></div>
         </form>
       </Cartao>
+      </NovoRegistro>
 
       {lista.map((s) => (
         <Cartao key={s.id} titulo={`SIPAT ${s.ano} · ${s.tema}`} acao={
@@ -93,6 +97,7 @@ function Aba5s({ empresaId, ghes, agir, baixar }: { empresaId: string; ghes: Ghe
   const [sensos, setSensos] = useState<Senso[]>([]);
   const [escala, setEscala] = useState<{ valor: number; rotulo: string }[]>([]);
   const [lista, setLista] = useState<Auditoria5s[]>([]);
+  const novo = useNovo(lista.length === 0);
   const [notas, setNotas] = useState<Record<string, number>>({});
   const [chave, setChave] = useState(0);
   const carregar = useCallback(async () => setLista(await cincoS.listar(empresaId)), [empresaId]);
@@ -126,6 +131,7 @@ function Aba5s({ empresaId, ghes, agir, baixar }: { empresaId: string; ghes: Ghe
         </Cartao>
       )}
 
+      <NovoRegistro rotulo="Nova auditoria 5S" {...novo}>
       <Cartao titulo="Nova auditoria 5S">
         <form key={chave} className="space-y-5" onSubmit={(ev) => {
           ev.preventDefault(); const d = new FormData(ev.currentTarget);
@@ -166,6 +172,7 @@ function Aba5s({ empresaId, ghes, agir, baixar }: { empresaId: string; ghes: Ghe
           <div className="flex justify-end"><Botao type="submit">Registrar auditoria</Botao></div>
         </form>
       </Cartao>
+      </NovoRegistro>
 
       {lista.length > 0 && (
         <Cartao titulo="Auditorias">

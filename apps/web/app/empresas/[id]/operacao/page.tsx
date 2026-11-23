@@ -15,6 +15,7 @@ import { lembrar, preencherLembrados } from '@/lib/lembrar';
 import { MODELOS_APR, modeloParaAtividade, type ModeloApr } from '@/lib/modelosApr';
 import { ehEmpresa } from '@/lib/sessao';
 import { AbasDaTela, TopoTela } from '@/components/TopoTela';
+import { BotaoAoLado, NovoRegistro, useNovo } from '@/components/NovoRegistro';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   Apr,
@@ -125,8 +126,12 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
     setEtapas(etapas.map((e) => (e.epis.trim() ? e : { ...e, epis: lista })));
   }
 
+  const novo = useNovo(aprs.length === 0);
   // "Repetir": traz uma APR antiga para o formulário, com a data de hoje.
   function usarComoBase(a: Apr) {
+    novo.abrirE(() => usarComoBaseJaAberto(a));
+  }
+  function usarComoBaseJaAberto(a: Apr) {
     setAtividade(a.atividade);
     setGheId(a.gheId ?? '');
     porValor('apr-local', a.local);
@@ -189,6 +194,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
 
   return (
     <div className="space-y-6">
+      <NovoRegistro rotulo="Nova APR" {...novo} outros={aprs[0] && <BotaoAoLado onClick={() => usarComoBase(aprs[0])} title="Traz a última APR com a data de hoje">↻ Repetir a última</BotaoAoLado>}>
       <Cartao titulo="Nova APR">
         <form className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-2">
@@ -268,6 +274,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
           <div className="flex justify-end"><Botao type="submit">Salvar APR</Botao></div>
         </form>
       </Cartao>
+      </NovoRegistro>
 
       <Cartao titulo="APRs da empresa">
         {aprs.length === 0 ? <p className="text-sm text-text/60">Nenhuma APR ainda.</p> : (
@@ -371,6 +378,25 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
     if (escavacao) return { profundidadeM: numero(String(d.get('profundidade') ?? '')), tipoSolo: t('tipoSolo'), contencao: t('contencao') };
     return undefined;
   }
+  const novo = useNovo(permissoes.length === 0);
+  // "Repetir a última": mesma atividade, local, equipe e responsáveis, para um turno novo.
+  // As verificações NÃO vêm marcadas: precisam ser conferidas de novo no local.
+  function repetir(p: Permissao) {
+    novo.abrirE(() => {
+      setTipo(p.tipo); setMarcados([]);
+      setExecutantes(p.executantes.filter((c) => colaboradores.some((x) => x.id === c)));
+      setTimeout(() => {
+        porValor('pt-atividade', p.atividade); porValor('pt-local', p.local); porValor('pt-emitente', p.emitente);
+        porValor('pt-inicio', agoraMais(0)); porValor('pt-fim', agoraMais(8));
+        if (p.supervisorEntrada) porValor('pt-supervisor', p.supervisorEntrada);
+        if (p.vigia) porValor('pt-vigia', p.vigia);
+        if (p.espacoId) porValor('pt-espaco', p.espacoId);
+        if (p.planoResgateId) porValor('pt-resgate', p.planoResgateId);
+        document.getElementById('pt-atividade')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 60);
+      avisar('ok', `PT nº ${p.numero} copiada para um turno novo. Confira as verificações no local antes de emitir.`);
+    });
+  }
   const pendentes = itens.length - marcados.length;
   const CAMPOS_PT = { 'pt-emitente': 'pt.emitente', 'pt-supervisor': 'pt.supervisor', 'pt-vigia': 'pt.vigia', 'pt-operador': 'pt.operador', 'pt-sinaleiro': 'pt.sinaleiro' };
   useEffect(() => { preencherLembrados(CAMPOS_PT, ['pt-emitente']); }, [tipo]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -425,6 +451,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
 
   return (
     <div className="space-y-6">
+      <NovoRegistro rotulo="Nova permissão de trabalho" {...novo} outros={permissoes[0] && <BotaoAoLado onClick={() => repetir(permissoes[0])} title="Traz a última PT para um turno novo. As verificações precisam ser conferidas de novo.">↻ Repetir a última</BotaoAoLado>}>
       <Cartao titulo="Nova permissão de trabalho">
         <form className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-2">
@@ -519,6 +546,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
           <div className="flex justify-end"><Botao type="submit">Emitir permissão</Botao></div>
         </form>
       </Cartao>
+      </NovoRegistro>
 
       <Cartao titulo="Permissões emitidas">
         {permissoes.length === 0 ? <p className="text-sm text-text/60">Nenhuma permissão ainda.</p> : (
@@ -589,6 +617,21 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
   }
   const escolhido = conteudo.temasDds.find((t) => t.tema === tema);
 
+  // Vindo da Biblioteca com um tema escolhido, o formulário já abre.
+  const novo = useNovo(lista.length === 0 || (typeof window !== 'undefined' && !!new URLSearchParams(window.location.search).get('tema')));
+  // "Repetir o último": mesmo tema, texto, local, ministrante e participantes, com a data de hoje.
+  function repetir(d: Dds) {
+    novo.abrirE(() => {
+      setTema(d.tema); setTexto(d.conteudo);
+      setParticipantes(d.participantes.filter((c) => colaboradores.some((x) => x.id === c)));
+      porValor('dds-data', hoje()); porValor('dds-duracao', String(d.duracaoMin));
+      if (d.local) porValor('dds-local', d.local);
+      porValor('dds-ministrante', d.ministrante);
+      document.getElementById('dds-tema')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      avisar('ok', `DDS "${d.tema}" copiado com a data de hoje. Ajuste o que mudou e registre.`);
+    });
+  }
+
   // Vindo da Biblioteca de DDS (?tema=...), o tema já abre escolhido.
   useEffect(() => {
     const pedido = new URLSearchParams(window.location.search).get('tema');
@@ -625,6 +668,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
 
   return (
     <div className="space-y-6">
+      <NovoRegistro rotulo="Novo DDS" {...novo} outros={lista[0] && <BotaoAoLado onClick={() => repetir(lista[0])} title="Traz o último DDS com a data de hoje">↻ Repetir o último</BotaoAoLado>}>
       <Cartao titulo="Novo DDS">
         <form className="space-y-4" onSubmit={salvar}>
           {sugestoes && (sugestoes.sugestoes.length > 0 ? (
@@ -685,6 +729,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
           <div className="flex justify-end"><Botao type="submit">Registrar DDS</Botao></div>
         </form>
       </Cartao>
+      </NovoRegistro>
 
       <Cartao titulo="DDS realizados">
         {lista.length === 0 ? <p className="text-sm text-text/60">Nenhum DDS ainda.</p> : (

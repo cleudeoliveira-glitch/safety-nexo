@@ -53,7 +53,18 @@ function colocarValor(el: Campo, valor: string | boolean) {
 function formulariosDaTela(): HTMLFormElement[] {
   return Array.from(document.querySelectorAll<HTMLFormElement>('main form')).filter((f) => !f.hasAttribute('data-sem-rascunho') && camposDo(f).length >= MINIMO_DE_CAMPOS);
 }
-const chaveDoForm = (forms: HTMLFormElement[], f: HTMLFormElement) => `${PREFIXO}${window.location.pathname}${window.location.hash}#${forms.indexOf(f)}`;
+// A chave do rascunho é a tela + a parte (#) + os primeiros campos do formulário. Assim o rascunho acha o formulário
+// mesmo que outro formulário da tela esteja recolhido ou aberto.
+const chaveDoForm = (_forms: HTMLFormElement[], f: HTMLFormElement) =>
+  `${PREFIXO}${window.location.pathname}${window.location.hash}#${camposDo(f).slice(0, 4).map(chaveDoCampo).join(',')}`;
+
+// Tem rascunho guardado nesta tela (e nesta parte)? Usado para abrir sozinho o formulário recolhido.
+export function temRascunhoAqui(): boolean {
+  try {
+    const inicio = `${PREFIXO}${window.location.pathname}${window.location.hash}#`;
+    return Object.keys(localStorage).some((k) => k.startsWith(inicio) && lerRascunho(k));
+  } catch { return false; }
+}
 
 function tituloDo(form: HTMLFormElement): string {
   const cartao = form.closest('section, div.rounded-card, div.rounded-2xl');
