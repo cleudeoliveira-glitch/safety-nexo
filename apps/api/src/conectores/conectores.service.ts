@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { cpfValido } from '../esocial/eventos';
 import { PrismaService } from '../prisma/prisma.service';
 import { alertasInss, fimAtestado, indicadores } from './absenteismo';
+import { alertaNexo } from './ntep';
 import { AtestadoDto, TerceiroDocumentoDto, TerceiroDto, TerceiroTrabalhadorDto } from './dto';
 import { lerData, lerPlanilha, normalizarNome, texto } from './planilha';
 
@@ -204,7 +205,11 @@ export class ConectoresService {
     }
     const atestado = await this.prisma.atestado.create({ data: { ...dto, cid: dto.cid ? dto.cid.toUpperCase() : null, inicio, empresaId } });
     const afastamento = await this.afastamentoDoAtestado(atestado.id, col.id, empresaId, dto.tipo, dto.dias, inicio, fim, atestado.cid);
-    return { ...atestado, afastamentoCriado: !!afastamento };
+    const [riscos, emp] = await Promise.all([
+      col.gheId ? this.prisma.gheRisco.findMany({ where: { gheId: col.gheId }, select: { tipo: true, agente: true } }) : Promise.resolve([]),
+      this.prisma.empresa.findUnique({ where: { id: empresaId }, select: { cnae: true } }),
+    ]);
+    return { ...atestado, afastamentoCriado: !!afastamento, alertaNexo: alertaNexo(atestado.cid, atestado.tipo, riscos, emp?.cnae ?? null) };
   }
 
   // Atestado de mais de 15 dias por doença ou acidente vira afastamento (eSocial S-2230) sem digitar de novo.
@@ -239,7 +244,7 @@ export class ConectoresService {
   async absenteismo(consultoriaId: string, empresaId: string, ano: number) {
     const empresa = await this.empresa(consultoriaId, empresaId);
     const [colaboradores, atestados, recentes] = await Promise.all([
-      this.prisma.colaborador.findMany({ where: { empresaId }, select: { id: true, nome: true, dataAdmissao: true, dataDesligamento: true, ghe: { select: { nome: true } } } }),
+      this.prisma.colaborador.findMany({ where: { empresaId }, select: { id: true, nome: true, dataAdmissao: true, dataDesligamento: true, ghe: { select: { nome: true, riscos: { select: { tipo: true, agente: true } } } } } }),
       this.listarAtestados(consultoriaId, empresaId, ano),
       this.prisma.atestado.findMany({ where: { empresaId, inicio: { gte: new Date(Date.now() - 180 * DIA) } } }),
     ]);
@@ -248,6 +253,16 @@ export class ConectoresService {
     return {
       ...indicadores(ano, empresa.jornadaDiariaHoras, colaboradores, atestados),
       alertasInss: alertasInss(colaboradores, recentes).map((a) => ({ ...a, jaAfastado: jaAfastado.has(a.colaboradorId) })),
+      // Possível nexo (NTEP) nos atestados dos últimos 180 dias, um por pessoa e grupo de doença.
+      alertasNexo: [...new Map(recentes
+        .map((a) => {
+          const col = colaboradores.find((c) => c.id === a.colaboradorId);
+          const alerta = col ? alertaNexo(a.cid, a.tipo, col.ghe?.riscos ?? [], empresa.cnae) : null;
+          return alerta ? { ...alerta, doenca: alerta.nome, chave: `${a.colaboradorId}|${alerta.grupo}`, colaboradorId: a.colaboradorId, nome: col!.nome, cid: a.cid, inicio: a.inicio, dias: a.dias } : null;
+        })
+        .filter((x): x is NonNullable<typeof x> => !!x)
+        .sort((x, y) => y.inicio.getTime() - x.inicio.getTime())
+        .map((x) => [x.chave, x] as const)).values()],
     };
   }
 

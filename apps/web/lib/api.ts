@@ -722,11 +722,12 @@ export type Absenteismo = {
   total: { horasPrevistas: number; horasPerdidas: number; atestados: number; taxa: number };
   porGhe: { nome: string; horas: number }[]; porTipo: { nome: string; horas: number }[]; porCid: { nome: string; horas: number }[]; quemMaisFaltou: { nome: string; horas: number }[];
   alertasInss: { colaboradorId: string; nome: string; cid: string | null; dias: number; desde: string; jaAfastado: boolean }[];
+  alertasNexo?: { chave: string; colaboradorId: string; nome: string; cid: string | null; inicio: string; dias: number; doenca: string; riscoRelacionado: string | null; forte: boolean; texto: string }[];
 };
 export const atestados = {
   tipos: (e: string) => chamar<Record<string, string>>('GET', `/empresas/${e}/atestados/tipos`),
   listar: (e: string, ano: number) => chamar<Atestado[]>('GET', `/empresas/${e}/atestados?ano=${ano}`),
-  criar: (e: string, d: AtestadoDados) => chamar<Atestado & { afastamentoCriado?: boolean }>('POST', `/empresas/${e}/atestados`, d),
+  criar: (e: string, d: AtestadoDados) => chamar<Atestado & { afastamentoCriado?: boolean; alertaNexo?: { texto: string; forte: boolean } | null }>('POST', `/empresas/${e}/atestados`, d),
   remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/atestados/${id}`),
   indicadores: (e: string, ano: number) => chamar<Absenteismo>('GET', `/empresas/${e}/absenteismo?ano=${ano}`),
   jornada: (e: string, horas: number) => chamar<{ jornadaDiariaHoras: number }>('PUT', `/empresas/${e}/absenteismo/jornada`, { jornadaDiariaHoras: horas }),
