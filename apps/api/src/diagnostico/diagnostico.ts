@@ -9,7 +9,7 @@ import { Publica } from '../auth/publica.decorator';
 import { emailLigado, WEB } from '../common/email';
 import { conferirGuarda } from '../common/guarda';
 import { situacaoPlano } from '../common/plano';
-import { asaas, asaasLigado, asaasProducao } from '../pagamentos/asaas';
+import { ambienteDaChave, asaas, asaasAmbienteTrocado, asaasLigado, asaasProducao } from '../pagamentos/asaas';
 import { PrismaService } from '../prisma/prisma.service';
 import { registrarFalha } from './falhas';
 
@@ -365,11 +365,16 @@ export class DiagnosticoService {
         await asaas.conferir();
         itens.push(asaasProducao()
           ? { id: 'pag:asaas', grupo: g, titulo: 'Asaas conectado (cobrando de verdade)', situacao: 'ok', resumo: 'A chave do Asaas funciona, no modo de produção.' }
-          : { id: 'pag:asaas', grupo: g, titulo: 'Cobrança em modo de teste', situacao: 'atencao', resumo: 'O Asaas está no "sandbox": ninguém é cobrado de verdade ainda.', comoResolver: 'Quando o pagamento de teste der certo, troque no Render: ASAAS_AMBIENTE = producao e a ASAAS_API_KEY pela chave da conta de verdade.' });
+          : { id: 'pag:asaas', grupo: g, titulo: 'Cobrança em modo de teste', situacao: 'atencao', resumo: 'O Asaas está no "sandbox": ninguém é cobrado de verdade ainda.', comoResolver: 'Quando o pagamento de teste der certo, troque no Render a ASAAS_API_KEY pela chave da conta de verdade (começa com $aact_prod_) e ASAAS_AMBIENTE = producao.' });
+        if (asaasAmbienteTrocado()) {
+          itens.push({ id: 'pag:asaas-ambiente', grupo: g, titulo: 'ASAAS_AMBIENTE diferente da chave', situacao: 'atencao', resumo: `A chave é de ${ambienteDaChave() === 'producao' ? 'produção' : 'testes (sandbox)'}, mas ASAAS_AMBIENTE diz outra coisa. O sistema segue a chave.`, comoResolver: `No Render, mude ASAAS_AMBIENTE para ${ambienteDaChave()} (ou apague a variável) para não confundir.` });
+        }
       } catch (e) {
         itens.push({
           id: 'pag:asaas', grupo: g, titulo: 'Asaas recusou a conexão', situacao: 'falha', resumo: (e as Error).message,
-          comoResolver: 'Confira se a ASAAS_API_KEY do Render é do mesmo ambiente (sandbox ou produção) que o ASAAS_AMBIENTE.',
+          comoResolver: ambienteDaChave()
+            ? 'O ambiente já é escolhido pela chave. Se o Asaas ainda recusa, a chave foi apagada ou copiada pela metade: gere uma nova no Asaas (Integrações > Chave de API) e cole de novo em ASAAS_API_KEY no Render, sem espaços.'
+            : 'A chave não diz de qual ambiente é. Inverta ASAAS_AMBIENTE no Render (sandbox ↔ producao) ou gere uma chave nova no Asaas, que já vem com a marca.',
           pedido: montarPedido({ titulo: 'Motor não consegue falar com o Asaas', achado: (e as Error).message, ondeOlhar: ['apps/api/src/pagamentos/asaas.ts', 'ASAAS_API_KEY e ASAAS_AMBIENTE no Render'], oQueFazer: 'Descubra por que o Asaas recusa e me diga o que corrigir.' }),
         });
       }

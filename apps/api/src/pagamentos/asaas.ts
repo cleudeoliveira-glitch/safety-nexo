@@ -2,12 +2,28 @@ import { BadGatewayException, Logger, ServiceUnavailableException } from '@nestj
 import { registrarFalha } from '../diagnostico/falhas';
 
 // Conversa com o Asaas, o serviço que cobra o plano do Safety Nexo (cartão de crédito todo mês, Pix Automático e boleto).
-// Precisa de ASAAS_API_KEY no servidor. ASAAS_AMBIENTE=producao usa a conta de verdade; sem ele, usa a de testes (sandbox).
+// Precisa de ASAAS_API_KEY no servidor. O ambiente (conta de verdade ou de testes) sai da própria chave:
+// as chaves de produção começam com "$aact_prod_" e as de testes (sandbox) com "$aact_hmlg_".
+// ASAAS_AMBIENTE (producao/sandbox) só vale para chave antiga, sem essa marca.
 
 const log = new Logger('Asaas');
 
-export const asaasLigado = () => !!process.env.ASAAS_API_KEY;
-export const asaasProducao = () => process.env.ASAAS_AMBIENTE === 'producao';
+// A chave como foi colada no Render, sem espaços nem aspas sobrando nas pontas.
+const chave = () => (process.env.ASAAS_API_KEY ?? '').trim().replace(/^["']+|["']+$/g, '');
+type Ambiente = 'producao' | 'sandbox';
+export const ambienteDaChave = (): Ambiente | null => (/^\$?aact_prod_/.test(chave()) ? 'producao' : /^\$?aact_hmlg_/.test(chave()) ? 'sandbox' : null);
+const ambienteVariavel = (): Ambiente | null => {
+  const v = (process.env.ASAAS_AMBIENTE ?? '').trim().toLowerCase();
+  return /^(producao|produção|production|prod)$/.test(v) ? 'producao' : /^(sandbox|teste|testes|homologacao|homologação|hmlg)$/.test(v) ? 'sandbox' : null;
+};
+
+export const asaasLigado = () => !!chave();
+export const asaasProducao = () => (ambienteDaChave() ?? ambienteVariavel()) === 'producao';
+// ASAAS_AMBIENTE diz uma coisa e a chave é de outra: vale a chave, mas o Diagnóstico avisa para acertar a variável.
+export const asaasAmbienteTrocado = () => {
+  const daChave = ambienteDaChave(); const daVariavel = ambienteVariavel();
+  return !!daChave && !!daVariavel && daChave !== daVariavel;
+};
 const base = () => (asaasProducao() ? 'https://api.asaas.com/v3' : 'https://api-sandbox.asaas.com/v3');
 
 export type AsaasPagamento = {
@@ -21,7 +37,7 @@ async function chamar<T>(metodo: string, caminho: string, corpo?: unknown): Prom
   if (!asaasLigado()) throw new ServiceUnavailableException('O pagamento automático ainda não foi ligado. Fale com o suporte do Safety Nexo.');
   const r = await fetch(`${base()}${caminho}`, {
     method: metodo,
-    headers: { access_token: process.env.ASAAS_API_KEY!, 'Content-Type': 'application/json', 'User-Agent': 'safety-nexo' },
+    headers: { access_token: chave(), 'Content-Type': 'application/json', 'User-Agent': 'safety-nexo' },
     body: corpo === undefined ? undefined : JSON.stringify(corpo),
   });
   const texto = await r.text();
