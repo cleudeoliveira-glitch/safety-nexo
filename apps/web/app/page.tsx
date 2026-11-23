@@ -27,21 +27,6 @@ const tonsPorNivel = {
   'em-dia': { ponto: 'bg-success', selo: 'bg-success/10 text-success', rotulo: 'Em dia' },
 } as const;
 
-// Atalhos do painel: os módulos mais usados no dia a dia.
-const atalhos: { nome: string; texto: string; icone: NomeIcone; rota: string; soConsultoria?: boolean; geral?: boolean }[] = [
-  { nome: 'PGR e PCMSO', texto: 'Gerar programas e laudos', icone: 'documento', rota: '#documentos', soConsultoria: true },
-  { nome: 'Colaboradores', texto: 'ASO, EPI e ordem de serviço', icone: 'pessoas', rota: '/colaboradores' },
-  { nome: 'DDS', texto: '150 temas com dinâmica', icone: 'fala', rota: '/dds', geral: true },
-  { nome: 'APR e PT', texto: 'Análise de risco e permissões', icone: 'escudo', rota: '/operacao#apr' },
-  { nome: 'Treinamentos', texto: '28 NRs com certificado', icone: 'formatura', rota: '/treinamentos' },
-  { nome: 'Psicossocial', texto: 'Questionário NR-01 e envio ao PGR', icone: 'cerebro', rota: '/psicossocial', soConsultoria: true },
-  { nome: 'CIPA', texto: 'Eleição, reuniões e atas', icone: 'votar', rota: '/cipa', soConsultoria: true },
-  { nome: 'Registros de campo', texto: 'EPI pelo rosto, inspeção, DDS e APR', icone: 'cracha', rota: '/campo', geral: true },
-  { nome: 'Almoxarifado', texto: 'Estoque e CA dos EPIs', icone: 'caixa', rota: '/almoxarifado' },
-  { nome: 'eSocial', texto: 'S-2210, S-2220, S-2240', icone: 'nuvem', rota: '/esocial', soConsultoria: true },
-  { nome: 'Emergência', texto: 'Brigada, AVCB e extintores', icone: 'fogo', rota: '/emergencia' },
-  { nome: 'Indicadores', texto: 'Dashboard completo', icone: 'grafico', rota: '/ssma' },
-];
 
 // Endereço principal: quem não entrou vê a página de apresentação; quem entrou vê o painel.
 export default function Home() {
@@ -150,12 +135,7 @@ function PainelInicial() {
                     : 'Buscando os dados da empresa…'}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  {!empresaCliente && (
-                    <Link href={empresaId ? `${base}#documentos` : '/empresas/nova'} data-tour="gerar" className="rounded-xl bg-white px-5 py-3 font-semibold text-primary shadow-sm transition hover:bg-menta">
-                      Gerar PGR em 3 minutos
-                    </Link>
-                  )}
-                  <Link href="/emitir" className="rounded-xl border border-white/40 px-5 py-3 font-semibold text-white transition hover:bg-white/10">
+                  <Link href={empresaId ? '/emitir' : '/empresas/nova'} data-tour="gerar" className="rounded-xl bg-white px-5 py-3 font-semibold text-primary shadow-sm transition hover:bg-menta">
                     Emitir documento
                   </Link>
                   {empresaId && (
@@ -244,27 +224,6 @@ function PainelInicial() {
 
           <ResumoEmissoes dados={emissoes} empresaId={empresaId} />
 
-          <section className="mt-8">
-            <h2 className="text-lg font-semibold">Acesso rápido</h2>
-            <p className="text-sm text-text/60">Os módulos mais usados. Todos os outros ficam no menu da esquerda.</p>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {atalhos
-                .filter((a) => !(empresaCliente && a.soConsultoria))
-                .map((a) => (
-                  <Link
-                    key={a.nome}
-                    href={a.geral ? a.rota : empresaId ? `${base}${a.rota}` : '/empresas/nova'}
-                    className="group rounded-2xl border border-border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#168a7f] text-white shadow-sm">
-                      <Icone nome={a.icone} className="h-5 w-5" />
-                    </span>
-                    <p className="mt-3 font-semibold text-text group-hover:text-primary">{a.nome}</p>
-                    <p className="text-xs text-text/60">{a.texto}</p>
-                  </Link>
-                ))}
-            </div>
-          </section>
         </>
       )}
 

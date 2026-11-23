@@ -75,7 +75,7 @@ export default function ListaToquePage({ params }: { params: { id: string; tipo:
   return (
     <main className="mx-auto max-w-5xl space-y-5 p-4 md:p-8">
       <div>
-        <Link href={voltar} className="text-sm text-primary">← Voltar</Link>
+        <Link href={voltar} className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
         <h1 className="mt-3 text-2xl font-semibold text-primary md:text-3xl">{lista.titulo}</h1>
         <p className="text-text/60">{lista.subtitulo} · {tipo === 'dds' ? 'Ministrante' : 'Instrutor(a)'}: {lista.responsavel}</p>
       </div>

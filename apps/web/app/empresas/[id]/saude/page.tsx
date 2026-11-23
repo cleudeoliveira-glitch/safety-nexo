@@ -1,5 +1,6 @@
 'use client';
 
+import { TopoTela } from '@/components/TopoTela';
 import Link from 'next/link';
 import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
 import { useCallback, useEffect, useState } from 'react';
@@ -215,9 +216,6 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
   return (
     <div className="space-y-6">
       <Cartao titulo="Registrar acidente (CAT)">
-        <Aviso tipo="info">
-          A CAT deve ser comunicada até o primeiro dia útil seguinte ao acidente. Em caso de morte, imediatamente. A transmissão oficial é pelo eSocial (evento S-2210).
-        </Aviso>
         {deInv && (
           <div className="mt-3"><Aviso tipo="info">Abrindo a CAT da investigação <strong>{deInv.titulo}</strong> (ocorrência em {data(deInv.dataOcorrencia)}). O local e a descrição já vieram de lá. Escolha o acidentado e confira a data e a hora.</Aviso></div>
         )}
@@ -296,6 +294,13 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
   );
 }
 
+// Cada item do menu abre só a sua parte, com o mesmo nome do menu.
+const TITULOS: Record<Aba, [string, string]> = {
+  aet: ['Ergonomia (AET)', 'Avalie o posto de trabalho e registre as melhorias de ergonomia (NR-17).'],
+  cat: ['Acidentes (CAT)', 'Registre o acidente e gere a CAT. Prazo: primeiro dia útil depois do acidente (em caso de morte, na hora). Vai ao eSocial no S-2210.'],
+  afast: ['Afastamentos', 'Acompanhe quem está afastado, desde quando e a volta ao trabalho.'],
+};
+
 export default function SaudePage({ params }: { params: { id: string } }) {
   const empresaId = params.id;
   const [aba, setAba] = useState<Aba>('aet');
@@ -337,27 +342,11 @@ export default function SaudePage({ params }: { params: { id: string } }) {
   if (!empresa) return <main className="p-10">{aviso ? <Aviso tipo="erro">{aviso.texto}</Aviso> : 'Carregando…'}</main>;
 
   const pendentes = cats.filter((c) => !c.enviadaEm).length;
-  const abas: [Aba, string][] = [['aet', 'Ergonomia (AET)'], ['cat', `Acidentes (CAT)${pendentes ? ` · ${pendentes} a enviar` : ''}`], ['afast', 'Afastamentos']];
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
-      <div>
-        <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">Saúde ocupacional</h1>
-        <p className="text-text/60">
-          {empresa.razaoSocial}
-          {!cliente && <> · <Link href={`/empresas/${empresaId}#documentos`} className="text-primary hover:underline">PGR, PCMSO e LTCAT →</Link></>}
-        </p>
-      </div>
-
-      <div role="tablist" className="flex flex-wrap gap-2">
-        {abas.map(([valor, nome]) => (
-          <button key={valor} role="tab" aria-selected={aba === valor} onClick={() => { setAba(valor); setAviso(null); }}
-            className={`rounded-card px-4 py-2 text-sm font-semibold ${aba === valor ? 'bg-primary text-white' : 'border border-border bg-white'}`}>
-            {nome}
-          </button>
-        ))}
-      </div>
+      <TopoTela empresaId={empresaId} titulo={TITULOS[aba][0]} empresa={empresa.razaoSocial}
+        frase={aba === 'cat' && pendentes ? `${TITULOS[aba][1]} ${pendentes} CAT(s) ainda a enviar ao eSocial.` : TITULOS[aba][1]} />
 
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 

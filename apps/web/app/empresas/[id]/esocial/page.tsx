@@ -89,7 +89,7 @@ export default function EsocialPage({ params }: { params: { id: string } }) {
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <div>
         <div className="flex flex-wrap justify-between gap-2">
-          <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
+          <Link href={`/?empresa=${empresaId}`} className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
           <Link href="/esocial" className="text-sm text-primary underline">eSocial de todas as empresas e diagnóstico de multas</Link>
         </div>
         <h1 className="mt-4 text-3xl font-semibold text-primary">eSocial</h1>

@@ -7,13 +7,11 @@ import { AreaTexto, Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui
 import {
   atualizarEmpresa,
   AcessoEmpresa,
-  buscarCipa,
   criarAcesso,
   listarAcessos,
   removerAcesso,
   reenviarConvite,
   buscarEmpresa,
-  Cipa,
   Colaborador,
   criarExame,
   criarGhe,
@@ -35,7 +33,6 @@ import {
   definirMedico,
   Empresa,
   enviarLogoEmpresa,
-  gerarCipa,
   gerarDocumento,
   gerarRelatorioMensal,
   gerarRelatorioPcmso,
@@ -43,7 +40,6 @@ import {
   listarColaboradores,
   listarGhes,
   salvarArquivo,
-  salvarCipa,
   salvarCodigoExame,
   UNIDADES_ESOCIAL,
   RiscoEsocial,
@@ -52,6 +48,8 @@ import {
 } from '@/lib/api';
 import { EscolhaTabela } from '@/components/EscolhaTabela';
 import { ehEmpresa } from '@/lib/sessao';
+import { DimensionamentoCipa } from '@/components/DimensionamentoCipa';
+import { TopoTela } from '@/components/TopoTela';
 import { CopiarDados } from '@/components/CopiarDados';
 import { FormGhe } from '@/components/FormGhe';
 import { rolarParaAncora } from '@/lib/abaDoEndereco';
@@ -77,7 +75,6 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [ghes, setGhes] = useState<Ghe[]>([]);
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
-  const [cipa, setCipa] = useState<Cipa | null>(null);
   const [cliente, setCliente] = useState(false);
   const [acessos, setAcessos] = useState<AcessoEmpresa[]>([]);
   const [convite, setConvite] = useState<Convite | null>(null);
@@ -89,7 +86,12 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   const [etapaGhe, setEtapaGhe] = useState<Record<string, EtapaGhe>>({});
   const irPara = (gheId: string, etapa: EtapaGhe) => setEtapaGhe((x) => ({ ...x, [gheId]: etapa }));
   useEffect(() => {
-    const ler = () => { const a = ABA_DO_ENDERECO[window.location.hash.slice(1)]; if (a) setAba(a); };
+    const ler = () => {
+      const h = window.location.hash.slice(1);
+      // A empresa cliente ainda vê colaboradores e CIPA aqui; a consultoria vai para a tela própria.
+      if (MUDOU_DE_TELA[h] && !ehEmpresa()) { window.location.replace(`/empresas/${empresaId}${MUDOU_DE_TELA[h]}`); return; }
+      const a = ABA_DO_ENDERECO[h]; if (a) setAba(a);
+    };
     ler();
     window.addEventListener('hashchange', ler);
     return () => window.removeEventListener('hashchange', ler);
@@ -98,14 +100,12 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
 
   const recarregar = useCallback(async () => {
     try {
-      const [e, g, c, ci] = await Promise.all([
+      const [e, g, c] = await Promise.all([
         buscarEmpresa(empresaId),
         listarGhes(empresaId),
         listarColaboradores(empresaId),
-        buscarCipa(empresaId),
       ]);
       setEmpresa(e);
-      setCipa(ci);
       // Logins da empresa cliente: só a consultoria vê e cria.
       if (!ehEmpresa()) {
         const [a, an] = await Promise.all([listarAcessos(empresaId), buscarAnexosLaudo()]);
@@ -149,7 +149,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     };
   }
 
-  const NOMES: Record<TipoDocumento | 'cipa', [arquivo: string, aviso: string]> = {
+  const NOMES: Record<TipoDocumento, [arquivo: string, aviso: string]> = {
     pgr: ['PGR', 'PGR gerado.'],
     pcmso: ['PCMSO', 'PCMSO gerado.'],
     ltcat: ['LTCAT', 'LTCAT gerado.'],
@@ -160,15 +160,14 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     ppr: ['PPR', 'Programa de Proteção Respiratória gerado.'],
     os: ['Ordens-de-servico', 'Ordens de serviço geradas, uma página por colaborador.'],
     'mapa-risco': ['Mapa-de-risco', 'Mapa de risco gerado: uma folha por setor, para afixar.'],
-    cipa: ['CIPA', 'Dimensionamento da CIPA gerado.'],
   };
   const [anoRelatorio, setAnoRelatorio] = useState(new Date().getFullYear() - 1);
   // Mês do relatório ao cliente: por padrão o mês anterior, que é o que se fecha no começo do mês.
   const mesesRelatorio = [1, 2, 3, 0].map((n) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n); return { valor: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, nome: d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) }; });
   const [mesRelatorio, setMesRelatorio] = useState(mesesRelatorio[0].valor);
-  async function baixar(tipo: TipoDocumento | 'cipa') {
+  async function baixar(tipo: TipoDocumento) {
     try {
-      const pdf = tipo === 'cipa' ? await gerarCipa(empresaId) : await gerarDocumento(empresaId, tipo);
+      const pdf = await gerarDocumento(empresaId, tipo);
       const [arquivo, texto] = NOMES[tipo];
       salvarArquivo(pdf, `${arquivo}-${empresa?.razaoSocial ?? 'empresa'}.pdf`);
       setAviso({ tipo: 'ok', texto });
@@ -209,11 +208,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-6 md:p-10">
-      <div>
-        <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">{empresa.razaoSocial}</h1>
-        <p className="text-text/60">CNPJ {empresa.cnpj}</p>
-      </div>
+      <TopoTela empresaId={empresaId} titulo={cliente ? 'Minha empresa' : 'Cadastro da empresa'} empresa={`${empresa.razaoSocial}${empresa.cnpj ? ` · CNPJ ${empresa.cnpj}` : ''}`}
+        frase={cliente ? undefined : 'Siga as abas na ordem: dados da empresa, depois os GHEs com os riscos, e no fim gere os documentos. A bolinha laranja mostra onde falta informação.'} />
 
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 
@@ -223,8 +219,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
         <nav className="sticky top-0 z-10 -mx-2 flex gap-1 overflow-x-auto rounded-card border border-border bg-white p-1 shadow-sm" aria-label="Partes do cadastro da empresa">
           {ABAS.map((a) => {
             const falta = a.id === 'dados' ? !empresa.cnae || !empresa.grauRisco || !empresa.endereco
-              : a.id === 'ghes' ? ghes.length === 0 || ghes.some((g) => g.riscos.length === 0)
-              : a.id === 'pessoas' ? colaboradores.filter((c) => !c.dataDesligamento).length === 0 : false;
+              : a.id === 'ghes' ? ghes.length === 0 || ghes.some((g) => g.riscos.length === 0) : false;
             return (
               <button key={a.id} type="button" onClick={() => { setAba(a.id); history.replaceState(null, '', `#${a.id}`); }}
                 className={`flex-1 whitespace-nowrap rounded-card px-3 py-2 text-sm font-semibold transition ${aba === a.id ? 'bg-primary text-white' : 'text-primary hover:bg-primary/5'}`}>
@@ -484,7 +479,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       )}
       </>)}
 
-      {(cliente || aba === 'pessoas') && (
+      {cliente && (
       <Cartao titulo="Colaboradores" id="colaboradores"
         acao={<Link href={`/empresas/${empresaId}/colaboradores`} className="rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">Abrir colaboradores →</Link>}>
         {(() => {
@@ -517,57 +512,12 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       </Cartao>
       )}
 
-      {cipa && (cliente || aba === 'pessoas') && (
-        <Cartao
-          titulo="CIPA"
-          id="cipa"
-          acao={cipa.dimensionamento.situacao !== 'SEM_GRAU' && (
-            <div className="flex flex-wrap gap-2">
-              <Botao variante="secundario" onClick={() => baixar('cipa')}>Baixar dimensionamento</Botao>
-              {cipa.dimensionamento.situacao === 'CIPA' && !cliente && (
-                <Link href={`/empresas/${empresaId}/cipa`} className="rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">
-                  Organizar eleição →
-                </Link>
-              )}
-            </div>
-          )}
-        >
-          <ResumoCipa cipa={cipa} />
-          {cipa.dimensionamento.situacao !== 'SEM_GRAU' && !cliente && (
-            <form
-              className="mt-4 grid gap-4 md:grid-cols-3"
-              onSubmit={enviar(
-                (d) =>
-                  salvarCipa(empresaId, {
-                    atendidaSesmt: d.get('atendidaSesmt') === 'on',
-                    ...(texto(d, 'inicioMandato') ? { inicioMandato: texto(d, 'inicioMandato') } : {}),
-                    ...(d.has('representante') ? { representante: texto(d, 'representante') } : {}),
-                  }),
-                'CIPA salva.',
-              )}
-            >
-              <Campo id="cipa-inicio" name="inicioMandato" type="date" rotulo="Início do mandato atual"
-                defaultValue={cipa.calendario?.inicioMandato.slice(0, 10) ?? ''} />
-              {cipa.dimensionamento.situacao === 'REPRESENTANTE' && (
-                <Campo id="cipa-representante" name="representante" rotulo="Representante nomeado" placeholder="Ex.: João Lima"
-                  defaultValue={cipa.representante ?? ''} />
-              )}
-              <label className="flex items-center gap-2 self-end pb-3 text-sm">
-                <input type="checkbox" name="atendidaSesmt" defaultChecked={cipa.atendidaSesmt} className="h-4 w-4 accent-primary" />
-                Empresa atendida por SESMT
-              </label>
-              <div className="flex justify-end md:col-span-3"><Botao type="submit">Salvar CIPA</Botao></div>
-            </form>
-          )}
-        </Cartao>
-      )}
+      {cliente && <DimensionamentoCipa empresaId={empresaId} nomeEmpresa={empresa.razaoSocial} cliente />}
 
       {!cliente && (<>
       {aba === 'documentos' && (
       <Cartao titulo="Documentos" id="documentos">
-        <p className="mb-4 text-sm text-text/60">Cada documento sai em PDF com a logo da empresa no cabeçalho e a da sua consultoria no rodapé.
-          O LTCAT e o LIP usam as avaliações dos riscos físicos, químicos e biológicos de cada GHE; o LPP usa a periculosidade de cada GHE.
-          O PGRTR é a versão do PGR para atividade rural (NR-31). O PCA sai para os GHEs com ruído a partir do nível de ação e o PPR para quem usa respirador. O PPP e a ordem de serviço de cada pessoa também ficam na página do colaborador.</p>
+        <p className="mb-4 text-sm text-text/60">Cada documento sai em PDF com a logo da empresa no cabeçalho e a da sua consultoria no rodapé. O &quot;?&quot; de cada um explica quando usar.</p>
         {empresa.grauRisco && empresa.grauRisco <= 2 && ghes.length > 0 && !ghes.some((g) => g.riscos.some((r) => ['FISICO', 'QUIMICO', 'BIOLOGICO'].includes(r.tipo))) && (
           <div className="mb-4"><Aviso tipo="info">
             Esta empresa é grau de risco {empresa.grauRisco} e não tem risco físico, químico nem biológico cadastrado. Se ela for MEI, microempresa ou empresa
@@ -575,49 +525,48 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
             no gov.br. Os riscos ergonômicos e de acidente continuam precisando de atenção, e a NR-17 segue valendo.
           </Aviso></div>
         )}
-        <div className="flex flex-wrap gap-3">
-          <Botao onClick={() => baixar('pgr')}>Gerar PGR</Botao>
-          <Botao onClick={() => baixar('pcmso')}>Gerar PCMSO</Botao>
-          <span className="flex items-center gap-1">
-            <select aria-label="Ano do relatório do PCMSO" value={anoRelatorio} onChange={(e) => setAnoRelatorio(Number(e.target.value))}
-              className="rounded-card border border-border bg-white px-2 py-2 text-sm">
-              {[0, 1, 2].map((n) => <option key={n} value={new Date().getFullYear() - n}>{new Date().getFullYear() - n}</option>)}
-            </select>
+        <div className="space-y-5">
+          <GrupoDocs titulo="Programas">
+            <BotaoDoc sigla="PGR" nome="Programa de Gerenciamento de Riscos" principal onClick={() => baixar('pgr')} />
+            <BotaoDoc sigla="PCMSO" nome="Programa de Controle Médico de Saúde Ocupacional" principal onClick={() => baixar('pcmso')} />
+            <BotaoDoc sigla="PGRTR" nome="PGR do trabalho rural (NR-31)" onClick={() => baixar('pgrtr')} />
+            <BotaoDoc sigla="PCA" nome="Conservação auditiva: para quem tem ruído" onClick={() => baixar('pca')} />
+            <BotaoDoc sigla="PPR" nome="Proteção respiratória: para quem usa respirador" onClick={() => baixar('ppr')} />
+          </GrupoDocs>
+          <GrupoDocs titulo="Laudos">
+            <BotaoDoc sigla="LTCAT" nome="Laudo das condições do ambiente (aposentadoria especial)" principal onClick={() => baixar('ltcat')} />
+            <BotaoDoc sigla="LIP" nome="Laudo de insalubridade e periculosidade" onClick={() => baixar('lip')} />
+            <BotaoDoc sigla="LPP" nome="Laudo de periculosidade" onClick={() => baixar('lpp')} />
+          </GrupoDocs>
+          <GrupoDocs titulo="Para a empresa e os colaboradores">
+            <BotaoDoc sigla="OS" nome="Ordens de serviço de todos (uma página por pessoa)" onClick={() => baixar('os')} />
+            <BotaoDoc sigla="Mapa" nome="Mapa de risco, uma folha por setor (CIPA)" onClick={() => baixar('mapa-risco')} />
+          </GrupoDocs>
+          <GrupoDocs titulo="Relatórios">
+            <div className="flex flex-wrap items-center gap-2 rounded-card border border-border p-3">
+              <span className="w-full text-sm font-semibold">Relatório anual do PCMSO</span>
+              <select aria-label="Ano do relatório do PCMSO" value={anoRelatorio} onChange={(e) => setAnoRelatorio(Number(e.target.value))}
+                className="min-h-[44px] rounded-card border border-border bg-white px-2 text-sm">
+                {[0, 1, 2].map((n) => <option key={n} value={new Date().getFullYear() - n}>{new Date().getFullYear() - n}</option>)}
+              </select>
             <Botao variante="secundario" title="Resumo do ano: exames feitos, resultados alterados, CATs e comparação com o ano anterior (NR-07)" onClick={async () => {
               try { salvarArquivo(await gerarRelatorioPcmso(empresaId, anoRelatorio), `Relatorio-PCMSO-${anoRelatorio}-${empresa?.razaoSocial ?? 'empresa'}.pdf`); setAviso({ tipo: 'ok', texto: `Relatório do PCMSO de ${anoRelatorio} gerado. Falta o médico escrever a análise e assinar.` }); }
               catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
-            }}>Relatório anual do PCMSO</Botao>
-          </span>
-          <span className="flex items-center gap-1">
-            <select aria-label="Mês do relatório ao cliente" value={mesRelatorio} onChange={(e) => setMesRelatorio(e.target.value)}
-              className="rounded-card border border-border bg-white px-2 py-2 text-sm">
-              {mesesRelatorio.map((m) => <option key={m.valor} value={m.valor}>{m.nome}</option>)}
-            </select>
+            }}>Gerar</Botao>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 rounded-card border border-border p-3">
+              <span className="w-full text-sm font-semibold">Relatório mensal ao cliente</span>
+              <select aria-label="Mês do relatório ao cliente" value={mesRelatorio} onChange={(e) => setMesRelatorio(e.target.value)}
+                className="min-h-[44px] rounded-card border border-border bg-white px-2 text-sm">
+                {mesesRelatorio.map((m) => <option key={m.valor} value={m.valor}>{m.nome}</option>)}
+              </select>
             <Botao variante="secundario" title="Prestação de contas ao cliente: o que foi feito no mês, como a empresa está e o que vem no próximo mês" onClick={async () => {
               try { salvarArquivo(await gerarRelatorioMensal(empresaId, mesRelatorio), `Relatorio-mensal-${mesRelatorio}-${empresa?.razaoSocial ?? 'empresa'}.pdf`); setAviso({ tipo: 'ok', texto: 'Relatório mensal gerado. Pode mandar para o cliente.' }); }
               catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
-            }}>Relatório mensal ao cliente</Botao>
-          </span>
-          <Botao onClick={() => baixar('ltcat')}>Gerar LTCAT</Botao>
-          <Botao onClick={() => baixar('lip')}>Gerar LIP</Botao>
-          <Botao onClick={() => baixar('lpp')}>Gerar LPP</Botao>
-          <Botao onClick={() => baixar('pgrtr')} title="Para empresas com atividade rural (NR-31)">Gerar PGRTR</Botao>
-          <Botao variante="secundario" onClick={() => baixar('pca')} title="Conservação auditiva: para os GHEs com ruído no nível de ação ou acima (NR-09 e NR-07, Anexo II)">Gerar PCA</Botao>
-          <Botao variante="secundario" onClick={() => baixar('ppr')} title="Proteção respiratória: para os GHEs que usam respirador (IN MTb 1/1994)">Gerar PPR</Botao>
-          <Botao variante="secundario" onClick={() => baixar('os')}>Ordens de serviço (todos)</Botao>
-          <Botao variante="secundario" title="Círculos por tipo e intensidade, uma folha por setor, com os riscos dos GHEs (CIPA)" onClick={() => baixar('mapa-risco')}>Mapa de risco</Botao>
-          <Link href={`/empresas/${empresaId}/prontuario`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Prontuário: vacinas e exames →</Link>
-          <Link href={`/empresas/${empresaId}/saude`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">AET e CAT →</Link>
-          <Link href={`/empresas/${empresaId}/esocial`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">eSocial →</Link>
-          <Link href={`/empresas/${empresaId}/historico`} className="rounded-card border border-border px-4 py-2 text-sm font-semibold text-text/70 hover:bg-primary/5">Histórico →</Link>
-          <Link href={`/empresas/${empresaId}/cultura`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">SIPAT e 5S →</Link>
-          <Link href={`/empresas/${empresaId}/importar-pdf`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Trazer PGR antigo (IA) →</Link>
-          <Link href={`/empresas/${empresaId}/ssma`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Painel SSMA →</Link>
-          <Link href={`/empresas/${empresaId}/fap`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">FAP e RAT →</Link>
-          <Link href={`/empresas/${empresaId}/almoxarifado`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Almoxarifado de EPI →</Link>
-          <Link href={`/empresas/${empresaId}/psicossocial`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Psicossocial →</Link>
-          <Link href={`/empresas/${empresaId}/arquivo`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Arquivo de documentos →</Link>
-          <Link href={`/empresas/${empresaId}/conectores`} className="rounded-card border border-border px-4 py-2 text-sm font-semibold text-text/70 hover:bg-primary/5">Importar do RH, terceiros e faltas →</Link>
+            }}>Gerar</Botao>
+            </div>
+          </GrupoDocs>
+          <p className="text-xs text-text/60">O PPP e a ordem de serviço de uma pessoa só ficam na ficha do colaborador. Os outros documentos (APR, PT, DDS, CAT, AET...) saem na tela de cada um, ou pelo menu Documentos, em Emitir documento.</p>
         </div>
       </Cartao>
       )}
@@ -673,62 +622,20 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
   );
 }
 
-type Aba = 'dados' | 'ghes' | 'pessoas' | 'documentos';
+type Aba = 'dados' | 'ghes' | 'documentos';
 const ABAS: { id: Aba; nome: string }[] = [
   { id: 'dados', nome: 'Dados e responsáveis' },
   { id: 'ghes', nome: 'GHEs e riscos' },
-  { id: 'pessoas', nome: 'Colaboradores e CIPA' },
   { id: 'documentos', nome: 'Documentos' },
 ];
 // Endereços antigos (#medico, #cipa...) continuam funcionando: cada um abre a aba onde a parte está.
 const ABA_DO_ENDERECO: Record<string, Aba> = {
-  dados: 'dados', medico: 'dados', acessos: 'dados', ghes: 'ghes', pessoas: 'pessoas', colaboradores: 'pessoas', cipa: 'pessoas', documentos: 'documentos',
+  dados: 'dados', medico: 'dados', acessos: 'dados', ghes: 'ghes', documentos: 'documentos',
 };
+// Partes que saíram do cadastro e ganharam tela própria: o endereço antigo leva até lá.
+const MUDOU_DE_TELA: Record<string, string> = { cipa: '/cipa#dimensionamento', pessoas: '/colaboradores', colaboradores: '/colaboradores' };
 
 const dataBr = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-
-// Explica o resultado do Quadro I da NR-05 em linguagem simples.
-function ResumoCipa({ cipa }: { cipa: Cipa }) {
-  const d = cipa.dimensionamento;
-  if (d.situacao === 'SEM_GRAU') {
-    return <Aviso tipo="info">Informe o CNAE ou o grau de risco nos dados da empresa para o sistema calcular a CIPA.</Aviso>;
-  }
-  if (d.situacao === 'REPRESENTANTE') {
-    return (
-      <p className="text-sm">
-        Com {cipa.numFuncionarios} funcionário(s) no grau de risco {cipa.grauRisco}, a empresa <strong>não precisa de CIPA</strong> (passa a precisar a
-        partir de {d.minimoParaCipa}).{' '}
-        {cipa.atendidaSesmt
-          ? 'Como é atendida por SESMT, ele cumpre esse papel.'
-          : 'Ela deve nomear um representante entre os funcionários para ajudar na prevenção.'}
-      </p>
-    );
-  }
-  const c = cipa.calendario;
-  return (
-    <div className="space-y-3 text-sm">
-      <p>
-        Com {cipa.numFuncionarios} funcionário(s) no grau de risco {cipa.grauRisco}, a CIPA precisa de{' '}
-        <strong>{d.efetivos} efetivo(s) e {d.suplentes} suplente(s) eleitos pelos funcionários</strong>, e o mesmo número indicado pela empresa.
-      </p>
-      {c && (
-        <ul className="grid gap-2 md:grid-cols-4">
-          {[
-            ['Fim do mandato', c.fimMandato],
-            ['Publicar edital até', c.convocacaoAte],
-            ['Eleição até', c.eleicaoAte],
-            ['Posse da nova gestão', c.posse],
-          ].map(([rotulo, data]) => (
-            <li key={rotulo} className="rounded-card border border-border bg-background px-3 py-2">
-              <span className="block text-xs text-text/60">{rotulo}</span>
-              <strong>{dataBr(data)}</strong>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
 
 const AGENTES_LTCAT: string[] = ['FISICO', 'QUIMICO', 'BIOLOGICO'];
 
@@ -1089,5 +996,25 @@ function FuncoesDaEmpresa({ ghes, colaboradores }: { ghes: Ghe[]; colaboradores:
         </details>
       )}
     </div>
+  );
+}
+
+// Aba Documentos: grupos com título e um botão por documento, com a sigla e o nome por extenso.
+function GrupoDocs({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-text/50">{titulo}</h3>
+      <div className="grid gap-2 sm:grid-cols-2">{children}</div>
+    </section>
+  );
+}
+
+function BotaoDoc({ sigla, nome, principal, onClick }: { sigla: string; nome: string; principal?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`flex min-h-[52px] items-center gap-3 rounded-card border px-3 py-2 text-left transition ${principal ? 'border-primary bg-primary text-white hover:opacity-90' : 'border-border bg-white hover:border-primary'}`}>
+      <span className={`shrink-0 rounded-md px-2 py-1 text-xs font-bold ${principal ? 'bg-white/20' : 'bg-primary/10 text-primary'}`}>{sigla}</span>
+      <span className="text-sm font-semibold leading-tight">{nome}</span>
+    </button>
   );
 }

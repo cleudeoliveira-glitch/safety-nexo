@@ -81,9 +81,9 @@ export default function CampoPage() {
     <main className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <Link href="/" className="text-sm text-primary">← Painel</Link>
-          <h1 className="mt-2 text-2xl font-semibold text-primary">Registros de campo</h1>
-          <p className="mt-1 text-sm text-text/70">Entrega de EPI, inspeção, DDS e APR, com ou sem internet.</p>
+          <Link href="/" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
+          <h1 className="mt-2 text-2xl font-semibold text-primary">Modo campo</h1>
+          <p className="mt-1 text-sm text-text/70">Entrega de EPI, inspeção, DDS e APR. Funciona sem internet: guarda no celular e envia quando a internet voltar.</p>
         </div>
         <BotaoComoUsar />
         <AjudaDaTela caminho="/campo" barra={false} aba={aba} />

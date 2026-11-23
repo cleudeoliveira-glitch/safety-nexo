@@ -1,5 +1,6 @@
 'use client';
 
+import { TopoTela } from '@/components/TopoTela';
 import Link from 'next/link';
 import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
 import { useCallback, useEffect, useState } from 'react';
@@ -366,6 +367,13 @@ function AbaFaltas({ empresaId, colaboradores, cliente, avisar }: { empresaId: s
   );
 }
 
+// Cada item do menu abre só a sua parte, com o mesmo nome do menu.
+const TITULOS: Record<Aba, [string, string]> = {
+  rh: ['Importar do RH', 'Traga a lista de funcionários da planilha do RH, sem digitar um por um.'],
+  terceiros: ['Terceirizadas', 'Cadastre as empresas que prestam serviço aqui e confira os documentos delas.'],
+  faltas: ['Atestados e faltas', 'Lance os atestados. Os longos avisam sobre afastamento e INSS.'],
+};
+
 export default function ConectoresPage({ params }: { params: { id: string } }) {
   const empresaId = params.id;
   const [aba, setAba] = useState<Aba>('rh');
@@ -385,21 +393,10 @@ export default function ConectoresPage({ params }: { params: { id: string } }) {
   }, [recarregar]);
 
   if (!empresa) return <main className="p-10">{aviso ? <Aviso tipo="erro">{aviso.texto}</Aviso> : 'Carregando…'}</main>;
-  const abas: [Aba, string][] = [['rh', 'Importar do RH'], ['terceiros', 'Terceirizadas'], ['faltas', 'Atestados e faltas']];
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
-      <div>
-        <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">RH, terceiros e faltas</h1>
-        <p className="text-text/60">{empresa.razaoSocial} · {colaboradores.length} funcionário(s) cadastrado(s)</p>
-      </div>
-      <div role="tablist" className="flex flex-wrap gap-2">
-        {abas.map(([valor, nome]) => (
-          <button key={valor} role="tab" aria-selected={aba === valor} onClick={() => { setAba(valor); setAviso(null); history.replaceState(null, '', `#${valor}`); }}
-            className={`rounded-card px-4 py-2 text-sm font-semibold ${aba === valor ? 'bg-primary text-white' : 'border border-border bg-white'}`}>{nome}</button>
-        ))}
-      </div>
+      <TopoTela empresaId={empresaId} titulo={TITULOS[aba][0]} empresa={empresa.razaoSocial} frase={TITULOS[aba][1]} />
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
       {aba === 'rh' && <AbaRh empresaId={empresaId} avisar={avisar} recarregar={recarregar} />}
       {aba === 'terceiros' && <AbaTerceiros empresaId={empresaId} avisar={avisar} />}

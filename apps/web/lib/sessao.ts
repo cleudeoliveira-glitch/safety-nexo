@@ -45,6 +45,8 @@ export function sair() {
     localStorage.removeItem(CHAVE_USUARIO);
     sessionStorage.removeItem('safety-nexo:recursos');
     localStorage.removeItem('safety-nexo:campo'); // lista de empresas guardada para o campo (o que falta enviar fica)
+    // Rascunhos de formulário guardados no aparelho: não ficam para a próxima pessoa.
+    Object.keys(localStorage).filter((k) => k.startsWith('safety-nexo:rascunho:')).forEach((k) => localStorage.removeItem(k));
   } catch {}
   // Apaga também o código do rosto guardado para o campo.
   import('./rosto-offline').then((m) => m.esquecerRostosCampo()).catch(() => undefined).finally(() => { window.location.href = '/entrar'; });

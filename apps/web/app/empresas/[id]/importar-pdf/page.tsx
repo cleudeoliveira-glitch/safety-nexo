@@ -75,7 +75,7 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-6 md:p-10">
       <div>
-        <Link href={`/empresas/${empresaId}`} className="text-sm text-primary">← Voltar à empresa</Link>
+        <Link href={`/empresas/${empresaId}`} className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">Trazer PGR ou laudo antigo</h1>
         <p className="text-text/60">{empresa.razaoSocial} · a IA lê o PDF e separa GHEs e riscos. Você confere tudo antes de entrar no sistema.</p>
       </div>

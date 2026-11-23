@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { TopoTela } from '@/components/TopoTela';
 import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
@@ -203,17 +203,8 @@ export default function CulturaPage({ params }: { params: { id: string } }) {
   if (!empresa) return <main className="p-10">{aviso ? <Aviso tipo="erro">{aviso.texto}</Aviso> : 'Carregando…'}</main>;
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
-      <div>
-        <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">SIPAT e 5S</h1>
-        <p className="text-text/60">{empresa.razaoSocial} · <Link href={`/empresas/${empresaId}/treinamentos`} className="text-primary hover:underline">Treinamentos →</Link> · <Link href={`/empresas/${empresaId}/cipa`} className="text-primary hover:underline">CIPA →</Link></p>
-      </div>
-      <div role="tablist" className="flex flex-wrap gap-2">
-        {([['sipat', 'SIPAT'], ['5s', 'Auditoria 5S']] as [Aba, string][]).map(([v, n]) => (
-          <button key={v} role="tab" aria-selected={aba === v} onClick={() => { setAba(v); setAviso(null); history.replaceState(null, '', `#${v}`); }}
-            className={`rounded-card px-4 py-2 text-sm font-semibold ${aba === v ? 'bg-primary text-white' : 'border border-border bg-white'}`}>{n}</button>
-        ))}
-      </div>
+      <TopoTela empresaId={empresaId} titulo={aba === 'sipat' ? 'SIPAT' : 'Programa 5S'} empresa={empresa.razaoSocial}
+        frase={aba === 'sipat' ? 'Monte a semana de prevenção: datas, palestras e atividades.' : 'Faça a auditoria 5S por setor e acompanhe a nota de cada um.'} />
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
       {aba === 'sipat' ? <AbaSipat empresaId={empresaId} colaboradores={colaboradores} agir={agir} baixar={baixar} /> : <Aba5s empresaId={empresaId} ghes={ghes} agir={agir} baixar={baixar} />}
     </main>

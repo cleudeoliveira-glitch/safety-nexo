@@ -79,8 +79,8 @@ export default function EmergenciaPage({ params }: { params: { id: string } }) {
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <div>
-        <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">Emergência</h1>
+        <Link href={`/?empresa=${empresaId}`} className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
+        <h1 className="mt-4 text-3xl font-semibold text-primary">Emergência e brigada</h1>
         <p className="text-text/60">{empresa.razaoSocial}</p>
       </div>
 

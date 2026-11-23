@@ -14,6 +14,7 @@ import { NomesSugeridos } from '@/components/NomesSugeridos';
 import { lembrar, preencherLembrados } from '@/lib/lembrar';
 import { MODELOS_APR, modeloParaAtividade, type ModeloApr } from '@/lib/modelosApr';
 import { ehEmpresa } from '@/lib/sessao';
+import { AbasDaTela, TopoTela } from '@/components/TopoTela';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   Apr,
@@ -61,12 +62,14 @@ import {
 } from '@/lib/api';
 
 type Aba = 'apr' | 'pt' | 'dds' | 'checklist';
-const ABAS: [Aba, string][] = [
-  ['apr', 'Análise de risco (APR)'],
-  ['pt', 'Permissão de trabalho'],
-  ['dds', 'DDS'],
-  ['checklist', 'Inspeções'],
-];
+const ABAS: Aba[] = ['apr', 'pt', 'dds', 'checklist'];
+// Cada item do menu abre só a sua parte, com o mesmo nome do menu. APR e PT ficam juntas porque a PT sai da APR.
+const TITULOS: Record<Aba, [string, string]> = {
+  apr: ['APR e permissão de trabalho', 'Analise os riscos da atividade antes de começar e, se precisar, emita a permissão de trabalho a partir dela.'],
+  pt: ['APR e permissão de trabalho', 'Libere o trabalho de risco (altura, quente, eletricidade...) por um turno, com as verificações e a equipe.'],
+  dds: ['DDS', 'Registre a conversa de segurança do dia e colha as assinaturas de quem participou.'],
+  checklist: ['Inspeções', 'Confira o local ou o equipamento item por item, com fotos. O que não estiver certo vira ação no plano.'],
+};
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 // Data local (não UTC): à noite o UTC já está no dia seguinte.
@@ -713,7 +716,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
 export default function OperacaoPage({ params }: { params: { id: string } }) {
   const empresaId = params.id;
   const [aba, setAba] = useState<Aba>('apr');
-  useAbaDoEndereco(ABAS.map(([a]) => a), setAba);
+  useAbaDoEndereco(ABAS, setAba);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [conteudo, setConteudo] = useState<ConteudoOperacao | null>(null);
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
@@ -761,20 +764,10 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
   const comum = { empresaId, colaboradores, recarregar, avisar, localPadrao, ghes };
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
-      <div>
-        <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">Operação diária</h1>
-        <p className="text-text/60">{empresa.razaoSocial}</p>
-      </div>
-
-      <div role="tablist" className="flex flex-wrap gap-2">
-        {ABAS.map(([valor, nome]) => (
-          <button key={valor} role="tab" aria-selected={aba === valor} onClick={() => { setAba(valor); setAviso(null); history.replaceState(null, '', `#${valor}`); }}
-            className={`rounded-card px-4 py-2 text-sm font-semibold ${aba === valor ? 'bg-primary text-white' : 'border border-border bg-white'}`}>
-            {nome}
-          </button>
-        ))}
-      </div>
+      <TopoTela empresaId={empresaId} titulo={TITULOS[aba][0]} empresa={empresa.razaoSocial} frase={TITULOS[aba][1]} />
+      {(aba === 'apr' || aba === 'pt') && (
+        <AbasDaTela abas={[['apr', 'APR'], ['pt', 'Permissão de trabalho']]} atual={aba} trocar={(a) => { setAba(a); setAviso(null); history.replaceState(null, '', `#${a}`); }} />
+      )}
 
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
       <NomesSugeridos pessoas={colaboradores.filter((c) => !c.dataDesligamento).map((c) => c.nome)} />
