@@ -26,6 +26,12 @@ export class InspecoesController {
     return this.inspecoes.listar(c, e);
   }
 
+  // Precisa vir antes das rotas com ":id".
+  @Post('empresas/:empresaId/inspecoes/etiquetas')
+  async etiquetas(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Res() res: Response) {
+    enviarPdf(res, await this.inspecoes.etiquetas(c, e), 'Etiquetas-QR.pdf');
+  }
+
   @Post('empresas/:empresaId/inspecoes')
   criar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Body() dto: CriarInspecaoDto) {
     return this.inspecoes.criar(c, e, dto);

@@ -47,7 +47,7 @@ export function DitadoVoz() {
     if (!temVoz) return;
     const entrou = (ev: FocusEvent) => {
       const el = ev.target;
-      if (el instanceof HTMLTextAreaElement && el.closest('main') && !el.readOnly && !el.disabled) { setCampo(el); setErro(''); }
+      if (el instanceof HTMLTextAreaElement && el.closest('main') && !el.readOnly && !el.disabled && !el.closest('[data-sem-ditado]')) { setCampo(el); setErro(''); }
     };
     const saiu = (ev: FocusEvent) => {
       if (ev.target instanceof HTMLTextAreaElement && !ouvindoRef.current) setTimeout(() => {

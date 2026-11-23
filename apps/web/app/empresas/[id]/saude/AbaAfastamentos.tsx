@@ -12,11 +12,14 @@ const texto = (d: FormData, k: string) => String(d.get(k) ?? '').trim();
 // Os motivos mais comuns aparecem primeiro na lista.
 const COMUNS = ['01', '03', '17', '46', '35', '53'];
 
-export function AbaAfastamentos({ empresaId, colaboradores, cats, avisar }: { empresaId: string; colaboradores: Colaborador[]; cats: Cat[]; avisar: Avisar }) {
+export function AbaAfastamentos({ empresaId, colaboradores, cats, avisar, inicial }: {
+  empresaId: string; colaboradores: Colaborador[]; cats: Cat[]; avisar: Avisar;
+  inicial?: { colaboradorId: string; catId: string; inicio: string } | null; // vindo da CAT com afastamento
+}) {
   const [lista, setLista] = useState<Afastamento[]>([]);
   const [motivos, setMotivos] = useState<[string, string][]>([]);
   const [motivo, setMotivo] = useState('01');
-  const [colab, setColab] = useState('');
+  const [colab, setColab] = useState(inicial?.colaboradorId ?? '');
   const [chave, setChave] = useState(0);
   const [voltas, setVoltas] = useState<Record<string, string>>({});
 
@@ -66,10 +69,10 @@ export function AbaAfastamentos({ empresaId, colaboradores, cats, avisar }: { em
           <Selecao id="af-motivo" rotulo="Motivo (Tabela 18 do eSocial)" value={motivo} onChange={(e) => setMotivo(e.target.value)} className="md:col-span-2">
             {ordenados.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
           </Selecao>
-          <Campo id="af-inicio" name="inicio" type="date" rotulo="Primeiro dia afastado" required />
+          <Campo id="af-inicio" name="inicio" type="date" rotulo="Primeiro dia afastado" required defaultValue={inicial?.inicio} />
           <Campo id="af-fim" name="fim" type="date" rotulo="Último dia afastado" dica="Em branco se ainda está afastado." />
           {saude && catsDoColab.length > 0 && (
-            <Selecao id="af-cat" name="cat" rotulo="CAT do acidente (se houver)">
+            <Selecao id="af-cat" name="cat" rotulo="CAT do acidente (se houver)" defaultValue={inicial?.catId}>
               <option value="">Nenhuma</option>
               {catsDoColab.map((c) => <option key={c.id} value={c.id}>CAT de {new Date(c.dataHora).toLocaleDateString('pt-BR')}</option>)}
             </Selecao>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnaliseFotoIa } from '@/lib/api';
+import { MarcarFoto } from '@/components/MarcarFoto';
 
 // Diminui a foto do celular (que pode ter 10 MB) para no máximo 1600 px, em JPG. Fica leve para enviar no 4G.
 export async function reduzirFoto(arquivo: File, max = 1600): Promise<Blob> {
@@ -23,6 +24,7 @@ export async function reduzirFoto(arquivo: File, max = 1600): Promise<Blob> {
 // Botão de foto: no celular abre a câmera; no computador, escolhe o arquivo. Mostra a miniatura.
 export function EscolherFoto({ foto, mudar, rotulo = 'Tirar foto' }: { foto: Blob | null; mudar: (b: Blob | null) => void; rotulo?: string }) {
   const [previa, setPrevia] = useState<string | null>(null);
+  const [marcando, setMarcando] = useState(false);
   const entrada = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!foto) { setPrevia(null); return; }
@@ -33,14 +35,16 @@ export function EscolherFoto({ foto, mudar, rotulo = 'Tirar foto' }: { foto: Blo
     <div className="flex flex-wrap items-center gap-3">
       <input ref={entrada} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={async (e) => { const f = e.target.files?.[0]; if (f) mudar(await reduzirFoto(f)); e.target.value = ''; }} />
-      <button type="button" onClick={() => entrada.current?.click()} className="rounded-card border border-border bg-white px-4 py-2.5 text-sm font-semibold hover:border-primary">
+      <button type="button" onClick={() => entrada.current?.click()} className="min-h-[44px] rounded-card border border-border bg-white px-4 py-2.5 text-sm font-semibold hover:border-primary">
         📷 {foto ? 'Trocar foto' : rotulo}
       </button>
       {previa && (<>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={previa} alt="Foto escolhida" className="h-16 w-16 rounded-card object-cover" />
-        <button type="button" className="text-xs text-danger" onClick={() => mudar(null)}>Tirar a foto</button>
+        <button type="button" className="min-h-[40px] text-sm font-semibold text-primary" onClick={() => setMarcando(true)}>✏️ Marcar</button>
+        <button type="button" className="min-h-[40px] text-xs text-danger" onClick={() => mudar(null)}>Tirar a foto</button>
       </>)}
+      {marcando && foto && <MarcarFoto foto={foto} cancelar={() => setMarcando(false)} pronto={(b) => { mudar(b); setMarcando(false); }} />}
     </div>
   );
 }

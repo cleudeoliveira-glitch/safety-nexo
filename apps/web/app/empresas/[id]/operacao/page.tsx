@@ -20,6 +20,7 @@ import { PassosDoForm } from '@/components/PassosDoForm';
 import { ResumoWhatsApp, resumoDds, resumoPt } from '@/components/ResumoWhatsApp';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
+  guardarFotos,
   Apr,
   buscarConteudoOperacao,
   confinados,
@@ -353,6 +354,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
   empresaId: string; colaboradores: Colaborador[]; aprs: Apr[]; permissoes: Permissao[]; conteudo: ConteudoOperacao;
   recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
 }) {
+  const [fotoPt, setFotoPt] = useState<Blob | null>(null);
   const [tipo, setTipo] = useState<TipoPt>('ALTURA');
   const [marcados, setMarcados] = useState<string[]>([]);
   const [executantes, setExecutantes] = useState<string[]>([]);
@@ -419,7 +421,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
     const form = ev.currentTarget;
     const d = new FormData(form);
     try {
-      await criarPermissao(empresaId, {
+      const nova = await criarPermissao(empresaId, {
         tipo,
         aprId: String(d.get('aprId') || '') || undefined,
         atividade: String(d.get('atividade')).trim(),
@@ -435,13 +437,19 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
         ...(comResgate && d.get('planoResgateId') ? { planoResgateId: String(d.get('planoResgateId')) } : {}),
       });
       lembrar({ 'pt.emitente': String(d.get('emitente') ?? ''), 'pt.supervisor': String(d.get('supervisorEntrada') ?? ''), 'pt.vigia': String(d.get('vigia') ?? ''), 'pt.operador': String(d.get('operador') ?? ''), 'pt.sinaleiro': String(d.get('sinaleiro') ?? '') });
+      let avisoFoto = '';
+      if (fotoPt) {
+        try { await guardarFotos(empresaId, [fotoPt], `Foto da area liberada - PT ${nova.numero}`, `${nova.atividade} · ${nova.local}`); avisoFoto = ' A foto ficou no Arquivo, na pasta Fotos.'; }
+        catch { avisoFoto = ' A foto não foi enviada; tente de novo pelo Arquivo.'; }
+        setFotoPt(null);
+      }
       form.reset();
       setPeso('');
       setCapacidade('');
       setMarcados([]);
       setExecutantes([]);
       preencherLembrados(CAMPOS_PT);
-      avisar('ok', 'Permissão emitida. Baixe o PDF para as assinaturas.');
+      avisar('ok', `Permissão emitida. Baixe o PDF para as assinaturas.${avisoFoto}`);
       await recarregar();
     } catch (e) {
       avisar('erro', (e as Error).message);
@@ -501,6 +509,10 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
                     <Link href={`/empresas/${empresaId}/confinados`} className="font-semibold text-primary underline">Espaços confinados e resgate</Link>.
                   </p>
                 )}
+              <div>
+                <p className="mb-1.5 text-sm font-semibold">Foto da área liberada (opcional)</p>
+                <EscolherFoto foto={fotoPt} mudar={setFotoPt} rotulo="Tirar foto da área" />
+              </div>
             </div> },
             ...(icamento || escavacao || confinado ? [{ titulo: icamento ? 'Dados do içamento' : escavacao ? 'Dados da escavação' : 'Medição antes da entrada', conteudo: <div className="space-y-4 md:col-span-3">
                 {icamento && (
