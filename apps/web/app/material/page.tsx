@@ -136,6 +136,12 @@ export default function PaginaMaterial() {
   );
 }
 
+// Mesmas cores dos documentos em PDF (apps/api/src/documentos/layout.ts: COR e DEGRADE),
+// para slide e documento terem a mesma cara de Safety Nexo.
+const COR_DOC = { petroleo: '#0E4A5B', agua: '#13808A', menta: '#34D399' };
+const DEGRADE_DOC = `linear-gradient(90deg, ${COR_DOC.petroleo} 0%, ${COR_DOC.agua} 55%, ${COR_DOC.menta} 100%)`;
+const FUNDO_CAPA = `radial-gradient(70% 120% at 100% 0%, rgba(52, 211, 153, 0.30), transparent 60%), linear-gradient(120deg, ${COR_DOC.petroleo} 0%, ${COR_DOC.petroleo} 25%, ${COR_DOC.agua} 100%)`;
+
 function SlideTela({ m, n }: { m: Material; n: number }) {
   const s = m.slides[n];
   const total = m.slides.length;
@@ -147,7 +153,7 @@ function SlideTela({ m, n }: { m: Material; n: number }) {
   const base = 'relative flex w-full flex-col rounded-2xl p-5 sm:p-8 xl:aspect-video xl:p-10';
 
   if (capa) return (
-    <section className={`${base} fundo-destaque min-h-[60vh] text-white sm:min-h-[420px]`}>
+    <section className={`${base} min-h-[60vh] text-white sm:min-h-[420px]`} style={{ background: FUNDO_CAPA }}>
       <Enfeite claro />
       <div className="relative flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/80">
         <span className="rounded-full bg-white/15 px-3 py-1">{m.tipo === 'palestra' ? 'Palestra' : 'Treinamento'}</span>
@@ -243,8 +249,9 @@ function Topo({ m, n, s, icone }: { m: Material; n: number; s: Material['slides'
         {String(n + 1).padStart(2, '0')}
       </span>
       <div className="min-w-0">
-        <p className="text-xs font-bold uppercase tracking-widest text-success">{m.norma} · {m.nome}</p>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: COR_DOC.agua }}>{m.norma} · {m.nome}</p>
         <h2 className="break-words text-xl font-bold leading-tight text-primary sm:text-3xl xl:text-4xl">{s.titulo}</h2>
+        <span className="mt-2 block h-1 w-16 rounded-full sm:w-20" style={{ background: DEGRADE_DOC }} aria-hidden />
       </div>
       {icone !== 'check' && <div className="absolute -right-2 -top-2 hidden w-24 sm:block xl:w-32"><SeloTema nome={icone} className="w-full" /></div>}
     </div>
@@ -272,7 +279,7 @@ function Rodape({ m, n, claro = false }: { m: Material; n: number; claro?: boole
     <div className="relative flex items-center gap-3 pt-2">
       <span className={`text-xs font-bold ${claro ? 'text-white/80' : 'text-primary'}`}>Safety Nexo</span>
       <div className={`h-1.5 flex-1 overflow-hidden rounded-full ${claro ? 'bg-white/20' : 'bg-border'}`}>
-        <div className="h-full rounded-full bg-success" style={{ width: `${((n + 1) / total) * 100}%` }} />
+        <div className="h-full rounded-full" style={{ width: `${((n + 1) / total) * 100}%`, background: DEGRADE_DOC }} />
       </div>
       <span className={`text-xs ${claro ? 'text-white/70' : 'text-text/50'}`}>{n + 1}/{total}</span>
     </div>
@@ -285,7 +292,7 @@ function Enfeite({ claro = false }: { claro?: boolean }) {
     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl" aria-hidden>
       <span className={`absolute -right-16 -top-16 h-48 w-48 rounded-full ${claro ? 'bg-white/5' : 'bg-success/5'}`} />
       <span className={`absolute -bottom-20 -left-10 h-40 w-40 rounded-full ${claro ? 'bg-menta/10' : 'bg-warning/5'}`} />
-      {!claro && <span className="absolute right-0 top-0 h-1.5 w-1/3 rounded-bl-full bg-gradient-to-l from-success to-transparent" />}
+      {!claro && <span className="absolute left-0 right-0 top-0 h-1.5" style={{ background: DEGRADE_DOC }} />}
     </div>
   );
 }
