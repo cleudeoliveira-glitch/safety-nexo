@@ -43,12 +43,25 @@ export function aetHtml(moldura: Moldura, a: AetPdf, empresa?: { razaoSocial: st
       ]),
     },
     {
-      titulo: 'Referências',
-      html: tabelaReferencias([
+      titulo: 'Base legal',
+      html: `${p('A AET é prevista na NR-17 (itens 17.3.2 e 17.3.3), que pede que a organização avalie as situações de trabalho e, quando necessário, faça a análise ergonômica aprofundada. As referências usadas são:')}${tabelaReferencias([
         ['NR-17', 'Ergonomia, item 17.3 (avaliação das situações de trabalho)'],
         ['NR-01', 'Gerenciamento de riscos ocupacionais: os resultados entram no PGR'],
         ['Manual de Aplicação da NR-17 (MTE)', 'Orientações para a análise ergonômica'],
-      ]),
+      ])}`,
+    },
+    {
+      titulo: 'Metodologia',
+      html: `${p(
+        'A análise seguiu as etapas do item 17.3.3 da NR-17. Cada etapa aparece numa seção deste documento:',
+      )}${lista([
+        '<strong>Análise da demanda:</strong> entender o que motivou o estudo (queixas, afastamentos, mudança no posto, resultado da avaliação preliminar);',
+        '<strong>Funcionamento da organização:</strong> como o trabalho é distribuído, as metas, o ritmo, as pausas e a jornada;',
+        '<strong>Observação da atividade:</strong> acompanhar o trabalho real, conversar com quem faz e registrar posturas, esforços, repetições e o mobiliário;',
+        '<strong>Diagnóstico:</strong> juntar o que foi visto e ouvido para explicar a causa do problema;',
+        '<strong>Recomendações:</strong> propor mudanças práticas, com prazo e responsável;',
+        '<strong>Restituição:</strong> apresentar os resultados aos trabalhadores e validar as soluções com eles.',
+      ])}`,
     },
     { titulo: 'Análise da demanda', html: `<p>${texto(a.demanda)}</p>` },
     { titulo: 'Funcionamento da organização, processos e atividade', html: `<p>${texto(a.funcionamento)}</p>` },
@@ -64,8 +77,19 @@ export function aetHtml(moldura: Moldura, a: AetPdf, empresa?: { razaoSocial: st
     },
     { titulo: 'Restituição dos resultados, validação e revisão com os trabalhadores', html: `<p>${texto(a.restituicao)}</p>` },
     {
-      titulo: 'Considerações finais',
-      html: p('A ergonomia melhora quando quem faz o trabalho participa das soluções. Depois de implantadas as recomendações, vale voltar ao posto, ouvir os trabalhadores e conferir se o resultado esperado aconteceu.'),
+      titulo: 'Conclusão e recomendações ergonômicas',
+      html: `<div class="destaque-conclusao">${p(
+        `A análise do posto <strong>${escape(a.posto)}</strong> identificou os pontos descritos no diagnóstico e resultou em ${a.recomendacoes.length}
+        recomendação(ões) de melhoria. Com elas implantadas nos prazos combinados, a expectativa é reduzir a sobrecarga e o desconforto de quem
+        trabalha neste posto e prevenir o adoecimento ligado à ergonomia.`,
+      )}</div>
+      ${lista([
+        'priorizar as mudanças no posto e na organização do trabalho antes de qualquer orientação individual;',
+        'envolver os trabalhadores do posto na implantação e ouvir a opinião deles depois das mudanças;',
+        'registrar a conclusão de cada recomendação no plano de ação do PGR;',
+        'voltar ao posto depois de implantadas as melhorias e conferir se o resultado esperado aconteceu;',
+        'refazer a análise se o posto, o ritmo, as metas ou a equipe mudarem.',
+      ])}`,
     },
   ]);
   return documentoHtml(

@@ -125,6 +125,47 @@ function cronogramaPgr(inicio: Date, acoes: AcaoPdf[], nrs: string[]): ItemCrono
   return itens;
 }
 
+// Conclusão montada com os números do próprio inventário e recomendações que mudam conforme o que foi encontrado.
+function conclusaoPgr(nomeEmpresa: string, ghes: GhePdf[], todos: { ghe: string; r: RiscoPdf; nivel: Nivel }[], extras: ExtrasPgr): string {
+  const conta = (n: Nivel) => todos.filter((x) => x.nivel === n).length;
+  const prioritarios = todos.filter((x) => x.nivel === 'ALTO' || x.nivel === 'CRITICO');
+  const semMedicao = todos.filter((x) => (x.r.tipo === 'FISICO' || x.r.tipo === 'QUIMICO') && x.r.tipoAvaliacao !== 'QUANTITATIVA' && !ehPsicossocial(x.r));
+  const abertas = extras.acoes.filter((a) => a.status !== 'FEITA');
+  const incompletas = abertas.filter((a) => !a.prazo || !a.responsavel);
+  const psico = todos.some((x) => ehPsicossocial(x.r));
+  const nomes = (xs: { ghe: string; r: RiscoPdf }[]) => [...new Set(xs.map((x) => `${escape(x.r.agente)} (${escape(x.ghe)})`))].slice(0, 6).join('; ');
+  const recomendacoes = [
+    prioritarios.length > 0 && `Tratar primeiro os riscos de nível alto e crítico: ${nomes(prioritarios)}. Enquanto a medida definitiva não fica pronta, a atividade deve seguir com proteção provisória e supervisão.`,
+    semMedicao.length > 0 && `Fazer a medição (avaliação quantitativa) de ${nomes(semMedicao)}, para confirmar o tamanho da exposição e dar base ao LTCAT, aos laudos e ao PCMSO.`,
+    incompletas.length > 0 && `Definir responsável e prazo para ${incompletas.length === 1 ? 'a ação que ainda está sem' : `as ${incompletas.length} ações que ainda estão sem`}. Ação sem dono e sem data costuma não sair do papel.`,
+    psico && 'Conversar com os trabalhadores sobre os fatores psicossociais apontados e combinar as mudanças com eles, antes de colocar em prática.',
+    'Apresentar este PGR aos trabalhadores e à CIPA (ou ao representante da NR-05) e guardar o registro dessa apresentação.',
+    'Manter em dia a entrega de EPI com ficha assinada, os treinamentos obrigatórios e os exames do PCMSO.',
+    `Rever o inventário sempre que mudar processo, máquina, produto ou setor, depois de qualquer acidente e, no máximo, até ${dataBr(extras.controle.proximaRevisao)}.`,
+  ];
+  return `
+    <div class="numeros">
+      <div><strong>${ghes.length}</strong><span>grupos de exposição</span></div>
+      <div><strong>${todos.length}</strong><span>riscos avaliados</span></div>
+      <div><strong>${prioritarios.length}</strong><span>em nível alto ou crítico</span></div>
+      <div><strong>${abertas.length}</strong><span>ações em aberto</span></div>
+    </div>
+    ${p(
+      `O levantamento na ${nomeEmpresa} identificou ${todos.length} risco(s) em ${ghes.length} grupo(s) de exposição: ${conta('BAIXO')} em nível baixo,
+      ${conta('MODERADO')} moderado, ${conta('ALTO')} alto e ${conta('CRITICO')} crítico.`,
+      prioritarios.length
+        ? 'Há riscos que pedem ação imediata. Eles estão no topo do plano de ação e devem ser resolvidos antes dos demais.'
+        : 'Nenhum risco ficou em nível alto ou crítico. O trabalho agora é manter as medidas funcionando e não deixar o controle afrouxar com o tempo.',
+    )}
+    <div class="destaque-conclusao">${p(
+      `Conclui-se que a ${nomeEmpresa} tem seus riscos ocupacionais identificados, avaliados e com medidas de prevenção definidas, como pede a NR-01.
+      Com o plano de ação cumprido nos prazos e o acompanhamento descrito neste programa, os riscos ficam sob controle. Se alguma medida não
+      der o resultado esperado, o risco deve ser reavaliado e o plano, ajustado.`,
+    )}</div>
+    <h3>Recomendações</h3>
+    <ol>${recomendacoes.filter(Boolean).map((r) => `<li>${r}</li>`).join('')}</ol>`;
+}
+
 export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPgr): string {
   const todos = ghes.flatMap((g) => g.riscos.map((r) => ({ ghe: g.nome, r, nivel: nivelRisco(r.severidade, r.probabilidade) })));
   const prioritarios = todos.filter((x) => x.nivel === 'ALTO' || x.nivel === 'CRITICO');
@@ -258,8 +299,11 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
       }`,
     },
     {
-      titulo: 'Referências normativas',
-      html: `${p('Este programa foi feito com base nas normas abaixo. Além da NR-01, entram as que têm relação com os riscos encontrados nesta empresa.')}${referencias}`,
+      titulo: 'Base legal',
+      html: `${p(
+        'A base deste programa é a NR-01, que obriga toda organização com empregados a gerenciar os riscos ocupacionais e a manter um PGR com inventário de riscos e plano de ação (itens 1.5.3 e 1.5.7). O capítulo V da CLT (art. 157) completa essa obrigação.',
+        'Além da NR-01, entram as normas que têm relação direta com os riscos encontrados nesta empresa:',
+      )}${referencias}`,
     },
     {
       titulo: 'Definições',
@@ -392,6 +436,7 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
         'O resultado depende de todos: da empresa, que garante os recursos; dos gestores, que fazem as ações acontecer; e de cada trabalhador, que conhece o próprio trabalho melhor do que ninguém e deve ser ouvido.',
       ),
     },
+    { titulo: 'Conclusão e recomendações', html: conclusaoPgr(nomeEmpresa, ghes, todos, extras) },
   ]);
 
   const corpo = `${secoes}
@@ -404,7 +449,7 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
     moldura,
     corpo,
     `${CSS_SECOES}${CSS_CRONOGRAMA}
-     .ghe table { font-size: 10px; } .c { text-align: center; }
+     .ghe table { font-size: 10px; } .ghe td:last-child { width: 24%; } .ghe td:nth-child(2) { width: 13%; } .c { text-align: center; }
      .matriz { width: 100%; margin-bottom: 8px; } .matriz td, .matriz th { min-width: 70px; font-size: 10px; } .matriz .pts { font-size: 9px; color: #64748b; }`,
   );
 }

@@ -71,8 +71,10 @@ export class CipaService {
           ['Emitido em', geradoEm.toLocaleDateString('pt-BR')],
         ],
         aviso: 'Feito com o Safety Nexo. Segue a NR-05.',
+        sigla: 'CIPA',
       },
       situacaoCipa(empresa),
+      empresa.razaoSocial,
     );
     return this.pdf.render(html);
   }

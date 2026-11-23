@@ -242,6 +242,18 @@ model Documento {
   @@index([empresaId])
 }
 
+// Cada PDF gerado no padrão Safety Nexo ganha um código e um QR Code no rodapé. Quem recebe o
+// documento aponta a câmera e confere na página pública /validar-documento se ele saiu do sistema.
+model DocumentoEmitido {
+  codigo      String   @id
+  titulo      String
+  empresa     String?
+  consultoria String
+  responsavel String?
+  paginas     Int?
+  emitidoEm   DateTime @default(now())
+}
+
 // NR-04 Anexo I (Quadro I): grau de risco por classe CNAE (XX.XX-X).
 // Preenchida pelo script scripts/importar-nr04, a partir do texto oficial da norma.
 model CnaeGrauRisco {

@@ -7,10 +7,11 @@ import { PdfService } from './pdf.service';
 import { LtcatService } from './ltcat.service';
 import { MapaRiscoService } from './mapa-risco.service';
 import { PgrService } from './pgr.service';
+import { ValidacaoDocumentoController } from './validacao.controller';
 
 @Module({
   imports: [LogosModule],
-  controllers: [DocumentosController],
+  controllers: [DocumentosController, ValidacaoDocumentoController],
   providers: [ContextoDocumentoService, PdfService, PgrService, PcmsoService, LtcatService, MapaRiscoService],
   exports: [ContextoDocumentoService, PdfService],
 })

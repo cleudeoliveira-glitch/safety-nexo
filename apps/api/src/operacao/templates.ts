@@ -1,4 +1,3 @@
-import { objetivoDoc } from '../documentos/secoes';
 import { documentoHtml, escape, Moldura } from '../documentos/layout';
 
 export type AssinaturaToque = { imagem: string; assinadoEm: Date; testemunha: string | null };
@@ -14,6 +13,8 @@ export function celulaAssinatura(p: Pessoa) {
 }
 const data = (d: Date) => d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 const dataHora = (d: Date) => d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+const CSS_CAMPO = `.ficha th { width: 30%; } .destaque-conclusao { background: #EEF6F7; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
+  .destaque-conclusao p { margin: 0; } .liberacao { font-weight: 600; margin-top: 8px; }`;
 const assinatura = (nome: string, papel: string) => `<div class="assinatura">${escape(nome)}<span>${escape(papel)}</span></div>`;
 
 // Lista de pessoas com coluna para assinatura: serve de ciência (APR/PT) e de presença (DDS).
@@ -49,10 +50,23 @@ export function aprHtml(moldura: Moldura, apr: { atividade: string; local: strin
   return documentoHtml(
     moldura,
     `
-    ${objetivoDoc(`A Análise Preliminar de Risco (APR) é feita antes de começar uma atividade fora da rotina ou de risco mais alto. A equipe divide o trabalho em etapas, olha o que pode dar errado em cada uma e combina as medidas de controle antes de começar. É uma ferramenta do gerenciamento de riscos da NR-01 e é pedida, por exemplo, pela NR-35 (trabalho em altura) e pela NR-33 (espaço confinado). Se as condições mudarem durante o serviço, pare e refaça a análise.`)}
+    <section class="caixa-texto">
+      <h2>Introdução</h2>
+      <p>A Análise Preliminar de Risco (APR) é feita antes de começar uma atividade fora da rotina ou de risco mais alto. A equipe divide o
+      trabalho em etapas, olha o que pode dar errado em cada uma e combina as medidas de controle antes de pôr a mão na massa.</p>
+      <h2>Objetivo</h2>
+      <p>Garantir que <strong>${escape(apr.atividade)}</strong> seja feita com os riscos conhecidos e controlados, como pede o gerenciamento de
+      riscos da NR-01 e, conforme o caso, a NR-35 (altura), a NR-33 (espaço confinado), a NR-10 (eletricidade) e a NR-12 (máquinas).</p>
+    </section>
     <section>
-      <h2>Atividade</h2>
-      <p><strong>${escape(apr.atividade)}</strong> · ${escape(apr.local)} · ${data(apr.data)}</p>
+      <h2>Descrição do serviço</h2>
+      <table class="ficha"><tbody>
+        <tr><th>Serviço</th><td><strong>${escape(apr.atividade)}</strong></td></tr>
+        <tr><th>Local</th><td>${escape(apr.local)}</td></tr>
+        <tr><th>Data</th><td>${data(apr.data)}</td></tr>
+        <tr><th>Responsável pela APR</th><td>${escape(apr.responsavel)}</td></tr>
+        <tr><th>Etapas analisadas</th><td>${apr.etapas.length}</td></tr>
+      </tbody></table>
     </section>
     ${riscosDoAmbiente(apr.ambiente)}
     <section>
@@ -69,7 +83,15 @@ export function aprHtml(moldura: Moldura, apr: { atividade: string; local: strin
       <p class="meta">Declaramos que participamos desta análise e conhecemos os riscos e as medidas de controle da atividade.</p>
       ${listaAssinaturas(equipe, 'Nenhum integrante da equipe registrado.')}
     </section>
-    <div class="assinaturas">${assinatura(apr.responsavel, 'Responsável pela APR')}</div>`,
+    <section>
+      <h2>Conclusão e liberação</h2>
+      <div class="destaque-conclusao"><p>Com as ${apr.etapas.length} etapa(s) analisadas e as medidas de controle combinadas acima, a atividade pode
+      ser feita com segurança. Ela só começa depois que todas as medidas estiverem no lugar e a equipe tiver assinado a ciência. Se as
+      condições mudarem durante o serviço, o trabalho para e esta APR é refeita.</p></div>
+      <p class="liberacao">Atividade liberada em ____/____/________ às ____:____ &nbsp;&nbsp; ( &nbsp; ) Sim &nbsp; ( &nbsp; ) Não</p>
+    </section>
+    <div class="assinaturas">${assinatura(apr.responsavel, 'Responsável pela APR')}${assinatura('', 'Responsável pela área')}</div>`,
+    CSS_CAMPO,
   );
 }
 
@@ -148,9 +170,17 @@ export function permissaoHtml(
   return documentoHtml(
     moldura,
     `
-    ${objetivoDoc(`A Permissão de Trabalho (PT) é a autorização por escrito para fazer um serviço de alto risco, com local, prazo e equipe definidos (${escape(pt.norma)}). Ela só vale depois que todas as verificações abaixo forem confirmadas, deve ficar no local enquanto o trabalho durar e precisa ser encerrada no fim do serviço ou do turno. Se algo mudar, o trabalho para e a permissão é revista.`)}
+    <section class="caixa-texto">
+      <h2>Introdução</h2>
+      <p>A Permissão de Trabalho (PT) é a autorização por escrito para fazer um serviço de alto risco, com local, prazo e equipe definidos
+      (${escape(pt.norma)}). Ela fica no local enquanto o trabalho durar.</p>
+      <h2>Objetivo</h2>
+      <p>Confirmar, antes de começar, que todas as condições de segurança estão atendidas e registrar quem está autorizado a executar o
+      serviço. Se algo mudar, o trabalho para e a permissão é revista. No fim do serviço ou do turno, ela é encerrada.</p>
+    </section>
     <section>
-      <h2>${escape(pt.tipoNome)} <span class="meta">${escape(pt.norma)}</span></h2>
+      <h2>Descrição do serviço</h2>
+      <p><strong>${escape(pt.tipoNome)}</strong> <span class="meta">${escape(pt.norma)}</span></p>
       <p><strong>Atividade:</strong> ${escape(pt.atividade)} · <strong>Local:</strong> ${escape(pt.local)}</p>
       <p><strong>Válida de</strong> ${dataHora(pt.inicio)} <strong>até</strong> ${dataHora(pt.fim)}
       ${pt.aprNumero ? ` · <strong>APR vinculada:</strong> nº ${pt.aprNumero}` : ''}</p>
@@ -172,6 +202,14 @@ export function permissaoHtml(
       <h2>${confinado ? 'Trabalhadores autorizados a entrar' : 'Executantes'}</h2>
       ${listaAssinaturas(executantes, 'Nenhum executante registrado.')}
     </section>
+    <section>
+      <h2>Conclusão e liberação</h2>
+      <div class="destaque-conclusao"><p>${
+        checklist.some((c) => !c.ok)
+          ? 'Ainda há verificações marcadas como "não". O serviço só pode ser liberado depois que elas forem resolvidas e conferidas de novo.'
+          : `Todas as verificações foram confirmadas. O serviço está liberado no local e no horário indicados acima, só para ${confinado ? 'os trabalhadores autorizados' : 'os executantes'} listados.`
+      } Qualquer mudança nas condições interrompe a liberação.</p></div>
+    </section>
     <div class="assinaturas">
       ${assinatura(pt.emitente, 'Emitente da permissão')}
       ${confinado ? `${assinatura(pt.supervisorEntrada ?? '', 'Supervisor de entrada')}${assinatura(pt.vigia ?? '', 'Vigia')}` : pt.tipo === 'ICAMENTO' ? `${assinatura(pt.detalhes?.operador ?? '', 'Operador do equipamento')}${assinatura(pt.detalhes?.sinaleiro ?? '', 'Sinaleiro')}` : assinatura('', 'Responsável pela área')}
@@ -181,7 +219,7 @@ export function permissaoHtml(
       <p>${pt.encerradaEm ? `Permissão encerrada em ${dataHora(pt.encerradaEm)}.` : 'Encerrada em ___/___/______ às ____:____. Área liberada, limpa e sem pendências.'}</p>
       <div class="assinaturas">${assinatura('', 'Responsável pelo encerramento')}</div>
     </section>`,
-    '.c { text-align: center; } .alerta { color: #EF4444; font-weight: 600; } .encerramento { margin-top: 24px; }',
+    `${CSS_CAMPO} .alerta { color: #EF4444; font-weight: 600; } .encerramento { margin-top: 24px; }`,
   );
 }
 

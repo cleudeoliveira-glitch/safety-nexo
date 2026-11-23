@@ -364,6 +364,14 @@ export async function validarCertificado(codigo: string): Promise<CertificadoVal
   return res.json();
 }
 
+export type DocumentoValidado = { codigo: string; titulo: string; empresa: string | null; consultoria: string; responsavel: string | null; paginas: number | null; emitidoEm: string };
+export async function validarDocumento(codigo: string): Promise<DocumentoValidado | null> {
+  const res = await fetch(`${API_URL}/validar-documento/${encodeURIComponent(codigo)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('Não foi possível consultar o documento agora. Tente de novo em instantes.');
+  return res.json();
+}
+
 export type AcessoEmpresa = { id: string; nome: string; email: string; createdAt: string };
 export const listarAcessos = (empresaId: string) => chamar<AcessoEmpresa[]>('GET', `/empresas/${empresaId}/acessos`);
 export type LinkSenha = { link: string; whatsapp: string; emailEnviado: boolean };
