@@ -54,6 +54,7 @@ textarea:not(.border-0):not(.border-transparent) {
   font-size: 16px; /* 16px também evita o zoom automático do iPhone ao tocar no campo */
 }
 .campo-sn.com-icone { padding-left: 2.75rem; }
+select.campo-sn { padding-right: 2.25rem; text-overflow: ellipsis; }
 .campo-sn.com-olho { padding-right: 3rem; }
 .campo-sn::placeholder,
 input::placeholder,

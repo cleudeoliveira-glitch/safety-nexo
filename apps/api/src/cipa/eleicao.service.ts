@@ -147,6 +147,13 @@ export class EleicaoCipaService {
     return this.resumir(await this.eleicao(consultoriaId, empresaId, eleicaoId));
   }
 
+  // Apaga a eleição inteira (membros, eleitores e votos pelo celular saem junto).
+  async excluir(consultoriaId: string, empresaId: string, eleicaoId: string) {
+    await this.eleicao(consultoriaId, empresaId, eleicaoId);
+    await this.prisma.cipaEleicao.delete({ where: { id: eleicaoId } });
+    return { ok: true };
+  }
+
   async removerMembro(consultoriaId: string, empresaId: string, eleicaoId: string, membroId: string) {
     const eleicao = await this.eleicao(consultoriaId, empresaId, eleicaoId);
     if (!eleicao.membros.some((m) => m.id === membroId)) throw new NotFoundException('Membro não encontrado');

@@ -23,7 +23,9 @@ import {
   listarEleicoes,
   removerMembroCipa,
   salvarArquivo,
+  excluir,
 } from '@/lib/api';
+import { BotaoExcluir } from '@/components/BotaoExcluir';
 
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—');
 const dia = (iso: string | null) => iso?.slice(0, 10) ?? '';
@@ -130,6 +132,9 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
             <div className="flex flex-wrap gap-2">
               <Documento doc="edital" nome="Edital-CIPA">Baixar edital</Documento>
               <Documento doc="inscricao" nome="Ficha-inscricao-CIPA">Baixar ficha de inscrição</Documento>
+              <BotaoExcluir rotulo="Excluir esta eleição" pergunta={`Excluir a eleição da CIPA de ${data(eleicao.eleicaoEm)}? Candidatos, votos e membros saem junto. As atas de reunião continuam.`}
+                excluir={() => excluir.eleicaoCipa(empresaId, eleicao.id)} aoTerminar={async () => { setAviso({ tipo: 'ok', texto: 'Eleição excluída.' }); await recarregar(); }}
+                aoErrar={(m) => setAviso({ tipo: 'erro', texto: m })} />
             </div>
           </div>
         ) : (

@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { Ditado, EscolherFoto, FotoProtegida, ResultadoIa } from '@/components/Foto';
+import { Ditado, FotoProtegida, ResultadoIa } from '@/components/Foto';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
+import { nivelDoRisco, PROBABILIDADES, SEVERIDADES } from '@/lib/matriz';
 import {
-  AcaoCorretiva, AnaliseFotoIa, buscarEmpresa, Cat, CATEGORIAS_CAUSA, CategoriaCausa, Empresa, Esforco, ia, Investigacao,
+  AcaoCorretiva, buscarEmpresa, Ghe, Hierarquia, listarGhes, Cat, CATEGORIAS_CAUSA, CategoriaCausa, Empresa, Esforco, ia, Investigacao,
   listarCats, NovaAcao, prevencao, Prioridade, Relato, salvarArquivo, TIPOS_RELATO,
 } from '@/lib/api';
 import { ehEmpresa } from '@/lib/sessao';
@@ -27,6 +28,14 @@ const ESFORCO: Record<Esforco, string> = { RAPIDO: 'Rápido de fazer', MEDIO: 'M
 type Coluna = AcaoCorretiva['status'];
 // Colunas em tom neutro; só uma faixa fina no topo diz a etapa (âmbar, petróleo, menta).
 const COLUNAS: [Coluna, string, string][] = [['ABERTA', 'A fazer', 'bg-[#f59e0b]'], ['ANDAMENTO', 'Em andamento', 'bg-primary'], ['FEITA', 'Concluída', 'bg-success']];
+const HIERARQUIA: Record<Hierarquia, string> = { ELIMINAR: '1. Eliminar o perigo', SUBSTITUIR: '2. Trocar por algo menos perigoso', EPC: '3. Proteção coletiva (EPC)', ADMINISTRATIVA: '4. Organização do trabalho', EPI: '5. EPI' };
+// "4x3" = gravidade 4 x chance 3: mostra o nível com a cor da matriz.
+function NivelEtiqueta({ v }: { v: string }) {
+  const [sev, prob] = v.split('x');
+  if (!prob) return <span>{v}</span>;
+  const n = nivelDoRisco(sev, prob);
+  return <span className="rounded px-1.5 py-0.5 font-semibold text-white" style={{ background: n.fundo }}>{n.nome} ({n.pontos})</span>;
+}
 const mini = (v?: 'primario') => `rounded-lg px-2.5 py-1.5 text-xs font-semibold ${v ? 'bg-primary text-white' : 'border border-border bg-white hover:border-primary'}`;
 
 // ---------- Relatos ----------
@@ -134,14 +143,13 @@ function AbaRelatos({ empresaId, empresa, consultoria, iaLigada, avisar, irParaI
 
 // ---------- Plano de ação ----------
 
-function AbaAcoes({ empresaId, empresa, consultoria, iaLigada, avisar, aoMudar }: { empresaId: string; empresa: Empresa; consultoria: boolean; iaLigada: boolean; avisar: Avisar; aoMudar: () => void }) {
+function AbaAcoes({ empresaId, empresa, consultoria, avisar, aoMudar }: { empresaId: string; empresa: Empresa; consultoria: boolean; avisar: Avisar; aoMudar: () => void }) {
   const [acoes, setAcoes] = useState<AcaoCorretiva[] | null>(null);
-  const [foto, setFoto] = useState<Blob | null>(null);
-  const [contexto, setContexto] = useState('');
-  const [analise, setAnalise] = useState<AnaliseFotoIa | null>(null);
-  const [analisando, setAnalisando] = useState(false);
+  const [ghes, setGhes] = useState<Ghe[]>([]);
+  const [avaliando, setAvaliando] = useState<string | null>(null);
   const carregar = useCallback(() => prevencao.acoes(empresaId).then(setAcoes).catch((e: Error) => avisar('erro', e.message)), [empresaId, avisar]);
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => { carregar(); listarGhes(empresaId).then(setGhes).catch(() => setGhes([])); }, [carregar, empresaId]);
+  const riscos = ghes.flatMap((g) => g.riscos.map((r) => ({ ...r, ghe: g.nome })));
 
   async function agir(f: () => Promise<unknown>, ok?: string) {
     try { await f(); if (ok) avisar('ok', ok); await carregar(); aoMudar(); } catch (e) { avisar('erro', (e as Error).message); }
@@ -151,7 +159,9 @@ function AbaAcoes({ empresaId, empresa, consultoria, iaLigada, avisar, aoMudar }
     ev.preventDefault();
     const form = ev.currentTarget; const d = new FormData(form);
     const v = (k: string) => String(d.get(k) ?? '').trim() || undefined;
-    await agir(async () => { await prevencao.criarAcao(empresaId, { descricao: v('descricao')!, local: v('local'), responsavel: v('responsavel'), prazo: v('prazo'), prioridade: v('prioridade') as Prioridade, esforco: v('esforco') as Esforco }); form.reset(); }, 'Ação incluída.');
+    const riscoId = v('riscoId');
+    const risco = riscos.find((r) => r.id === riscoId);
+    await agir(async () => { await prevencao.criarAcao(empresaId, { descricao: v('descricao')!, local: v('local') ?? risco?.ghe, responsavel: v('responsavel'), prazo: v('prazo'), prioridade: v('prioridade') as Prioridade, esforco: v('esforco') as Esforco, hierarquia: v('hierarquia') as Hierarquia | undefined, riscoId, ...(risco ? { origem: 'RISCO', origemId: risco.id, origemTexto: `Inventário de riscos · ${risco.ghe}` } : {}) }); form.reset(); }, 'Ação incluída.');
   }
 
   function concluir(a: AcaoCorretiva) {
@@ -176,17 +186,14 @@ function AbaAcoes({ empresaId, empresa, consultoria, iaLigada, avisar, aoMudar }
     agir(() => prevencao.atualizarAcao(empresaId, a.id, { responsavel, prazo: m ? `${m[3]}-${m[2]}-${m[1]}` : undefined }), 'Ação atualizada.');
   }
 
-  async function analisarFoto() {
-    if (!foto) return;
-    setAnalisando(true); setAnalise(null);
-    try { setAnalise(await ia.foto(empresaId, foto, contexto)); } catch (e) { avisar('erro', (e as Error).message); } finally { setAnalisando(false); }
-  }
-
-  function levarIa(lista: { descricao: string; prioridade: Prioridade; nr: string | null }[]) {
-    agir(async () => {
-      for (const a of lista) await prevencao.criarAcao(empresaId, { descricao: a.nr ? `${a.descricao} (${a.nr})` : a.descricao, prioridade: a.prioridade, local: contexto || undefined, origem: 'IA', origemTexto: 'Inspeção por foto (IA)' });
-      setAnalise(null); setFoto(null); setContexto('');
-    }, `${lista.length} ação(ões) incluídas.`);
+  async function avaliar(ev: React.FormEvent<HTMLFormElement>, a: AcaoCorretiva) {
+    ev.preventDefault();
+    const d = new FormData(ev.currentTarget);
+    await agir(async () => {
+      const r = await prevencao.eficacia(empresaId, a.id, { severidade: String(d.get('sev')), probabilidade: String(d.get('prob')), observacao: String(d.get('obs') ?? '') || undefined });
+      setAvaliando(null);
+      return r;
+    }, a.riscoId ? 'Eficácia registrada. O risco no inventário já foi atualizado.' : 'Eficácia registrada.');
   }
 
   const agora = new Date(hoje());
@@ -202,7 +209,7 @@ function AbaAcoes({ empresaId, empresa, consultoria, iaLigada, avisar, aoMudar }
 
   // Muda a ação de coluna. Na tela ela já pula na hora; se o servidor recusar, a lista volta como estava.
   function mover(a: AcaoCorretiva, para: Coluna) {
-    if (a.status === para || a.somenteLeitura) return;
+    if (a.status === para) return;
     if (para === 'FEITA') return concluir(a);
     setAcoes((l) => l?.map((x) => (x.id === a.id ? { ...x, status: para, feitaEm: null, feitaPor: null } : x)) ?? l);
     agir(() => prevencao.atualizarAcao(empresaId, a.id, { status: para }));
@@ -212,22 +219,40 @@ function AbaAcoes({ empresaId, empresa, consultoria, iaLigada, avisar, aoMudar }
   const card = (a: AcaoCorretiva) => (
     <li
       key={a.id}
-      draggable={!a.somenteLeitura}
+      draggable
       onDragStart={(e) => { e.dataTransfer.setData('text/plain', a.id); e.dataTransfer.effectAllowed = 'move'; setArrastando(a.id); }}
       onDragEnd={() => { setArrastando(null); setSobre(null); }}
-      className={`rounded-card border bg-white p-3 text-sm shadow-sm ${a.somenteLeitura ? 'border-border' : 'cursor-grab active:cursor-grabbing'} ${atrasada(a) ? 'border-danger/50' : 'border-border'} ${arrastando === a.id ? 'opacity-40' : ''}`}
+      className={`rounded-card border bg-white p-3 text-sm shadow-sm cursor-grab active:cursor-grabbing ${atrasada(a) ? 'border-danger/50' : 'border-border'} ${arrastando === a.id ? 'opacity-40' : ''}`}
     >
       <div className="flex flex-wrap items-center gap-1.5">
         {a.status === 'FEITA' ? <Etiqueta cor="bg-success text-white">Feita {data(a.feitaEm)}</Etiqueta> : atrasada(a) ? <Etiqueta cor="bg-danger text-white">Atrasada</Etiqueta> : null}
         {a.status !== 'FEITA' && a.prioridade === 'ALTA' && a.esforco === 'RAPIDO' && <Etiqueta cor="bg-primary text-white">Faça primeiro</Etiqueta>}
         <Etiqueta cor="bg-background">{PRIORIDADE[a.prioridade]}</Etiqueta>
         <Etiqueta cor="bg-background">{ESFORCO[a.esforco]}</Etiqueta>
+        {a.hierarquia && <Etiqueta cor={a.hierarquia === 'EPI' ? 'bg-warning/20' : 'bg-primary/10'}>{HIERARQUIA[a.hierarquia]}</Etiqueta>}
       </div>
       <p className="mt-1.5 font-semibold">{a.descricao}</p>
       <p className="mt-0.5 text-xs text-text/60">{a.local ? `${a.local} · ` : ''}{a.responsavel || 'Sem responsável'} · Prazo {data(a.prazo)}</p>
       <p className="text-xs text-text/50">{a.origemTexto ?? 'Incluída à mão'}{a.feitaPor ? ` · fechada por ${a.feitaPor}` : ''}</p>
+      {a.risco && <p className="mt-1 text-xs text-text/70">Risco: {a.risco.agente} ({a.risco.ghe}) · nível <NivelEtiqueta v={a.nivelAntes ?? `${a.risco.severidade}x${a.risco.probabilidade}`} /></p>}
+      {a.nivelDepois && (
+        <div className={`mt-1 space-y-1 rounded-card px-2 py-1.5 text-xs font-semibold ${a.eficaz ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+          <p>{a.eficaz ? 'A medida funcionou' : 'Não baixou o risco: rever a medida'}</p>
+          <p className="flex flex-wrap items-center gap-1 text-text/70">Antes <NivelEtiqueta v={a.nivelAntes ?? '?'} /> Depois <NivelEtiqueta v={a.nivelDepois} /></p>
+        </div>
+      )}
+      {a.status === 'FEITA' && !a.nivelDepois && avaliando !== a.id && <button onClick={() => setAvaliando(a.id)} className={`${mini('primario')} mt-2`}>A medida funcionou? Avaliar</button>}
+      {avaliando === a.id && (
+        <form onSubmit={(ev) => avaliar(ev, a)} className="mt-2 space-y-2 rounded-card border border-border bg-background p-2">
+          <p className="text-xs text-text/70">Como ficou o risco depois da ação?</p>
+          <select name="sev" defaultValue={a.risco?.severidade ?? '3'} className={caixa} aria-label="Gravidade depois">{SEVERIDADES.map(([v, n]) => <option key={v} value={v}>Gravidade {v} · {n}</option>)}</select>
+          <select name="prob" defaultValue="2" className={caixa} aria-label="Chance depois">{PROBABILIDADES.map(([v, n]) => <option key={v} value={v}>Chance {v} · {n}</option>)}</select>
+          <input name="obs" className={caixa} placeholder="O que você viu? (opcional)" />
+          <div className="flex gap-1.5"><button type="submit" className={mini('primario')}>Salvar</button><button type="button" onClick={() => setAvaliando(null)} className={mini()}>Cancelar</button></div>
+        </form>
+      )}
       {a.temEvidencia && <FotoProtegida carregar={() => prevencao.verEvidencia(empresaId, a.id)} rotulo="Ver foto de como ficou" />}
-      {a.somenteLeitura ? <p className="mt-1 text-xs text-text/60">Cuidada na tela do <Link className="text-primary underline" href={`/empresas/${empresaId}/psicossocial`}>psicossocial</Link>.</p> : (
+      {(
         <div className="mt-2 flex flex-wrap gap-1.5">
           {a.status === 'ABERTA' && <button onClick={() => mover(a, 'ANDAMENTO')} className={mini('primario')}>Começar →</button>}
           {a.status === 'ANDAMENTO' && <><button onClick={() => mover(a, 'ABERTA')} className={mini()}>← A fazer</button><button onClick={() => mover(a, 'FEITA')} className={mini('primario')}>Concluir ✓</button></>}
@@ -241,28 +266,23 @@ function AbaAcoes({ empresaId, empresa, consultoria, iaLigada, avisar, aoMudar }
 
   return (
     <div className="space-y-6">
-      {consultoria && (
-        <Cartao titulo="✨ Inspeção rápida por foto (IA)">
-          {!iaLigada ? <p className="text-sm text-text/60">A IA ainda não está ligada no servidor. Quando a chave da IA for configurada, este quadro passa a funcionar.</p> : (
-            <div className="space-y-3">
-              <p className="text-sm text-text/70">Tire a foto do local. A IA aponta os perigos que dá para ver, a NR, o nível de risco (matriz 5×5) e as ações. <strong>Você confere antes de usar.</strong></p>
-              <div className="flex flex-wrap items-end gap-3">
-                <EscolherFoto foto={foto} mudar={(b) => { setFoto(b); setAnalise(null); }} />
-                <input className={`${caixa} max-w-xs`} placeholder="Onde é? (ex.: área do forno)" value={contexto} onChange={(e) => setContexto(e.target.value)} />
-                <Botao disabled={!foto || analisando} onClick={analisarFoto}>{analisando ? 'A IA está olhando…' : 'Analisar'}</Botao>
-              </div>
-              {analise && <ResultadoIa analise={analise} criarAcoes={levarIa} />}
-            </div>
-          )}
-        </Cartao>
-      )}
-
       <Cartao titulo="Nova ação">
         <form className="grid gap-3 md:grid-cols-2" onSubmit={nova}>
           <Campo id="acao-descricao" name="descricao" rotulo="O que fazer" required className="md:col-span-2" placeholder="Ex.: Trocar a proteção do cilindro de massa" />
           <Campo id="acao-local" name="local" rotulo="Local" placeholder="Ex.: Produção" />
           <Campo id="acao-responsavel" name="responsavel" rotulo="Responsável" placeholder="Ex.: Sr. João (manutenção)" />
           <Campo id="acao-prazo" name="prazo" type="date" rotulo="Prazo" />
+          <Selecao id="acao-hierarquia" name="hierarquia" rotulo="Tipo de medida (ordem da NR-01)" defaultValue="">
+            <option value="">Escolha</option>
+            {Object.entries(HIERARQUIA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </Selecao>
+          {riscos.length > 0 && (
+            <Selecao id="acao-risco" name="riscoId" rotulo="Risco que esta ação controla (opcional)" defaultValue="" className="md:col-span-2">
+              <option value="">Nenhum risco do inventário</option>
+              {riscos.map((r) => <option key={r.id} value={r.id}>{r.ghe} · {r.agente} · {nivelDoRisco(r.severidade, r.probabilidade).nome}</option>)}
+            </Selecao>
+          )}
+          <p className="text-xs text-text/60 md:col-span-2">Primeiro tente tirar o perigo ou trocar por algo menos perigoso. EPI é a última opção, quando as outras não bastam. Ligando a ação a um risco, depois de feita dá para ver se ele baixou.</p>
           <div className="grid grid-cols-2 gap-3">
             <Selecao id="acao-prioridade" name="prioridade" rotulo="Prioridade" defaultValue="MEDIA">{Object.entries(PRIORIDADE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Selecao>
             <Selecao id="acao-esforco" name="esforco" rotulo="Esforço" defaultValue="MEDIO">{Object.entries(ESFORCO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Selecao>
@@ -271,7 +291,11 @@ function AbaAcoes({ empresaId, empresa, consultoria, iaLigada, avisar, aoMudar }
         </form>
       </Cartao>
 
-      <Cartao titulo="Quadro do plano de ação" acao={<Botao variante="secundario" onClick={() => agir(async () => salvarArquivo(await prevencao.pdfPlano(empresaId), `Plano-de-acao-${empresa.razaoSocial}.pdf`))}>Baixar plano em PDF</Botao>}>
+      <Cartao titulo="Quadro do plano de ação" acao={<div className="flex flex-wrap gap-2">
+        {consultoria && <Botao variante="secundario" onClick={() => agir(async () => { const r = await prevencao.acoesDosRiscos(empresaId); if (!r.criadas) throw new Error('Todos os riscos moderados ou acima já têm ação aberta.'); return r; }, 'Ações criadas a partir dos riscos do PGR. Revise o texto e o responsável de cada uma.')}>Criar ações dos riscos do PGR</Botao>}
+        <Botao variante="secundario" onClick={() => agir(async () => salvarArquivo(await prevencao.pdfPlano(empresaId), `Plano-de-acao-${empresa.razaoSocial}.pdf`))}>Baixar plano em PDF</Botao>
+      </div>}>
+        <p className="mb-2 text-xs text-text/60">Este é o plano único da empresa: aqui chegam as ações dos relatos, inspeções, investigações, psicossocial, AET e riscos do PGR. É este plano que sai no PGR.</p>
         <p className="mb-3 text-xs text-text/60">Arraste o card de uma coluna para outra, ou use os botões do card. Em cada coluna, o que vem primeiro é o mais urgente.</p>
         {acoes === null ? <p className="text-sm text-text/60">Carregando…</p> : (
           <div className="grid gap-4 md:grid-cols-3">
@@ -504,7 +528,7 @@ export default function PrevencaoPage({ params }: { params: { id: string } }) {
       </nav>
       {aviso && <div onClick={() => setAviso(null)}><Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso></div>}
       {aba === 'relatos' && <AbaRelatos {...comum} empresa={empresa} consultoria={consultoria} irParaInvestigacao={(r) => { setDeRelato(r); trocar('investigacao'); }} />}
-      {aba === 'acoes' && <AbaAcoes {...comum} empresa={empresa} consultoria={consultoria} />}
+      {aba === 'acoes' && <AbaAcoes empresaId={empresaId} avisar={avisar} aoMudar={comum.aoMudar} empresa={empresa} consultoria={consultoria} />}
       {aba === 'investigacao' && consultoria && <AbaInvestigacao {...comum} empresa={empresa} deRelato={deRelato} />}
     </main>
   );

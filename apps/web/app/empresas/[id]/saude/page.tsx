@@ -22,7 +22,12 @@ import {
   prevencao,
   RecomendacaoAet,
   salvarArquivo,
+  excluir,
 } from '@/lib/api';
+import { BotaoExcluir } from '@/components/BotaoExcluir';
+import { NomesSugeridos } from '@/components/NomesSugeridos';
+import { lembrar, ultimo } from '@/lib/lembrar';
+import { lerUsuario } from '@/lib/sessao';
 import { ehEmpresa } from '@/lib/sessao';
 import { AbaAfastamentos } from './AbaAfastamentos';
 
@@ -69,6 +74,7 @@ function AbaAet({ empresaId, lista, cliente, recarregar, avisar, baixar }: {
           .map((r) => ({ recomendacao: r.recomendacao.trim(), ...(r.prazo?.trim() ? { prazo: r.prazo.trim() } : {}), ...(r.responsavel?.trim() ? { responsavel: r.responsavel.trim() } : {}) })),
         restituicao: t('restituicao'),
       });
+      lembrar({ 'aet.responsavel': t('responsavel') });
       setRecomendacoes([vazia]);
       setChave((k) => k + 1);
       avisar('ok', 'AET salva. Clique em "Baixar AET" para gerar o PDF.');
@@ -92,7 +98,8 @@ function AbaAet({ empresaId, lista, cliente, recarregar, avisar, baixar }: {
           <form key={chave} className="grid gap-4 md:grid-cols-3" onSubmit={salvar}>
             <Campo id="aet-posto" name="posto" rotulo="Posto ou atividade analisada" required placeholder="Ex.: Balcão de atendimento" className="md:col-span-2" />
             <Campo id="aet-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
-            <Campo id="aet-resp" name="responsavel" rotulo="Responsável pela AET" required placeholder="Ex.: Cleude Oliveira" className="md:col-span-3" />
+            <Campo id="aet-resp" name="responsavel" rotulo="Responsável pela AET" required placeholder="Quem fez a análise" className="md:col-span-3" list="nomes-pessoas" defaultValue={ultimo('aet.responsavel') || lerUsuario()?.nome || ''} />
+            <NomesSugeridos />
             <Texto id="aet-demanda" name="demanda" rotulo="1. Análise da demanda" required ajuda="O que motivou a análise: queixas, afastamentos, mudança no posto, indicação do PCMSO." />
             <Texto id="aet-func" name="funcionamento" rotulo="2. Funcionamento da organização e situações de trabalho" required ajuda="Como o trabalho é feito de verdade: jornada, pausas, ritmo, metas, mobiliário, ferramentas." />
             <Texto id="aet-met" name="metodos" rotulo="3. Métodos, técnicas e ferramentas" required ajuda="Ex.: observação direta, entrevistas, questionário nórdico, RULA, REBA, filmagem." />
@@ -129,7 +136,11 @@ function AbaAet({ empresaId, lista, cliente, recarregar, avisar, baixar }: {
             {lista.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
                 <span><strong>{a.posto}</strong> · {data(a.data)} · {a.recomendacoes.length} recomendação(ões)</span>
-                <Botao variante="secundario" onClick={() => baixar(a.id, `AET-${a.posto}-${a.data.slice(0, 10)}`)}>Baixar AET</Botao>
+                <span className="flex flex-wrap gap-2">
+                  <Botao variante="secundario" onClick={() => baixar(a.id, `AET-${a.posto}-${a.data.slice(0, 10)}`)}>Baixar AET</Botao>
+                  <BotaoExcluir pergunta={`Excluir a AET de "${a.posto}" (${data(a.data)})?`}
+                    excluir={() => excluir.aet(empresaId, a.id)} aoTerminar={async () => { avisar('ok', 'AET excluída.'); await recarregar(); }} aoErrar={(m) => avisar('erro', m)} />
+                </span>
               </li>
             ))}
           </ul>
@@ -260,7 +271,13 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
                       <strong>{c.colaborador?.nome ?? 'Colaborador'}</strong> · {dataHora(c.dataHora)} · {c.naturezaLesao} ({c.parteAtingida}) ·{' '}
                       <span className={`font-semibold ${cor}`}>{rotulo}</span>
                     </span>
-                    <Botao variante="secundario" onClick={() => baixar(c.id, `CAT-${c.colaborador?.nome ?? 'acidente'}-${c.dataHora.slice(0, 10)}`)}>Baixar CAT</Botao>
+                    <span className="flex flex-wrap gap-2">
+                      <Botao variante="secundario" onClick={() => baixar(c.id, `CAT-${c.colaborador?.nome ?? 'acidente'}-${c.dataHora.slice(0, 10)}`)}>Baixar CAT</Botao>
+                      {!c.enviadaEm && (
+                        <BotaoExcluir pergunta={`Excluir a CAT de ${c.colaborador?.nome ?? 'colaborador'} (${dataHora(c.dataHora)})?`}
+                          excluir={() => excluir.cat(empresaId, c.id)} aoTerminar={async () => { avisar('ok', 'CAT excluída.'); await recarregar(); }} aoErrar={(m) => avisar('erro', m)} />
+                      )}
+                    </span>
                   </div>
                   {!c.enviadaEm && (
                     <div className="flex flex-wrap items-end gap-2">

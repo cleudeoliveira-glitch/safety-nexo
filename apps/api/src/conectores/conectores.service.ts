@@ -202,13 +202,37 @@ export class ConectoresService {
       const choca = outros.find((o) => fimAtestado(o) >= inicio);
       if (choca) throw new BadRequestException(`Já existe atestado de ${col.nome} nesses dias (a partir de ${choca.inicio.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}).`);
     }
-    return this.prisma.atestado.create({ data: { ...dto, cid: dto.cid ? dto.cid.toUpperCase() : null, inicio, empresaId } });
+    const atestado = await this.prisma.atestado.create({ data: { ...dto, cid: dto.cid ? dto.cid.toUpperCase() : null, inicio, empresaId } });
+    const afastamento = await this.afastamentoDoAtestado(atestado.id, col.id, empresaId, dto.tipo, dto.dias, inicio, fim, atestado.cid);
+    return { ...atestado, afastamentoCriado: !!afastamento };
+  }
+
+  // Atestado de mais de 15 dias por doença ou acidente vira afastamento (eSocial S-2230) sem digitar de novo.
+  // Acidente do trabalho = motivo 01; doença sem relação com o trabalho = motivo 03 (Tabela 18).
+  private async afastamentoDoAtestado(atestadoId: string, colaboradorId: string, empresaId: string, tipo: string, dias: number, inicio: Date, fim: Date, cid: string | null) {
+    if (dias <= 15 || !['DOENCA', 'ACIDENTE_TRABALHO'].includes(tipo)) return null;
+    const choca = await this.prisma.afastamento.findFirst({ where: { colaboradorId, inicio: { lte: fim }, OR: [{ fim: null }, { fim: { gte: inicio } }] } });
+    if (choca) return null;
+    const acidente = tipo === 'ACIDENTE_TRABALHO';
+    const cat = acidente ? await this.prisma.cat.findFirst({ where: { empresaId, colaboradorId, dataHora: { gte: new Date(inicio.getTime() - 7 * DIA), lte: new Date(inicio.getTime() + DIA) } }, orderBy: { dataHora: 'desc' }, select: { id: true } }) : null;
+    return this.prisma.afastamento.create({
+      data: {
+        empresaId, colaboradorId, motivo: acidente ? '01' : '03', inicio, fim, atestadoId, catId: cat?.id ?? null,
+        observacao: `Lançado a partir do atestado de ${dias} dias${cid ? ` (CID ${cid})` : ''}.`,
+      },
+    });
   }
 
   async removerAtestado(consultoriaId: string, empresaId: string, id: string) {
     await this.empresa(consultoriaId, empresaId);
     const { count } = await this.prisma.atestado.deleteMany({ where: { id, empresaId } });
     if (!count) throw new NotFoundException('Atestado não encontrado');
+    // O afastamento lançado por este atestado sai junto, se ainda não foi para o eSocial.
+    const ligados = await this.prisma.afastamento.findMany({ where: { empresaId, atestadoId: id }, select: { id: true } });
+    for (const a of ligados) {
+      const enviado = await this.prisma.eventoEsocial.findFirst({ where: { empresaId, referenciaId: a.id, status: { in: ['ENVIADO', 'PROCESSADO'] } }, select: { id: true } });
+      if (!enviado) await this.prisma.afastamento.delete({ where: { id: a.id } });
+    }
     return { ok: true };
   }
 

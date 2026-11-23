@@ -17,7 +17,7 @@ const mesAtual = () => new Date().toISOString().slice(0, 7);
 function Anel({ valor }: { valor: number | null }) {
   const r = 70, c = 2 * Math.PI * r, f = (valor ?? 0) / 100;
   return (
-    <svg viewBox="0 0 180 180" className="h-44 w-44" role="img" aria-label={`Saúde da empresa ${valor ?? '-'}%`}>
+    <svg viewBox="0 0 180 180" className="h-44 w-44" role="img" aria-label={`Em dia ${valor ?? '-'}%`}>
       <circle cx="90" cy="90" r={r} fill="none" stroke="#e5e7eb" strokeWidth="16" />
       <circle cx="90" cy="90" r={r} fill="none" stroke="#10B981" strokeWidth="16" strokeLinecap="round" strokeDasharray={`${f * c} ${c}`} transform="rotate(-90 90 90)" />
       <text x="90" y="92" textAnchor="middle" className="fill-text text-4xl font-semibold">{valor == null ? '-' : `${valor}%`}</text>
@@ -152,7 +152,7 @@ export default function SsmaPage({ params }: { params: { id: string } }) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
-        <Cartao titulo="Saúde da empresa">
+        <Cartao titulo="Em dia (média)">
           <div className="flex flex-col items-center"><Anel valor={d.saude} /><p className="mt-2 max-w-[200px] text-center text-xs text-text/60">Média dos itens em dia ao lado. Item sem registro fica de fora.</p></div>
         </Cartao>
         <Cartao titulo="O que está em dia hoje">

@@ -73,7 +73,7 @@ export default function PaginaMaterial() {
         <div ref={caixa} className="space-y-3 bg-white">
           <SlideTela m={m} n={n} />
           <div className="flex items-center justify-between gap-2 print:hidden">
-            <button onClick={() => ir(-1)} disabled={n === 0} className="rounded-card border border-border bg-white px-5 py-3 text-sm font-semibold disabled:opacity-40">← Voltar</button>
+            <button onClick={() => ir(-1)} disabled={n === 0} className="rounded-card border border-border bg-white px-4 py-3 text-sm font-semibold disabled:opacity-40 sm:px-5">← Voltar</button>
             <span className="text-sm text-text/60">{n + 1} de {m.slides.length}</span>
             <div className="flex gap-2">
               <button onClick={() => caixa.current?.requestFullscreen?.().catch(() => undefined)} className="hidden rounded-card border border-border bg-white px-4 py-3 text-sm font-semibold sm:block">Tela cheia</button>
@@ -132,17 +132,22 @@ export default function PaginaMaterial() {
 function SlideTela({ m, n }: { m: Material; n: number }) {
   const s = m.slides[n];
   const capa = n === 0;
+  // No celular e no tablet o slide cresce com o texto (nada fica cortado). No computador, formato de TV.
   return (
-    <section className={`relative flex aspect-video w-full flex-col justify-center overflow-hidden rounded-2xl p-6 sm:p-12 ${capa ? 'fundo-destaque text-white' : 'border border-border bg-white'}`}>
-      <span className={`absolute left-6 top-5 text-xs font-bold uppercase tracking-widest sm:left-12 ${capa ? 'text-white/70' : 'text-success'}`}>{m.norma}</span>
-      <span className="absolute right-6 top-5 h-2 w-16 rounded-full bg-success sm:right-12" aria-hidden />
-      <h2 className={`font-bold leading-tight ${capa ? 'text-3xl sm:text-5xl' : 'text-2xl text-primary sm:text-4xl'}`}>{s.titulo}</h2>
-      <ul className={`mt-4 space-y-2 sm:mt-8 sm:space-y-3 ${capa ? 'text-base text-white/90 sm:text-2xl' : 'text-base sm:text-2xl'}`}>
-        {s.pontos.map((p) => (
-          <li key={p} className="flex gap-3"><span className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${capa ? 'bg-menta' : 'bg-success'}`} aria-hidden /><span>{p}</span></li>
-        ))}
-      </ul>
-      <span className={`absolute bottom-4 right-6 text-xs sm:right-12 ${capa ? 'text-white/60' : 'text-text/40'}`}>{n + 1}/{m.slides.length}</span>
+    <section className={`flex min-h-[60vh] w-full flex-col overflow-hidden rounded-2xl p-5 sm:min-h-[420px] sm:p-8 xl:aspect-video xl:min-h-0 xl:p-12 ${capa ? 'fundo-destaque text-white' : 'border border-border bg-white'}`}>
+      <div className="flex items-center justify-between gap-3">
+        <span className={`text-xs font-bold uppercase tracking-widest ${capa ? 'text-white/70' : 'text-success'}`}>{m.norma}</span>
+        <span className="h-2 w-12 shrink-0 rounded-full bg-success sm:w-16" aria-hidden />
+      </div>
+      <div className="flex flex-1 flex-col justify-center py-4 sm:py-6">
+        <h2 className={`break-words font-bold leading-tight ${capa ? 'text-2xl sm:text-4xl xl:text-5xl' : 'text-xl text-primary sm:text-3xl xl:text-4xl'}`}>{s.titulo}</h2>
+        <ul className={`mt-4 space-y-2 sm:mt-8 sm:space-y-3 ${capa ? 'text-base text-white/90 sm:text-xl xl:text-2xl' : 'text-base sm:text-xl xl:text-2xl'}`}>
+          {s.pontos.map((p) => (
+            <li key={p} className="flex gap-3"><span className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full sm:mt-3 ${capa ? 'bg-menta' : 'bg-success'}`} aria-hidden /><span className="min-w-0 break-words">{p}</span></li>
+          ))}
+        </ul>
+      </div>
+      <span className={`self-end text-xs ${capa ? 'text-white/60' : 'text-text/40'}`}>{n + 1}/{m.slides.length}</span>
     </section>
   );
 }

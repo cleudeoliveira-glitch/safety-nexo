@@ -9,6 +9,10 @@ import { EscolherPessoas } from '@/components/EscolherPessoas';
 import { RoteiroDds, textoDoRoteiro } from '@/components/RoteiroDds';
 import { EscolherFoto } from '@/components/Foto';
 import { AbaChecklist } from '@/components/Inspecoes';
+import { BotaoExcluir } from '@/components/BotaoExcluir';
+import { NomesSugeridos } from '@/components/NomesSugeridos';
+import { lembrar, preencherLembrados } from '@/lib/lembrar';
+import { MODELOS_APR, modeloParaAtividade, type ModeloApr } from '@/lib/modelosApr';
 import { ehEmpresa } from '@/lib/sessao';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
@@ -53,6 +57,7 @@ import {
   ModeloChecklist,
   ia,
   prevencao,
+  excluir,
 } from '@/lib/api';
 
 type Aba = 'apr' | 'pt' | 'dds' | 'checklist';
@@ -66,8 +71,15 @@ const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZo
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 // Data local (não UTC): à noite o UTC já está no dia seguinte.
 const hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+// Caixa da etapa cresce com o texto: nada fica escondido (no celular também).
+const linhas = (t: string) => Math.min(8, Math.max(2, Math.ceil(t.length / 26) + (t.match(/\n/g)?.length ?? 0)));
 const etapaVazia = (): EtapaApr => ({ etapa: '', riscos: '', medidas: '', epis: '' });
 const caixaTexto = 'w-full rounded-card border border-border bg-background px-3 py-2 text-sm';
+// Para o campo datetime-local: agora (ou daqui a algumas horas), no fuso do aparelho.
+const agoraMais = (horas = 0) => new Date(Date.now() + horas * 3600_000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const etapasVazias = (l: EtapaApr[]) => l.every((e) => !e.etapa.trim() && !e.riscos.trim() && !e.medidas.trim() && !e.epis.trim());
+const valorDe = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value.trim() ?? '';
+const porValor = (id: string, valor: string) => { const el = document.getElementById(id) as HTMLInputElement | null; if (el) el.value = valor; };
 
 type Avisar = (tipo: 'erro' | 'ok', texto: string) => void;
 // O campo "Local" já vem com o local padrão da empresa; os setores dos GHEs aparecem como sugestão (lista "locais-empresa").
@@ -89,6 +101,40 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
   }
   const [etapas, setEtapas] = useState<EtapaApr[]>([etapaVazia()]);
   const [equipe, setEquipe] = useState<string[]>([]);
+  const [atividade, setAtividade] = useState('');
+  const [modeloUsado, setModeloUsado] = useState<string | null>(null);
+  const sugerido = modeloParaAtividade(atividade);
+  useEffect(() => { preencherLembrados({ 'apr-responsavel': 'apr.responsavel' }, ['apr-responsavel']); }, []);
+
+  // Modelo pronto: troca as etapas (pergunta antes se já tem algo escrito).
+  function usarModelo(m: ModeloApr) {
+    if (!etapasVazias(etapas) && !window.confirm(`Trocar as etapas que você já escreveu pelas do modelo "${m.nome}"?`)) return;
+    setEtapas(m.etapas.map((e) => ({ ...e })));
+    setModeloUsado(m.id);
+    if (!atividade.trim()) setAtividade(m.nome);
+    avisar('ok', `Etapas do modelo "${m.nome}" colocadas. Confira e ajuste para o local antes de salvar.`);
+  }
+
+  // EPIs que o PGR já pede para o setor, nas etapas que ainda estão sem EPI.
+  const episDoSetor = [...new Set((gheEscolhido?.riscos ?? []).flatMap((r) => (r.medidasEpi ?? '').split(/[,;\n]/)).map((x) => x.trim()).filter(Boolean))];
+  function completarEpis() {
+    const lista = episDoSetor.join(', ');
+    setEtapas(etapas.map((e) => (e.epis.trim() ? e : { ...e, epis: lista })));
+  }
+
+  // "Repetir": traz uma APR antiga para o formulário, com a data de hoje.
+  function usarComoBase(a: Apr) {
+    setAtividade(a.atividade);
+    setGheId(a.gheId ?? '');
+    porValor('apr-local', a.local);
+    porValor('apr-responsavel', a.responsavel);
+    porValor('apr-data', hoje());
+    setEquipe(a.equipe.filter((id) => colaboradores.some((c) => c.id === id)));
+    setEtapas(a.etapas.length ? a.etapas.map((e) => ({ ...e })) : [etapaVazia()]);
+    setModeloUsado(null);
+    document.getElementById('apr-atividade')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    avisar('ok', `APR nº ${a.numero} copiada para o formulário. Ajuste o que mudou e salve: ela vira uma APR nova.`);
+  }
   const mudarEtapa = (i: number, campo: keyof EtapaApr, valor: string) => setEtapas(etapas.map((e, j) => (j === i ? { ...e, [campo]: valor } : e)));
   const [iaLigada, setIaLigada] = useState(false);
   const [fotoApr, setFotoApr] = useState<Blob | null>(null);
@@ -97,12 +143,11 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
   useEffect(() => { if (!ehEmpresa()) ia.status().then((x) => setIaLigada(x.ligada)).catch(() => setIaLigada(false)); }, []);
 
   async function sugerirComIa() {
-    const atividade = (document.getElementById('apr-atividade') as HTMLInputElement | null)?.value.trim() ?? '';
-    const local = (document.getElementById('apr-local') as HTMLInputElement | null)?.value.trim() ?? '';
-    if (atividade.length < 3) return avisar('erro', 'Escreva a atividade primeiro.');
+    const local = valorDe('apr-local');
+    if (atividade.trim().length < 3) return avisar('erro', 'Escreva a atividade primeiro.');
     setPensando(true);
     try {
-      const r = await ia.apr(empresaId, atividade, local, fotoApr);
+      const r = await ia.apr(empresaId, atividade.trim(), local, fotoApr);
       if (r.etapas.length) setEtapas(r.etapas);
       setDicaIa([r.permissoes.length ? `Pede permissão de trabalho: ${r.permissoes.join(', ')}.` : '', r.observacao ?? ''].filter(Boolean).join(' ') || null);
       avisar('ok', 'A IA sugeriu as etapas. Confira e ajuste antes de salvar.');
@@ -115,7 +160,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
     const d = new FormData(form);
     try {
       await criarApr(empresaId, {
-        atividade: String(d.get('atividade')).trim(),
+        atividade: atividade.trim(),
         local: String(d.get('local')).trim(),
         gheId: gheId || null,
         data: String(d.get('data')),
@@ -123,10 +168,14 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
         equipe,
         etapas: etapas.filter((e) => e.etapa.trim()),
       });
+      lembrar({ 'apr.responsavel': String(d.get('responsavel')) });
       form.reset();
       setEtapas([etapaVazia()]);
       setEquipe([]);
       setGheId('');
+      setAtividade('');
+      setModeloUsado(null);
+      preencherLembrados({ 'apr-responsavel': 'apr.responsavel' });
       setFotoApr(null); setDicaIa(null);
       avisar('ok', 'APR salva. Baixe o PDF para colher as assinaturas da equipe.');
       await recarregar();
@@ -140,7 +189,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
       <Cartao titulo="Nova APR">
         <form className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-2">
-            <Campo id="apr-atividade" name="atividade" rotulo="Atividade" required placeholder="Ex.: Troca de telhas do galpão" />
+            <Campo id="apr-atividade" name="atividade" rotulo="Atividade" required placeholder="Ex.: Troca de telhas do galpão" value={atividade} onChange={(e) => setAtividade(e.target.value)} />
             {ghes.length > 0 && (
               <Selecao id="apr-ghe" rotulo="Setor (GHE) onde vai ser feita" value={gheId} onChange={(e) => escolherSetor(e.target.value)}
                 title="Os riscos que o PGR já tem para esse setor entram na APR como riscos do ambiente.">
@@ -150,8 +199,19 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
             )}
             <Campo id="apr-local" name="local" rotulo="Local" required placeholder="Ex.: Galpão de estoque" defaultValue={localPadrao} list="locais-empresa" />
             <Campo id="apr-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
-            <Campo id="apr-responsavel" name="responsavel" rotulo="Responsável" required placeholder="Ex.: Cleude Oliveira" />
+            <Campo id="apr-responsavel" name="responsavel" rotulo="Responsável" required placeholder="Quem elaborou a APR" list="nomes-pessoas" />
+            <Selecao id="apr-modelo" rotulo="Começar de um modelo pronto (opcional)" value="" onChange={(e) => { const m = MODELOS_APR.find((x) => x.id === e.target.value); if (m) usarModelo(m); }}>
+              <option value="">Escolha a atividade parecida</option>
+              {MODELOS_APR.map((m) => <option key={m.id} value={m.id}>{m.nome} ({m.norma})</option>)}
+            </Selecao>
           </div>
+
+          {sugerido && sugerido.id !== modeloUsado && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-primary/30 bg-primary/5 p-3 text-sm">
+              <p>Tem um modelo pronto para essa atividade: <strong>{sugerido.nome}</strong> ({sugerido.norma}), com {sugerido.etapas.length} etapas, riscos, medidas e EPIs.</p>
+              <Botao type="button" variante="secundario" onClick={() => usarModelo(sugerido)}>Usar o modelo</Botao>
+            </div>
+          )}
 
           {gheEscolhido && (
             <div className="rounded-card border border-border bg-background p-3 text-sm">
@@ -164,6 +224,11 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
                 </ul>
               ) : <p className="text-text/60">Nenhum risco cadastrado para este setor ainda.</p>}
               <p className="mt-1 text-xs text-text/60">Eles saem no PDF da APR. Nas etapas abaixo, escreva os riscos próprios desta atividade.</p>
+              {episDoSetor.length > 0 && (
+                <button type="button" className="mt-2 text-sm font-semibold text-primary hover:underline" onClick={completarEpis}>
+                  Colocar os EPIs do setor nas etapas sem EPI ({episDoSetor.join(', ')})
+                </button>
+              )}
             </div>
           )}
 
@@ -183,10 +248,10 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
             <div className="space-y-3">
               {etapas.map((e, i) => (
                 <div key={i} className="grid gap-2 rounded-card border border-border p-3 md:grid-cols-4">
-                  <textarea aria-label={`Etapa ${i + 1}`} className={caixaTexto} rows={2} placeholder={`Etapa ${i + 1}: o que será feito`} value={e.etapa} onChange={(v) => mudarEtapa(i, 'etapa', v.target.value)} />
-                  <textarea aria-label={`Riscos da etapa ${i + 1}`} className={caixaTexto} rows={2} placeholder="Riscos (ex.: queda, choque)" value={e.riscos} onChange={(v) => mudarEtapa(i, 'riscos', v.target.value)} />
-                  <textarea aria-label={`Medidas da etapa ${i + 1}`} className={caixaTexto} rows={2} placeholder="Medidas de controle" value={e.medidas} onChange={(v) => mudarEtapa(i, 'medidas', v.target.value)} />
-                  <textarea aria-label={`EPIs da etapa ${i + 1}`} className={caixaTexto} rows={2} placeholder="EPIs" value={e.epis} onChange={(v) => mudarEtapa(i, 'epis', v.target.value)} />
+                  <textarea aria-label={`Etapa ${i + 1}`} className={caixaTexto} rows={linhas(e.etapa)} placeholder={`Etapa ${i + 1}: o que será feito`} value={e.etapa} onChange={(v) => mudarEtapa(i, 'etapa', v.target.value)} />
+                  <textarea aria-label={`Riscos da etapa ${i + 1}`} className={caixaTexto} rows={linhas(e.riscos)} placeholder="Riscos (ex.: queda, choque)" value={e.riscos} onChange={(v) => mudarEtapa(i, 'riscos', v.target.value)} />
+                  <textarea aria-label={`Medidas da etapa ${i + 1}`} className={caixaTexto} rows={linhas(e.medidas)} placeholder="Medidas de controle" value={e.medidas} onChange={(v) => mudarEtapa(i, 'medidas', v.target.value)} />
+                  <textarea aria-label={`EPIs da etapa ${i + 1}`} className={caixaTexto} rows={linhas(e.epis)} placeholder="EPIs" value={e.epis} onChange={(v) => mudarEtapa(i, 'epis', v.target.value)} />
                   {etapas.length > 1 && (
                     <button type="button" className="text-left text-xs text-danger md:col-span-4" onClick={() => setEtapas(etapas.filter((_, j) => j !== i))}>Remover etapa</button>
                   )}
@@ -207,7 +272,12 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
             {aprs.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
                 <span><strong>Nº {a.numero}</strong> · {a.atividade} · {a.local} · {data(a.data)} · {a.etapas.length} etapa(s)</span>
-                <Botao variante="secundario" onClick={() => baixar(a.id, `APR-${a.numero}`)}>Baixar APR</Botao>
+                <span className="flex flex-wrap gap-2">
+                  <Botao variante="secundario" onClick={() => baixar(a.id, `APR-${a.numero}`)}>Baixar APR</Botao>
+                  <Botao variante="secundario" onClick={() => usarComoBase(a)} title="Copia esta APR para o formulário, com a data de hoje">Repetir</Botao>
+                  <BotaoExcluir pergunta={`Excluir a APR nº ${a.numero} (${a.atividade})? As permissões ligadas a ela continuam guardadas.`}
+                    excluir={() => excluir.apr(empresaId, a.id)} aoTerminar={async () => { avisar('ok', `APR nº ${a.numero} excluída.`); await recarregar(); }} aoErrar={(m) => avisar('erro', m)} />
+                </span>
               </li>
             ))}
           </ul>
@@ -299,6 +369,19 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
     return undefined;
   }
   const pendentes = itens.length - marcados.length;
+  const CAMPOS_PT = { 'pt-emitente': 'pt.emitente', 'pt-supervisor': 'pt.supervisor', 'pt-vigia': 'pt.vigia', 'pt-operador': 'pt.operador', 'pt-sinaleiro': 'pt.sinaleiro' };
+  useEffect(() => { preencherLembrados(CAMPOS_PT, ['pt-emitente']); }, [tipo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Escolheu a APR: atividade, local e equipe vêm dela, e o tipo de PT é sugerido pela atividade.
+  function escolherApr(id: string) {
+    const a = aprs.find((x) => x.id === id);
+    if (!a) return;
+    porValor('pt-atividade', a.atividade);
+    porValor('pt-local', a.local);
+    setExecutantes(a.equipe.filter((c) => colaboradores.some((x) => x.id === c)));
+    const tipoSugerido = modeloParaAtividade(a.atividade)?.pt;
+    if (tipoSugerido && tipoSugerido !== tipo && conteudo.tiposPt[tipoSugerido]) { setTipo(tipoSugerido); setMarcados([]); }
+  }
 
   async function salvar(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
@@ -320,11 +403,13 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
         ...(confinado && d.get('espacoId') ? { espacoId: String(d.get('espacoId')) } : {}),
         ...(comResgate && d.get('planoResgateId') ? { planoResgateId: String(d.get('planoResgateId')) } : {}),
       });
+      lembrar({ 'pt.emitente': String(d.get('emitente') ?? ''), 'pt.supervisor': String(d.get('supervisorEntrada') ?? ''), 'pt.vigia': String(d.get('vigia') ?? ''), 'pt.operador': String(d.get('operador') ?? ''), 'pt.sinaleiro': String(d.get('sinaleiro') ?? '') });
       form.reset();
       setPeso('');
       setCapacidade('');
       setMarcados([]);
       setExecutantes([]);
+      preencherLembrados(CAMPOS_PT);
       avisar('ok', 'Permissão emitida. Baixe o PDF para as assinaturas.');
       await recarregar();
     } catch (e) {
@@ -343,18 +428,19 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
             <Selecao id="pt-tipo" rotulo="Tipo de trabalho" value={tipo} onChange={(e) => { setTipo(e.target.value as TipoPt); setMarcados([]); }}>
               {Object.entries(conteudo.tiposPt).map(([valor, t]) => <option key={valor} value={valor}>{t.nome} ({t.norma})</option>)}
             </Selecao>
-            <Selecao id="pt-apr" name="aprId" rotulo="APR da atividade">
+            <Selecao id="pt-apr" name="aprId" rotulo="APR da atividade" onChange={(e) => escolherApr(e.target.value)}
+              ajuda={{ oQueE: 'A APR que analisou este trabalho.', exemplo: 'Ao escolher, a atividade, o local e a equipe já vêm preenchidos.' }}>
               <option value="">Sem APR vinculada</option>
               {aprs.map((a) => <option key={a.id} value={a.id}>Nº {a.numero} · {a.atividade}</option>)}
             </Selecao>
             <Campo id="pt-atividade" name="atividade" rotulo="Atividade" required placeholder="Ex.: Troca de telhas" />
             <Campo id="pt-local" name="local" rotulo="Local" required placeholder="Ex.: Galpão" defaultValue={localPadrao} list="locais-empresa" />
-            <Campo id="pt-inicio" name="inicio" type="datetime-local" rotulo="Válida a partir de" required />
-            <Campo id="pt-fim" name="fim" type="datetime-local" rotulo="Válida até" required />
-            <Campo id="pt-emitente" name="emitente" rotulo="Emitente" required placeholder="Quem libera o trabalho" />
+            <Campo id="pt-inicio" name="inicio" type="datetime-local" rotulo="Válida a partir de" required defaultValue={agoraMais(0)} />
+            <Campo id="pt-fim" name="fim" type="datetime-local" rotulo="Válida até" required defaultValue={agoraMais(8)} dica="Já vem com um turno (8 horas). PT não passa do turno." />
+            <Campo id="pt-emitente" name="emitente" rotulo="Emitente" required placeholder="Quem libera o trabalho" list="nomes-pessoas" />
             {confinado && <>
-              <Campo id="pt-supervisor" name="supervisorEntrada" rotulo="Supervisor de entrada" required placeholder="Quem autoriza a entrada" />
-              <Campo id="pt-vigia" name="vigia" rotulo="Vigia" required placeholder="Quem fica do lado de fora" />
+              <Campo id="pt-supervisor" name="supervisorEntrada" rotulo="Supervisor de entrada" required placeholder="Quem autoriza a entrada" list="nomes-pessoas" />
+              <Campo id="pt-vigia" name="vigia" rotulo="Vigia" required placeholder="Quem fica do lado de fora" list="nomes-pessoas" />
               <Selecao id="pt-espaco" name="espacoId" rotulo="Espaço confinado (do cadastro)">
                 <option value="">{espacos.length ? 'Escolha o espaço' : 'Nenhum espaço cadastrado ainda'}</option>
                 {espacos.map((x) => <option key={x.id} value={x.id}>{x.codigo} · {x.nome}</option>)}
@@ -380,8 +466,8 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
               <Campo id="pt-equip" name="equipamento" rotulo="Equipamento" placeholder="Ex.: Caminhão munck 20 t" />
               <Campo id="pt-peso" rotulo="Peso da carga com acessórios (kg)" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="Ex.: 1200" />
               <Campo id="pt-capacidade" rotulo="Capacidade no raio de trabalho (kg)" inputMode="decimal" value={capacidade} onChange={(e) => setCapacidade(e.target.value)} placeholder="Ex.: 3000" />
-              <Campo id="pt-operador" name="operador" rotulo="Operador" placeholder="Nome do operador" />
-              <Campo id="pt-sinaleiro" name="sinaleiro" rotulo="Sinaleiro (rigger)" placeholder="Nome do sinaleiro" />
+              <Campo id="pt-operador" name="operador" rotulo="Operador" placeholder="Nome do operador" list="nomes-pessoas" />
+              <Campo id="pt-sinaleiro" name="sinaleiro" rotulo="Sinaleiro (rigger)" placeholder="Nome do sinaleiro" list="nomes-pessoas" />
               {usoCarga !== null && (
                 <p className={`self-end pb-3 text-sm font-semibold ${usoCarga > 100 ? 'text-danger' : usoCarga > 75 ? 'text-[#c2410c]' : 'text-success'}`}>
                   {usoCarga > 100 ? `A carga passa da capacidade (${usoCarga}%). Não pode içar.` : usoCarga > 75 ? `Usa ${usoCarga}% da capacidade: faça o plano de rigging.` : `Usa ${usoCarga}% da capacidade.`}
@@ -411,6 +497,9 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
           <fieldset className="rounded-card border border-border p-3">
             <legend className="px-1 text-sm font-semibold">Verificações: {conteudo.tiposPt[tipo].nome}</legend>
             <p className="mb-2 text-xs text-text/60">Marque o que foi conferido. Os itens são uma sugestão; o que ficar desmarcado sai como &quot;não&quot; no PDF.</p>
+            <button type="button" className="mb-2 text-xs font-semibold text-primary" onClick={() => setMarcados(pendentes ? [...itens] : [])}>
+              {pendentes ? 'Conferi tudo: marcar todos' : 'Desmarcar todos'}
+            </button>
             <div className="space-y-1.5">
               {itens.map((item) => (
                 <label key={item} className="flex items-start gap-2 text-sm">
@@ -454,6 +543,8 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
                       }}>Encerrar</Botao>
                     )}
                     <Botao variante="secundario" onClick={() => baixar(p.id, `Permissao-${p.numero}`)}>Baixar PT</Botao>
+                    <BotaoExcluir pergunta={`Excluir a permissão de trabalho nº ${p.numero} (${p.atividade})?`}
+                      excluir={() => excluir.permissao(empresaId, p.id)} aoTerminar={async () => { avisar('ok', `Permissão nº ${p.numero} excluída.`); await recarregar(); }} aoErrar={(m) => avisar('erro', m)} />
                   </span>
                 </li>
               );
@@ -479,6 +570,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
   const [sugestoes, setSugestoes] = useState<SugestoesDds | null>(null);
   useEffect(() => { sugestoesDds(empresaId).then(setSugestoes).catch(() => setSugestoes(null)); }, [empresaId, lista.length]);
   useEffect(() => { rosto.config().then((c) => setRostoDds(c.ativo && c.usos.DDS)).catch(() => setRostoDds(false)); }, []);
+  useEffect(() => { preencherLembrados({ 'dds-ministrante': 'dds.ministrante' }, ['dds-ministrante']); }, []);
   const categorias = [...new Set(conteudo.temasDds.map((t) => t.categoria))].sort();
   const feitos = new Set(lista.map((d) => d.tema));
   const semAcento = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -515,10 +607,12 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
         ...(String(d.get('local') ?? '').trim() ? { local: String(d.get('local')).trim() } : {}),
         participantes,
       });
+      lembrar({ 'dds.ministrante': String(d.get('ministrante')) });
       form.reset();
       setTema('');
       setTexto('');
       setParticipantes([]);
+      preencherLembrados({ 'dds-ministrante': 'dds.ministrante' });
       avisar('ok', 'DDS registrado. Baixe a lista de presença para assinatura.');
       await recarregar();
     } catch (e) {
@@ -582,7 +676,7 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
             <Campo id="dds-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
             <Campo id="dds-duracao" name="duracaoMin" type="number" min={1} rotulo="Duração (minutos)" required defaultValue={10} />
             <Campo id="dds-local" name="local" rotulo="Local" placeholder="Ex.: Pátio de carga" defaultValue={localPadrao} list="locais-empresa" />
-            <Campo id="dds-ministrante" name="ministrante" rotulo="Ministrante" required placeholder="Quem conduziu" />
+            <Campo id="dds-ministrante" name="ministrante" rotulo="Ministrante" required placeholder="Quem conduziu" list="nomes-pessoas" />
           </div>
           <EscolherPessoas titulo="Participantes" colaboradores={colaboradores} marcados={participantes} mudar={setParticipantes} />
           <div className="flex justify-end"><Botao type="submit">Registrar DDS</Botao></div>
@@ -599,6 +693,8 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
                   <Link href={`/empresas/${empresaId}/lista/dds/${d.id}`} className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white">Lista para assinar</Link>
                   {rostoDds && <Botao variante="secundario" onClick={() => setCamera(d)}>Presença pelo rosto</Botao>}
                   <Botao variante="secundario" onClick={() => baixar(d.id, `DDS-${d.data.slice(0, 10)}`)}>Baixar lista de presença</Botao>
+                  <BotaoExcluir pergunta={`Excluir o DDS "${d.tema}" de ${data(d.data)}? As assinaturas da lista de presença saem junto.`}
+                    excluir={() => excluir.dds(empresaId, d.id)} aoTerminar={async () => { avisar('ok', 'DDS excluído.'); await recarregar(); }} aoErrar={(m) => avisar('erro', m)} />
                 </span>
               </li>
             ))}
@@ -681,6 +777,7 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
       </div>
 
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
+      <NomesSugeridos pessoas={colaboradores.filter((c) => !c.dataDesligamento).map((c) => c.nome)} />
       <datalist id="locais-empresa">{[...new Set([localPadrao, ...setores].filter(Boolean))].map((l) => <option key={l} value={l} />)}</datalist>
 
       {aba === 'apr' && <AbaApr {...comum} aprs={aprs} baixar={baixador('aprs')} />}

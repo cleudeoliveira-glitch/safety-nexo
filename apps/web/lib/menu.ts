@@ -50,6 +50,7 @@ export const MENU: GrupoMenu[] = [
       ]),
       assunto('Documentos', 'documento', [
         { nome: 'Emitir documento', rota: '/emitir', geral: true },
+        { nome: 'Conferência dos documentos', rota: '/conferencia', soConsultoria: true },
         { nome: 'Arquivo', rota: '/arquivo' },
         { nome: 'Assinaturas', rota: '/assinaturas', recurso: 'assinatura' },
         { nome: 'Histórico de alterações', rota: '/historico', soConsultoria: true },

@@ -42,6 +42,11 @@ export class EleicaoCipaController {
     return this.eleicoes.atualizarMembro(c, e, id, membroId, dto);
   }
 
+  @Delete(':eleicaoId')
+  excluir(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('eleicaoId') id: string) {
+    return this.eleicoes.excluir(c, e, id);
+  }
+
   @Delete(':eleicaoId/membros/:membroId')
   removerMembro(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('eleicaoId') id: string, @Param('membroId') membroId: string) {
     return this.eleicoes.removerMembro(c, e, id, membroId);

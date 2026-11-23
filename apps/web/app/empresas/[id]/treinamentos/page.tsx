@@ -23,7 +23,12 @@ import {
   removerParticipante,
   salvarArquivo,
   Turma,
+  excluir,
 } from '@/lib/api';
+import { BotaoExcluir } from '@/components/BotaoExcluir';
+import { NomesSugeridos } from '@/components/NomesSugeridos';
+import { lembrar, ultimo } from '@/lib/lembrar';
+import { lerUsuario } from '@/lib/sessao';
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 // Data local (não UTC): à noite o UTC já está no dia seguinte.
@@ -81,6 +86,8 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
         qualificacao: texto('qualificacao'),
         responsavelTecnico: texto('responsavelTecnico'),
       });
+      lembrar({ 'turma.instrutor': texto('instrutor'), 'turma.rt': texto('responsavelTecnico') });
+      lembrar({ 'turma.qualificacao': texto('qualificacao') }, false);
       if (participantes.length) await adicionarParticipantes(empresaId, turma.id, participantes);
       setModelo(vazio);
       setParticipantes([]);
@@ -125,7 +132,7 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <div>
         <Link href="/" className="text-sm text-primary">← Voltar ao painel</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">Pessoas e cultura</h1>
+        <h1 className="mt-4 text-3xl font-semibold text-primary">Treinamentos</h1>
         <p className="text-text/60">
           {empresa.razaoSocial} · <Link href={`/empresas/${empresaId}#cipa`} className="text-primary hover:underline">CIPA e eleição →</Link> · <Link href={`/empresas/${empresaId}/cultura`} className="text-primary hover:underline">SIPAT e 5S →</Link>
         </p>
@@ -161,11 +168,12 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
             <Campo id="tr-local" name="local" rotulo="Local" required placeholder="Ex.: Sala de treinamento" defaultValue={empresa?.localPadrao ?? ''} />
             <Campo id="tr-inicio" name="inicio" type="date" rotulo="Início" required defaultValue={hoje()} />
             <Campo id="tr-fim" name="fim" type="date" rotulo="Fim" required defaultValue={hoje()} />
-            <Campo id="tr-instrutor" name="instrutor" rotulo="Instrutor(a)" required placeholder="Ex.: Cleude Oliveira" />
-            <Campo id="tr-qualificacao" name="qualificacao" rotulo="Qualificação do instrutor" required placeholder="Ex.: Engenheira de Segurança do Trabalho"
+            <Campo id="tr-instrutor" name="instrutor" rotulo="Instrutor(a)" required placeholder="Quem vai dar o treinamento" list="nomes-pessoas" defaultValue={ultimo('turma.instrutor') || lerUsuario()?.nome || ''} />
+            <Campo id="tr-qualificacao" name="qualificacao" rotulo="Qualificação do instrutor" required placeholder="Ex.: Engenheira de Segurança do Trabalho" defaultValue={ultimo('turma.qualificacao')}
               className="md:col-span-2" />
-            <Campo id="tr-rt" name="responsavelTecnico" rotulo="Responsável técnico" required placeholder="Quem assina pelo treinamento" />
+            <Campo id="tr-rt" name="responsavelTecnico" rotulo="Responsável técnico" required placeholder="Quem assina pelo treinamento" list="nomes-pessoas" defaultValue={ultimo('turma.rt') || lerUsuario()?.nome || ''} />
           </div>
+          <NomesSugeridos />
           <div>
             <label htmlFor="tr-conteudo" className="mb-1.5 block text-sm font-semibold">Conteúdo programático (um item por linha)</label>
             <textarea id="tr-conteudo" name="conteudo" rows={6} required defaultValue={modelo.conteudo.join('\n')}
@@ -199,6 +207,9 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
                       {rostoTurma && <Botao variante="secundario" onClick={() => setCamera(t)}>Presença pelo rosto</Botao>}
                       <Botao variante="secundario" onClick={() => baixar(t, 'lista')}>Lista de presença</Botao>
                       <Botao variante="secundario" onClick={() => baixar(t, 'certificados')} disabled={!t.participantes.length}>Certificados</Botao>
+                      <BotaoExcluir pergunta={`Excluir a turma "${t.nome}" (${data(t.inicio)})? A lista de presença e os códigos dos certificados saem junto.`}
+                        excluir={() => excluir.turma(empresaId, t.id)} aoTerminar={async () => { setAviso({ tipo: 'ok', texto: 'Turma excluída.' }); await recarregar(); }}
+                        aoErrar={(m) => setAviso({ tipo: 'erro', texto: m })} />
                     </div>
                   </div>
                   {t.participantes.length > 0 && (

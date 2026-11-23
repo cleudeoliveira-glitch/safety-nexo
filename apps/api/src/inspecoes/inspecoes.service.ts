@@ -39,6 +39,14 @@ export class InspecoesService {
     return i;
   }
 
+  // Apaga a inspeção e as fotos guardadas dela.
+  async excluir(consultoriaId: string, empresaId: string, id: string) {
+    const i = await this.achar(consultoriaId, empresaId, id);
+    await Promise.all(fotosDe(i.fotos).map((f) => guarda.apagar(f.caminho).catch(() => undefined)));
+    await this.prisma.inspecao.delete({ where: { id: i.id } });
+    return { ok: true };
+  }
+
   // O que vai para a tela: sem o caminho interno das fotos.
   // O resumo traz a conformidade e a multa estimada (NR-28) pelo número de empregados da empresa.
   private async paraTela<T extends { empresaId: string; modelo: string; itens: unknown; fotos: unknown }>(i: T, empregados?: number) {

@@ -1,3 +1,4 @@
+import { apagarPresencas, conferirApagado } from '../common/exclusao';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import * as QRCode from 'qrcode';
@@ -62,6 +63,15 @@ export class TreinamentosService {
       validade: validadeDaTurma(turma),
       participantes: turma.participantes.map((p) => ({ id: p.id, codigo: p.codigo, colaboradorId: p.colaboradorId, nome: p.colaborador.nome, cargo: p.colaborador.cargo })),
     };
+  }
+
+  // Apaga a turma com a lista de presença. Os certificados já baixados deixam de ser validados pelo QR.
+  async excluir(consultoriaId: string, empresaId: string, turmaId: string) {
+    await this.empresa(consultoriaId, empresaId);
+    const { count } = await this.prisma.turma.deleteMany({ where: { id: turmaId, empresaId } });
+    conferirApagado(count, 'Este treinamento não foi encontrado. Talvez já tenha sido excluído.');
+    await apagarPresencas(this.prisma, 'TREINAMENTO', turmaId);
+    return { ok: true };
   }
 
   async listar(consultoriaId: string, empresaId: string) {

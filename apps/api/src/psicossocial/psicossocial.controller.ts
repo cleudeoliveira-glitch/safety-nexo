@@ -18,6 +18,7 @@ export class PsicossocialController {
   @Get(':id/resultado') resultado(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.ps.resultado(c, e, id); }
   @Post(':id/acoes') acao(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() dto: AcaoDto) { return this.ps.criarAcao(c, e, id, dto); }
   @Put(':id/acoes/:acaoId') marcar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Param('acaoId') a: string, @Body() dto: AcaoFeitaDto) { return this.ps.marcarAcao(c, e, id, a, dto.feita); }
+  @Delete(':id') excluir(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.ps.excluir(c, e, id); }
   @Delete(':id/acoes/:acaoId') remover(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Param('acaoId') a: string) { return this.ps.removerAcao(c, e, id, a); }
   @Put(':id/tecnica') tecnica(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() dto: TecnicaDto) { return this.ps.salvarTecnica(c, e, id, dto); }
   @Post(':id/enviar-pgr') enviarPgr(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.ps.enviarAoPgr(c, e, id); }

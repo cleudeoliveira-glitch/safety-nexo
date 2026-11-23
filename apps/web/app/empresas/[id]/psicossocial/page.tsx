@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { AvaliacaoPs, buscarEmpresa, CelulaPs, DimensaoPs, Empresa, LinhaPs, NivelPs, psicossocial, QuestionarioPs, ResultadoPs } from '@/lib/api';
+import { AvaliacaoPs, buscarEmpresa, CelulaPs, DimensaoPs, Empresa, LinhaPs, NivelPs, psicossocial, QuestionarioPs, ResultadoPs, excluir } from '@/lib/api';
 
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—');
 const Etiqueta = ({ cor, children }: { cor: string; children: React.ReactNode }) => <span className={`rounded-full px-3 py-1 text-xs font-semibold ${cor}`}>{children}</span>;
@@ -150,6 +150,7 @@ function Resultado({ empresaId, r, agir }: { empresaId: string; r: ResultadoPs; 
       )}
 
       <Cartao titulo="Plano de ação">
+        <p className="mb-3 text-xs text-text/60">Estas ações ficam também no <a className="text-primary underline" href={`/empresas/${empresaId}/prevencao#acoes`}>plano de ação da empresa</a>, junto com as outras. É um plano só, e é ele que sai no PGR.</p>
         {r.acoes.length > 0 && (
           <ul className="mb-4 divide-y divide-border text-sm">
             {r.acoes.map((a) => (
@@ -253,6 +254,11 @@ export default function PsicossocialPage({ params }: { params: { id: string } })
                   {a.status === 'ABERTA'
                     ? <button className="text-danger underline" onClick={() => confirm('Encerrar? O link para de aceitar respostas.') && agir(async () => { await psicossocial.encerrar(empresaId, a.id); return 'Avaliação encerrada.'; })}>Encerrar</button>
                     : <button className="text-primary underline" onClick={() => agir(async () => { await psicossocial.reabrir(empresaId, a.id); return 'Avaliação reaberta.'; })}>Reabrir</button>}
+                  <button className="text-danger underline" onClick={() => confirm(`Excluir a avaliação "${a.titulo}"? As respostas e o plano de ação dela saem junto. O que já foi levado ao PGR continua no PGR.\n\nIsso não tem volta.`)
+                    && (async () => {
+                      try { await excluir.psicossocial(empresaId, a.id); if (aberta === a.id) await verResultado(null); setAviso({ tipo: 'ok', texto: 'Avaliação excluída.' }); await carregar(); }
+                      catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+                    })()}>Excluir</button>
                 </div>
               </li>
             ))}
