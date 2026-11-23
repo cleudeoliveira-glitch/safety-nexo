@@ -66,11 +66,11 @@ export class RelatorioMensalService {
     const pessoasTrein = turmas.reduce((s, t) => s + t._count.participantes, 0);
     const naoConformes = inspecoes.reduce((s, i) => s + ((i.itens as { resposta?: string }[]) ?? []).filter((x) => x.resposta === 'NC').length, 0);
     const diasPerdidos = atestados.reduce((s, a) => s + a.dias, 0);
-    const numeros: [string, string | number][] = [
+    const numeros: [string, number, string?][] = [
       ['Documentos emitidos', arquivos.length],
       ['Inspeções', inspecoes.length],
-      ['DDS', `${ddss.length} (${pessoasDds} participações)`],
-      ['Treinamentos', `${turmas.length} (${pessoasTrein} pessoas)`],
+      ['DDS', ddss.length, `${pessoasDds} participações`],
+      ['Treinamentos', turmas.length, `${pessoasTrein} pessoas`],
       ['ASOs registrados', asos.length],
       ['EPIs entregues', epis._sum.quantidade ?? 0],
       ['Ações concluídas', feitas.length],
@@ -78,11 +78,12 @@ export class RelatorioMensalService {
       ['Acidentes (CAT)', cats.length],
       ['Dias de atestado', diasPerdidos],
     ];
-    const caixas = numeros.map(([r, v]) => `<div class="num"><strong>${escape(String(v))}</strong><span>${escape(r)}</span></div>`).join('');
+    const caixas = numeros.map(([r, v, extra]) => `<div class="num"><strong>${v}</strong><span>${escape(r)}${extra && v ? `<br>${escape(extra)}` : ''}</span></div>`).join('');
 
     // ---------- O que a consultoria fez ----------
     const porAcao = new Map<string, number>();
-    for (const h of historico) porAcao.set(h.acao, (porAcao.get(h.acao) ?? 0) + 1);
+    // "Fez uma alteração" é o registro genérico: não diz nada ao cliente.
+    for (const h of historico) if (!/^Fez uma altera/i.test(h.acao)) porAcao.set(h.acao, (porAcao.get(h.acao) ?? 0) + 1);
     const atividades = [...porAcao.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15);
 
     // ---------- Próximo mês ----------
