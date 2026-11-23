@@ -111,7 +111,7 @@ function Menu({ caminho }: { caminho: string }) {
   }, [caminho]);
 
   useEffect(() => {
-    const ler = () => setAncora(window.location.hash);
+    const ler = () => { setAncora(window.location.hash); setAberto(false); };
     window.addEventListener('hashchange', ler);
     return () => window.removeEventListener('hashchange', ler);
   }, []);
@@ -161,7 +161,10 @@ function Menu({ caminho }: { caminho: string }) {
   const partesVisiveis = (item: ItemMenu) => (item.partes ?? []).filter(visivel);
 
   // Mesma tela, outra aba: avisa a tela para trocar de aba.
+  // No celular, fecha a gaveta do menu em todo toque num item. Antes ela só fechava quando mudava a tela;
+  // trocando de aba na mesma tela (ex.: SIPAT -> 5S) a gaveta ficava aberta e cobria tudo, parecendo travada.
   function avisarAba() {
+    setAberto(false);
     setTimeout(() => {
       setAncora(window.location.hash);
       window.dispatchEvent(new HashChangeEvent('hashchange'));
@@ -380,7 +383,11 @@ function Menu({ caminho }: { caminho: string }) {
       {aberto && (
         <div className="fixed inset-0 z-50 md:hidden" onClick={() => setAberto(false)}>
           <div className="absolute inset-0 bg-black/40" />
-          <aside className="fundo-menu absolute inset-y-0 left-0 w-[85%] max-w-xs shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <aside className="fundo-menu absolute inset-y-0 left-0 w-[85%] max-w-xs shadow-2xl" onClick={(e) => {
+            // Tocou num link (qualquer um, até o da tela já aberta): a gaveta fecha.
+            if ((e.target as HTMLElement).closest('a')) setAberto(false);
+            e.stopPropagation();
+          }}>
             {conteudo}
           </aside>
         </div>
