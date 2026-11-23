@@ -1395,3 +1395,22 @@ model PagamentoPlano {
 
   @@index([consultoriaId, vencimento])
 }
+
+// Falhas guardadas para o Diagnóstico do Painel ADM: erros do motor, das telas, do Asaas e dos e-mails.
+// Erros iguais viram uma linha só (chave), com a contagem e a última vez. As antigas são apagadas depois de 30 dias.
+model FalhaSistema {
+  id            String   @id @default(cuid())
+  chave         String   @unique // origem + rota + mensagem, resumidas
+  origem        String   // MOTOR, TELA, ASAAS, EMAIL
+  rota          String?  // ex.: POST /empresas/:id/pgr/pdf, ou o endereço da tela
+  status        Int?     // código HTTP que o cliente recebeu
+  mensagem      String
+  detalhe       String?  // pilha do erro (até 4 mil letras)
+  consultoriaId String?
+  usuarioId     String?
+  vezes         Int      @default(1)
+  primeiraEm    DateTime @default(now())
+  ultimaEm      DateTime @default(now())
+
+  @@index([ultimaEm])
+}

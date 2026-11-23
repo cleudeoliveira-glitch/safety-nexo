@@ -1,3 +1,5 @@
+import { registrarFalha } from '../diagnostico/falhas';
+
 // Envio de e-mail pelo Resend. Sem RESEND_API_KEY no servidor, nada é enviado.
 export type Anexo = { filename: string; content: string }; // content em base64
 
@@ -30,9 +32,16 @@ export async function enviarEmail(para: string[], assunto: string, html: string,
     if (/domain/i.test(motivo)) {
       console.warn(`Remetente ${de} recusado pelo Resend (${motivo}); usando o remetente de teste.`);
       r = await mandar(REMETENTE_TESTE, para, assunto, html, anexos, responderPara);
-    } else throw new Error(`Resend recusou (403): ${motivo}`);
+    } else {
+      registrarFalha({ origem: 'EMAIL', rota: assunto.replace(/\d+/g, 'N').slice(0, 80), status: 403, mensagem: `Resend recusou (403): ${motivo.slice(0, 500)}` });
+      throw new Error(`Resend recusou (403): ${motivo}`);
+    }
   }
-  if (!r.ok) throw new Error(`Resend recusou (${r.status}): ${await r.text()}`);
+  if (!r.ok) {
+    const motivo = `Resend recusou (${r.status}): ${(await r.text()).slice(0, 500)}`;
+    registrarFalha({ origem: 'EMAIL', rota: assunto.replace(/\d+/g, 'N').slice(0, 80), status: r.status, mensagem: motivo });
+    throw new Error(motivo);
+  }
 }
 
 // Moldura simples dos e-mails do Safety Nexo.

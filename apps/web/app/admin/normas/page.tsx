@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao } from '@/components/ui';
 import { AvisoNorma, normas, NovoAvisoNorma } from '@/lib/api';
+import { AbasAdm } from '@/components/AbasAdm';
 
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—');
 const caixa = 'w-full rounded-card border border-border bg-background px-3 py-2 text-sm';
@@ -46,8 +47,8 @@ export default function AdminNormasPage() {
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-4 md:p-10">
       <div>
-        <Link href="/admin" className="text-sm text-primary underline">← Painel ADM</Link>
-        <h1 className="mt-1 text-2xl font-bold text-primary">Avisos de mudança nas normas</h1>
+        <AbasAdm />
+        <h1 className="mt-5 text-2xl font-bold text-primary">Avisos de mudança nas normas</h1>
         <p className="mt-1 text-sm text-text/70">O que você publicar aqui aparece para todas as consultorias, com a lista das empresas de cada uma que são afetadas, e vai no e-mail da semana.</p>
       </div>
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}

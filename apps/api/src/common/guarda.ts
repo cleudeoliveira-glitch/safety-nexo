@@ -23,6 +23,19 @@ function garantirBucket() {
   return bucketPronto;
 }
 
+// Diagnóstico: o Supabase Storage responde e a pasta (bucket) existe?
+export async function conferirGuarda(): Promise<{ ok: boolean; motivo: string }> {
+  if (!guardaNaNuvem) return { ok: false, motivo: 'Sem SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY: os arquivos ficam no disco do servidor e somem quando ele reinicia.' };
+  try {
+    const r = await fetch(`${URL_SB}/storage/v1/bucket/${BUCKET}`, { headers: cabecalho(), signal: AbortSignal.timeout(8000) });
+    if (r.ok) return { ok: true, motivo: `Pasta "${BUCKET}" do Supabase Storage respondendo.` };
+    if (r.status === 404 || r.status === 400) return { ok: true, motivo: `A pasta "${BUCKET}" ainda não existe; ela é criada sozinha no primeiro arquivo enviado.` };
+    return { ok: false, motivo: `O Supabase Storage respondeu ${r.status}: ${(await r.text()).slice(0, 200)}` };
+  } catch (e) {
+    return { ok: false, motivo: `O Supabase Storage não respondeu: ${(e as Error).message}` };
+  }
+}
+
 export class Guarda {
   constructor(private readonly prefixo: string, private readonly pastaLocal: string) {}
 

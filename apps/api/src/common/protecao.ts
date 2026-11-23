@@ -28,7 +28,7 @@ const REGRAS: Regra[] = [
   // Páginas abertas (sem login): portal do trabalhador, votação, relato/denúncia, questionário, assinatura, proposta.
   {
     nome: 'aberta',
-    teste: (m, c) => m !== 'GET' && /^\/(portal|cipa-voto|relato|psicossocial|assinar|proposta-online)\b/.test(c),
+    teste: (m, c) => m !== 'GET' && /^\/(portal|cipa-voto|relato|psicossocial|assinar|proposta-online|diagnostico)\b/.test(c),
     max: 30, janelaMs: 5 * MIN, mensagem: 'Muitos envios seguidos. Espere alguns minutos.',
   },
   { nome: 'geral', teste: () => true, max: 600, janelaMs: MIN, mensagem: 'Muitos pedidos ao mesmo tempo. Espere um minuto.' },

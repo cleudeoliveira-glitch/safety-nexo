@@ -1,11 +1,13 @@
 import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { errosEmPortugues } from './common/validacao';
 import { caixaPlano } from './common/plano';
 import { cabecalhosSeguranca, limiteDePedidos } from './common/protecao';
+import { FiltroDeFalhas, ligarCadernoDeFalhas, vigiarChamadas } from './diagnostico/falhas';
+import { PrismaService } from './prisma/prisma.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -18,6 +20,10 @@ async function bootstrap() {
   // Proteção contra invasão: cabeçalhos de segurança e limite de tentativas (ver common/protecao.ts).
   app.use(cabecalhosSeguranca);
   app.use(limiteDePedidos);
+  // Diagnóstico do Painel ADM: anota os erros que os clientes viram e as chamadas do Asaas e das tarefas agendadas.
+  ligarCadernoDeFalhas(app.get(PrismaService));
+  app.use(vigiarChamadas);
+  app.useGlobalFilters(new FiltroDeFalhas(app.get(HttpAdapterHost).httpAdapter));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, exceptionFactory: errosEmPortugues }));
   // WEB_ORIGIN aceita mais de um endereço separado por vírgula (o primeiro é o usado nos QR codes).
   const origens = (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean);
