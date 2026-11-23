@@ -349,10 +349,11 @@ function Menu({ caminho }: { caminho: string }) {
             <p className="truncate text-sm font-semibold text-white">{usuario?.nome ?? 'Minha conta'}</p>
             <p className="text-xs text-white/50">{cliente ? 'Empresa cliente' : 'Consultoria'} · meu perfil</p>
           </Link>
-          <button type="button" onClick={sair} className="rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white" title="Sair" aria-label="Sair">
-            <Icone nome="sair" className="h-[18px] w-[18px]" />
-          </button>
         </div>
+        {/* Sair bem à vista: para entrar com outra conta (ex.: ver o sistema como um cliente vê). */}
+        <button type="button" onClick={sair} className="mt-1 flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10 hover:text-white">
+          <Icone nome="sair" className="h-[18px] w-[18px] text-menta/80" /> Sair da conta
+        </button>
       </div>
     </div>
   );
