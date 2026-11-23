@@ -227,12 +227,10 @@ export const AJUDA_CAMPOS: ItemAjuda[] = [
     ajuda: { oQueE: 'Feito antes da posse, com a carga mínima do grau de risco da empresa (8 a 20 horas), no máximo 8 horas por dia.', exemplo: '12 horas, de 20 a 22/01/2027', baseLegal: 'NR-05, itens 5.7.1 e 5.7.4' } },
 
   // ───────── DDS ─────────
-  { campo: 'Assunto do DDS', area: 'DDS', ids: ['dds-categoria'],
-    ajuda: { oQueE: 'Filtra os temas prontos por assunto (EPI, máquinas, ergonomia, saúde...).', exemplo: 'EPI' } },
   { campo: 'Tema pronto', area: 'DDS', ids: ['dds-pronto', 'cd-tema'],
     ajuda: { oQueE: 'Conversa curta de segurança no início do turno. Cada tema traz um caso para contar, o texto, uma dinâmica de 3 minutos e uma pergunta para a equipe. Os marcados com ✓ já foram feitos nesta empresa.', exemplo: 'Por que usar o protetor auricular mesmo em tarefas rápidas' } },
   { campo: 'Tema do DDS', area: 'DDS', ids: ['dds-tema'],
-    ajuda: { oQueE: 'O assunto da conversa. Escolha algo ligado aos riscos daquela semana ou a um quase-acidente recente.', exemplo: 'Uso correto do protetor auditivo' } },
+    ajuda: { oQueE: 'O assunto da conversa. Escreva uma palavra e o sistema mostra os temas prontos da biblioteca; toque num deles e o texto já vem preenchido. Se não quiser nenhum, o tema fica como você escreveu.', ondeAcho: 'Pense nos riscos daquela semana ou num quase-acidente recente.', exemplo: 'Escreva "protetor" e toque em "Uso correto do protetor auditivo"' } },
   { campo: 'Duração do DDS', area: 'DDS', ids: ['dds-duracao', 'cd-dur'],
     ajuda: { oQueE: 'Quanto tempo durou a conversa. Um DDS costuma levar de 5 a 15 minutos.', exemplo: '10' } },
   { campo: 'Ministrante do DDS', area: 'DDS', ids: ['dds-ministrante', 'cd-min'],

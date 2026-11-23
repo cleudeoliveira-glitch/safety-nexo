@@ -11,6 +11,7 @@ const EDIFICACOES = ['Sala fechada em prédio de alvenaria', 'Galpão de alvenar
 const PISOS = ['Cerâmica', 'Porcelanato', 'Concreto', 'Concreto com pintura epóxi', 'Vinílico', 'Terra', 'Asfalto', 'Madeira'];
 const PAREDES = ['Alvenaria pintada', 'Alvenaria com azulejo', 'Divisórias', 'Chapa metálica', 'Sem paredes (aberto)', 'Vidro'];
 const COBERTURAS = ['Laje', 'Laje com forro', 'Telha metálica', 'Telha de fibrocimento', 'Telha cerâmica', 'Sem cobertura'];
+const PES_DIREITOS = ['2,8 m', '3 m', '4 m', '6 m', '8 m', '10 m ou mais'];
 
 // O GHE é montado em etapas: 1. Grupo (nome, código, unidade, setor e ambiente) e 2. Equipe (funções, atividades,
 // máquinas e produtos). As exposições (riscos) e a conferência ficam no próprio GHE depois de salvo.
@@ -112,16 +113,27 @@ export function FormGhe({ chave, parte = 'novo', inicial, cargos, textoBotao, sa
       <fieldset className="rounded-card border border-border p-4">
         <legend className="px-1 text-sm font-semibold text-primary">Como é o ambiente deste setor</legend>
         <p className="mb-3 text-xs text-text/60">Cada GHE tem o seu ambiente. Escritório e solda não podem ter o mesmo texto no PGR. Escolha uma sugestão ou escreva do seu jeito.</p>
-        <datalist id={id('edif')}>{EDIFICACOES.map((c) => <option key={c} value={c} />)}</datalist>
-        <datalist id={id('piso')}>{PISOS.map((c) => <option key={c} value={c} />)}</datalist>
-        <datalist id={id('paredes')}>{PAREDES.map((c) => <option key={c} value={c} />)}</datalist>
-        <datalist id={id('cob')}>{COBERTURAS.map((c) => <option key={c} value={c} />)}</datalist>
-        <div className="grid gap-3 md:grid-cols-3">
-          <Campo id={id('ga-edificacao')} rotulo="Tipo de edificação" list={id('edif')} value={amb.edificacao ?? ''} onChange={a('edificacao')} placeholder="Ex.: Galpão aberto" />
-          <Campo id={id('ga-piso')} rotulo="Piso" list={id('piso')} value={amb.piso ?? ''} onChange={a('piso')} placeholder="Ex.: Concreto" />
-          <Campo id={id('ga-paredes')} rotulo="Paredes" list={id('paredes')} value={amb.paredes ?? ''} onChange={a('paredes')} placeholder="Ex.: Alvenaria pintada" />
-          <Campo id={id('ga-cobertura')} rotulo="Teto ou cobertura" list={id('cob')} value={amb.cobertura ?? ''} onChange={a('cobertura')} placeholder="Ex.: Telha metálica" />
-          <Campo id={id('ga-pedireito')} rotulo="Pé-direito" value={amb.peDireito ?? ''} onChange={a('peDireito')} placeholder="Ex.: 6 m" />
+        <div className="grid gap-4 md:grid-cols-2">
+          {([
+            ['edificacao', 'Tipo de edificação', EDIFICACOES, 'Ex.: Galpão aberto'],
+            ['piso', 'Piso', PISOS, 'Ex.: Concreto'],
+            ['paredes', 'Paredes', PAREDES, 'Ex.: Alvenaria pintada'],
+            ['cobertura', 'Teto ou cobertura', COBERTURAS, 'Ex.: Telha metálica'],
+            ['peDireito', 'Pé-direito (altura do teto)', PES_DIREITOS, 'Ex.: 6 m'],
+          ] as const).map(([campo, rotulo, opcoes, exemplo]) => (
+            <div key={campo}>
+              {/* Um toque escolhe; se não for nenhum, escreva no campo. */}
+              <Campo id={id(`ga-${campo === 'peDireito' ? 'pedireito' : campo}`)} rotulo={rotulo} value={(amb[campo] as string) ?? ''} onChange={a(campo)} placeholder={`Outro? Escreva aqui. ${exemplo}`} />
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {opcoes.map((o) => (
+                  <button key={o} type="button" onClick={() => setAmb((x) => ({ ...x, [campo]: x[campo] === o ? '' : o }))}
+                    className={`min-h-[40px] rounded-full border px-3 text-sm ${amb[campo] === o ? 'border-primary bg-primary text-white' : 'border-border bg-white hover:border-primary'}`}>{o}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
           <Selecao id={id('ga-iluminacao')} rotulo="Iluminação" value={amb.iluminacao ?? ''} onChange={a('iluminacao')}>
             <option value="">Escolha</option>
             <option value="NATURAL">Natural</option>
@@ -137,8 +149,8 @@ export function FormGhe({ chave, parte = 'novo', inicial, cargos, textoBotao, sa
           </Selecao>
           <Campo id={id('ga-ruido')} rotulo="Ruído de fundo" value={amb.ruidoFundo ?? ''} onChange={a('ruidoFundo')} placeholder="Ex.: Alto, da esmerilhadeira" />
           <div className="flex flex-wrap items-center gap-5 md:col-span-3">
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!amb.ceuAberto} onChange={a('ceuAberto')} /> Trabalho a céu aberto</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!amb.confinado} onChange={a('confinado')} /> Tem espaço confinado</label>
+            <label className="flex min-h-[44px] items-center gap-2 text-sm"><input type="checkbox" className="h-6 w-6 accent-primary" checked={!!amb.ceuAberto} onChange={a('ceuAberto')} /> Trabalho a céu aberto</label>
+            <label className="flex min-h-[44px] items-center gap-2 text-sm"><input type="checkbox" className="h-6 w-6 accent-primary" checked={!!amb.confinado} onChange={a('confinado')} /> Tem espaço confinado</label>
           </div>
           <Campo id={id('ga-obs')} rotulo="Outros detalhes do ambiente" value={amb.observacoes ?? ''} onChange={a('observacoes')} placeholder="Ex.: Fumaça de solda perto das bancadas" className="md:col-span-3" />
         </div>

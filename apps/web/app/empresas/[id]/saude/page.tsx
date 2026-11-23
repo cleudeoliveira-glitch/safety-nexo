@@ -1,6 +1,7 @@
 'use client';
 
 import { EscolhaOficial } from '@/components/EscolhaOficial';
+import { PassosDoForm } from '@/components/PassosDoForm';
 import { NovoRegistro, useNovo } from '@/components/NovoRegistro';
 import { TopoTela } from '@/components/TopoTela';
 import Link from 'next/link';
@@ -103,36 +104,45 @@ function AbaAet({ empresaId, lista, cliente, recarregar, avisar, baixar }: {
             Siga as etapas da NR-17 (item 17.3.3). Use a AET quando a avaliação preliminar do PGR não bastar, quando houver queixas ou afastamentos ligados à ergonomia, ou quando o PCMSO indicar.
           </p>
           <form key={chave} className="grid gap-4 md:grid-cols-3" onSubmit={salvar}>
-            <Campo id="aet-posto" name="posto" rotulo="Posto ou atividade analisada" required placeholder="Ex.: Balcão de atendimento" className="md:col-span-2" />
-            <Campo id="aet-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
-            <Campo id="aet-resp" name="responsavel" rotulo="Responsável pela AET" required placeholder="Quem fez a análise" className="md:col-span-3" list="nomes-pessoas" defaultValue={ultimo('aet.responsavel') || lerUsuario()?.nome || ''} />
-            <NomesSugeridos />
-            <Texto id="aet-demanda" name="demanda" rotulo="1. Análise da demanda" required ajuda="O que motivou a análise: queixas, afastamentos, mudança no posto, indicação do PCMSO." />
-            <Texto id="aet-func" name="funcionamento" rotulo="2. Funcionamento da organização e situações de trabalho" required ajuda="Como o trabalho é feito de verdade: jornada, pausas, ritmo, metas, mobiliário, ferramentas." />
-            <Texto id="aet-met" name="metodos" rotulo="3. Métodos, técnicas e ferramentas" required ajuda="Ex.: observação direta, entrevistas, questionário nórdico, RULA, REBA, filmagem." />
-            <Texto id="aet-diag" name="diagnostico" rotulo="4. Diagnóstico" required ajuda="Os fatores que causam o problema, ligando o que foi observado ao que os trabalhadores relataram." />
-            <div className="md:col-span-3">
-              <p className="mb-1.5 text-sm font-semibold">5. Recomendações</p>
-              <div className="space-y-2">
-                {recomendacoes.map((r, i) => (
-                  <div key={i} className="grid gap-2 md:grid-cols-6">
-                    <input aria-label={`Recomendação ${i + 1}`} value={r.recomendacao} onChange={(e) => mudar(i, 'recomendacao', e.target.value)} placeholder="Ex.: Instalar banqueta semi-sentada"
-                      className="rounded-card border border-border bg-background px-3 py-2 text-sm md:col-span-3" />
-                    <input aria-label={`Prazo ${i + 1}`} value={r.prazo} onChange={(e) => mudar(i, 'prazo', e.target.value)} placeholder="Prazo"
-                      className="rounded-card border border-border bg-background px-3 py-2 text-sm" />
-                    <input aria-label={`Responsável ${i + 1}`} value={r.responsavel} onChange={(e) => mudar(i, 'responsavel', e.target.value)} placeholder="Responsável"
-                      className="rounded-card border border-border bg-background px-3 py-2 text-sm" />
-                    <button type="button" className="text-sm text-danger hover:underline disabled:opacity-40" disabled={recomendacoes.length === 1}
-                      onClick={() => setRecomendacoes((x) => x.filter((_, j) => j !== i))}>Remover</button>
+            <PassosDoForm salvar={<Botao type="submit">Salvar AET</Botao>} passos={[
+              { titulo: 'Posto e responsável', conteudo: <>
+                <Campo id="aet-posto" name="posto" rotulo="Posto ou atividade analisada" required placeholder="Ex.: Balcão de atendimento" className="md:col-span-2" />
+                <Campo id="aet-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
+                <Campo id="aet-resp" name="responsavel" rotulo="Responsável pela AET" required placeholder="Quem fez a análise" className="md:col-span-3" list="nomes-pessoas" defaultValue={ultimo('aet.responsavel') || lerUsuario()?.nome || ''} />
+                <NomesSugeridos />
+              </> },
+              { titulo: 'Demanda e como o trabalho funciona', conteudo: <>
+                <Texto id="aet-demanda" name="demanda" rotulo="1. Análise da demanda" required ajuda="O que motivou a análise: queixas, afastamentos, mudança no posto, indicação do PCMSO." />
+                <Texto id="aet-func" name="funcionamento" rotulo="2. Funcionamento da organização e situações de trabalho" required ajuda="Como o trabalho é feito de verdade: jornada, pausas, ritmo, metas, mobiliário, ferramentas." />
+              </> },
+              { titulo: 'Métodos e diagnóstico', conteudo: <>
+                <Texto id="aet-met" name="metodos" rotulo="3. Métodos, técnicas e ferramentas" required ajuda="Ex.: observação direta, entrevistas, questionário nórdico, RULA, REBA, filmagem." />
+                <Texto id="aet-diag" name="diagnostico" rotulo="4. Diagnóstico" required ajuda="Os fatores que causam o problema, ligando o que foi observado ao que os trabalhadores relataram." />
+              </> },
+              { titulo: 'Recomendações e retorno aos trabalhadores', conteudo: <>
+                <div className="md:col-span-3">
+                  <p className="mb-1.5 text-sm font-semibold">5. Recomendações</p>
+                  <div className="space-y-2">
+                    {recomendacoes.map((r, i) => (
+                      <div key={i} className="grid gap-2 md:grid-cols-6">
+                        <input aria-label={`Recomendação ${i + 1}`} value={r.recomendacao} onChange={(e) => mudar(i, 'recomendacao', e.target.value)} placeholder="Ex.: Instalar banqueta semi-sentada"
+                          className="min-h-[48px] rounded-card border border-border bg-background px-3 py-2 text-base md:col-span-3" />
+                        <input aria-label={`Prazo ${i + 1}`} value={r.prazo} onChange={(e) => mudar(i, 'prazo', e.target.value)} placeholder="Prazo"
+                          className="rounded-card border border-border bg-background px-3 py-2 text-sm" />
+                        <input aria-label={`Responsável ${i + 1}`} value={r.responsavel} onChange={(e) => mudar(i, 'responsavel', e.target.value)} placeholder="Responsável"
+                          className="rounded-card border border-border bg-background px-3 py-2 text-sm" />
+                        <button type="button" className="text-sm text-danger hover:underline disabled:opacity-40" disabled={recomendacoes.length === 1}
+                          onClick={() => setRecomendacoes((x) => x.filter((_, j) => j !== i))}>Remover</button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <button type="button" className="mt-2 text-sm font-semibold text-primary hover:underline" onClick={() => setRecomendacoes((x) => [...x, vazia])}>
-                + Outra recomendação
-              </button>
-            </div>
-            <Texto id="aet-rest" name="restituicao" rotulo="6. Restituição dos resultados" required ajuda="Quando e como os resultados foram apresentados e validados com os trabalhadores." />
-            <div className="flex justify-end md:col-span-3"><Botao type="submit">Salvar AET</Botao></div>
+                  <button type="button" className="mt-2 text-sm font-semibold text-primary hover:underline" onClick={() => setRecomendacoes((x) => [...x, vazia])}>
+                    + Outra recomendação
+                  </button>
+                </div>
+                <Texto id="aet-rest" name="restituicao" rotulo="6. Restituição dos resultados" required ajuda="Quando e como os resultados foram apresentados e validados com os trabalhadores." />
+              </> },
+            ]} />
           </form>
         </Cartao>
         </NovoRegistro>
@@ -238,46 +248,54 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
           <div className="mt-3"><Aviso tipo="info">Abrindo a CAT da investigação <strong>{deInv.titulo}</strong> (ocorrência em {data(deInv.dataOcorrencia)}). O local e a descrição já vieram de lá. Escolha o acidentado e confira a data e a hora.</Aviso></div>
         )}
         <form key={`${chave}-${deInv?.id ?? ''}`} className="mt-4 grid gap-4 md:grid-cols-3" onSubmit={salvar}>
-          <Selecao id="cat-colab" name="colaboradorId" rotulo="Acidentado(a)" required className="md:col-span-2">
-            <option value="">Escolha o colaborador</option>
-            {colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome} · {c.cargo}</option>)}
-          </Selecao>
-          <Campo id="cat-data" name="dataHora" type="datetime-local" rotulo="Data e hora do acidente" required />
-          <Selecao id="cat-tipo" name="tipoCat" rotulo="Tipo de CAT">
-            {TIPOS_CAT.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-          </Selecao>
-          <Selecao id="cat-acidente" name="tipoAcidente" rotulo="Tipo de acidente">
-            {TIPOS_ACIDENTE.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-          </Selecao>
-          <Campo id="cat-horas" name="horasTrabalhadas" rotulo="Horas trabalhadas antes" placeholder="Ex.: 03:30" />
-          <Campo id="cat-local" name="local" rotulo="Local do acidente" required placeholder="Ex.: Setor de forno" className="md:col-span-3" defaultValue={deInv?.local} />
-          <EscolhaOficial id="cat-parte" name="parteAtingida" nameCodigo="codParteAting" rotulo="Parte do corpo atingida" required itens={listas?.t13 ?? []}
-            comuns={[['755070000', 'Dedo'], ['755050000', 'Mão'], ['753070100', 'Olho'], ['757050000', 'Pé'], ['757010400', 'Joelho'], ['753510000', 'Braço'], ['757010000', 'Perna'], ['756040000', 'Costas e coluna'], ['753080000', 'Cabeça']]} exemplo="mão, joelho"
-            ajuda={{ oQueE: 'Onde a pessoa se machucou.', exemplo: 'Toque num botão ou procure: "dedo", "joelho". A lista é a oficial do eSocial (Tabela 13), então a CAT já sai pronta para o envio.' }} />
-          <EscolhaOficial id="cat-agente" name="agenteCausador" nameCodigo="codAgntCausador" rotulo="O que causou" required itens={listas?.t14 ?? []}
-            comuns={[['302010300', 'Piso'], ['302030900', 'Escada'], ['303010120', 'Faca'], ['303020900', 'Máquina'], ['303010900', 'Ferramenta manual'], ['303060000', 'Forno ou fogão'], ['303075900', 'Veículo'], ['305004900', 'Produto químico']]} exemplo="faca, forno, escada"
-            ajuda={{ oQueE: 'O objeto, máquina ou situação que machucou a pessoa.', exemplo: 'Procure pelo nome: "faca", "forno". Lista oficial do eSocial (Tabela 14).' }} />
-          <EscolhaOficial id="cat-natureza" name="naturezaLesao" nameCodigo="codLesao" rotulo="Tipo de lesão" required itens={listas?.t17 ?? []}
-            comuns={[['702010000', 'Corte'], ['702015000', 'Pancada (contusão)'], ['702035000', 'Fratura'], ['702040000', 'Queimadura'], ['702020000', 'Torção'], ['702005000', 'Arranhão (escoriação)']]} exemplo="corte, queimadura"
-            ajuda={{ oQueE: 'Que machucado foi.', exemplo: 'Corte, fratura, queimadura. Lista oficial do eSocial (Tabela 17).' }} />
-          <Texto id="cat-desc" name="descricao" rotulo="Como aconteceu" required ajuda="Descreva o que a pessoa fazia, o que deu errado e o resultado." defaultValue={deInv?.descricao} />
-          <Selecao id="cat-afast" name="houveAfastamento" rotulo="Houve afastamento?" defaultValue="N">
-            <option value="N">Não</option><option value="S">Sim</option>
-          </Selecao>
-          <Selecao id="cat-obito" name="houveObito" rotulo="Houve óbito?" defaultValue="N">
-            <option value="N">Não</option><option value="S">Sim</option>
-          </Selecao>
-          <Selecao id="cat-policia" name="registroPolicial" rotulo="Houve registro policial?" defaultValue="N">
-            <option value="N">Não</option><option value="S">Sim</option>
-          </Selecao>
-          <Campo id="cat-test" name="testemunhas" rotulo="Testemunhas" placeholder="Nomes, se houver" className="md:col-span-3" />
-          <p className="text-sm font-semibold md:col-span-3">Atendimento médico (se já houver)</p>
-          <Campo id="cat-atend" name="atendimentoData" type="date" rotulo="Data do atendimento" />
-          <Campo id="cat-medico" name="medicoNome" rotulo="Médico(a)" />
-          <Campo id="cat-crm" name="medicoCrm" rotulo="CRM" />
-          <Campo id="cat-cid" name="cid" rotulo="CID" placeholder="Ex.: T23.2" />
-          <Campo id="cat-dias" name="diasTratamento" type="number" min={0} rotulo="Dias prováveis de tratamento" />
-          <div className="flex items-end justify-end"><Botao type="submit">Registrar CAT</Botao></div>
+          <PassosDoForm salvar={<Botao type="submit">Registrar CAT</Botao>} passos={[
+            { titulo: 'Quem se acidentou e quando', conteudo: <>
+              <Selecao id="cat-colab" name="colaboradorId" rotulo="Acidentado(a)" required className="md:col-span-2">
+                <option value="">Escolha o colaborador</option>
+                {colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome} · {c.cargo}</option>)}
+              </Selecao>
+              <Campo id="cat-data" name="dataHora" type="datetime-local" rotulo="Data e hora do acidente" required />
+              <Selecao id="cat-tipo" name="tipoCat" rotulo="Tipo de CAT">
+                {TIPOS_CAT.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
+              </Selecao>
+              <Selecao id="cat-acidente" name="tipoAcidente" rotulo="Tipo de acidente">
+                {TIPOS_ACIDENTE.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
+              </Selecao>
+              <Campo id="cat-horas" name="horasTrabalhadas" rotulo="Horas trabalhadas antes" placeholder="Ex.: 03:30" />
+            </> },
+            { titulo: 'Onde e o que machucou', conteudo: <>
+              <Campo id="cat-local" name="local" rotulo="Local do acidente" required placeholder="Ex.: Setor de forno" className="md:col-span-3" defaultValue={deInv?.local} />
+              <EscolhaOficial id="cat-parte" name="parteAtingida" nameCodigo="codParteAting" rotulo="Parte do corpo atingida" required itens={listas?.t13 ?? []}
+                comuns={[['755070000', 'Dedo'], ['755050000', 'Mão'], ['753070100', 'Olho'], ['757050000', 'Pé'], ['757010400', 'Joelho'], ['753510000', 'Braço'], ['757010000', 'Perna'], ['756040000', 'Costas e coluna'], ['753080000', 'Cabeça']]} exemplo="mão, joelho"
+                ajuda={{ oQueE: 'Onde a pessoa se machucou.', exemplo: 'Toque num botão ou procure: "dedo", "joelho". A lista é a oficial do eSocial (Tabela 13), então a CAT já sai pronta para o envio.' }} />
+              <EscolhaOficial id="cat-agente" name="agenteCausador" nameCodigo="codAgntCausador" rotulo="O que causou" required itens={listas?.t14 ?? []}
+                comuns={[['302010300', 'Piso'], ['302030900', 'Escada'], ['303010120', 'Faca'], ['303020900', 'Máquina'], ['303010900', 'Ferramenta manual'], ['303060000', 'Forno ou fogão'], ['303075900', 'Veículo'], ['305004900', 'Produto químico']]} exemplo="faca, forno, escada"
+                ajuda={{ oQueE: 'O objeto, máquina ou situação que machucou a pessoa.', exemplo: 'Procure pelo nome: "faca", "forno". Lista oficial do eSocial (Tabela 14).' }} />
+              <EscolhaOficial id="cat-natureza" name="naturezaLesao" nameCodigo="codLesao" rotulo="Tipo de lesão" required itens={listas?.t17 ?? []}
+                comuns={[['702010000', 'Corte'], ['702015000', 'Pancada (contusão)'], ['702035000', 'Fratura'], ['702040000', 'Queimadura'], ['702020000', 'Torção'], ['702005000', 'Arranhão (escoriação)']]} exemplo="corte, queimadura"
+                ajuda={{ oQueE: 'Que machucado foi.', exemplo: 'Corte, fratura, queimadura. Lista oficial do eSocial (Tabela 17).' }} />
+            </> },
+            { titulo: 'Como aconteceu', conteudo: <>
+              <Texto id="cat-desc" name="descricao" rotulo="Como aconteceu" required ajuda="Descreva o que a pessoa fazia, o que deu errado e o resultado." defaultValue={deInv?.descricao} />
+              <Selecao id="cat-afast" name="houveAfastamento" rotulo="Houve afastamento?" defaultValue="N">
+                <option value="N">Não</option><option value="S">Sim</option>
+              </Selecao>
+              <Selecao id="cat-obito" name="houveObito" rotulo="Houve óbito?" defaultValue="N">
+                <option value="N">Não</option><option value="S">Sim</option>
+              </Selecao>
+              <Selecao id="cat-policia" name="registroPolicial" rotulo="Houve registro policial?" defaultValue="N">
+                <option value="N">Não</option><option value="S">Sim</option>
+              </Selecao>
+              <Campo id="cat-test" name="testemunhas" rotulo="Testemunhas" placeholder="Nomes, se houver" className="md:col-span-3" />
+            </> },
+            { titulo: 'Atendimento médico (se já houver)', conteudo: <>
+              <Campo id="cat-atend" name="atendimentoData" type="date" rotulo="Data do atendimento" />
+              <Campo id="cat-medico" name="medicoNome" rotulo="Médico(a)" />
+              <Campo id="cat-crm" name="medicoCrm" rotulo="CRM" />
+              <Campo id="cat-cid" name="cid" rotulo="CID" placeholder="Ex.: T23.2" />
+              <Campo id="cat-dias" name="diasTratamento" type="number" min={0} rotulo="Dias prováveis de tratamento" />
+            </> },
+          ]} />
         </form>
       </Cartao>
       </NovoRegistro>
