@@ -2,6 +2,9 @@
 
 import { RascunhoAutomatico } from '@/components/RascunhoAutomatico';
 import { OQueFalta } from '@/components/OQueFalta';
+import { DitadoVoz } from '@/components/DitadoVoz';
+import { BotaoLuvaSol, aplicarLuvaSol } from '@/components/LuvaSol';
+import { BuscaGeral } from '@/components/BuscaGeral';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -34,6 +37,7 @@ export function Moldura({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setLogado(!!lerToken());
   }, [caminho]);
+  useEffect(() => { aplicarLuvaSol(); }, []);
 
   if (SEM_MENU.some((r) => r.test(caminho)) || !logado) return <>{children}<WhatsAppDuvidas caminho={caminho} /></>;
 
@@ -47,6 +51,7 @@ export function Moldura({ children }: { children: React.ReactNode }) {
         {children}
         <RascunhoAutomatico caminho={caminho} />
         <OQueFalta />
+        <DitadoVoz />
       </div>
       <WhatsAppDuvidas caminho={caminho} />
     </div>
@@ -252,6 +257,7 @@ function Menu({ caminho }: { caminho: string }) {
         </button>
       </div>
 
+      <div className="mx-4 mb-3 hidden md:block"><BuscaGeral empresaId={empresaId} empresas={empresas} cliente={cliente} claro /></div>
       <div className="mx-4 rounded-xl bg-white/[0.07] p-3 ring-1 ring-white/10" data-tour="empresa">
         <label htmlFor="menu-empresa" className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
           Empresa em foco
@@ -348,6 +354,7 @@ function Menu({ caminho }: { caminho: string }) {
         <Link href="/ajuda" className={`flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition ${caminho === '/ajuda' ? 'bg-white text-primary' : 'text-white/85 hover:bg-white/10'}`}>
           <Icone nome="interrogacao" className="h-[18px] w-[18px] text-menta/80" /> Central de ajuda
         </Link>
+        <div className="mt-1 px-1"><BotaoLuvaSol claro /></div>
         <div className="mt-2 flex items-center gap-3 rounded-lg bg-black/15 px-2.5 py-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-menta text-sm font-bold text-primary-escuro">
             {(usuario?.nome ?? '?').trim().charAt(0).toUpperCase()}
@@ -379,7 +386,10 @@ function Menu({ caminho }: { caminho: string }) {
           <p className="text-sm font-bold leading-tight">Safety Nexo</p>
           {empresa && <p className="truncate text-xs text-white/70">{empresa.razaoSocial}</p>}
         </div>
-        <BotaoAjudaTopo caminho={caminho} />
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <BuscaGeral empresaId={empresaId} empresas={empresas} cliente={cliente} />
+          <BotaoAjudaTopo caminho={caminho} />
+        </div>
       </header>
 
       <aside className="fundo-menu fixed inset-y-0 left-0 z-40 hidden w-72 md:block">{conteudo}</aside>

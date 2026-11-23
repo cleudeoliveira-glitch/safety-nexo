@@ -2,6 +2,7 @@
 
 import { EscolhaOficial } from '@/components/EscolhaOficial';
 import { PassosDoForm } from '@/components/PassosDoForm';
+import { EscolherFoto } from '@/components/Foto';
 import { NovoRegistro, useNovo } from '@/components/NovoRegistro';
 import { TopoTela } from '@/components/TopoTela';
 import Link from 'next/link';
@@ -10,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   listasCat,
+  guardarFotos,
   type ListasCat,
   Aet,
   buscarEmpresa,
@@ -38,6 +40,7 @@ import { ehEmpresa } from '@/lib/sessao';
 import { AbaAfastamentos } from './AbaAfastamentos';
 
 type Aba = 'aet' | 'cat' | 'afast';
+type AfastarDaCat = { colaboradorId: string; catId: string; inicio: string };
 type Avisar = (tipo: 'erro' | 'ok', texto: string) => void;
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
@@ -168,15 +171,19 @@ function AbaAet({ empresaId, lista, cliente, recarregar, avisar, baixar }: {
   );
 }
 
-function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }: {
+function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar, afastar }: {
   empresaId: string; colaboradores: Colaborador[]; lista: Cat[]; recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
+  afastar: (a: AfastarDaCat) => void;
 }) {
+  // Se a CAT diz que houve afastamento, oferece registrar o afastamento já preenchido.
+  const [pedirAfast, setPedirAfast] = useState<(AfastarDaCat & { nome: string }) | null>(null);
   const novo = useNovo(lista.length === 0);
   const [chave, setChave] = useState(0);
   const [recibos, setRecibos] = useState<Record<string, string>>({});
   // Vindo da investigação ("Abrir CAT"): já traz o local e o relato do acidente.
   const [deInv, setDeInv] = useState<Investigacao | null>(null);
   const [listas, setListas] = useState<ListasCat | null>(null);
+  const [fotoCat, setFotoCat] = useState<Blob | null>(null);
   useEffect(() => { listasCat(empresaId).then(setListas).catch(() => setListas(null)); }, [empresaId]);
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('investigacao');
@@ -191,7 +198,8 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
     const t = (c: string) => String(d.get(c) ?? '').trim();
     const opcional = (c: string) => (t(c) ? { [c]: t(c) } : {});
     try {
-      await criarCat(empresaId, {
+      const acidentado = colaboradores.find((c) => c.id === t('colaboradorId'))?.nome ?? 'acidentado';
+      const criada = await criarCat(empresaId, {
         colaboradorId: t('colaboradorId'),
         tipoCat: t('tipoCat') as Cat['tipoCat'],
         tipoAcidente: t('tipoAcidente') as Cat['tipoAcidente'],
@@ -213,9 +221,17 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
           ...(t('codLesao') ? { codLesao: t('codLesao') } : {}),
         } } : {}),
       });
+      // As fotos vão para o Arquivo da empresa depois da CAT salva. Se falharem, a CAT fica salva do mesmo jeito.
+      let avisoFoto = '';
+      if (fotoCat) {
+        try { await guardarFotos(empresaId, [fotoCat], `Foto do local - CAT de ${acidentado} ${t('dataHora').slice(0, 10).split('-').reverse().join('-')}`, t('local')); avisoFoto = 'A foto ficou no Arquivo, na pasta Fotos. '; }
+        catch { avisoFoto = 'A foto não foi enviada; tente de novo pelo Arquivo. '; }
+        setFotoCat(null);
+      }
+      setPedirAfast(t('houveAfastamento') === 'S' ? { colaboradorId: t('colaboradorId'), catId: criada.id, inicio: t('dataHora').slice(0, 10), nome: acidentado } : null);
       setChave((k) => k + 1);
       if (deInv) { setDeInv(null); window.history.replaceState(null, '', `${window.location.pathname}#cat`); }
-      avisar('ok', (deInv ? 'CAT registrada e ligada à investigação. ' : 'CAT registrada. ') + 'Baixe o PDF, transmita pelo eSocial (S-2210) e depois marque como enviada com o número do recibo.');
+      avisar('ok', (deInv ? 'CAT registrada e ligada à investigação. ' : 'CAT registrada. ') + avisoFoto + 'Baixe o PDF, transmita pelo eSocial (S-2210) e depois marque como enviada com o número do recibo.');
       await recarregar();
     } catch (e) {
       avisar('erro', (e as Error).message);
@@ -242,6 +258,13 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
 
   return (
     <div className="space-y-6">
+      {pedirAfast && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-warning/50 bg-warning/10 p-4">
+          <p className="w-full text-sm sm:w-auto sm:flex-1"><strong>{pedirAfast.nome} ficou afastado(a).</strong> Registre o afastamento agora: o nome, a data e a CAT já vão preenchidos.</p>
+          <Botao type="button" onClick={() => { afastar(pedirAfast); setPedirAfast(null); }}>Registrar afastamento →</Botao>
+          <button type="button" onClick={() => setPedirAfast(null)} className="min-h-[44px] px-2 text-sm text-text/60">Depois</button>
+        </div>
+      )}
       <NovoRegistro rotulo="Registrar acidente (CAT)" {...novo}>
       <Cartao titulo="Registrar acidente (CAT)">
         {deInv && (
@@ -274,6 +297,10 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
               <EscolhaOficial id="cat-natureza" name="naturezaLesao" nameCodigo="codLesao" rotulo="Tipo de lesão" required itens={listas?.t17 ?? []}
                 comuns={[['702010000', 'Corte'], ['702015000', 'Pancada (contusão)'], ['702035000', 'Fratura'], ['702040000', 'Queimadura'], ['702020000', 'Torção'], ['702005000', 'Arranhão (escoriação)']]} exemplo="corte, queimadura"
                 ajuda={{ oQueE: 'Que machucado foi.', exemplo: 'Corte, fratura, queimadura. Lista oficial do eSocial (Tabela 17).' }} />
+                <div className="md:col-span-3">
+                  <p className="mb-1.5 text-sm font-semibold">Foto do local (opcional)</p>
+                  <EscolherFoto foto={fotoCat} mudar={setFotoCat} rotulo="Tirar foto do local" />
+                </div>
             </> },
             { titulo: 'Como aconteceu', conteudo: <>
               <Texto id="cat-desc" name="descricao" rotulo="Como aconteceu" required ajuda="Descreva o que a pessoa fazia, o que deu errado e o resultado." defaultValue={deInv?.descricao} />
@@ -354,6 +381,7 @@ export default function SaudePage({ params }: { params: { id: string } }) {
   const [aets, setAets] = useState<Aet[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
+  const [afastarDe, setAfastarDe] = useState<AfastarDaCat | null>(null);
 
   const recarregar = useCallback(async () => {
     try {
@@ -394,8 +422,9 @@ export default function SaudePage({ params }: { params: { id: string } }) {
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 
       {aba === 'aet' && <AbaAet empresaId={empresaId} lista={aets} cliente={cliente} recarregar={recarregar} avisar={avisar} baixar={baixador(gerarAet)} />}
-      {aba === 'afast' && <AbaAfastamentos empresaId={empresaId} colaboradores={colaboradores} cats={cats} avisar={avisar} />}
-      {aba === 'cat' && <AbaCat empresaId={empresaId} colaboradores={colaboradores} lista={cats} recarregar={recarregar} avisar={avisar} baixar={baixador(gerarCat)} />}
+      {aba === 'afast' && <AbaAfastamentos key={afastarDe?.catId ?? 'novo'} empresaId={empresaId} colaboradores={colaboradores} cats={cats} avisar={avisar} inicial={afastarDe} />}
+      {aba === 'cat' && <AbaCat empresaId={empresaId} colaboradores={colaboradores} lista={cats} recarregar={recarregar} avisar={avisar} baixar={baixador(gerarCat)}
+        afastar={(a) => { setAfastarDe(a); setAviso(null); setAba('afast'); window.history.replaceState(null, '', `${window.location.pathname}#afastamentos`); window.scrollTo({ top: 0 }); }} />}
     </main>
   );
 }

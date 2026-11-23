@@ -5,11 +5,12 @@ import { TopoTela } from '@/components/TopoTela';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { Ditado, FotoProtegida, ResultadoIa } from '@/components/Foto';
+import { Ditado, EscolherFoto, FotoProtegida, ResultadoIa } from '@/components/Foto';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
 import { nivelDoRisco, PROBABILIDADES, SEVERIDADES } from '@/lib/matriz';
 import {
+  guardarFotos,
   AcaoCorretiva, buscarEmpresa, Ghe, Hierarquia, listarGhes, Cat, CATEGORIAS_CAUSA, CategoriaCausa, Empresa, Esforco, ia, Investigacao,
   listarCats, NovaAcao, prevencao, Prioridade, Relato, salvarArquivo, TIPOS_RELATO,
 } from '@/lib/api';
@@ -342,6 +343,7 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
   const [titulo, setTitulo] = useState('');
   const [dataOc, setDataOc] = useState(hoje());
   const [local, setLocal] = useState('');
+  const [fotoInv, setFotoInv] = useState<Blob | null>(null);
   const [descricao, setDescricao] = useState('');
   const [equipe, setEquipe] = useState('');
   const [porques, setPorques] = useState<string[]>(['', '', '', '', '']);
@@ -389,8 +391,14 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
         porques: porques.filter((p) => p.trim()), causas: causas.filter((c) => c.texto.trim()), conclusao: conclusao || undefined,
         medidas: medidas.filter((m) => m.descricao.trim()).map((m) => ({ descricao: m.descricao, responsavel: m.responsavel || undefined, prazo: m.prazo || undefined, prioridade: m.prioridade })),
       });
+      let avisoFoto = '';
+      if (fotoInv) {
+        try { await guardarFotos(empresaId, [fotoInv], `Foto do local - investigacao ${titulo}`, local); avisoFoto = ' A foto ficou no Arquivo, na pasta Fotos.'; }
+        catch { avisoFoto = ' A foto não foi enviada; tente de novo pelo Arquivo.'; }
+        setFotoInv(null);
+      }
       if (abrirCat && !catId) { router.push(linkCat(inv.id)); return; }
-      avisar('ok', 'Investigação salva. As medidas entraram no plano de ação.');
+      avisar('ok', `Investigação salva. As medidas entraram no plano de ação.${avisoFoto}`);
       setAbrirCat(false);
       setTitulo(''); setLocal(''); setDescricao(''); setEquipe(''); setPorques(['', '', '', '', '']); setCausas([]); setConclusao(''); setMedidas([medidaVazia()]); setCatId(''); setObsIa(null);
       await carregar(); aoMudar();
@@ -418,12 +426,16 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
           </div>
           <div>
             <label htmlFor="inv-desc" className="mb-1.5 block text-sm font-semibold">O que aconteceu</label>
-            <textarea id="inv-desc" className={caixa} rows={4} required value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Conte como foi, na ordem: o que a pessoa fazia, o que deu errado, o que aconteceu depois." />
+            <textarea id="inv-desc" data-sem-ditado className={caixa} rows={4} required value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Conte como foi, na ordem: o que a pessoa fazia, o que deu errado, o que aconteceu depois." />
             <div className="mt-2 flex flex-wrap gap-2">
               <Ditado acrescentar={(t) => setDescricao((d) => (d ? `${d} ${t}` : t))} />
               {iaLigada && <Botao type="button" variante="secundario" disabled={descricao.trim().length < 10 || pensando} onClick={sugerir}>{pensando ? 'A IA está pensando…' : '✨ Sugerir porquês, causas e medidas'}</Botao>}
             </div>
             {obsIa && <p className="mt-2 rounded-card bg-primary/5 px-3 py-2 text-sm"><strong>A IA sugere perguntar:</strong> {obsIa}</p>}
+            <div className="mt-3">
+              <p className="mb-1.5 text-sm font-semibold">Foto do local (opcional)</p>
+              <EscolherFoto foto={fotoInv} mudar={setFotoInv} rotulo="Tirar foto do local" />
+            </div>
           </div>
 
           <div>

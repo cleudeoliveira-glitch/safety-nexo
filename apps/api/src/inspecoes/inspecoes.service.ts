@@ -1,4 +1,6 @@
 import { identificacao } from '../documentos/capa';
+import * as QRCode from 'qrcode';
+import { escape, folhaHtml } from '../documentos/layout';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { join } from 'path';
 import { Guarda } from '../common/guarda';
@@ -53,6 +55,23 @@ export class InspecoesService {
     const { fotos, ...resto } = i;
     const n = empregados ?? (await this.prisma.empresa.findUnique({ where: { id: i.empresaId }, select: { numFuncionarios: true } }))?.numFuncionarios ?? 0;
     return { ...resto, fotos: fotosDe(fotos).map((f, k) => ({ n: k, legenda: f.legenda ?? '' })), resumo: resumoInspecao(i.modelo, i.itens as unknown as ItemInspecao[], n) };
+  }
+
+  // Etiquetas com QR para colar nos equipamentos e locais já inspecionados (extintor, máquina, escada...).
+  // A câmera do celular lê o código e abre a inspeção daquele item no sistema, já com o modelo e o local.
+  async etiquetas(consultoriaId: string, empresaId: string) {
+    const empresa = await this.empresa(consultoriaId, empresaId);
+    const lista = await this.prisma.inspecao.findMany({ where: { empresaId }, orderBy: { data: 'desc' }, select: { modelo: true, titulo: true, local: true } });
+    const vistos = new Set<string>();
+    const unicos = lista.filter((i) => { const k = `${i.modelo}|${i.local.trim().toLowerCase()}`; if (vistos.has(k)) return false; vistos.add(k); return true; });
+    if (!unicos.length) throw new BadRequestException('Faça a primeira inspeção de cada equipamento ou local. Depois as etiquetas com QR ficam prontas aqui.');
+    const web = (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
+    const itens = await Promise.all(unicos.map(async (i) => {
+      const link = `${web}/empresas/${empresaId}/operacao?modelo=${encodeURIComponent(i.modelo)}&local=${encodeURIComponent(i.local)}#checklist`;
+      return `<div class="etq"><img src="${await QRCode.toDataURL(link, { margin: 0, width: 220 })}"/><div><strong>${escape(i.local)}</strong><br/>${escape(i.titulo)}<br/><span class="emp">${escape(empresa.razaoSocial)}</span><br/><em>Aponte a câmera do celular para inspecionar</em></div></div>`;
+    }));
+    return this.pdf.render(folhaHtml(`<div class="grade">${itens.join('')}</div>`,
+      `.grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; } .etq { display: flex; gap: 12px; align-items: center; border: 1px dashed #9ca3af; padding: 10px; page-break-inside: avoid; font-size: 12px; } .etq img { width: 110px; flex: none; } .etq > div { flex: 1; min-width: 0; overflow-wrap: anywhere; } .emp { color: #6b7280; font-size: 10px; }`));
   }
 
   async listar(consultoriaId: string, empresaId: string) {

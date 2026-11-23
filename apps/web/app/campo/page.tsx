@@ -1,6 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { BotaoLuvaSol } from '@/components/LuvaSol';
+import { DitadoVoz } from '@/components/DitadoVoz';
+import { MeuDia } from '@/components/MeuDia';
 import { useCallback, useEffect, useState } from 'react';
 import { RostoCampo } from '@/components/RostoCampo';
 import { AjudaDaTela, BotaoComoUsar } from '@/components/AjudaDaTela';
@@ -86,6 +89,7 @@ export default function CampoPage() {
           <p className="mt-1 text-sm text-text/70">Entrega de EPI, inspeção, DDS e APR. Funciona sem internet: guarda no celular e envia quando a internet voltar.</p>
         </div>
         <BotaoComoUsar />
+        <BotaoLuvaSol />
         <AjudaDaTela caminho="/campo" barra={false} aba={aba} />
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${online ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>{online ? 'Com internet' : 'Sem internet: guardando no aparelho'}</span>
       </div>
@@ -124,6 +128,7 @@ export default function CampoPage() {
         <Selecao id="cp-emp" rotulo="Empresa" value={empresaId} onChange={(e) => setEmpresaId(e.target.value)}>
           <option value="">Escolha</option>{base.empresas.map((e) => <option key={e.id} value={e.id}>{e.razaoSocial}</option>)}
         </Selecao>
+        {online && empresaId && <MeuDia empresaId={empresaId} />}
         <ListasGuardadas empresaId={empresaId} />
         <a href="/material" className="card-total flex items-center justify-between rounded-card p-4 text-sm font-semibold text-primary">
           Slides dos treinamentos (abrem sem internet) <span aria-hidden>→</span>
@@ -302,6 +307,7 @@ export default function CampoPage() {
           </Cartao>
         )}
       </>)}
+      <DitadoVoz />
     </main>
   );
 }

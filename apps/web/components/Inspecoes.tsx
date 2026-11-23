@@ -1,5 +1,7 @@
 'use client';
 
+import { ResumoWhatsApp, resumoInspecao } from '@/components/ResumoWhatsApp';
+import { MarcarFoto } from '@/components/MarcarFoto';
 import { useEffect, useRef, useState } from 'react';
 import { reduzirFoto } from '@/components/Foto';
 import { Botao, Campo, CardNumero, Cartao, Selecao } from '@/components/ui';
@@ -11,6 +13,7 @@ import {
   criarInspecao,
   definirProximaInspecao,
   enviarFotosInspecao,
+  etiquetasQr,
   fotoInspecao,
   gerarInspecao,
   ia,
@@ -62,6 +65,7 @@ type FotoNova = { foto: Blob; legenda: string; previa: string };
 
 function EscolherFotos({ fotos, mudar, max }: { fotos: FotoNova[]; mudar: (f: FotoNova[]) => void; max: number }) {
   const entrada = useRef<HTMLInputElement>(null);
+  const [marcando, setMarcando] = useState<number | null>(null);
   async function incluir(lista: FileList | null) {
     if (!lista) return;
     const novas: FotoNova[] = [];
@@ -84,11 +88,22 @@ function EscolherFotos({ fotos, mudar, max }: { fotos: FotoNova[]; mudar: (f: Fo
               <div className="min-w-0 flex-1 space-y-1">
                 <input aria-label={`Legenda da foto ${i + 1}`} value={f.legenda} maxLength={200} placeholder="O que a foto mostra (opcional)"
                   onChange={(e) => mudar(fotos.map((x, j) => (j === i ? { ...x, legenda: e.target.value } : x)))} className={caixaTexto} />
-                <button type="button" className="text-xs text-danger hover:underline" onClick={() => { URL.revokeObjectURL(f.previa); mudar(fotos.filter((_, j) => j !== i)); }}>Tirar a foto</button>
+                <span className="flex flex-wrap gap-3">
+                  <button type="button" className="min-h-[40px] text-sm font-semibold text-primary" onClick={() => setMarcando(i)}>✏️ Marcar o problema</button>
+                  <button type="button" className="min-h-[40px] text-xs text-danger hover:underline" onClick={() => { URL.revokeObjectURL(f.previa); mudar(fotos.filter((_, j) => j !== i)); }}>Tirar a foto</button>
+                </span>
               </div>
             </li>
           ))}
         </ul>
+      )}
+      {marcando !== null && fotos[marcando] && (
+        <MarcarFoto foto={fotos[marcando].foto} cancelar={() => setMarcando(null)} pronto={(b) => {
+          const velha = fotos[marcando];
+          URL.revokeObjectURL(velha.previa);
+          mudar(fotos.map((x, j) => (j === marcando ? { ...x, foto: b, previa: URL.createObjectURL(b) } : x)));
+          setMarcando(null);
+        }} />
       )}
       {fotos.length < max && (
         <button type="button" onClick={() => entrada.current?.click()} className="rounded-card border border-dashed border-primary/50 bg-white px-4 py-2.5 text-sm font-semibold text-primary hover:border-primary">
@@ -305,8 +320,8 @@ function InspecaoComImagem({ empresaId, locais, localPadrao = '', cliente, recar
   );
 }
 
-export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, localPadrao = '', setores = [] }: {
-  empresaId: string; lista: Inspecao[]; modelos: ModeloChecklist[]; recarregar: () => Promise<void>; avisar: Avisar;
+export function AbaChecklist({ empresaId, nomeEmpresa = 'empresa', lista, modelos, recarregar, avisar, localPadrao = '', setores = [] }: {
+  empresaId: string; nomeEmpresa?: string; lista: Inspecao[]; modelos: ModeloChecklist[]; recarregar: () => Promise<void>; avisar: Avisar;
   localPadrao?: string; setores?: string[]; // local padrão da empresa e setores dos GHEs, como sugestão
 }) {
   const [modelo, setModelo] = useState('');
@@ -338,6 +353,22 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
     }, 80);
     avisar('ok', `Inspeção "${i.titulo}" copiada com a data de hoje. Responda os itens de novo.`);
   }
+
+  // Veio pela etiqueta QR (…?modelo=X&local=Y#checklist): já abre a inspeção daquele equipamento, com o histórico dele.
+  const veioDoQr = useRef(false);
+  useEffect(() => {
+    if (veioDoQr.current || !modelos.length) return;
+    const q = new URLSearchParams(window.location.search);
+    const mod = q.get('modelo'), loc = q.get('local');
+    if (!mod && !loc) return;
+    veioDoQr.current = true;
+    const ultima = [...lista].filter((i) => i.modelo === mod && chaveLocal(i.local) === chaveLocal(loc ?? '')).sort((a, b) => b.data.localeCompare(a.data))[0];
+    if (ultima) { repetir(ultima); setVisao('local'); return; }
+    if (mod && modelos.some((m) => m.modelo === mod)) escolher(mod);
+    setModo('lista');
+    setTimeout(() => { const el = document.getElementById('ck-local') as HTMLInputElement | null; if (el && loc) el.value = loc; }, 80);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lista, modelos]);
 
   useEffect(() => { const c = ehEmpresa(); setCliente(c); if (!c) ia.status().then((s) => setIaLigada(s.ligada)).catch(() => undefined); }, []);
 
@@ -408,6 +439,7 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
           try { salvarArquivo(await gerarInspecao(empresaId, i.id), `Inspecao-${i.modelo}-${i.data.slice(0, 10)}.pdf`); }
           catch (e) { avisar('erro', (e as Error).message); }
         }}>Baixar relatório</Botao>
+        <ResumoWhatsApp texto={resumoInspecao(nomeEmpresa, i)} pdf={() => gerarInspecao(empresaId, i.id)} nomeArquivo={`Inspecao-${i.modelo}-${i.data.slice(0, 10)}`} />
         <BotaoExcluir pergunta={`Excluir a inspeção "${i.titulo}" de ${data(i.data)}? As fotos dela saem junto.`}
           excluir={() => excluir.inspecao(empresaId, i.id)} aoTerminar={async () => { if (aberta === i.id) setAberta(null); avisar('ok', 'Inspeção excluída.'); await recarregar(); }} aoErrar={(m) => avisar('erro', m)} />
       </span>
@@ -523,11 +555,16 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
       </div>)}
 
       <Cartao titulo="Inspeções feitas" acao={lista.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+        {!cliente && <button type="button" title="Uma etiqueta para cada local inspecionado. Cole no equipamento: ao ler com a câmera do celular, a inspeção dele já abre."
+          onClick={async () => { try { salvarArquivo(await etiquetasQr(empresaId), 'Etiquetas-QR.pdf'); avisar('ok', 'Etiquetas prontas. Imprima, recorte e cole em cada equipamento ou local.'); } catch (e) { avisar('erro', (e as Error).message); } }}
+          className="rounded-card border border-border bg-white px-3 py-1.5 text-xs font-semibold hover:border-primary">🏷️ Etiquetas QR</button>}
         <div className="flex gap-1" role="tablist" aria-label="Como ver as inspeções">
           {([['lista', 'Lista'], ['local', 'Linha do tempo por local']] as const).map(([v, nome]) => (
             <button key={v} type="button" role="tab" aria-selected={visao === v} onClick={() => setVisao(v)}
               className={`rounded-card px-3 py-1.5 text-xs font-semibold ${visao === v ? 'bg-primary text-white' : 'border border-border bg-white'}`}>{nome}</button>
           ))}
+        </div>
         </div>
       )}>
         {lista.length === 0 ? <p className="text-sm text-text/60">Nenhuma inspeção ainda.</p> : visao === 'lista' ? (

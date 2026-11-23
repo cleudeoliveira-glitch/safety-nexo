@@ -513,6 +513,8 @@ export const fotoInspecao = (empresaId: string, id: string, n: number) => imagem
 export const analisarInspecaoIa = (empresaId: string, id: string) => chamar<Inspecao>('POST', `/empresas/${empresaId}/inspecoes/${id}/ia`);
 export const definirProximaInspecao = (empresaId: string, id: string, data: string | null) => chamar<Inspecao>('PUT', `/empresas/${empresaId}/inspecoes/${id}/proxima`, { data });
 export const gerarInspecao = (empresaId: string, id: string) => baixarPdf(`/empresas/${empresaId}/inspecoes/${id}/pdf`, 'relatório da inspeção');
+// Folha com uma etiqueta QR por local/equipamento inspecionado: colar no extintor, na máquina etc.
+export const etiquetasQr = (empresaId: string) => baixarPdf(`/empresas/${empresaId}/inspecoes/etiquetas`, 'folha de etiquetas QR');
 
 // Emergência: brigada (IT 17 SP), AVCB, extintores e plano de emergência.
 export type DivisaoIt17 = { divisao: string; descricao: string; risco: 'BAIXO' | 'MEDIO' | 'ALTO' };
@@ -1265,3 +1267,13 @@ export const excluir = {
   servico: (id: string) => chamar<Ok>('DELETE', `/comercial/servicos/${id}`),
   cobranca: (id: string) => chamar<Ok>('DELETE', `/comercial/cobrancas/${id}`),
 };
+
+// Fotos de CAT, investigação e PT ficam no Arquivo da empresa (pasta "Fotos"), com um título que diz de onde vieram.
+export async function guardarFotos(empresaId: string, fotos: Blob[], titulo: string, descricao?: string) {
+  let n = 0;
+  for (const foto of fotos) {
+    n += 1;
+    const nome = `${titulo.replace(/[^\p{L}\p{N} -]/gu, '').trim().replace(/\s+/g, '-')}${fotos.length > 1 ? `-${n}` : ''}.jpg`;
+    await arquivo.enviar(empresaId, new File([foto], nome, { type: 'image/jpeg' }), { titulo: fotos.length > 1 ? `${titulo} (${n})` : titulo, categoria: 'Fotos', descricao });
+  }
+}

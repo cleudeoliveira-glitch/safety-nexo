@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { MeuDia } from '@/components/MeuDia';
 import { useCallback, useEffect, useState } from 'react';
 import { Landing } from '@/components/Landing';
 import { CampoAjuda } from '@/components/CampoAjuda';
@@ -117,6 +118,7 @@ function PainelInicial() {
       )}
 
       {!semEmpresa && <BotoesDoCampo base={empresaId ? base : ''} cliente={empresaCliente} />}
+      {!semEmpresa && empresaId && !empresaCliente && <MeuDia empresaId={empresaId} />}
 
       {semEmpresa ? (
         <BoasVindas cliente={empresaCliente} />
@@ -220,15 +222,38 @@ function PainelInicial() {
             </div>
           </section>
 
-          {empresaId && <Indicadores empresaId={empresaId} />}
-
-          <ResumoEmissoes dados={emissoes} empresaId={empresaId} />
+          {/* No celular os gráficos ficam guardados atrás de "Ver mais", para o painel não ficar comprido. */}
+          {empresaId && <VerMais>
+            <Indicadores empresaId={empresaId} />
+            <ResumoEmissoes dados={emissoes} empresaId={empresaId} />
+          </VerMais>}
 
         </>
       )}
 
       {tour.aberto && !semEmpresa && <Tour passos={passosTour} onFechar={tour.fechar} />}
     </main>
+  );
+}
+
+function VerMais({ children }: { children: React.ReactNode }) {
+  const CHAVE = 'safety-nexo:painel-ver-mais';
+  const [aberto, setAberto] = useState<boolean | null>(null);
+  useEffect(() => {
+    let salvo: string | null = null;
+    try { salvo = localStorage.getItem(CHAVE); } catch { /* sem armazenamento */ }
+    setAberto(salvo ? salvo === '1' : window.innerWidth >= 768);
+  }, []);
+  const trocar = () => setAberto((a) => { try { localStorage.setItem(CHAVE, a ? '0' : '1'); } catch { /* ok */ } return !a; });
+  if (aberto === null) return null;
+  return (
+    <>
+      <button type="button" onClick={trocar} aria-expanded={aberto}
+        className="mt-6 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-border bg-white text-sm font-semibold text-primary shadow-sm">
+        {aberto ? 'Ver menos ▲' : 'Ver mais: indicadores e documentos emitidos ▼'}
+      </button>
+      {aberto && children}
+    </>
   );
 }
 
