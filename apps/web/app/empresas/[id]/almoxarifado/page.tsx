@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao } from '@/components/ui';
-import { buscarEmpresa, Empresa, estoque, ItemEstoque, MovEstoque } from '@/lib/api';
+import { buscarEmpresa, Empresa, estoque, ItemEstoque, MovEstoque, TrocasEpi } from '@/lib/api';
 
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-');
 const TIPO = { ENTRADA: 'Entrada', SAIDA: 'Entrega', AJUSTE: 'Ajuste' } as const;
@@ -14,11 +14,12 @@ export default function AlmoxarifadoPage({ params }: { params: { id: string } })
   const [itens, setItens] = useState<ItemEstoque[]>([]);
   const [aberto, setAberto] = useState<{ id: string; acao: 'entrada' | 'ajuste' | 'historico' } | null>(null);
   const [movs, setMovs] = useState<MovEstoque[]>([]);
+  const [trocas, setTrocas] = useState<TrocasEpi | null>(null);
   const [chave, setChave] = useState(0);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
 
   const carregar = useCallback(async () => {
-    try { const [e, l] = await Promise.all([buscarEmpresa(empresaId), estoque.listar(empresaId)]); setEmpresa(e); setItens(l); } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+    try { const [e, l, t] = await Promise.all([buscarEmpresa(empresaId), estoque.listar(empresaId), estoque.trocas(empresaId, 30).catch(() => null)]); setEmpresa(e); setItens(l); setTrocas(t); } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
   }, [empresaId]);
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -41,10 +42,32 @@ export default function AlmoxarifadoPage({ params }: { params: { id: string } })
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
       {comprar.length > 0 && <Aviso tipo="info">Comprar: {comprar.map((i) => `${i.epi} (restam ${i.quantidade})`).join(', ')}.</Aviso>}
 
+      {trocas && trocas.trocas.length > 0 && (
+        <Cartao titulo="Trocas pela vida útil (próximos 30 dias)">
+          <p className="mb-3 text-sm text-text/60">EPIs em uso que passaram ou vão passar do prazo de troca. Ao entregar o novo, registre a entrega na ficha da pessoa: o prazo recomeça sozinho.</p>
+          {trocas.compra.length > 0 && <div className="mb-3"><Aviso tipo="info">Para dar conta das trocas, compre: {trocas.compra.map((c) => `${c.comprar} ${c.epi}${c.tamanho ? ` (${c.tamanho})` : ''}`).join(', ')}.</Aviso></div>}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="text-left text-text/60"><th className="py-1 pr-3">Pessoa</th><th className="pr-3">EPI</th><th className="pr-3">Entregue</th><th>Trocar até</th></tr></thead>
+              <tbody>
+                {trocas.trocas.map((t) => (
+                  <tr key={t.entregaId} className="border-t border-border">
+                    <td className="py-1.5 pr-3"><Link href={`/empresas/${empresaId}/colaboradores/${t.colaboradorId}`} className="text-primary underline">{t.nome}</Link></td>
+                    <td className="pr-3">{t.epi} · CA {t.ca}</td>
+                    <td className="pr-3">{data(t.entregueEm)}</td>
+                    <td className={t.atrasada ? 'font-semibold text-danger' : ''}>{data(t.trocaEm)}{t.atrasada ? ' (atrasada)' : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Cartao>
+      )}
+
       <Cartao titulo="Incluir EPI no almoxarifado">
         <form key={chave} className="grid gap-4 md:grid-cols-3" onSubmit={(ev) => {
           ev.preventDefault(); const d = new FormData(ev.currentTarget);
-          agir(async () => { await estoque.criar(empresaId, { epi: txt(d, 'epi'), ca: txt(d, 'ca'), ...(txt(d, 'validadeCa') ? { validadeCa: txt(d, 'validadeCa') } : {}), ...(txt(d, 'tamanho') ? { tamanho: txt(d, 'tamanho') } : {}), ...(txt(d, 'fabricante') ? { fabricante: txt(d, 'fabricante') } : {}), quantidade: Number(txt(d, 'quantidade') || 0), minimo: Number(txt(d, 'minimo') || 0) }); return 'EPI incluído no almoxarifado.'; });
+          agir(async () => { await estoque.criar(empresaId, { epi: txt(d, 'epi'), ca: txt(d, 'ca'), ...(txt(d, 'validadeCa') ? { validadeCa: txt(d, 'validadeCa') } : {}), ...(txt(d, 'tamanho') ? { tamanho: txt(d, 'tamanho') } : {}), ...(txt(d, 'fabricante') ? { fabricante: txt(d, 'fabricante') } : {}), quantidade: Number(txt(d, 'quantidade') || 0), minimo: Number(txt(d, 'minimo') || 0), ...(txt(d, 'vidaUtil') ? { vidaUtilDias: Number(txt(d, 'vidaUtil')) } : {}) }); return 'EPI incluído no almoxarifado.'; });
         }}>
           <Campo id="est-epi" name="epi" rotulo="EPI" required placeholder="Ex.: Luva térmica" />
           <Campo id="est-ca" name="ca" rotulo="Número do CA" required placeholder="Ex.: 12345" />
@@ -53,6 +76,7 @@ export default function AlmoxarifadoPage({ params }: { params: { id: string } })
           <Campo id="est-fabricante" name="fabricante" rotulo="Fabricante ou fornecedor" placeholder="Ex.: 3M" />
           <Campo id="est-qtd" name="quantidade" type="number" min={0} rotulo="Quantidade em estoque" required defaultValue={0} />
           <Campo id="est-min" name="minimo" type="number" min={0} rotulo="Avisar quando chegar a" defaultValue={0} dica="Quantidade mínima: abaixo disso aparece no painel para comprar." />
+          <Campo id="est-vida" name="vidaUtil" type="number" min={0} rotulo="Vida útil (dias)" placeholder="Automático" dica="Em quantos dias cada unidade entregue deve ser trocada, pelo manual do fabricante. Vazio: o sistema usa uma referência pelo tipo de EPI. 0 = descartável." />
           <div className="flex justify-end md:col-span-3"><Botao type="submit">Incluir</Botao></div>
         </form>
       </Cartao>

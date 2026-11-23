@@ -30,7 +30,7 @@ const TIPOS_ACEITOS: Record<string, string> = {
 
 // Em que pasta do arquivo cai cada PDF gerado, pelo nome do arquivo.
 const CATEGORIAS: [RegExp, string][] = [
-  [/^(PGR|PCMSO|LTCAT|LIP|LPP|PGRTR)\b/i, 'Programas e laudos'],
+  [/^(PGR|PCMSO|LTCAT|LIP|LPP|PGRTR|PCA|PPR)\b/i, 'Programas e laudos'],
   [/^(ASO|Ficha-EPI|PPP|Comprovante-facial)/i, 'Funcionários'],
   [/^(AET|CAT)/i, 'Saúde ocupacional'],
   [/CIPA|Mapa-de-risco|Edital|Ata|Cedula|Ficha-de-inscricao|Certificado/i, 'CIPA'],
@@ -39,7 +39,7 @@ const CATEGORIAS: [RegExp, string][] = [
   [/Lista-de-presenca|Certificados/i, 'Treinamentos'],
   [/emergencia|Brigada/i, 'Emergência'],
   [/^FAP/i, 'Previdência e custos'],
-  [/^SSMA/i, 'Indicadores'],
+  [/^SSMA|^Relatorio-mensal/i, 'Indicadores'],
 ];
 export const categoriaDoNome = (nome: string) => CATEGORIAS.find(([r]) => r.test(nome))?.[1] ?? 'Outros';
 

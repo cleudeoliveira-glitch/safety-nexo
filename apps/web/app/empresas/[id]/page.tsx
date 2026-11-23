@@ -37,6 +37,7 @@ import {
   enviarLogoEmpresa,
   gerarCipa,
   gerarDocumento,
+  gerarRelatorioMensal,
   gerarRelatorioPcmso,
   Ghe,
   listarColaboradores,
@@ -155,11 +156,16 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     lip: ['LIP', 'Laudo de insalubridade e periculosidade gerado.'],
     lpp: ['LPP', 'Laudo de periculosidade gerado.'],
     pgrtr: ['PGRTR', 'PGRTR gerado.'],
+    pca: ['PCA', 'Programa de Conservação Auditiva gerado.'],
+    ppr: ['PPR', 'Programa de Proteção Respiratória gerado.'],
     os: ['Ordens-de-servico', 'Ordens de serviço geradas, uma página por colaborador.'],
     'mapa-risco': ['Mapa-de-risco', 'Mapa de risco gerado: uma folha por setor, para afixar.'],
     cipa: ['CIPA', 'Dimensionamento da CIPA gerado.'],
   };
   const [anoRelatorio, setAnoRelatorio] = useState(new Date().getFullYear() - 1);
+  // Mês do relatório ao cliente: por padrão o mês anterior, que é o que se fecha no começo do mês.
+  const mesesRelatorio = [1, 2, 3, 0].map((n) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n); return { valor: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, nome: d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) }; });
+  const [mesRelatorio, setMesRelatorio] = useState(mesesRelatorio[0].valor);
   async function baixar(tipo: TipoDocumento | 'cipa') {
     try {
       const pdf = tipo === 'cipa' ? await gerarCipa(empresaId) : await gerarDocumento(empresaId, tipo);
@@ -561,7 +567,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       <Cartao titulo="Documentos" id="documentos">
         <p className="mb-4 text-sm text-text/60">Cada documento sai em PDF com a logo da empresa no cabeçalho e a da sua consultoria no rodapé.
           O LTCAT e o LIP usam as avaliações dos riscos físicos, químicos e biológicos de cada GHE; o LPP usa a periculosidade de cada GHE.
-          O PGRTR é a versão do PGR para atividade rural (NR-31). O PPP e a ordem de serviço de cada pessoa também ficam na página do colaborador.</p>
+          O PGRTR é a versão do PGR para atividade rural (NR-31). O PCA sai para os GHEs com ruído a partir do nível de ação e o PPR para quem usa respirador. O PPP e a ordem de serviço de cada pessoa também ficam na página do colaborador.</p>
         {empresa.grauRisco && empresa.grauRisco <= 2 && ghes.length > 0 && !ghes.some((g) => g.riscos.some((r) => ['FISICO', 'QUIMICO', 'BIOLOGICO'].includes(r.tipo))) && (
           <div className="mb-4"><Aviso tipo="info">
             Esta empresa é grau de risco {empresa.grauRisco} e não tem risco físico, químico nem biológico cadastrado. Se ela for MEI, microempresa ou empresa
@@ -582,10 +588,22 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
               catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
             }}>Relatório anual do PCMSO</Botao>
           </span>
+          <span className="flex items-center gap-1">
+            <select aria-label="Mês do relatório ao cliente" value={mesRelatorio} onChange={(e) => setMesRelatorio(e.target.value)}
+              className="rounded-card border border-border bg-white px-2 py-2 text-sm">
+              {mesesRelatorio.map((m) => <option key={m.valor} value={m.valor}>{m.nome}</option>)}
+            </select>
+            <Botao variante="secundario" title="Prestação de contas ao cliente: o que foi feito no mês, como a empresa está e o que vem no próximo mês" onClick={async () => {
+              try { salvarArquivo(await gerarRelatorioMensal(empresaId, mesRelatorio), `Relatorio-mensal-${mesRelatorio}-${empresa?.razaoSocial ?? 'empresa'}.pdf`); setAviso({ tipo: 'ok', texto: 'Relatório mensal gerado. Pode mandar para o cliente.' }); }
+              catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+            }}>Relatório mensal ao cliente</Botao>
+          </span>
           <Botao onClick={() => baixar('ltcat')}>Gerar LTCAT</Botao>
           <Botao onClick={() => baixar('lip')}>Gerar LIP</Botao>
           <Botao onClick={() => baixar('lpp')}>Gerar LPP</Botao>
           <Botao onClick={() => baixar('pgrtr')} title="Para empresas com atividade rural (NR-31)">Gerar PGRTR</Botao>
+          <Botao variante="secundario" onClick={() => baixar('pca')} title="Conservação auditiva: para os GHEs com ruído no nível de ação ou acima (NR-09 e NR-07, Anexo II)">Gerar PCA</Botao>
+          <Botao variante="secundario" onClick={() => baixar('ppr')} title="Proteção respiratória: para os GHEs que usam respirador (IN MTb 1/1994)">Gerar PPR</Botao>
           <Botao variante="secundario" onClick={() => baixar('os')}>Ordens de serviço (todos)</Botao>
           <Botao variante="secundario" title="Círculos por tipo e intensidade, uma folha por setor, com os riscos dos GHEs (CIPA)" onClick={() => baixar('mapa-risco')}>Mapa de risco</Botao>
           <Link href={`/empresas/${empresaId}/prontuario`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Prontuário: vacinas e exames →</Link>

@@ -85,7 +85,7 @@ export class ColaboradoresService {
     await this.detalhar(consultoriaId, empresaId, colaboradorId);
     return registrarEntrega(this.prisma, empresaId, {
       colaboradorId, estoqueId: dto.estoqueId, epi: dto.epi?.trim(), ca: dto.ca?.trim(), fabricante: dto.fabricante, quantidade: dto.quantidade ?? 1, motivo: dto.motivo,
-      dataEntrega: new Date(dto.dataEntrega), validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null,
+      dataEntrega: new Date(dto.dataEntrega), validadeCa: dto.validadeCa ? new Date(dto.validadeCa) : null, vidaUtilDias: dto.vidaUtilDias,
     });
   }
 

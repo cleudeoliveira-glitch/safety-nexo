@@ -1,3 +1,4 @@
+import { trocaPrevista } from '../estoque/vida-util';
 import { grau5 } from '../documentos/nivel-risco';
 import { gatilhosRevisaoPgr } from '../conferencia/revisao';
 import { situacaoAfastamento } from '../saude/saude.service';
@@ -30,7 +31,7 @@ export class PainelService {
             dataAdmissao: true,
             gheId: true,
             asos: { orderBy: { dataExame: 'desc' }, take: 1, select: { proximoExame: true } },
-            entregasEpi: { where: { devolvidoEm: null }, orderBy: { dataEntrega: 'desc' }, select: { epi: true, validadeCa: true } },
+            entregasEpi: { where: { devolvidoEm: null }, orderBy: { dataEntrega: 'desc' }, select: { epi: true, validadeCa: true, dataEntrega: true, vidaUtilDias: true } },
             treinamentos: { select: { turma: { select: { nome: true, fim: true, validadeMeses: true } } } },
           },
         },
@@ -325,12 +326,14 @@ export class PainelService {
 
   // ASO e CA viram uma tarefa por situação, com os nomes, para não lotar o painel.
   private pendenciasDosColaboradores(
-    colaboradores: { nome: string; asos: { proximoExame: Date | null }[]; entregasEpi: { epi: string; validadeCa: Date | null }[] }[],
+    colaboradores: { nome: string; asos: { proximoExame: Date | null }[]; entregasEpi: { epi: string; validadeCa: Date | null; dataEntrega: Date; vidaUtilDias: number | null }[] }[],
     hoje: Date,
   ): Pendencia[] {
     const asoVencido: string[] = [];
     const asoAVencer: string[] = [];
     const caVencido: string[] = [];
+    const trocaVencida: string[] = [];
+    const trocaProxima: string[] = [];
     for (const c of colaboradores) {
       const proximo = c.asos[0]?.proximoExame;
       if (proximo) {
@@ -345,6 +348,10 @@ export class PainelService {
         if (vistos.has(chave)) continue;
         vistos.add(chave);
         if (e.validadeCa && e.validadeCa < hoje) caVencido.push(`${e.epi} (${c.nome})`);
+        // Vida útil: troca prevista vencida ou nos próximos 15 dias (descartáveis ficam de fora).
+        const troca = e.vidaUtilDias && e.vidaUtilDias >= 7 ? trocaPrevista(e.dataEntrega, e.vidaUtilDias)! : null;
+        if (troca && troca < hoje) trocaVencida.push(`${e.epi} (${c.nome})`);
+        else if (troca && troca.getTime() - hoje.getTime() <= 15 * DIA_MS) trocaProxima.push(`${e.epi} (${c.nome})`);
       }
     }
 
@@ -353,6 +360,8 @@ export class PainelService {
     if (asoVencido.length) pendencias.push({ titulo: `ASO vencido: ${asoVencido.length} colaborador(es)`, detalhe: lista(asoVencido), nivel: 'vencido' });
     if (caVencido.length) pendencias.push({ titulo: `EPI com CA vencido: ${caVencido.length}`, detalhe: `Troque o EPI: ${lista(caVencido)}`, nivel: 'vencido' });
     if (asoAVencer.length) pendencias.push({ titulo: `ASO vence em até 30 dias: ${asoAVencer.length}`, detalhe: lista(asoAVencer), nivel: 'pendente' });
+    if (trocaVencida.length) pendencias.push({ titulo: `Troca de EPI atrasada: ${trocaVencida.length}`, detalhe: `Passou da vida útil: ${lista(trocaVencida)}. Veja em Almoxarifado de EPI`, nivel: 'vencido' });
+    if (trocaProxima.length) pendencias.push({ titulo: `Troca de EPI em até 15 dias: ${trocaProxima.length}`, detalhe: `${lista(trocaProxima)}. Confira o saldo no almoxarifado`, nivel: 'pendente' });
     return pendencias;
   }
 

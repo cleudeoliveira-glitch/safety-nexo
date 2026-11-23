@@ -71,7 +71,10 @@ export class ConectoresController {
   }
 
   @Post('atestados')
-  criarAtestado(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Body() dto: AtestadoDto) { return this.conectores.criarAtestado(c, e, dto); }
+  criarAtestado(@ConsultoriaId() c: string, @Sessao() s: SessaoUsuario, @Param('empresaId') e: string, @Body() dto: AtestadoDto) {
+    // O alerta de nexo fala do CID: a empresa cliente não vê (sigilo médico).
+    return this.conectores.criarAtestado(c, e, dto).then((r) => (s.papel === 'EMPRESA' ? { ...r, alertaNexo: null } : r));
+  }
 
   @Delete('atestados/:id')
   removerAtestado(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.conectores.removerAtestado(c, e, id); }
@@ -79,7 +82,7 @@ export class ConectoresController {
   @Get('absenteismo')
   absenteismo(@ConsultoriaId() c: string, @Sessao() s: SessaoUsuario, @Param('empresaId') e: string, @Query('ano') ano?: string) {
     return this.conectores.absenteismo(c, e, anoDe(ano)).then((r) =>
-      s.papel === 'EMPRESA' ? { ...r, porCid: [], alertasInss: r.alertasInss.map(semCid) } : r,
+      s.papel === 'EMPRESA' ? { ...r, porCid: [], alertasInss: r.alertasInss.map(semCid), alertasNexo: [] } : r,
     );
   }
 

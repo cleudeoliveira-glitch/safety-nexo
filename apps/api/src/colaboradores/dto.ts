@@ -1,4 +1,4 @@
-import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Length, Matches, MaxLength, Min, ValidateIf } from 'class-validator';
+import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Length, Matches, MaxLength, Max, Min, ValidateIf } from 'class-validator';
 import { CATEGORIAS_CNH } from '../empresas/dto';
 import { TIPOS_ASO } from './regras';
 
@@ -58,6 +58,13 @@ export class CreateEntregaEpiDto {
   @IsString()
   @MaxLength(120)
   fabricante?: string;
+
+  // Dias de uso até a troca. Vazio: usa o prazo do item do almoxarifado ou a referência pelo tipo de EPI.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(3650)
+  vidaUtilDias?: number;
 
   @IsIn(['ENTREGA_INICIAL', 'DESGASTE', 'PERDA', 'DANO'])
   motivo!: string;

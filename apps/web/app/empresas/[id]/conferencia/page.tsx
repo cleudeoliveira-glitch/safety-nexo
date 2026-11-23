@@ -3,13 +3,19 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Cartao } from '@/components/ui';
-import { buscarEmpresa, Conferencia, conferirDocumentos, Empresa, GravidadeConferencia, ItemConferencia } from '@/lib/api';
+import { buscarEmpresa, Conferencia, conferirDocumentos, conferirFiscalizacao, Empresa, Fiscalizacao, gerarPastaFiscalizacao, GravidadeConferencia, ItemConferencia, salvarArquivo, SituacaoFiscalizacao } from '@/lib/api';
 
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—');
 const GRAVIDADE: Record<GravidadeConferencia, [string, string]> = {
   ALTA: ['Corrigir primeiro', 'bg-danger text-white'],
   MEDIA: ['Importante', 'bg-warning text-white'],
   BAIXA: ['Ajuste', 'bg-background text-text'],
+};
+const SITUACAO: Record<SituacaoFiscalizacao, [string, string]> = {
+  OK: ['Em ordem', 'bg-success text-white'],
+  ATENCAO: ['Atenção', 'bg-warning text-white'],
+  FALTA: ['Falta', 'bg-danger text-white'],
+  NAO_SE_APLICA: ['Não se aplica', 'bg-background text-text/60'],
 };
 const corNota = (n: number) => (n >= 90 ? '#10B981' : n >= 70 ? '#0E4A5B' : n >= 50 ? '#FF8C69' : '#EF4444');
 
@@ -30,12 +36,25 @@ export default function ConferenciaPage({ params }: { params: { id: string } }) 
   const [c, setC] = useState<Conferencia | null>(null);
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
+  const [fisc, setFisc] = useState<Fiscalizacao | null>(null);
+  const [montando, setMontando] = useState(false);
 
   const conferir = useCallback(() => {
     setCarregando(true);
     conferirDocumentos(empresaId).then(setC).catch((e: Error) => setErro(e.message)).finally(() => setCarregando(false));
   }, [empresaId]);
-  useEffect(() => { buscarEmpresa(empresaId).then(setEmpresa).catch((e: Error) => setErro(e.message)); conferir(); }, [empresaId, conferir]);
+  useEffect(() => {
+    buscarEmpresa(empresaId).then(setEmpresa).catch((e: Error) => setErro(e.message));
+    conferirFiscalizacao(empresaId).then(setFisc).catch(() => setFisc(null));
+    conferir();
+  }, [empresaId, conferir]);
+
+  async function baixarPasta() {
+    setMontando(true);
+    try { salvarArquivo(await gerarPastaFiscalizacao(empresaId), `Pasta-da-fiscalizacao-${empresa?.razaoSocial ?? ''}.pdf`); }
+    catch (e) { setErro((e as Error).message); }
+    finally { setMontando(false); }
+  }
 
   const link = (i: ItemConferencia) => (i.link === '/emitir' ? '/emitir' : i.link.startsWith('#') ? `/empresas/${empresaId}${i.link}` : `/empresas/${empresaId}${i.link}`);
   // A revisão do PGR já tem o próprio quadro: o item só conta na nota.
@@ -81,6 +100,23 @@ export default function ConferenciaPage({ params }: { params: { id: string } }) 
         </Cartao>
       )}
 
+      {fisc && (
+        <Cartao titulo="Pasta da fiscalização" acao={<Botao disabled={montando} onClick={baixarPasta}>{montando ? 'Montando a pasta…' : 'Baixar a pasta'}</Botao>}>
+          <p className="text-sm text-text/70">O que o auditor fiscal costuma pedir na visita. <strong>{fisc.prontos} de {fisc.total}</strong> itens em ordem. A pasta junta esta lista e a última versão de cada documento já emitido num PDF só, para levar no dia ou mandar por e-mail.</p>
+          <ul className="mt-3 divide-y divide-border text-sm">
+            {fisc.itens.map((i) => (
+              <li key={i.id} className="flex flex-col gap-1 py-2 sm:flex-row sm:items-start sm:gap-3">
+                <span className={`w-fit shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${SITUACAO[i.situacao][1]}`}>{SITUACAO[i.situacao][0]}</span>
+                <div className="min-w-0">
+                  <strong className="break-words">{i.titulo}</strong> <span className="text-xs text-text/50">{i.norma}</span>
+                  <p className="break-words text-text/70">{i.detalhe}</p>
+                  {(i.situacao === 'FALTA' || i.situacao === 'ATENCAO') && <Link href={link({ link: i.link } as ItemConferencia)} className="text-xs font-semibold text-primary underline">Ir para a tela →</Link>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Cartao>
+      )}
       {c && (visiveis.length === 0 ? (
         <Cartao titulo="O que não bate"><p className="text-sm text-success">{c.semDados ? 'Cadastre os GHEs e os riscos para o sistema poder conferir.' : 'Tudo batendo entre os documentos. ✓'}</p></Cartao>
       ) : grupos.map((g) => (

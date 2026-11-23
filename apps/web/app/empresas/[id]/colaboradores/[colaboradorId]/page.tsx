@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { ehEmpresa } from '@/lib/sessao';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
 import { conferirNoAparelho, guardarCaptura } from '@/lib/rosto-offline';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { abrirAsoClinica, anexarAsoClinica, buscarColaborador, CATEGORIAS_CNH, ColaboradorDetalhe, devolverEpi, editarColaborador, Ghe, listarGhes, MOTIVOS_DEVOLUCAO, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarDesligamento, type SituacaoDemissional, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto, excluir } from '@/lib/api';
+import { abrirAsoClinica, anexarAsoClinica, buscarColaborador, CATEGORIAS_CNH, ColaboradorDetalhe, devolverEpi, editarColaborador, Ghe, listarGhes, MOTIVOS_DEVOLUCAO, gerarAso, gerarDossie, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarDesligamento, type SituacaoDemissional, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto, excluir } from '@/lib/api';
 import { BotaoExcluir } from '@/components/BotaoExcluir';
 import { lembrar, ultimo } from '@/lib/lembrar';
 
@@ -103,7 +104,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
   const confirmadas = new Map((colaborador.presencasFaciais ?? []).map((p) => [p.refId, p.codigo]));
   const dadosEpi = () => {
     const d = new FormData(formEpi.current!);
-    const base = { quantidade: Number(texto(d, 'quantidade') || 1), motivo: texto(d, 'motivo') };
+    const base = { quantidade: Number(texto(d, 'quantidade') || 1), motivo: texto(d, 'motivo'), ...(texto(d, 'vidaUtil') ? { vidaUtilDias: Number(texto(d, 'vidaUtil')) } : {}) };
     if (itemId) return { ...base, estoqueId: itemId };
     return { ...base, epi: texto(d, 'epi'), ca: texto(d, 'ca'), ...(texto(d, 'validadeCa') ? { validadeCa: texto(d, 'validadeCa') } : {}), ...(texto(d, 'fabricante') ? { fabricante: texto(d, 'fabricante') } : {}) };
   };
@@ -118,6 +119,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
           <div className="flex flex-wrap gap-2">
             <Botao variante="secundario" onClick={() => baixar(() => gerarOs(empresaId, colaboradorId), `Ordem-de-servico-${colaborador.nome}.pdf`)}>Ordem de serviço</Botao>
             <Botao variante="secundario" onClick={() => baixar(() => gerarPpp(empresaId, colaboradorId), `PPP-${colaborador.nome}.pdf`)}>Baixar PPP</Botao>
+            {!ehEmpresa() && <Botao variante="secundario" title="Resumo de provas, ficha de EPI, OS e PPP num PDF só: para processo trabalhista, perícia ou fiscalização" onClick={() => baixar(() => gerarDossie(empresaId, colaboradorId), `Dossie-${colaborador.nome}.pdf`)}>Dossiê para defesa</Botao>}
             <Link href={`/empresas/${empresaId}/prontuario?colaborador=${colaboradorId}`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Prontuário de saúde</Link>
           </div>
         </div>
@@ -349,6 +351,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
             {MOTIVOS_EPI.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
           </Selecao>
           <Campo id="epi-data" name="dataEntrega" type="date" rotulo="Data da entrega" required defaultValue={hoje()} />
+          <Campo id="epi-vida" name="vidaUtil" type="number" min={0} rotulo="Vida útil (dias)" placeholder="Automático" dica="Em quantos dias este EPI deve ser trocado. Vazio: usa o prazo do almoxarifado ou uma referência pelo tipo de EPI. 0 = descartável." />
           <div className="flex flex-wrap justify-end gap-2 md:col-span-3">
             <Botao type="submit" variante={stRosto?.cadastrado ? 'secundario' : 'primario'}>Registrar entrega</Botao>
             {cfgRosto?.ativo && stRosto?.cadastrado && (
@@ -377,6 +380,11 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
                         ? ` · devolvido em ${data(e.devolvidoEm)} (${nomeDe(MOTIVOS_DEVOLUCAO, e.motivoDevolucao ?? '').toLowerCase()})`
                         : e.validadeCa && ` · CA ${vencido ? 'vencido em' : 'válido até'} ${data(e.validadeCa)}`}
                     </span>
+                    {!e.devolvidoEm && e.vidaUtilDias && e.vidaUtilDias >= 7 ? (() => {
+                      const troca = new Date(new Date(e.dataEntrega).getTime() + e.vidaUtilDias * 86_400_000);
+                      const atrasada = troca < new Date();
+                      return <span className={atrasada ? 'font-semibold text-danger' : 'text-text/60'}>{atrasada ? 'Troca atrasada desde' : 'Trocar até'} {data(troca.toISOString())}</span>;
+                    })() : null}
                     {!e.devolvidoEm && devolvendo !== e.id && (
                       <button type="button" className="text-primary hover:underline" onClick={() => setDevolvendo(e.id)}>Registrar devolução</button>
                     )}

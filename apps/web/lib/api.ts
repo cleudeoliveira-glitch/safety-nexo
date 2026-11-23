@@ -85,7 +85,7 @@ export type Aso = {
   medicoExaminadorNome: string; medicoExaminadorCrm: string; exames: string[]; riscos: string[]; proximoExame: string | null;
   arquivoPath?: string | null; // PDF do ASO feito pela clínica
 };
-export type EntregaEpi = { id: string; epi: string; ca: string; validadeCa: string | null; fabricante?: string | null; quantidade: number; motivo: string; dataEntrega: string; estoqueId?: string | null; devolvidoEm?: string | null; motivoDevolucao?: string | null };
+export type EntregaEpi = { id: string; epi: string; ca: string; validadeCa: string | null; fabricante?: string | null; quantidade: number; motivo: string; dataEntrega: string; estoqueId?: string | null; devolvidoEm?: string | null; motivoDevolucao?: string | null; vidaUtilDias?: number | null };
 export const MOTIVOS_DEVOLUCAO = [['TROCA', 'Troca por outro'], ['DANIFICADO', 'Danificado'], ['SAIDA_EMPRESA', 'Saída da empresa'], ['OUTRO', 'Outro motivo']] as const;
 // Situação do exame demissional de quem saiu (NR-07: dispensa se o último exame for recente).
 export type SituacaoDemissional = { feito: boolean; dispensa: boolean; limite: number; dias: number | null };
@@ -191,9 +191,13 @@ async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
   return res.blob();
 }
 
-export type TipoDocumento = 'pgr' | 'pcmso' | 'ltcat' | 'lip' | 'lpp' | 'pgrtr' | 'os' | 'mapa-risco';
+export type TipoDocumento = 'pgr' | 'pcmso' | 'ltcat' | 'lip' | 'lpp' | 'pgrtr' | 'pca' | 'ppr' | 'os' | 'mapa-risco';
 export const gerarDocumento = (empresaId: string, tipo: TipoDocumento) =>
   baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo === 'os' ? 'as ordens de serviço' : tipo === 'mapa-risco' ? 'mapa de risco' : tipo.toUpperCase());
+
+// Relatório mensal da consultoria para o cliente (mes no formato AAAA-MM).
+export const gerarRelatorioMensal = (empresaId: string, mes: string) =>
+  baixarPdf(`/empresas/${empresaId}/relatorio-mensal?mes=${mes}`, 'relatório mensal');
 
 // Relatório analítico anual do PCMSO (NR-07).
 export const gerarRelatorioPcmso = (empresaId: string, ano: number) =>
@@ -433,6 +437,9 @@ export const redefinirSenha = (token: string, senha: string) => chamar<Acesso>('
 // Saúde ocupacional: PPP, AET e CAT.
 export const gerarPpp = (empresaId: string, colaboradorId: string) =>
   baixarPdf(`/empresas/${empresaId}/colaboradores/${colaboradorId}/ppp`, 'PPP');
+// Dossiê do trabalhador: resumo de provas + ficha de EPI + OS + PPP num PDF só (defesa trabalhista e perícia).
+export const gerarDossie = (empresaId: string, colaboradorId: string) =>
+  baixarPdf(`/empresas/${empresaId}/colaboradores/${colaboradorId}/dossie`, 'dossiê do trabalhador');
 
 export type RecomendacaoAet = { recomendacao: string; prazo?: string; responsavel?: string };
 export type Aet = {
@@ -719,11 +726,12 @@ export type Absenteismo = {
   total: { horasPrevistas: number; horasPerdidas: number; atestados: number; taxa: number };
   porGhe: { nome: string; horas: number }[]; porTipo: { nome: string; horas: number }[]; porCid: { nome: string; horas: number }[]; quemMaisFaltou: { nome: string; horas: number }[];
   alertasInss: { colaboradorId: string; nome: string; cid: string | null; dias: number; desde: string; jaAfastado: boolean }[];
+  alertasNexo?: { chave: string; colaboradorId: string; nome: string; cid: string | null; inicio: string; dias: number; doenca: string; riscoRelacionado: string | null; forte: boolean; texto: string }[];
 };
 export const atestados = {
   tipos: (e: string) => chamar<Record<string, string>>('GET', `/empresas/${e}/atestados/tipos`),
   listar: (e: string, ano: number) => chamar<Atestado[]>('GET', `/empresas/${e}/atestados?ano=${ano}`),
-  criar: (e: string, d: AtestadoDados) => chamar<Atestado & { afastamentoCriado?: boolean }>('POST', `/empresas/${e}/atestados`, d),
+  criar: (e: string, d: AtestadoDados) => chamar<Atestado & { afastamentoCriado?: boolean; alertaNexo?: { texto: string; forte: boolean } | null }>('POST', `/empresas/${e}/atestados`, d),
   remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/atestados/${id}`),
   indicadores: (e: string, ano: number) => chamar<Absenteismo>('GET', `/empresas/${e}/absenteismo?ano=${ano}`),
   jornada: (e: string, horas: number) => chamar<{ jornadaDiariaHoras: number }>('PUT', `/empresas/${e}/absenteismo/jornada`, { jornadaDiariaHoras: horas }),
@@ -910,16 +918,20 @@ export const rosto = {
 };
 
 // Almoxarifado de EPI.
-export type ItemEstoque = { id: string; epi: string; ca: string; validadeCa: string | null; tamanho: string | null; fabricante?: string | null; quantidade: number; minimo: number; ativo: boolean; baixo: boolean; caVencido: boolean };
+export type ItemEstoque = { id: string; epi: string; ca: string; validadeCa: string | null; tamanho: string | null; fabricante?: string | null; quantidade: number; minimo: number; vidaUtilDias?: number | null; ativo: boolean; baixo: boolean; caVencido: boolean };
 export type MovEstoque = { id: string; tipo: 'ENTRADA' | 'SAIDA' | 'AJUSTE'; quantidade: number; saldo: number; observacao: string | null; colaborador: string | null; createdAt: string };
 export const estoque = {
   listar: (e: string) => chamar<ItemEstoque[]>('GET', `/empresas/${e}/estoque`),
-  criar: (e: string, d: { epi: string; ca: string; validadeCa?: string; tamanho?: string; fabricante?: string; quantidade: number; minimo?: number }) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque`, d),
-  editar: (e: string, id: string, d: { validadeCa?: string | null; minimo?: number; ativo?: boolean; fabricante?: string }) => chamar<ItemEstoque>('PATCH', `/empresas/${e}/estoque/${id}`, d),
+  criar: (e: string, d: { epi: string; ca: string; validadeCa?: string; tamanho?: string; fabricante?: string; quantidade: number; minimo?: number; vidaUtilDias?: number }) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque`, d),
+  editar: (e: string, id: string, d: { validadeCa?: string | null; minimo?: number; ativo?: boolean; fabricante?: string; vidaUtilDias?: number }) => chamar<ItemEstoque>('PATCH', `/empresas/${e}/estoque/${id}`, d),
   entrada: (e: string, id: string, quantidade: number, observacao?: string) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque/${id}/entrada`, { quantidade, observacao }),
   ajuste: (e: string, id: string, quantidade: number, observacao: string) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque/${id}/ajuste`, { quantidade, observacao }),
   movimentos: (e: string, id: string) => chamar<MovEstoque[]>('GET', `/empresas/${e}/estoque/${id}/movimentos`),
+  trocas: (e: string, dias = 30) => chamar<TrocasEpi>('GET', `/empresas/${e}/estoque/trocas?dias=${dias}`),
 };
+// Troca de EPI pela vida útil: quem precisa trocar e quanto comprar para dar conta.
+export type TrocaEpi = { entregaId: string; colaboradorId: string; nome: string; cargo: string; epi: string; ca: string; quantidade: number; entregueEm: string; trocaEm: string; atrasada: boolean; estoqueId: string | null };
+export type TrocasEpi = { dias: number; trocas: TrocaEpi[]; compra: { estoqueId: string; epi: string; ca: string; tamanho: string | null; saldo: number; precisa: number; comprar: number }[] };
 
 // Lista de toque: cada pessoa assina com o dedo na lista de presença do DDS ou do treinamento.
 export type PessoaLista = { colaboradorId: string; nome: string; cargo: string; cpf: string | null; foto: string | null; assinadoEm: string | null; testemunha: string | null };
@@ -1189,6 +1201,13 @@ export type Conferencia = {
   revisao: { ultimoPgr: string | null; venceEm: string | null; motivos: { texto: string; detalhe: string; base: string }[] };
 };
 export const conferirDocumentos = (empresaId: string) => chamar<Conferencia>('GET', `/empresas/${empresaId}/conferencia`);
+
+// Pasta da fiscalização: o que o auditor costuma pedir, conferido, e os documentos já emitidos num PDF só.
+export type SituacaoFiscalizacao = 'OK' | 'ATENCAO' | 'FALTA' | 'NAO_SE_APLICA';
+export type ItemFiscalizacao = { id: string; titulo: string; norma: string; situacao: SituacaoFiscalizacao; detalhe: string; link: string };
+export type Fiscalizacao = { empresa: string; itens: ItemFiscalizacao[]; prontos: number; total: number };
+export const conferirFiscalizacao = (empresaId: string) => chamar<Fiscalizacao>('GET', `/empresas/${empresaId}/fiscalizacao`);
+export const gerarPastaFiscalizacao = (empresaId: string) => baixarPdf(`/empresas/${empresaId}/fiscalizacao/pasta`, 'pasta da fiscalização');
 
 // Excluir documentos lançados errado (só a consultoria). Cada tela pergunta antes de apagar.
 type Ok = { ok: boolean };

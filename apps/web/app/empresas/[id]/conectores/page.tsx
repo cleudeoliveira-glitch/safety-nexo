@@ -271,6 +271,12 @@ function AbaFaltas({ empresaId, colaboradores, cliente, avisar }: { empresaId: s
         </Aviso>
       ))}
 
+      {ind?.alertasNexo?.map((a) => (
+        <Aviso key={a.chave} tipo={a.forte ? 'erro' : 'info'}>
+          <strong>Possível nexo com o trabalho (NTEP): {a.nome}</strong>, atestado de {data(a.inicio)}{a.dias ? ` com ${a.dias} dia(s)` : ''}. {a.texto}
+        </Aviso>
+      ))}
+
       <Cartao titulo="Lançar atestado">
         <form key={chave} className="grid gap-4 md:grid-cols-3" onSubmit={(ev) => {
           ev.preventDefault(); const d = new FormData(ev.currentTarget);
@@ -280,7 +286,8 @@ function AbaFaltas({ empresaId, colaboradores, cliente, avisar }: { empresaId: s
               dias: porHoras ? 0 : Number(texto(d, 'dias') || 0), horas: porHoras ? Number(texto(d, 'horas').replace(',', '.')) : undefined,
               cid: texto(d, 'cid') || undefined, medico: texto(d, 'medico') || undefined, observacao: texto(d, 'obs') || undefined,
             });
-            return novo.afastamentoCriado ? 'Atestado lançado. Como passa de 15 dias, o afastamento também foi registrado em Acidentes e afastamentos.' : 'Atestado lançado.';
+            const msg = novo.afastamentoCriado ? 'Atestado lançado. Como passa de 15 dias, o afastamento também foi registrado em Acidentes e afastamentos.' : 'Atestado lançado.';
+            return novo.alertaNexo ? `${msg} Atenção, possível nexo com o trabalho: ${novo.alertaNexo.texto}` : msg;
           });
         }}>
           <Selecao id="at-colab" name="colab" rotulo="Funcionário" required>

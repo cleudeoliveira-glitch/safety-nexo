@@ -3,5 +3,5 @@ import { DocumentosModule } from '../documentos/documentos.module';
 import { LaudosController } from './laudos.controller';
 import { LaudosService } from './laudos.service';
 
-@Module({ imports: [DocumentosModule], controllers: [LaudosController], providers: [LaudosService] })
+@Module({ imports: [DocumentosModule], controllers: [LaudosController], providers: [LaudosService], exports: [LaudosService] })
 export class LaudosModule {}

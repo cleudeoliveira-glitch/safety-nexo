@@ -322,6 +322,7 @@ model EntregaEpi {
   // Devolução (troca, dano, saída da empresa): a entrega fica no histórico, mas deixa de contar como "em uso".
   devolvidoEm     DateTime?
   motivoDevolucao String?   // TROCA | DANIFICADO | SAIDA_EMPRESA | OUTRO
+  vidaUtilDias  Int?        // prazo de uso até a troca; vazio = sem troca prevista
   createdAt     DateTime    @default(now())
 
   @@index([colaboradorId])
@@ -1133,6 +1134,7 @@ model EstoqueEpi {
   fabricante String?            // fabricante ou fornecedor
   quantidade Int                @default(0)
   minimo     Int                @default(0)
+  vidaUtilDias Int?             // prazo de uso de cada unidade entregue, até a troca
   ativo      Boolean            @default(true)
   createdAt  DateTime           @default(now())
   movimentos MovimentoEstoque[]
