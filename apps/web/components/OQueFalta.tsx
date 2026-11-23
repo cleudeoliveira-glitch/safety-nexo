@@ -38,7 +38,14 @@ export function OQueFalta() {
     return () => { document.removeEventListener('invalid', aoFaltar, true); clearTimeout(espera); };
   }, []);
 
-  useEffect(() => { if (!faltam) return; const t = setTimeout(() => setFaltam(null), 6000); return () => clearTimeout(t); }, [faltam]);
+  // Some sozinho depois de 6 segundos ou assim que a pessoa começa a preencher (a borda vermelha continua).
+  useEffect(() => {
+    if (!faltam) return;
+    const t = setTimeout(() => setFaltam(null), 6000);
+    const fechar = () => setFaltam(null);
+    document.addEventListener('change', fechar, true);
+    return () => { clearTimeout(t); document.removeEventListener('change', fechar, true); };
+  }, [faltam]);
 
   if (!faltam) return null;
   return (

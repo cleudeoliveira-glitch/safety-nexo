@@ -16,6 +16,7 @@ import { MODELOS_APR, modeloParaAtividade, type ModeloApr } from '@/lib/modelosA
 import { ehEmpresa } from '@/lib/sessao';
 import { AbasDaTela, TopoTela } from '@/components/TopoTela';
 import { BotaoAoLado, NovoRegistro, useNovo } from '@/components/NovoRegistro';
+import { PassosDoForm } from '@/components/PassosDoForm';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   Apr,
@@ -453,97 +454,103 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
     <div className="space-y-6">
       <NovoRegistro rotulo="Nova permissão de trabalho" {...novo} outros={permissoes[0] && <BotaoAoLado onClick={() => repetir(permissoes[0])} title="Traz a última PT para um turno novo. As verificações precisam ser conferidas de novo.">↻ Repetir a última</BotaoAoLado>}>
       <Cartao titulo="Nova permissão de trabalho">
-        <form className="space-y-4" onSubmit={salvar}>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Selecao id="pt-tipo" rotulo="Tipo de trabalho" value={tipo} onChange={(e) => { setTipo(e.target.value as TipoPt); setMarcados([]); }}>
-              {Object.entries(conteudo.tiposPt).map(([valor, t]) => <option key={valor} value={valor}>{t.nome} ({t.norma})</option>)}
-            </Selecao>
-            <Selecao id="pt-apr" name="aprId" rotulo="APR da atividade" onChange={(e) => escolherApr(e.target.value)}
-              ajuda={{ oQueE: 'A APR que analisou este trabalho.', exemplo: 'Ao escolher, a atividade, o local e a equipe já vêm preenchidos.' }}>
-              <option value="">Sem APR vinculada</option>
-              {aprs.map((a) => <option key={a.id} value={a.id}>Nº {a.numero} · {a.atividade}</option>)}
-            </Selecao>
-            <Campo id="pt-atividade" name="atividade" rotulo="Atividade" required placeholder="Ex.: Troca de telhas" />
-            <Campo id="pt-local" name="local" rotulo="Local" required placeholder="Ex.: Galpão" defaultValue={localPadrao} list="locais-empresa" />
-            <Campo id="pt-inicio" name="inicio" type="datetime-local" rotulo="Válida a partir de" required defaultValue={agoraMais(0)} />
-            <Campo id="pt-fim" name="fim" type="datetime-local" rotulo="Válida até" required defaultValue={agoraMais(8)} dica="Já vem com um turno (8 horas). PT não passa do turno." />
-            <Campo id="pt-emitente" name="emitente" rotulo="Emitente" required placeholder="Quem libera o trabalho" list="nomes-pessoas" />
-            {confinado && <>
-              <Campo id="pt-supervisor" name="supervisorEntrada" rotulo="Supervisor de entrada" required placeholder="Quem autoriza a entrada" list="nomes-pessoas" />
-              <Campo id="pt-vigia" name="vigia" rotulo="Vigia" required placeholder="Quem fica do lado de fora" list="nomes-pessoas" />
-              <Selecao id="pt-espaco" name="espacoId" rotulo="Espaço confinado (do cadastro)">
-                <option value="">{espacos.length ? 'Escolha o espaço' : 'Nenhum espaço cadastrado ainda'}</option>
-                {espacos.map((x) => <option key={x.id} value={x.id}>{x.codigo} · {x.nome}</option>)}
-              </Selecao>
-            </>}
-            {comResgate && (
-              <Selecao id="pt-resgate" name="planoResgateId" rotulo="Plano de resgate">
-                <option value="">{planosDoTipo.length ? 'Escolha o plano' : 'Nenhum plano deste tipo ainda'}</option>
-                {planosDoTipo.map((x) => <option key={x.id} value={x.id}>Nº {x.numero} · {x.titulo}</option>)}
-              </Selecao>
-            )}
-          </div>
-          {comResgate && (
-            <p className="text-xs text-text/60">
-              {confinado ? 'O cadastro dos espaços e os' : 'Os'} planos de resgate ficam em{' '}
-              <Link href={`/empresas/${empresaId}/confinados`} className="font-semibold text-primary underline">Espaços confinados e resgate</Link>.
-            </p>
-          )}
+        <form onSubmit={salvar}>
+          <PassosDoForm salvar={<Botao type="submit">Emitir permissão</Botao>} passos={[
+            { titulo: 'O trabalho', conteudo: <div className="space-y-4 md:col-span-3">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Selecao id="pt-tipo" rotulo="Tipo de trabalho" value={tipo} onChange={(e) => { setTipo(e.target.value as TipoPt); setMarcados([]); }}>
+                    {Object.entries(conteudo.tiposPt).map(([valor, t]) => <option key={valor} value={valor}>{t.nome} ({t.norma})</option>)}
+                  </Selecao>
+                  <Selecao id="pt-apr" name="aprId" rotulo="APR da atividade" onChange={(e) => escolherApr(e.target.value)}
+                    ajuda={{ oQueE: 'A APR que analisou este trabalho.', exemplo: 'Ao escolher, a atividade, o local e a equipe já vêm preenchidos.' }}>
+                    <option value="">Sem APR vinculada</option>
+                    {aprs.map((a) => <option key={a.id} value={a.id}>Nº {a.numero} · {a.atividade}</option>)}
+                  </Selecao>
+                  <Campo id="pt-atividade" name="atividade" rotulo="Atividade" required placeholder="Ex.: Troca de telhas" />
+                  <Campo id="pt-local" name="local" rotulo="Local" required placeholder="Ex.: Galpão" defaultValue={localPadrao} list="locais-empresa" />
+                  <Campo id="pt-inicio" name="inicio" type="datetime-local" rotulo="Válida a partir de" required defaultValue={agoraMais(0)} />
+                  <Campo id="pt-fim" name="fim" type="datetime-local" rotulo="Válida até" required defaultValue={agoraMais(8)} dica="Já vem com um turno (8 horas). PT não passa do turno." />
+                  <Campo id="pt-emitente" name="emitente" rotulo="Emitente" required placeholder="Quem libera o trabalho" list="nomes-pessoas" />
+                  {confinado && <>
+                    <Campo id="pt-supervisor" name="supervisorEntrada" rotulo="Supervisor de entrada" required placeholder="Quem autoriza a entrada" list="nomes-pessoas" />
+                    <Campo id="pt-vigia" name="vigia" rotulo="Vigia" required placeholder="Quem fica do lado de fora" list="nomes-pessoas" />
+                    <Selecao id="pt-espaco" name="espacoId" rotulo="Espaço confinado (do cadastro)">
+                      <option value="">{espacos.length ? 'Escolha o espaço' : 'Nenhum espaço cadastrado ainda'}</option>
+                      {espacos.map((x) => <option key={x.id} value={x.id}>{x.codigo} · {x.nome}</option>)}
+                    </Selecao>
+                  </>}
+                  {comResgate && (
+                    <Selecao id="pt-resgate" name="planoResgateId" rotulo="Plano de resgate">
+                      <option value="">{planosDoTipo.length ? 'Escolha o plano' : 'Nenhum plano deste tipo ainda'}</option>
+                      {planosDoTipo.map((x) => <option key={x.id} value={x.id}>Nº {x.numero} · {x.titulo}</option>)}
+                    </Selecao>
+                  )}
+                </div>
+                {comResgate && (
+                  <p className="text-xs text-text/60">
+                    {confinado ? 'O cadastro dos espaços e os' : 'Os'} planos de resgate ficam em{' '}
+                    <Link href={`/empresas/${empresaId}/confinados`} className="font-semibold text-primary underline">Espaços confinados e resgate</Link>.
+                  </p>
+                )}
+            </div> },
+            ...(icamento || escavacao || confinado ? [{ titulo: icamento ? 'Dados do içamento' : escavacao ? 'Dados da escavação' : 'Medição antes da entrada', conteudo: <div className="space-y-4 md:col-span-3">
+                {icamento && (
+                  <fieldset className="grid gap-4 rounded-card border border-border p-3 md:grid-cols-3">
+                    <legend className="px-1 text-sm font-semibold">Dados do içamento</legend>
+                    <Campo id="pt-equip" name="equipamento" rotulo="Equipamento" placeholder="Ex.: Caminhão munck 20 t" />
+                    <Campo id="pt-peso" rotulo="Peso da carga com acessórios (kg)" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="Ex.: 1200" />
+                    <Campo id="pt-capacidade" rotulo="Capacidade no raio de trabalho (kg)" inputMode="decimal" value={capacidade} onChange={(e) => setCapacidade(e.target.value)} placeholder="Ex.: 3000" />
+                    <Campo id="pt-operador" name="operador" rotulo="Operador" placeholder="Nome do operador" list="nomes-pessoas" />
+                    <Campo id="pt-sinaleiro" name="sinaleiro" rotulo="Sinaleiro (rigger)" placeholder="Nome do sinaleiro" list="nomes-pessoas" />
+                    {usoCarga !== null && (
+                      <p className={`self-end pb-3 text-sm font-semibold ${usoCarga > 100 ? 'text-danger' : usoCarga > 75 ? 'text-[#c2410c]' : 'text-success'}`}>
+                        {usoCarga > 100 ? `A carga passa da capacidade (${usoCarga}%). Não pode içar.` : usoCarga > 75 ? `Usa ${usoCarga}% da capacidade: faça o plano de rigging.` : `Usa ${usoCarga}% da capacidade.`}
+                      </p>
+                    )}
+                  </fieldset>
+                )}
 
-          {icamento && (
-            <fieldset className="grid gap-4 rounded-card border border-border p-3 md:grid-cols-3">
-              <legend className="px-1 text-sm font-semibold">Dados do içamento</legend>
-              <Campo id="pt-equip" name="equipamento" rotulo="Equipamento" placeholder="Ex.: Caminhão munck 20 t" />
-              <Campo id="pt-peso" rotulo="Peso da carga com acessórios (kg)" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="Ex.: 1200" />
-              <Campo id="pt-capacidade" rotulo="Capacidade no raio de trabalho (kg)" inputMode="decimal" value={capacidade} onChange={(e) => setCapacidade(e.target.value)} placeholder="Ex.: 3000" />
-              <Campo id="pt-operador" name="operador" rotulo="Operador" placeholder="Nome do operador" list="nomes-pessoas" />
-              <Campo id="pt-sinaleiro" name="sinaleiro" rotulo="Sinaleiro (rigger)" placeholder="Nome do sinaleiro" list="nomes-pessoas" />
-              {usoCarga !== null && (
-                <p className={`self-end pb-3 text-sm font-semibold ${usoCarga > 100 ? 'text-danger' : usoCarga > 75 ? 'text-[#c2410c]' : 'text-success'}`}>
-                  {usoCarga > 100 ? `A carga passa da capacidade (${usoCarga}%). Não pode içar.` : usoCarga > 75 ? `Usa ${usoCarga}% da capacidade: faça o plano de rigging.` : `Usa ${usoCarga}% da capacidade.`}
-                </p>
-              )}
-            </fieldset>
-          )}
+                {escavacao && (
+                  <fieldset className="grid gap-4 rounded-card border border-border p-3 md:grid-cols-3">
+                    <legend className="px-1 text-sm font-semibold">Dados da escavação</legend>
+                    <Campo id="pt-prof" name="profundidade" rotulo="Profundidade (m)" inputMode="decimal" placeholder="Ex.: 1,8" />
+                    <Campo id="pt-solo" name="tipoSolo" rotulo="Tipo de solo" placeholder="Ex.: Argiloso, úmido" />
+                    <Campo id="pt-contencao" name="contencao" rotulo="Contenção" placeholder="Ex.: Escoramento de madeira" />
+                    <p className="text-xs text-text/60 md:col-span-3">Acima de 1,25 m de profundidade, o talude precisa estar estável (escoramento ou talude conforme projeto) antes de alguém entrar na vala.</p>
+                  </fieldset>
+                )}
 
-          {escavacao && (
-            <fieldset className="grid gap-4 rounded-card border border-border p-3 md:grid-cols-3">
-              <legend className="px-1 text-sm font-semibold">Dados da escavação</legend>
-              <Campo id="pt-prof" name="profundidade" rotulo="Profundidade (m)" inputMode="decimal" placeholder="Ex.: 1,8" />
-              <Campo id="pt-solo" name="tipoSolo" rotulo="Tipo de solo" placeholder="Ex.: Argiloso, úmido" />
-              <Campo id="pt-contencao" name="contencao" rotulo="Contenção" placeholder="Ex.: Escoramento de madeira" />
-              <p className="text-xs text-text/60 md:col-span-3">Acima de 1,25 m de profundidade, o talude precisa estar estável (escoramento ou talude conforme projeto) antes de alguém entrar na vala.</p>
-            </fieldset>
-          )}
-
-          {confinado && (
-            <fieldset className="rounded-card border border-border p-3">
-              <legend className="px-1 text-sm font-semibold">Medição antes da entrada</legend>
-              <p className="mb-2 text-xs text-text/60">Valores do detector de gases. Se ainda não mediu, deixe em branco: o PDF sai com a tabela para preencher à mão, e dá para lançar as medições depois na lista abaixo.</p>
-              <CamposMedicao prefixo="pt" />
-            </fieldset>
-          )}
-
-          <fieldset className="rounded-card border border-border p-3">
-            <legend className="px-1 text-sm font-semibold">Verificações: {conteudo.tiposPt[tipo].nome}</legend>
-            <p className="mb-2 text-xs text-text/60">Marque o que foi conferido. Os itens são uma sugestão; o que ficar desmarcado sai como &quot;não&quot; no PDF.</p>
-            <button type="button" className="mb-2 text-xs font-semibold text-primary" onClick={() => setMarcados(pendentes ? [...itens] : [])}>
-              {pendentes ? 'Conferi tudo: marcar todos' : 'Desmarcar todos'}
-            </button>
-            <div className="space-y-1.5">
-              {itens.map((item) => (
-                <label key={item} className="flex items-start gap-2 text-sm">
-                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={marcados.includes(item)}
-                    onChange={(e) => setMarcados(e.target.checked ? [...marcados, item] : marcados.filter((m) => m !== item))} />
-                  {item}
-                </label>
-              ))}
-            </div>
-            {pendentes > 0 && <p className="mt-2 text-xs font-semibold text-warning">{pendentes} item(ns) sem conferir.</p>}
-          </fieldset>
-
-          <EscolherPessoas titulo="Executantes" colaboradores={colaboradores} marcados={executantes} mudar={setExecutantes} />
-          <div className="flex justify-end"><Botao type="submit">Emitir permissão</Botao></div>
+                {confinado && (
+                  <fieldset className="rounded-card border border-border p-3">
+                    <legend className="px-1 text-sm font-semibold">Medição antes da entrada</legend>
+                    <p className="mb-2 text-xs text-text/60">Valores do detector de gases. Se ainda não mediu, deixe em branco: o PDF sai com a tabela para preencher à mão, e dá para lançar as medições depois na lista abaixo.</p>
+                    <CamposMedicao prefixo="pt" />
+                  </fieldset>
+                )}
+            </div> }] : []),
+            { titulo: 'Verificações', conteudo: <div className="space-y-4 md:col-span-3">
+                <fieldset className="rounded-card border border-border p-3">
+                  <legend className="px-1 text-sm font-semibold">Verificações: {conteudo.tiposPt[tipo].nome}</legend>
+                  <p className="mb-2 text-xs text-text/60">Marque o que foi conferido. Os itens são uma sugestão; o que ficar desmarcado sai como &quot;não&quot; no PDF.</p>
+                  <button type="button" className="mb-2 text-xs font-semibold text-primary" onClick={() => setMarcados(pendentes ? [...itens] : [])}>
+                    {pendentes ? 'Conferi tudo: marcar todos' : 'Desmarcar todos'}
+                  </button>
+                  <div className="space-y-1.5">
+                    {itens.map((item) => (
+                      <label key={item} className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                        <input type="checkbox" className="h-6 w-6 shrink-0 accent-primary" checked={marcados.includes(item)}
+                          onChange={(e) => setMarcados(e.target.checked ? [...marcados, item] : marcados.filter((m) => m !== item))} />
+                        {item}
+                      </label>
+                    ))}
+                  </div>
+                  {pendentes > 0 && <p className="mt-2 text-xs font-semibold text-warning">{pendentes} item(ns) sem conferir.</p>}
+                </fieldset>
+            </div> },
+            { titulo: 'Quem vai executar', conteudo: <div className="space-y-4 md:col-span-3">
+                <EscolherPessoas titulo="Executantes" colaboradores={colaboradores} marcados={executantes} mudar={setExecutantes} />
+            </div> },
+          ]} />
         </form>
       </Cartao>
       </NovoRegistro>
@@ -594,7 +601,6 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
   const [tema, setTema] = useState('');
   const [texto, setTexto] = useState('');
   const [participantes, setParticipantes] = useState<string[]>([]);
-  const [categoria, setCategoria] = useState('');
   const [busca, setBusca] = useState('');
   const [camera, setCamera] = useState<Dds | null>(null);
   const [rostoDds, setRostoDds] = useState(false);
@@ -602,12 +608,13 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
   useEffect(() => { sugestoesDds(empresaId).then(setSugestoes).catch(() => setSugestoes(null)); }, [empresaId, lista.length]);
   useEffect(() => { rosto.config().then((c) => setRostoDds(c.ativo && c.usos.DDS)).catch(() => setRostoDds(false)); }, []);
   useEffect(() => { preencherLembrados({ 'dds-ministrante': 'dds.ministrante' }, ['dds-ministrante']); }, []);
-  const categorias = [...new Set(conteudo.temasDds.map((t) => t.categoria))].sort();
   const feitos = new Set(lista.map((d) => d.tema));
   const semAcento = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  const filtrados = conteudo.temasDds.filter(
-    (t) => (!categoria || t.categoria === categoria) && (!busca.trim() || semAcento(`${t.tema} ${t.conteudo}`).includes(semAcento(busca.trim()))),
-  );
+  const termos = semAcento(busca).split(/\s+/).filter(Boolean);
+  // Tema com a palavra no nome vem antes do que só fala dela no texto.
+  const filtrados = conteudo.temasDds
+    .filter((t) => termos.every((w) => semAcento(`${t.tema} ${t.categoria} ${t.conteudo}`).includes(w)))
+    .sort((x, y) => Number(termos.every((w) => semAcento(y.tema).includes(w))) - Number(termos.every((w) => semAcento(x.tema).includes(w))));
 
   // O texto pronto vem com o caso para contar, a dinâmica vivencial e a pergunta para a equipe.
   function escolherTema(nome: string) {
@@ -688,21 +695,25 @@ function AbaDds({ empresaId, colaboradores, lista, conteudo, recarregar, avisar,
           ) : !sugestoes.temRiscos && (
             <p className="rounded-card bg-background px-3 py-2 text-sm text-text/60">Quando os riscos dos GHEs estiverem cadastrados, aparecem aqui temas de DDS sugeridos para esta empresa.</p>
           ))}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Selecao id="dds-categoria" rotulo="Assunto" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
-              <option value="">Todos os assuntos</option>
-              {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
-            </Selecao>
-            <Campo id="dds-busca" rotulo="Procurar tema" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Ex.: forno, escada, extintor" />
-            <Selecao id="dds-pronto" rotulo="Tema pronto" value={conteudo.temasDds.some((t) => t.tema === tema) ? tema : ''} onChange={(e) => escolherTema(e.target.value)}>
-              <option value="">Escolher da biblioteca ({filtrados.length} de {conteudo.temasDds.length} temas)</option>
-              {categorias.filter((c) => filtrados.some((t) => t.categoria === c)).map((c) => (
-                <optgroup key={c} label={c}>
-                  {filtrados.filter((t) => t.categoria === c).map((t) => <option key={t.tema} value={t.tema}>{feitos.has(t.tema) ? '✓ ' : ''}{t.tema}</option>)}
-                </optgroup>
-              ))}
-            </Selecao>
-            <Campo id="dds-tema" rotulo="Tema" required value={tema} onChange={(e) => setTema(e.target.value)} placeholder="Ou escreva um tema" />
+          {/* Uma busca só: o que a pessoa escreve procura na biblioteca e, se não escolher nada, vira o tema. */}
+          <div>
+            <Campo id="dds-tema" rotulo="Tema" required value={tema} onChange={(e) => { setTema(e.target.value); setBusca(e.target.value); }}
+              placeholder="Procure ou escreva. Ex.: forno, escada, extintor" />
+            {busca.trim() && !escolhido && (
+              <ul className="mt-2 divide-y divide-border rounded-card border border-border bg-white">
+                {filtrados.slice(0, 8).map((t) => (
+                  <li key={t.tema}>
+                    <button type="button" onClick={() => { escolherTema(t.tema); setBusca(''); }} className="min-h-[48px] w-full px-3 py-2 text-left text-sm hover:bg-primary/5">
+                      <span className="font-semibold">{feitos.has(t.tema) ? '✓ ' : ''}{t.tema}</span>
+                      <span className="block text-xs text-text/60">{t.categoria}{feitos.has(t.tema) ? ' · já feito nesta empresa' : ''}</span>
+                    </button>
+                  </li>
+                ))}
+                <li className="px-3 py-2 text-xs text-text/60">
+                  {filtrados.length ? `Toque num tema pronto (${filtrados.length} achados) ou continue: o tema fica como você escreveu.` : 'Nenhum tema pronto com essa palavra. Pode seguir: o tema fica como você escreveu.'}
+                </li>
+              </ul>
+            )}
           </div>
           <p className="text-sm text-text/70">
             Quer ver os temas com calma, no celular?{' '}

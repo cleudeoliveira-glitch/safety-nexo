@@ -29,7 +29,7 @@ export function EscolherPessoas({ titulo, colaboradores, marcados, mudar }: { ti
       ) : (
         <>
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <button type="button" className="rounded-full border border-primary/40 px-3 py-1 text-xs font-semibold text-primary" onClick={() => mudar(todos ? [] : ativos.map((c) => c.id))}>
+            <button type="button" className="min-h-[40px] rounded-full border border-primary/40 px-4 text-sm font-semibold text-primary" onClick={() => mudar(todos ? [] : ativos.map((c) => c.id))}>
               {todos ? 'Desmarcar todos' : 'Marcar todos'}
             </button>
             {funcoes.length > 1 && funcoes.length <= 15 && funcoes.map((f) => {
@@ -37,7 +37,7 @@ export function EscolherPessoas({ titulo, colaboradores, marcados, mudar }: { ti
               const cheio = ativos.filter((c) => c.cargo === f).every((c) => marcados.includes(c.id));
               return (
                 <button key={f} type="button" onClick={() => marcarFuncao(f)} title={`Marcar ou desmarcar todos: ${f}`}
-                  className={`rounded-full border px-3 py-1 text-xs ${cheio ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text/80'}`}>
+                  className={`min-h-[40px] rounded-full border px-4 text-sm ${cheio ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text/80'}`}>
                   {f} ({n})
                 </button>
               );
@@ -45,12 +45,12 @@ export function EscolherPessoas({ titulo, colaboradores, marcados, mudar }: { ti
           </div>
           {ativos.length > 8 && (
             <input type="search" aria-label="Procurar pessoa" placeholder="Procurar pelo nome ou função" value={busca} onChange={(e) => setBusca(e.target.value)}
-              className="mb-2 w-full rounded-card border border-border bg-background px-3 py-2 text-sm" />
+              className="mb-2 min-h-[48px] w-full rounded-card border border-border bg-background px-3 py-2 text-base" />
           )}
           <div className="grid gap-1.5 md:grid-cols-2">
             {visiveis.map((c) => (
-              <label key={c.id} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" className="h-4 w-4 shrink-0 accent-primary" checked={marcados.includes(c.id)}
+              <label key={c.id} className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                <input type="checkbox" className="h-6 w-6 shrink-0 accent-primary" checked={marcados.includes(c.id)}
                   onChange={(e) => mudar(e.target.checked ? [...marcados, c.id] : marcados.filter((id) => id !== c.id))} />
                 <span className="min-w-0 break-words">{c.nome} <span className="text-text/50">· {c.cargo}</span></span>
               </label>

@@ -473,7 +473,7 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
           </div>
           {!catId && (
             <label className="flex items-start gap-2 rounded-card border border-border bg-background p-3 text-sm">
-              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={abrirCat} onChange={(e) => setAbrirCat(e.target.checked)} />
+              <input type="checkbox" className="h-6 w-6 shrink-0 accent-primary" checked={abrirCat} onChange={(e) => setAbrirCat(e.target.checked)} />
               <span>Alguém se machucou e ainda não tem CAT. <strong>Abrir a CAT logo depois de salvar</strong>, já com o local e a descrição desta investigação.</span>
             </label>
           )}

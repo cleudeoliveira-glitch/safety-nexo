@@ -115,7 +115,7 @@ export const GUIAS: GuiaTela[] = [
         titulo: 'DDS',
         aba: 'dds',
         passos: [
-          'Escolha um assunto ou procure um tema (ex.: "escada"). Abra a lista "Tema pronto" e escolha.',
+          'No campo Tema, escreva uma palavra (ex.: "escada") e toque num dos temas prontos que aparecem. Se não quiser nenhum, o tema fica como você escreveu.',
           'O roteiro aparece pronto: um caso para contar, o que falar, a dinâmica vivencial de 3 minutos e a pergunta para a equipe.',
           'O texto vai para o campo "O que foi falado". Você pode mudar à vontade.',
           'Informe a data, a duração, quem conduziu e marque os participantes.',

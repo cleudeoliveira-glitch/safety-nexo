@@ -124,8 +124,8 @@ function Inventario({ empresaId, conteudo, espacos, recarregar, avisar }: {
             <legend className="mb-1.5 text-sm font-semibold">Perigos deste espaço</legend>
             <div className="grid gap-1.5 sm:grid-cols-2 md:grid-cols-3">
               {Object.entries(conteudo.riscosConfinado).map(([v, n]) => (
-                <label key={v} className="flex items-start gap-2 text-sm">
-                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={d.riscos.includes(v)}
+                <label key={v} className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                  <input type="checkbox" className="h-6 w-6 shrink-0 accent-primary" checked={d.riscos.includes(v)}
                     onChange={(e) => mudar({ riscos: e.target.checked ? [...d.riscos, v] : d.riscos.filter((r) => r !== v) })} />
                   {n}
                 </label>
@@ -138,9 +138,9 @@ function Inventario({ empresaId, conteudo, espacos, recarregar, avisar }: {
               placeholder="Ex.: Bloqueio da bomba de recalque, ventilação forçada, medição contínua de gases, entrada só com PET" />
           </div>
           <div className="flex flex-wrap gap-5 text-sm">
-            <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-primary" checked={d.sinalizado} onChange={(e) => mudar({ sinalizado: e.target.checked })} /> Sinalizado (placa de entrada proibida)</label>
-            <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-primary" checked={d.isolado} onChange={(e) => mudar({ isolado: e.target.checked })} /> Entrada fechada para quem não é autorizado</label>
-            {editando.id && <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-primary" checked={d.ativo} onChange={(e) => mudar({ ativo: e.target.checked })} /> Ainda existe</label>}
+            <label className="flex min-h-[44px] cursor-pointer items-center gap-2"><input type="checkbox" className="h-6 w-6 accent-primary" checked={d.sinalizado} onChange={(e) => mudar({ sinalizado: e.target.checked })} /> Sinalizado (placa de entrada proibida)</label>
+            <label className="flex min-h-[44px] cursor-pointer items-center gap-2"><input type="checkbox" className="h-6 w-6 accent-primary" checked={d.isolado} onChange={(e) => mudar({ isolado: e.target.checked })} /> Entrada fechada para quem não é autorizado</label>
+            {editando.id && <label className="flex min-h-[44px] cursor-pointer items-center gap-2"><input type="checkbox" className="h-6 w-6 accent-primary" checked={d.ativo} onChange={(e) => mudar({ ativo: e.target.checked })} /> Ainda existe</label>}
           </div>
           <div className="flex justify-end gap-2">
             <Botao type="button" variante="secundario" onClick={() => setEditando(null)}>Cancelar</Botao>
@@ -259,8 +259,8 @@ function Planos({ empresaId, conteudo, espacos, planos, colaboradores, recarrega
             <legend className="mb-1.5 text-sm font-semibold">Equipamentos de resgate no local</legend>
             <div className="grid gap-1.5 sm:grid-cols-2">
               {[...sugeridos, ...extras].map((x) => (
-                <label key={x} className="flex items-start gap-2 text-sm">
-                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={d.equipamentos.includes(x)}
+                <label key={x} className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                  <input type="checkbox" className="h-6 w-6 shrink-0 accent-primary" checked={d.equipamentos.includes(x)}
                     onChange={(e) => mudar({ equipamentos: e.target.checked ? [...d.equipamentos, x] : d.equipamentos.filter((y) => y !== x) })} />
                   {x}
                 </label>

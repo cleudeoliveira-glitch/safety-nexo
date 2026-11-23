@@ -121,8 +121,8 @@ export function ReunioesCipa({ empresaId, eleicao }: { empresaId: string; eleica
             {membros.length > 0 ? (
               <div className="grid gap-1.5 sm:grid-cols-2">
                 {membros.map((m) => (
-                  <label key={m} className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" className="h-4 w-4 accent-primary" checked={marcados.has(m)}
+                  <label key={m} className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                    <input type="checkbox" className="h-6 w-6 shrink-0 accent-primary" checked={marcados.has(m)}
                       onChange={(e) => setMarcados((x) => { const n = new Set(x); if (e.target.checked) n.add(m); else n.delete(m); return n; })} />
                     {m}
                   </label>
