@@ -33,6 +33,7 @@ import { HealthController } from './health/health.controller';
 import { LogosModule } from './logos/logos.module';
 import { PainelModule } from './painel/painel.module';
 import { ConferenciaModule } from './conferencia/conferencia.module';
+import { DossieModule } from './dossie/dossie.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { NormasModule } from './normas/normas';
 import { IaModule } from './ia/ia.controller';
@@ -43,7 +44,7 @@ import { ContaModule } from './conta/conta';
 import { PushModule } from './push/push';
 
 @Module({
-  imports: [PushModule, AuthModule, AdminModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule, PresencaModule, NormasModule, IaModule, PrevencaoModule, PortalModule, AvisosModule, ContaModule, CalculosModule, ConferenciaModule],
+  imports: [PushModule, AuthModule, AdminModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule, PresencaModule, NormasModule, IaModule, PrevencaoModule, PortalModule, AvisosModule, ContaModule, CalculosModule, ConferenciaModule, DossieModule],
   controllers: [HealthController],
 })
 export class AppModule {}

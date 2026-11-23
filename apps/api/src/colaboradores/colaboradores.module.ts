@@ -7,5 +7,6 @@ import { ColaboradoresService } from './colaboradores.service';
   imports: [DocumentosModule],
   controllers: [ColaboradoresController],
   providers: [ColaboradoresService],
+  exports: [ColaboradoresService],
 })
 export class ColaboradoresModule {}

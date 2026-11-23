@@ -433,6 +433,9 @@ export const redefinirSenha = (token: string, senha: string) => chamar<Acesso>('
 // Saúde ocupacional: PPP, AET e CAT.
 export const gerarPpp = (empresaId: string, colaboradorId: string) =>
   baixarPdf(`/empresas/${empresaId}/colaboradores/${colaboradorId}/ppp`, 'PPP');
+// Dossiê do trabalhador: resumo de provas + ficha de EPI + OS + PPP num PDF só (defesa trabalhista e perícia).
+export const gerarDossie = (empresaId: string, colaboradorId: string) =>
+  baixarPdf(`/empresas/${empresaId}/colaboradores/${colaboradorId}/dossie`, 'dossiê do trabalhador');
 
 export type RecomendacaoAet = { recomendacao: string; prazo?: string; responsavel?: string };
 export type Aet = {

@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { ehEmpresa } from '@/lib/sessao';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CameraRosto } from '@/components/CameraRosto';
 import { conferirNoAparelho, guardarCaptura } from '@/lib/rosto-offline';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { abrirAsoClinica, anexarAsoClinica, buscarColaborador, CATEGORIAS_CNH, ColaboradorDetalhe, devolverEpi, editarColaborador, Ghe, listarGhes, MOTIVOS_DEVOLUCAO, gerarAso, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarDesligamento, type SituacaoDemissional, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto, excluir } from '@/lib/api';
+import { abrirAsoClinica, anexarAsoClinica, buscarColaborador, CATEGORIAS_CNH, ColaboradorDetalhe, devolverEpi, editarColaborador, Ghe, listarGhes, MOTIVOS_DEVOLUCAO, gerarAso, gerarDossie, gerarFichaEpi, gerarOs, gerarPpp, registrarAso, registrarDesligamento, type SituacaoDemissional, registrarEpi, rosto, estoque, fotoColaborador, salvarArquivo, type ConfigRosto, type ItemEstoque, type StatusRosto, excluir } from '@/lib/api';
 import { BotaoExcluir } from '@/components/BotaoExcluir';
 import { lembrar, ultimo } from '@/lib/lembrar';
 
@@ -118,6 +119,7 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
           <div className="flex flex-wrap gap-2">
             <Botao variante="secundario" onClick={() => baixar(() => gerarOs(empresaId, colaboradorId), `Ordem-de-servico-${colaborador.nome}.pdf`)}>Ordem de serviço</Botao>
             <Botao variante="secundario" onClick={() => baixar(() => gerarPpp(empresaId, colaboradorId), `PPP-${colaborador.nome}.pdf`)}>Baixar PPP</Botao>
+            {!ehEmpresa() && <Botao variante="secundario" title="Resumo de provas, ficha de EPI, OS e PPP num PDF só: para processo trabalhista, perícia ou fiscalização" onClick={() => baixar(() => gerarDossie(empresaId, colaboradorId), `Dossie-${colaborador.nome}.pdf`)}>Dossiê para defesa</Botao>}
             <Link href={`/empresas/${empresaId}/prontuario?colaborador=${colaboradorId}`} className="rounded-card border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Prontuário de saúde</Link>
           </div>
         </div>
