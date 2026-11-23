@@ -64,7 +64,7 @@ export default function ConferenciaPage({ params }: { params: { id: string } }) 
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 md:p-10">
       <div>
-        <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
+        <Link href={`/?empresa=${empresaId}`} className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
         <h1 className="mt-4 text-2xl font-semibold text-primary sm:text-3xl">Conferência dos documentos</h1>
         <p className="text-text/60">{empresa?.razaoSocial ?? ''}</p>
       </div>

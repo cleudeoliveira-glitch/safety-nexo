@@ -41,7 +41,7 @@ export default function Calculadoras() {
     <ProvedorCalculos>
     <main className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
       <div>
-        <Link href="/" className="text-sm text-primary">← Painel</Link>
+        <Link href="/" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
         <h1 className="mt-2 text-2xl font-semibold text-primary">Calculadoras de SST</h1>
         <p className="text-sm text-text/60">Contas rápidas do dia a dia. Funcionam no celular e, depois de abrir uma vez, até sem internet. O resultado pode ser salvo na empresa, com a memória de cálculo em PDF.</p>
       </div>

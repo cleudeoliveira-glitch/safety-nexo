@@ -53,7 +53,7 @@ export default function NovaEmpresa() {
 
   return (
     <main className="mx-auto max-w-2xl p-6 md:p-10">
-      <Link href="/" className="text-sm text-primary">← Voltar ao painel</Link>
+      <Link href="/" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
       <h1 className="mt-4 text-3xl font-semibold text-primary">Nova empresa cliente</h1>
       <p className="mt-1 text-text/60">Os documentos desta empresa vão sair com a logo dela no cabeçalho.</p>
 

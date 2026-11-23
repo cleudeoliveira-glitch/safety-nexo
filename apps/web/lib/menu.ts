@@ -93,8 +93,8 @@ export const MENU: GrupoMenu[] = [
         { nome: 'Prontuário de saúde', rota: '/prontuario', soConsultoria: true },
       ]),
       assunto('CIPA', 'votar', [
-        { nome: 'Dimensionamento', rota: '#cipa', soConsultoria: true },
-        { nome: 'Eleição', rota: '/cipa', soConsultoria: true },
+        { nome: 'Dimensionamento', rota: '/cipa#dimensionamento', soConsultoria: true },
+        { nome: 'Eleição', rota: '/cipa#eleicao', soConsultoria: true },
         { nome: 'Reuniões e atas', rota: '/cipa#reunioes', soConsultoria: true },
         { nome: 'Mapa de risco', rota: '/cipa#mapa', soConsultoria: true },
       ]),

@@ -53,7 +53,7 @@ export default function NormasPage() {
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-4 md:p-10">
       <div>
-        <h1 className="text-2xl font-bold text-primary">Avisos e mudanças nas normas</h1>
+        <h1 className="text-2xl font-bold text-primary">Mudanças nas normas</h1>
         <p className="mt-1 text-sm text-text/70">Quando uma NR muda, a equipe do Safety Nexo explica aqui o que mudou, o que fazer e mostra quais das suas empresas são afetadas.</p>
       </div>
       {erro && <Aviso tipo="erro">{erro}</Aviso>}

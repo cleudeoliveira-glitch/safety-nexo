@@ -27,7 +27,7 @@ export const GUIAS: GuiaTela[] = [
           'Olhe o círculo "Cadastro completo": é quanto do cadastro já foi preenchido. A meta é 100%.',
           'Em "O que fazer hoje", cada linha diz o próximo passo. Vermelho é vencido, laranja é pendente.',
           'Em "Indicadores da empresa" você vê, em números, o que está em dia (ASO, EPI, treinamentos, DDS) e os acidentes do mês.',
-          'Use o "Acesso rápido" para abrir os módulos mais usados. Os outros ficam no menu.',
+          'Os módulos ficam no menu (no celular, no botão ☰). No celular, os botões grandes do topo abrem o que mais se usa em campo.',
         ],
       },
     ],
@@ -87,11 +87,9 @@ export const GUIAS: GuiaTela[] = [
           'Tem um PGR antigo em PDF? Use "Traga com IA" para preencher mais rápido.',
         ],
       },
-      { titulo: '3. Colaboradores', aba: 'colaboradores', passos: ['Cadastre nome, CPF, cargo, data de admissão e o GHE.', 'Clique no nome para abrir a ficha: ASO, entrega de EPI e ordem de serviço.', 'Muitos funcionários? Use "Colaboradores › Importar do RH" no menu, com a planilha.'] },
-      { titulo: '4. Médico do PCMSO', passos: ['Informe o nome e o CRM do médico responsável. Ele sai no PCMSO.'] },
-      { titulo: '5. CIPA', aba: 'cipa', passos: ['O sistema calcula quantos membros a empresa precisa pela NR-05.', 'Informe o início do mandato para receber os avisos de prazo.', 'A eleição completa fica em "CIPA › Eleição" no menu.'] },
-      { titulo: '6. Documentos', aba: 'documentos', passos: ['Com os dados completos, clique para gerar o PGR, PCMSO, LTCAT, LIP, LPP e os outros.', 'O PDF sai com a logo da empresa no cabeçalho e a da consultoria no rodapé.', 'Cada documento gerado fica guardado com a versão e a data de vencimento.'] },
-      { titulo: '7. Acesso da empresa', passos: ['Crie um login para a empresa cliente usar o sistema no dia a dia (DDS, EPI, inspeções).', 'Ela vê só os dados dela.'] },
+      { titulo: '3. Médico do PCMSO', passos: ['Informe o nome e o CRM do médico responsável. Ele sai no PCMSO.'] },
+      { titulo: '4. Documentos', aba: 'documentos', passos: ['Com os dados completos, clique para gerar o PGR, PCMSO, LTCAT, LIP, LPP e os outros.', 'O PDF sai com a logo da empresa no cabeçalho e a da consultoria no rodapé.', 'Cada documento gerado fica guardado com a versão e a data de vencimento.'] },
+      { titulo: '5. Acesso da empresa', passos: ['Crie um login para a empresa cliente usar o sistema no dia a dia (DDS, EPI, inspeções).', 'Ela vê só os dados dela.'] },
     ],
   },
   {
@@ -108,7 +106,7 @@ export const GUIAS: GuiaTela[] = [
   {
     id: 'operacao',
     endereco: rota('/operacao'),
-    titulo: 'Operação diária',
+    titulo: 'APR, permissão de trabalho, DDS e inspeções',
     paraQue: 'O dia a dia no campo: análise de risco (APR), permissão de trabalho (PT), DDS e inspeções das NRs.',
     partes: [
       { titulo: 'APR (análise de risco)', aba: 'apr', passos: ['Descreva a atividade, o local, a data e o responsável.', 'Divida o serviço em etapas. Para cada etapa, escreva os riscos e as medidas de controle.', 'Se quiser, envie uma foto do local.', 'Salve e baixe o PDF para a equipe assinar.'] },
@@ -164,7 +162,7 @@ export const GUIAS: GuiaTela[] = [
   {
     id: 'saude',
     endereco: rota('/saude'),
-    titulo: 'Saúde ocupacional',
+    titulo: 'Ergonomia, acidentes e afastamentos',
     paraQue: 'Ergonomia (AET), acidentes (CAT) e afastamentos.',
     partes: [
       { titulo: 'Ergonomia (AET)', aba: 'aet', passos: ['Informe o posto ou atividade analisada, a data e o responsável.', 'Preencha as etapas da NR-17 na ordem: demanda, como o trabalho funciona, métodos, diagnóstico e recomendações.', 'Salve e baixe a AET em PDF.'] },
@@ -192,7 +190,7 @@ export const GUIAS: GuiaTela[] = [
   {
     id: 'prevencao',
     endereco: rota('/prevencao'),
-    titulo: 'Prevenção',
+    titulo: 'Relatos, plano de ação e investigação',
     paraQue: 'Relatos dos trabalhadores pelo QR code, plano de ação e investigação de acidentes.',
     partes: [
       { titulo: 'Relatos pelo QR code', aba: 'relatos', passos: ['Imprima o QR code e cole no setor.', 'O trabalhador aponta o celular e relata um risco ou quase acidente, com foto, sem precisar de login.', 'Os relatos chegam aqui. Transforme o relato em ação do plano.'] },
@@ -225,9 +223,12 @@ export const GUIAS: GuiaTela[] = [
   {
     id: 'cipa',
     endereco: rota('/cipa'),
-    titulo: 'Eleição da CIPA',
-    paraQue: 'A eleição completa: edital, inscrições, votação, ata de eleição, posse e certificados.',
+    titulo: 'CIPA',
+    paraQue: 'Tudo da CIPA: quantas pessoas ela precisa ter, a eleição completa, as reuniões com ata e o mapa de risco. Cada parte abre pelo menu.',
     partes: [
+      { titulo: 'Dimensionamento', aba: 'dimensionamento', passos: ['O sistema calcula pela NR-05 quantos membros a empresa precisa.', 'Informe o início do mandato para receber os avisos de prazo.', 'Baixe o dimensionamento em PDF.'] },
+      { titulo: 'Reuniões e atas', aba: 'reunioes', passos: ['Toque em "+ Registrar reunião".', 'Escolha o tipo, a data e quem participou, e escreva o que foi decidido.', 'Baixe a ata para assinar.'] },
+      { titulo: 'Mapa de risco', aba: 'mapa', passos: ['Escolha o setor.', 'Os riscos dos GHEs entram sozinhos como círculos.', 'Baixe e afixe no setor.'] },
       { titulo: '1. Datas e edital', passos: ['Preencha a data do edital, o período de inscrição, o dia, o local e o horário da eleição.', 'Baixe o edital e a ficha de inscrição para publicar.'] },
       { titulo: '2. Candidatos e votos', passos: ['Inscreva os candidatos.', 'Baixe as cédulas ou use a votação pelo celular.', 'Depois da eleição, informe os votos e quantos funcionários votaram.'] },
       { titulo: '3. Indicados pela empresa', passos: ['Escolha os representantes que a empresa indica (o mesmo número dos eleitos).'] },
@@ -237,7 +238,7 @@ export const GUIAS: GuiaTela[] = [
   {
     id: 'cultura',
     endereco: rota('/cultura'),
-    titulo: 'SIPAT e 5S',
+    titulo: 'SIPAT e Programa 5S',
     paraQue: 'Semana de prevenção (SIPAT) e auditorias do programa 5S.',
     partes: [
       { titulo: 'SIPAT', aba: 'sipat', passos: ['Escolha o tema e os dias.', 'Monte a programação: dia, horário, atividade, quem conduz, local e duração.', 'Baixe a programação em PDF para divulgar.'] },

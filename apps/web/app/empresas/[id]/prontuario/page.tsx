@@ -71,7 +71,7 @@ export default function ProntuarioPage({ params }: { params: { id: string } }) {
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <div>
-        <Link href={pessoa ? `/empresas/${empresaId}/colaboradores/${pessoa.id}` : `/empresas/${empresaId}`} className="text-sm text-primary">← Voltar</Link>
+        <Link href={pessoa ? `/empresas/${empresaId}/colaboradores/${pessoa.id}` : `/empresas/${empresaId}`} className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">Prontuário de saúde</h1>
         <p className="text-text/60">{empresa.razaoSocial} · vacinas, audiometrias e espirometrias. Só a consultoria vê estes dados.</p>
       </div>

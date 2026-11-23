@@ -1,5 +1,6 @@
 'use client';
 
+import { TopoTela } from '@/components/TopoTela';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -494,6 +495,13 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
   );
 }
 
+// Cada item do menu abre só a sua parte, com o mesmo nome do menu.
+const TITULOS: Record<Aba, [string, string]> = {
+  relatos: ['Relatos e denúncias', 'O que os trabalhadores contam pelo QR code: quase acidentes, condições inseguras e denúncias.'],
+  acoes: ['Plano de ação', 'Tudo o que precisa ser feito na empresa, com responsável e prazo. É este plano que sai no PGR.'],
+  investigacao: ['Investigação de acidentes', 'Descubra as causas do acidente para ele não se repetir. Sem procurar culpados.'],
+};
+
 export default function PrevencaoPage({ params }: { params: { id: string } }) {
   const empresaId = params.id;
   const [aba, setAba] = useState<Aba>('relatos');
@@ -511,21 +519,13 @@ export default function PrevencaoPage({ params }: { params: { id: string } }) {
     if (!ehEmpresa()) ia.status().then((s) => setIaLigada(s.ligada)).catch(() => setIaLigada(false));
   }, [empresaId]);
 
-  const abas = ABAS.filter(([a]) => consultoria || a !== 'investigacao');
   const trocar = (a: Aba) => { setAba(a); history.replaceState(null, '', `#${a}`); setAviso(null); };
   const comum = { empresaId, iaLigada, avisar, aoMudar: () => undefined };
 
   if (!empresa) return <main className="p-6 md:p-10">{aviso ? <Aviso tipo="erro">{aviso.texto}</Aviso> : 'Carregando…'}</main>;
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-4 md:p-10">
-      <div>
-        <p className="text-sm text-text/60">{empresa.razaoSocial}</p>
-        <h1 className="text-2xl font-bold text-primary">Prevenção</h1>
-        <p className="mt-1 text-sm text-text/70">O que os trabalhadores relatam, o que precisa ser feito e o que aprendemos com cada ocorrência.</p>
-      </div>
-      <nav className="flex flex-wrap gap-2" aria-label="Partes da prevenção">
-        {abas.map(([a, nome]) => <button key={a} onClick={() => trocar(a)} className={`rounded-full px-4 py-2 text-sm font-semibold ${aba === a ? 'bg-primary text-white' : 'border border-border bg-white'}`}>{nome}</button>)}
-      </nav>
+      <TopoTela empresaId={empresaId} titulo={TITULOS[aba][0]} empresa={empresa.razaoSocial} frase={TITULOS[aba][1]} />
       {aviso && <div onClick={() => setAviso(null)}><Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso></div>}
       {aba === 'relatos' && <AbaRelatos {...comum} empresa={empresa} consultoria={consultoria} irParaInvestigacao={(r) => { setDeRelato(r); trocar('investigacao'); }} />}
       {aba === 'acoes' && <AbaAcoes empresaId={empresaId} avisar={avisar} aoMudar={comum.aoMudar} empresa={empresa} consultoria={consultoria} />}

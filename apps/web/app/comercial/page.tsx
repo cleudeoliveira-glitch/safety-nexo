@@ -51,7 +51,7 @@ export default function ComercialPage() {
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <div>
-        <Link href="/" className="text-sm text-primary">← Voltar ao painel</Link>
+        <Link href="/" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">Comercial</h1>
         <p className="text-text/60">{config.nome}</p>
       </div>

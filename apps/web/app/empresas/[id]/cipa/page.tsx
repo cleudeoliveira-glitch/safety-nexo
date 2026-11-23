@@ -1,12 +1,13 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { VotacaoCelular } from '@/components/VotacaoCipa';
 import { ReunioesCipa } from '@/components/ReunioesCipa';
 import { MapaRisco } from '@/components/MapaRisco';
-import { rolarParaAncora } from '@/lib/abaDoEndereco';
+import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
+import { TopoTela } from '@/components/TopoTela';
+import { DimensionamentoCipa } from '@/components/DimensionamentoCipa';
 import { ehEmpresa } from '@/lib/sessao';
 import {
   adicionarMembroCipa,
@@ -29,6 +30,13 @@ import { BotaoExcluir } from '@/components/BotaoExcluir';
 
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—');
 const dia = (iso: string | null) => iso?.slice(0, 10) ?? '';
+type Parte = 'dimensionamento' | 'eleicao' | 'reunioes' | 'mapa';
+const TITULOS: Record<Parte, [string, string]> = {
+  dimensionamento: ['CIPA: dimensionamento', 'Quantas pessoas a CIPA precisa ter e as datas do mandato, pela NR-05.'],
+  eleicao: ['CIPA: eleição', 'Organize a eleição em 4 passos: edital, candidatos e votos, indicados pela empresa e posse.'],
+  reunioes: ['CIPA: reuniões e atas', 'Registre as reuniões mensais e gere a ata para assinar.'],
+  mapa: ['CIPA: mapa de risco', 'Monte o mapa de risco de cada setor para afixar no local.'],
+};
 const SITUACAO = { TITULAR: 'Titular', SUPLENTE: 'Suplente', NAO_ELEITO: 'Não eleito' } as const;
 
 export default function EleicaoCipaPage({ params }: { params: { id: string } }) {
@@ -55,13 +63,10 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
     recarregar();
   }, [recarregar]);
 
-  // O menu pode abrir direto nas atas (#reunioes).
-  const carregou = eleicao !== undefined;
-  useEffect(() => {
-    if (!carregou) return;
-    const t = setTimeout(rolarParaAncora, 80);
-    return () => clearTimeout(t);
-  }, [carregou]);
+  // Cada item do menu da CIPA abre só a sua parte (#dimensionamento, #reunioes, #mapa; sem nada, a eleição).
+  const [parte, setParte] = useState<Parte>('eleicao');
+  useAbaDoEndereco<Parte>(['dimensionamento', 'eleicao', 'reunioes', 'mapa'], setParte);
+  const irPara = (p: Parte) => { setParte(p); setAviso(null); history.replaceState(null, '', `#${p}`); };
 
   // Toda ação devolve a eleição atualizada; basta trocar o estado.
   async function agir(acao: () => Promise<EleicaoCipa>, sucesso?: string) {
@@ -95,17 +100,14 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-6 md:p-10">
-      <div>
-        <Link href={`/empresas/${empresaId}#cipa`} className="text-sm text-primary">← Voltar à empresa</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">CIPA: eleição, reuniões e mapa de risco</h1>
-        <p className="text-text/60">
-          {empresa.razaoSocial}
-          {eleicao && ` · ${eleicao.vagas.efetivos} titular(es) e ${eleicao.vagas.suplentes} suplente(s) eleitos pelos funcionários`}
-        </p>
-      </div>
+      <TopoTela empresaId={empresaId} titulo={TITULOS[parte][0]} empresa={empresa.razaoSocial}
+        frase={parte === 'eleicao' && eleicao ? `${TITULOS[parte][1]} Esta eleição escolhe ${eleicao.vagas.efetivos} titular(es) e ${eleicao.vagas.suplentes} suplente(s).` : TITULOS[parte][1]} />
 
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 
+      {parte === 'dimensionamento' && <DimensionamentoCipa empresaId={empresaId} nomeEmpresa={empresa.razaoSocial} cliente={false} irParaEleicao={() => irPara('eleicao')} />}
+
+      {parte === 'eleicao' && (<>
       <Cartao titulo="1. Datas e edital">
         {eleicao ? (
           <div className="space-y-4 text-sm">
@@ -337,9 +339,11 @@ export default function EleicaoCipaPage({ params }: { params: { id: string } }) 
         </>
       )}
 
-      <ReunioesCipa empresaId={empresaId} eleicao={eleicao} />
+      </>)}
 
-      <MapaRisco empresaId={empresaId} nomeEmpresa={empresa.razaoSocial} />
+      {parte === 'reunioes' && <ReunioesCipa empresaId={empresaId} eleicao={eleicao} />}
+
+      {parte === 'mapa' && <MapaRisco empresaId={empresaId} nomeEmpresa={empresa.razaoSocial} />}
     </main>
   );
 }

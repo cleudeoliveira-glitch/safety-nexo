@@ -301,8 +301,8 @@ function Lista() {
   return (
     <main className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
       <div>
-        <Link href="/" className="text-sm text-primary">← Painel</Link>
-        <h1 className="mt-2 text-2xl font-semibold text-primary">Material dos treinamentos</h1>
+        <Link href="/" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
+        <h1 className="mt-2 text-2xl font-semibold text-primary">Slides para aplicar</h1>
         <p className="text-sm text-text/60">Slides para apresentar no celular ou na TV, roteiro do instrutor e prova com gabarito. Depois de abrir esta tela uma vez com internet, ela funciona sem sinal no campo.</p>
       </div>
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

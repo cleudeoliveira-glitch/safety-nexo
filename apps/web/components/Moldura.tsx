@@ -1,5 +1,6 @@
 'use client';
 
+import { RascunhoAutomatico } from '@/components/RascunhoAutomatico';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -43,6 +44,7 @@ export function Moldura({ children }: { children: React.ReactNode }) {
         <FaixaPlano />
         <AjudaDaTela caminho={caminho} barra={caminho !== '/'} />
         {children}
+        <RascunhoAutomatico caminho={caminho} />
       </div>
       <WhatsAppDuvidas caminho={caminho} />
     </div>

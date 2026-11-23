@@ -59,7 +59,7 @@ export default function ConfinadosPage({ params }: { params: { id: string } }) {
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <div>
-        <Link href={`/empresas/${empresaId}`} className="text-sm text-primary">← Voltar à empresa</Link>
+        <Link href={`/empresas/${empresaId}`} className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">Espaços confinados e resgate</h1>
         <p className="text-text/60">{empresa.razaoSocial}. Cadastre os espaços confinados (NR-33) e monte o plano de resgate de cada trabalho em altura ou em espaço confinado. A PT puxa os dois.</p>
       </div>

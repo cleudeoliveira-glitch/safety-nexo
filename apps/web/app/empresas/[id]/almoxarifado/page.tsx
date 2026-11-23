@@ -35,8 +35,8 @@ export default function AlmoxarifadoPage({ params }: { params: { id: string } })
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <div>
-        <Link href={`/empresas/${empresaId}`} className="text-sm text-primary">← Voltar à empresa</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">Almoxarifado de EPI</h1>
+        <Link href={`/empresas/${empresaId}`} className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
+        <h1 className="mt-4 text-3xl font-semibold text-primary">EPI e almoxarifado</h1>
         <p className="text-text/60">{empresa.razaoSocial}. Cada entrega feita pelo almoxarifado dá baixa sozinha no saldo.</p>
       </div>
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}

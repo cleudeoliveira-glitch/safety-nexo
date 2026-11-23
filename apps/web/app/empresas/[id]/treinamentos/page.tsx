@@ -1,5 +1,6 @@
 'use client';
 
+import { TopoTela } from '@/components/TopoTela';
 import { materialDa } from '@/lib/materiais';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -130,13 +131,7 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
-      <div>
-        <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
-        <h1 className="mt-4 text-3xl font-semibold text-primary">Treinamentos</h1>
-        <p className="text-text/60">
-          {empresa.razaoSocial} · <Link href={`/empresas/${empresaId}#cipa`} className="text-primary hover:underline">CIPA e eleição →</Link> · <Link href={`/empresas/${empresaId}/cultura`} className="text-primary hover:underline">SIPAT e 5S →</Link>
-        </p>
-      </div>
+      <TopoTela empresaId={empresaId} titulo="Treinamentos das NRs" empresa={empresa.razaoSocial} frase="Monte a turma, colha as assinaturas e gere os certificados com código de validação." />
 
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 

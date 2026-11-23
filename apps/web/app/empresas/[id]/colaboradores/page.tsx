@@ -113,7 +113,7 @@ export default function ColaboradoresPage({ params }: { params: { id: string } }
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <div>
-        <Link href={`/empresas/${empresaId}`} className="text-sm text-primary">← Voltar à empresa</Link>
+        <Link href={`/empresas/${empresaId}`} className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-3xl font-semibold text-primary">Colaboradores</h1>
