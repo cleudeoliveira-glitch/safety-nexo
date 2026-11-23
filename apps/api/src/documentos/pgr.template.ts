@@ -1,3 +1,4 @@
+import { NOME_SITUACAO_EXPOSICAO, nivelDeAcao } from './nivel-acao';
 import { textoNivel } from './nivel-risco';
 import * as tokens from '@safety-nexo/design-tokens';
 import { NOME_HIERARQUIA } from '../prevencao/hierarquia';
@@ -13,7 +14,7 @@ const NOME_PRIORIDADE: Record<string, string> = { BAIXA: 'Baixa', MEDIA: 'Média
 
 export type RiscoPdf = {
   tipo: string; agente: string; fonteGeradora: string; medidasControle: string | null; medidasEpc?: string | null; medidasEpi?: string | null; severidade: string; probabilidade: string;
-  possiveisLesoes: string | null; tipoAvaliacao?: string | null; intensidade?: string | null; limiteTolerancia?: string | null;
+  possiveisLesoes: string | null; tipoAvaliacao?: string | null; intensidade?: string | null; limiteTolerancia?: string | null; tecnicaMedicao?: string | null;
 };
 export type GhePdf = {
   nome: string; descricao: string | null; riscos: RiscoPdf[]; colaboradores: number;
@@ -45,7 +46,11 @@ const selo = (nivel: Nivel) => `<span class="badge" style="background:${COR_NIVE
 const tipoDoRisco = (r: RiscoPdf) => (/^fatores psicossociais/i.test(r.agente) ? 'Psicossocial' : TIPO[r.tipo] ?? escape(r.tipo));
 
 function avaliacao(r: RiscoPdf) {
-  if (r.tipoAvaliacao === 'QUANTITATIVA') return `Quantitativa${r.intensidade ? `: ${escape(r.intensidade)}` : ''}${r.limiteTolerancia ? ` (limite ${escape(r.limiteTolerancia)})` : ''}`;
+  if (r.tipoAvaliacao === 'QUANTITATIVA') {
+    const na = nivelDeAcao(r);
+    const aviso = na && na.situacao !== 'ABAIXO' ? `. <strong>${NOME_SITUACAO_EXPOSICAO[na.situacao]}</strong> (nível de ação ${String(na.nivelAcao).replace('.', ',')} ${escape(na.unidade)})` : '';
+    return `Quantitativa${r.intensidade ? `: ${escape(r.intensidade)}` : ''}${r.limiteTolerancia ? ` (limite ${escape(r.limiteTolerancia)})` : ''}${aviso}`;
+  }
   if (r.tipoAvaliacao === 'QUALITATIVA') return 'Qualitativa';
   return 'Qualitativa (preliminar)';
 }

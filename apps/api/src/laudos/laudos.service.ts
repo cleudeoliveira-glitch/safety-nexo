@@ -4,6 +4,8 @@ import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DadosOs, laudoHtml, osHtml, pgrtrHtml } from './templates';
+import { ExpostoPrograma, pcaHtml, pprHtml, TrabalhadorPrograma } from './programas';
+import { ehRuido, nivelDeAcao, pedeRespirador } from '../documentos/nivel-acao';
 import { chaveFuncao, descricaoGhe, lerFuncoes, nomeGhe } from '../empresas/ghe-ambiente';
 import { cidadeDoEndereco, extrasDe } from '../documentos/secoes';
 
@@ -81,6 +83,48 @@ export class LaudosService {
     );
     const pdf = await this.pdf.render(html);
     await this.contexto.registrar(empresaId, 'PGRTR', versao, geradoEm, 24);
+    return { pdf, versao };
+  }
+
+  // PCA (ruído no nível de ação ou acima) e PPR (respirador no EPI ou químico no nível de ação), a partir dos riscos dos GHEs.
+  async programa(consultoriaId: string, empresaId: string, tipo: 'PCA' | 'PPR') {
+    const { empresa, versao, historico, logoEmpresa, consultoria, geradoEm } = await this.contexto.carregar(consultoriaId, empresaId, tipo);
+    const titulo = tipo === 'PCA' ? 'Programa de Conservação Auditiva (PCA)' : 'Programa de Proteção Respiratória (PPR)';
+    const entra = (r: (typeof empresa.ghes)[number]['riscos'][number]) => {
+      const na = nivelDeAcao(r);
+      if (tipo === 'PCA') return r.tipo === 'FISICO' && ehRuido(r.agente) && (!na || na.situacao !== 'ABAIXO');
+      return ['QUIMICO', 'BIOLOGICO'].includes(r.tipo) && (pedeRespirador(r.medidasEpi) || (na !== null && na.situacao !== 'ABAIXO'));
+    };
+    const expostos: ExpostoPrograma[] = [];
+    const ghesNoPrograma = new Map<string, string>();
+    for (const g of empresa.ghes) {
+      for (const r of g.riscos.filter(entra)) {
+        ghesNoPrograma.set(g.id, nomeGhe(g));
+        expostos.push({
+          ghe: nomeGhe(g), agente: r.agente, fonte: r.fonteGeradora, intensidade: r.intensidade, limite: r.limiteTolerancia,
+          situacao: nivelDeAcao(r)?.situacao ?? null, epi: r.medidasEpi, ca: r.epiCa, trabalhadores: g._count.colaboradores,
+        });
+      }
+    }
+    const pessoas = await this.prisma.colaborador.findMany({
+      where: { empresaId, dataDesligamento: null, gheId: { in: [...ghesNoPrograma.keys()] } },
+      orderBy: { nome: 'asc' },
+      select: { nome: true, cargo: true, gheId: true, asos: { orderBy: { dataExame: 'desc' }, take: 1, select: { dataExame: true, exames: true, proximoExame: true } } },
+    });
+    const trabalhadores: TrabalhadorPrograma[] = pessoas.map((c) => {
+      const a = c.asos[0];
+      return {
+        nome: c.nome, cargo: c.cargo, ghe: ghesNoPrograma.get(c.gheId!) ?? '—', ultimoExame: a?.dataExame ?? null, proximo: a?.proximoExame ?? null,
+        fezExame: tipo === 'PCA' ? !!a?.exames.some((x) => /audiom/i.test(x)) : !!a && (!a.proximoExame || a.proximoExame >= geradoEm),
+      };
+    });
+    const moldura = { titulo, logoEmpresa, consultoria, infos: this.infos(empresa, versao, geradoEm), aviso: AVISO, capa: capaDe(tipo, empresa, versao, geradoEm, [responsavelTecnico(empresa)]) };
+    const responsavel = { nome: empresa.responsavelTecnicoNome, registro: empresa.responsavelTecnicoRegistro };
+    const medico = { nome: empresa.medicoPcmsoNome, crm: empresa.medicoPcmsoCrm };
+    const extras = extrasDe(tipo, titulo, empresa, versao, historico, geradoEm, 12);
+    const html = tipo === 'PCA' ? pcaHtml(moldura, expostos, trabalhadores, responsavel, medico, extras) : pprHtml(moldura, expostos, trabalhadores, responsavel, medico, extras);
+    const pdf = await this.pdf.render(html);
+    await this.contexto.registrar(empresaId, tipo, versao, geradoEm, 12);
     return { pdf, versao };
   }
 

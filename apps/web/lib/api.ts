@@ -191,7 +191,7 @@ async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
   return res.blob();
 }
 
-export type TipoDocumento = 'pgr' | 'pcmso' | 'ltcat' | 'lip' | 'lpp' | 'pgrtr' | 'os' | 'mapa-risco';
+export type TipoDocumento = 'pgr' | 'pcmso' | 'ltcat' | 'lip' | 'lpp' | 'pgrtr' | 'pca' | 'ppr' | 'os' | 'mapa-risco';
 export const gerarDocumento = (empresaId: string, tipo: TipoDocumento) =>
   baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo === 'os' ? 'as ordens de serviço' : tipo === 'mapa-risco' ? 'mapa de risco' : tipo.toUpperCase());
 
@@ -1175,6 +1175,13 @@ export type Conferencia = {
   revisao: { ultimoPgr: string | null; venceEm: string | null; motivos: { texto: string; detalhe: string; base: string }[] };
 };
 export const conferirDocumentos = (empresaId: string) => chamar<Conferencia>('GET', `/empresas/${empresaId}/conferencia`);
+
+// Pasta da fiscalização: o que o auditor costuma pedir, conferido, e os documentos já emitidos num PDF só.
+export type SituacaoFiscalizacao = 'OK' | 'ATENCAO' | 'FALTA' | 'NAO_SE_APLICA';
+export type ItemFiscalizacao = { id: string; titulo: string; norma: string; situacao: SituacaoFiscalizacao; detalhe: string; link: string };
+export type Fiscalizacao = { empresa: string; itens: ItemFiscalizacao[]; prontos: number; total: number };
+export const conferirFiscalizacao = (empresaId: string) => chamar<Fiscalizacao>('GET', `/empresas/${empresaId}/fiscalizacao`);
+export const gerarPastaFiscalizacao = (empresaId: string) => baixarPdf(`/empresas/${empresaId}/fiscalizacao/pasta`, 'pasta da fiscalização');
 
 // Excluir documentos lançados errado (só a consultoria). Cada tela pergunta antes de apagar.
 type Ok = { ok: boolean };

@@ -33,6 +33,16 @@ export const ESCOPOS: Record<string, Capa['escopo']> = {
     paraQue: 'Dizer quais atividades ou áreas dão direito ao adicional de periculosidade de 30%.',
     norma: 'A CLT (art. 193 e 195) e a NR-16 pedem perícia feita por médico do trabalho ou engenheiro de segurança, indicando o anexo da norma que enquadra cada atividade.',
   },
+  PCA: {
+    oQueE: 'O programa de conservação auditiva dos setores com ruído.',
+    paraQue: 'Evitar a perda auditiva causada pelo ruído, com medição, controle na fonte, protetor auditivo, treinamento e audiometrias.',
+    norma: 'A NR-09 pede ações preventivas a partir do nível de ação (metade da dose de ruído) e a NR-07 (Anexo II) define as audiometrias dos expostos.',
+  },
+  PPR: {
+    oQueE: 'O programa de proteção respiratória de quem usa respirador.',
+    paraQue: 'Garantir que o respirador seja o certo para o agente, vede no rosto, seja trocado na hora e usado só por quem foi liberado pelo médico.',
+    norma: 'A Instrução Normativa MTb nº 1/1994 exige o programa sempre que o controle do risco depender de respirador, junto com a NR-06 e a NR-09.',
+  },
   AET: {
     oQueE: 'A análise ergonômica aprofundada de um posto ou atividade.',
     paraQue: 'Entender por que o trabalho está causando desconforto ou risco e propor mudanças que funcionem na prática.',

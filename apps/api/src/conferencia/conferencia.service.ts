@@ -4,6 +4,7 @@ import { examesPelosRiscos } from '../empresas/exames-por-risco';
 import { PrismaService } from '../prisma/prisma.service';
 import { Sugestao, SugestoesTreinamentoService } from '../treinamentos/sugestoes';
 import { gatilhosRevisaoPgr } from './revisao';
+import { ehRuido, nivelDeAcao, pedeRespirador } from '../documentos/nivel-acao';
 
 // Conferência entre documentos: o sistema cruza PGR, PCMSO, LTCAT, treinamentos, EPI, ASO e eSocial
 // e aponta o que não bate, com uma nota de 0 a 100. É um olhar de auditor: quem decide é a responsável técnica.
@@ -109,6 +110,18 @@ export class ConferenciaService {
     }
     if (acimaSemInsal.length) add({ id: 'acima-sem-insal', grupo: 'PGR × LTCAT', gravidade: 'ALTA', titulo: 'Acima do limite, EPI não neutraliza e sem insalubridade marcada', detalhe: lista(acimaSemInsal), onde: acimaSemInsal, corrigir: 'Confira o anexo da NR-15 e o grau de insalubridade no risco.', link: '#ghes' });
     if (acimaSemEpi.length) add({ id: 'acima-sem-epi', grupo: 'PGR × LTCAT e PPP', gravidade: 'MEDIA', titulo: 'Medição acima do limite sem dizer se o EPI é eficaz', detalhe: lista(acimaSemEpi, 3), onde: acimaSemEpi, corrigir: 'Marque no risco se o EPI e o EPC são eficazes: o LTCAT, o PPP e o S-2240 dependem disso.', link: '#ghes' });
+
+    // ---------- Nível de ação (NR-09), PCA e PPR ----------
+    const noNivelAcao: string[] = []; let ruidoNa = false; let respirador = false;
+    for (const g of empresa.ghes) for (const r of g.riscos) {
+      const na = nivelDeAcao(r);
+      if (r.tipo === 'FISICO' && ehRuido(r.agente) && na && na.situacao !== 'ABAIXO') ruidoNa = true;
+      if (['QUIMICO', 'BIOLOGICO'].includes(r.tipo) && (pedeRespirador(r.medidasEpi) || (na && na.situacao !== 'ABAIXO'))) respirador = true;
+      if (na?.situacao === 'NIVEL_ACAO' && !acoesAbertas.some((a) => a.riscoId === r.id)) noNivelAcao.push(`${g.nome}: ${r.agente} (${r.intensidade}, nível de ação ${String(na.nivelAcao).replace('.', ',')} ${na.unidade})`);
+    }
+    if (noNivelAcao.length) add({ id: 'nivel-acao', grupo: 'PGR × NR-09', gravidade: 'MEDIA', titulo: 'Abaixo do limite, mas acima do nível de ação, sem ação no plano', detalhe: lista(noNivelAcao, 3), onde: noNivelAcao, corrigir: 'A partir do nível de ação a NR-09 pede ações preventivas: medir de novo periodicamente, informar os trabalhadores e fazer o controle médico. Crie a ação no plano.', link: '/prevencao#acoes' });
+    if (ruidoNa && !ultimo('PCA')) add({ id: 'sem-pca', grupo: 'PGR × NR-09', gravidade: 'MEDIA', titulo: 'Tem ruído no nível de ação e nenhum PCA emitido', detalhe: 'O Programa de Conservação Auditiva organiza medição, protetor auditivo, treinamento e audiometrias dos expostos.', onde: [], corrigir: 'Emita o PCA em Documentos.', link: '/emitir' });
+    if (respirador && !ultimo('PPR')) add({ id: 'sem-ppr', grupo: 'PGR × NR-09', gravidade: 'MEDIA', titulo: 'O controle depende de respirador e não há PPR emitido', detalhe: 'A Instrução Normativa MTb nº 1/1994 pede o Programa de Proteção Respiratória sempre que houver uso de respirador.', onde: [], corrigir: 'Emita o PPR em Documentos.', link: '/emitir' });
 
     // ---------- Pessoas fora do PGR ----------
     if (empresa.colaboradores.length) add({ id: 'sem-ghe', grupo: 'Colaboradores × PGR', gravidade: 'MEDIA', titulo: `${empresa.colaboradores.length} pessoa(s) sem GHE`, detalhe: lista(empresa.colaboradores.map((c) => c.nome)), onde: [], corrigir: 'Sem GHE a pessoa fica fora do PGR, do PCMSO, do PPP e do S-2240. Ligue cada uma ao seu grupo.', link: '/colaboradores' });

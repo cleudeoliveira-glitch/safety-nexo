@@ -38,6 +38,20 @@ export class LaudosController {
     enviarPdf(res, pdf, `PGRTR-v${versao}.pdf`);
   }
 
+  @Recurso('documentos', 'O PCA')
+  @Post('empresas/:empresaId/documentos/pca')
+  async pca(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Res() res: Response) {
+    const { pdf, versao } = await this.laudos.programa(c, e, 'PCA');
+    enviarPdf(res, pdf, `PCA-v${versao}.pdf`);
+  }
+
+  @Recurso('documentos', 'O PPR')
+  @Post('empresas/:empresaId/documentos/ppr')
+  async ppr(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Res() res: Response) {
+    const { pdf, versao } = await this.laudos.programa(c, e, 'PPR');
+    enviarPdf(res, pdf, `PPR-v${versao}.pdf`);
+  }
+
   // A empresa cliente também entrega a OS aos novos funcionários.
   @PermiteEmpresa()
   @Post('empresas/:empresaId/documentos/os')
