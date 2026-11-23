@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { Landing } from '@/components/Landing';
 import { CampoAjuda } from '@/components/CampoAjuda';
 import { ABRIR_AJUDA } from '@/components/AjudaDaTela';
 import { Icone, NomeIcone } from '@/components/Icone';
@@ -42,7 +43,15 @@ const atalhos: { nome: string; texto: string; icone: NomeIcone; rota: string; so
   { nome: 'Indicadores', texto: 'Dashboard completo', icone: 'grafico', rota: '/ssma' },
 ];
 
+// Endereço principal: quem não entrou vê a página de apresentação; quem entrou vê o painel.
 export default function Home() {
+  const [logado, setLogado] = useState<boolean | null>(null);
+  useEffect(() => setLogado(!!lerToken()), []);
+  if (logado === null) return null;
+  return logado ? <PainelInicial /> : <Landing />;
+}
+
+function PainelInicial() {
   const [empresas, setEmpresas] = useState<Empresa[] | null>(null);
   const [empresaId, setEmpresaId] = useState<string>('');
   const [painel, setPainel] = useState<Painel | null>(null);
@@ -67,10 +76,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!lerToken()) {
-      window.location.href = '/entrar';
-      return;
-    }
     setEmpresaCliente(ehEmpresa());
     setNome((lerUsuario()?.nome ?? '').split(' ')[0]);
     carregarEmpresas();

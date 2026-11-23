@@ -4,21 +4,30 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { JaConectado } from '@/components/JaConectado';
 import { Aviso, Botao, Campo } from '@/components/ui';
-import { cadastrar, meuPlano } from '@/lib/api';
+import { cadastrar } from '@/lib/api';
 import { PLANOS_SITE, reais, textoLimite } from '@/lib/planos';
 import { salvarToken, salvarUsuario } from '@/lib/sessao';
 import { PLATAFORMA } from '@/lib/plataforma';
+import { NomePasso, PassosCompra, TopoSite } from '@/components/PassosCompra';
 
 export default function Cadastro() {
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-  // Plano escolhido na página /planos (?plano=...). A conta começa no Free e o pedido vai para a equipe.
+  // Etapa 2 do caminho de compra. O plano vem da página inicial ou de /planos (?plano=...).
+  // Sem plano no endereço, a pessoa escolhe aqui mesmo (etapa 1).
   const [escolhido, setEscolhido] = useState<(typeof PLANOS_SITE)[number] | null>(null);
+  const [pronto, setPronto] = useState(false);
   useEffect(() => {
     const codigo = new URLSearchParams(window.location.search).get('plano');
-    const p = PLANOS_SITE.find((x) => x.codigo === codigo && x.precoMensal > 0);
-    if (p) setEscolhido(p);
+    setEscolhido(PLANOS_SITE.find((x) => x.codigo === codigo) ?? null);
+    setPronto(true);
   }, []);
+  function escolher(p: (typeof PLANOS_SITE)[number] | null) {
+    setEscolhido(p);
+    window.history.replaceState(null, '', p ? `/cadastro?plano=${p.codigo}` : '/cadastro');
+    window.scrollTo({ top: 0 });
+  }
+  const pago = !!escolhido && escolhido.precoMensal > 0;
 
   async function enviar(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -36,33 +45,64 @@ export default function Cadastro() {
       });
       salvarToken(acesso.token);
       salvarUsuario(acesso.usuario);
-      if (escolhido) await meuPlano.pedir(escolhido.codigo).catch(() => undefined);
-      window.location.href = '/empresas/nova';
+      // Plano pago: segue para o pagamento. Grátis: já entra no sistema.
+      window.location.href = pago ? `/cadastro/pagamento?plano=${escolhido!.codigo}` : '/empresas/nova';
     } catch (e) {
       setErro((e as Error).message);
       setEnviando(false);
     }
   }
 
-  return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <form onSubmit={enviar} className="w-full max-w-md space-y-5 rounded-card border border-border bg-white p-8 shadow-sm">
-        <img src="/logo.png" alt="Safety Nexo" className="h-12 w-auto" />
+  if (!pronto) return null;
+
+  if (!escolhido) {
+    return (
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+        <TopoSite direita={<Link href="/entrar" className="text-sm font-semibold text-text/70 hover:text-primary">Já tenho conta</Link>} />
         <div>
-          <h1 className="text-2xl font-semibold text-primary">Crie sua conta grátis</h1>
-          <p className="text-sm text-text/60">Safety Nexo é gestão inteligente de SST. Você elabora PGR, PCMSO, LTCAT e os demais documentos, todos ligados entre si, com foto, assinatura e reconhecimento facial como prova, até no campo sem internet.</p>
-          <p className="mt-1 text-sm text-text/60">São 14 dias com tudo liberado, sem cartão e sem precisar de CNPJ.</p>
+          <PassosCompra atual={1} />
+          <NomePasso atual={1} />
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold text-primary">Escolha o seu plano</h1>
+          <p className="text-sm text-text/60">Dá para trocar depois, para cima ou para baixo, quando quiser. <Link href="/planos" className="font-semibold text-primary">Comparar os planos</Link></p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {PLANOS_SITE.map((p) => (
+            <button key={p.codigo} type="button" onClick={() => escolher(p)}
+              className={`flex flex-col rounded-card border bg-white p-5 text-left transition hover:border-primary ${p.destaque ? 'border-primary ring-1 ring-primary' : 'border-border'}`}>
+              {p.destaque && <span className="mb-1 text-xs font-semibold uppercase tracking-wide text-primary">Mais escolhido</span>}
+              <span className="font-semibold">{p.nome}</span>
+              <span className="mt-1 text-2xl font-semibold text-primary">{p.precoMensal ? reais(p.precoMensal) : 'R$ 0'}<span className="text-sm font-normal text-text/60">/mês</span></span>
+              <span className="mt-1 text-sm font-semibold text-text/80">{textoLimite(p.limiteEmpresas)}</span>
+              <span className="mt-2 flex-1 text-sm text-text/65">{p.paraQuem}</span>
+              <span className={`mt-4 block rounded-card px-4 py-2.5 text-center text-sm font-semibold ${p.destaque ? 'bg-primary text-white' : 'border border-border'}`}>Escolher</span>
+            </button>
+          ))}
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="mx-auto max-w-2xl space-y-5 px-4 py-6">
+      <TopoSite direita={<Link href="/entrar" className="text-sm font-semibold text-text/70 hover:text-primary">Já tenho conta</Link>} />
+      <div>
+        <PassosCompra atual={2} gratis={!pago} />
+        <NomePasso atual={2} />
+      </div>
+      <form onSubmit={enviar} className="mx-auto max-w-md space-y-5 rounded-card border border-border bg-white p-6 shadow-sm sm:p-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-primary">Crie a sua conta</h1>
+          <p className="text-sm text-text/60">{pago ? 'Depois daqui você escolhe como pagar: cartão, Pix ou boleto.' : 'São 14 dias com tudo liberado, sem cartão e sem precisar de CNPJ.'}</p>
         </div>
         <JaConectado />
-        {escolhido ? (
-          <p className="rounded-card border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-            Você escolheu o plano <strong>{escolhido.nome}</strong> ({reais(escolhido.precoMensal)} por mês, {textoLimite(escolhido.limiteEmpresas).toLowerCase()}).
-            Sua conta já começa a funcionar no Free e a equipe do Safety Nexo fala com você para ativar o {escolhido.nome}.
-          </p>
-        ) : null}
-        <p className="text-sm">
-          <Link href="/planos" className="font-semibold text-primary">Ver os planos e o que tem em cada um</Link>
-        </p>
+        <div className="flex items-center justify-between gap-3 rounded-card border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <span>
+            Plano <strong>{escolhido.nome}</strong>: {escolhido.precoMensal ? `${reais(escolhido.precoMensal)} por mês` : 'grátis'}, {textoLimite(escolhido.limiteEmpresas).toLowerCase()}.
+          </span>
+          <button type="button" onClick={() => escolher(null)} className="shrink-0 font-semibold text-primary hover:underline">Trocar</button>
+        </div>
         <Campo id="nomeConsultoria" name="nomeConsultoria" rotulo="Nome que vai aparecer nos documentos" required icone="predio"
           placeholder="Ex.: Maria Souza Segurança do Trabalho" dica="Pode ser o seu nome, da sua consultoria ou da sua empresa. Dá para trocar depois." />
         <Campo id="nome" name="nome" rotulo="Seu nome" required autoComplete="name" placeholder="Ex.: Maria Souza" icone="cracha" />
@@ -76,10 +116,7 @@ export default function Cadastro() {
           </span>
         </label>
         {erro && <Aviso tipo="erro">{erro}</Aviso>}
-        <Botao type="submit" disabled={enviando} className="w-full">{enviando ? 'Criando conta…' : 'Criar conta'}</Botao>
-        <p className="text-center text-sm">
-          Já tem conta? <Link href="/entrar" className="font-semibold text-primary">Entrar</Link>
-        </p>
+        <Botao type="submit" disabled={enviando} className="w-full">{enviando ? 'Criando conta…' : pago ? 'Continuar para o pagamento' : 'Criar conta e começar'}</Botao>
       </form>
     </main>
   );
