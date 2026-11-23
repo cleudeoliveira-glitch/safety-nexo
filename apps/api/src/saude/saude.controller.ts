@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Res } from '@nestjs/common';
-import { TABELA_18_MOTIVOS_AFASTAMENTO } from '../esocial/tabelas';
+import { TABELA_13_PARTE_ATINGIDA, TABELA_14_AGENTE_CAUSADOR, TABELA_15_SITUACAO_GERADORA, TABELA_17_NATUREZA_LESAO, TABELA_18_MOTIVOS_AFASTAMENTO } from '../esocial/tabelas';
 import { Response } from 'express';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 import { ConsultoriaId } from '../common/consultoria.decorator';
@@ -58,6 +58,14 @@ export class SaudeController {
   @Post('aets/:id/pdf')
   async pdfAet(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Res() res: Response) {
     enviarPdf(res, await this.saude.pdfAet(c, e, id), 'AET.pdf');
+  }
+
+  // Listas oficiais do eSocial para escolher na CAT (parte do corpo, o que causou e o tipo de lesão).
+  // Ficam fora do recurso "eSocial" do plano: são só as listas, e servem para qualquer CAT.
+  @PermiteEmpresa()
+  @Get('cat-listas')
+  listasCat() {
+    return { t13: TABELA_13_PARTE_ATINGIDA, t14: TABELA_14_AGENTE_CAUSADOR, t15: TABELA_15_SITUACAO_GERADORA, t17: TABELA_17_NATUREZA_LESAO };
   }
 
   // A empresa cliente pode abrir a CAT: quem fica sabendo do acidente primeiro é ela.

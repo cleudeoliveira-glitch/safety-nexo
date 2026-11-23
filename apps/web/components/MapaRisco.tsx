@@ -93,7 +93,7 @@ export function MapaRisco({ empresaId, nomeEmpresa }: { empresaId: string; nomeE
       {aviso && <div className="mb-4"><Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso></div>}
       {ghes === null && <p className="text-sm text-text/60">Carregando…</p>}
       {ghes?.length === 0 && (
-        <Aviso tipo="info">Esta empresa ainda não tem GHE. Cadastre os GHEs e os riscos em <a className="font-semibold underline" href={`/empresas/${empresaId}#ghes`}>GHEs, riscos e exames</a> e o mapa aparece aqui.</Aviso>
+        <Aviso tipo="info">Esta empresa ainda não tem GHE. Cadastre os GHEs e os riscos em <a className="font-semibold underline" href={`/empresas/${empresaId}#ghes`}>Grupos (GHE), riscos e exames</a> e o mapa aparece aqui.</Aviso>
       )}
       {semRisco && <div className="mb-4"><Aviso tipo="info">Os GHEs ainda não têm riscos. Cadastre os riscos e o mapa se monta sozinho.</Aviso></div>}
       {setores.length > 0 && (

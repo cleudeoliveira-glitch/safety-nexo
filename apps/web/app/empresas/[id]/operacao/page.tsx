@@ -66,9 +66,9 @@ type Aba = 'apr' | 'pt' | 'dds' | 'checklist';
 const ABAS: Aba[] = ['apr', 'pt', 'dds', 'checklist'];
 // Cada item do menu abre só a sua parte, com o mesmo nome do menu. APR e PT ficam juntas porque a PT sai da APR.
 const TITULOS: Record<Aba, [string, string]> = {
-  apr: ['APR e permissão de trabalho', 'Analise os riscos da atividade antes de começar e, se precisar, emita a permissão de trabalho a partir dela.'],
+  apr: ['APR e permissão de trabalho', 'APR é a Análise Preliminar de Risco: analise os riscos da atividade antes de começar e, se precisar, emita a permissão de trabalho a partir dela.'],
   pt: ['APR e permissão de trabalho', 'Libere o trabalho de risco (altura, quente, eletricidade...) por um turno, com as verificações e a equipe.'],
-  dds: ['DDS', 'Registre a conversa de segurança do dia e colha as assinaturas de quem participou.'],
+  dds: ['DDS', 'Diálogo Diário de Segurança: registre a conversa do dia e colha as assinaturas de quem participou.'],
   checklist: ['Inspeções', 'Confira o local ou o equipamento item por item, com fotos. O que não estiver certo vira ação no plano.'],
 };
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });

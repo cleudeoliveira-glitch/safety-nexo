@@ -470,6 +470,9 @@ export type NovaCat = Omit<Cat, 'id' | 'colaborador' | 'prazo' | 'enviadaEm' | '
   atendimentoData?: string; medicoNome?: string; medicoCrm?: string; cid?: string; diasTratamento?: number;
   investigacaoId?: string;
 };
+// Listas oficiais do eSocial para a CAT: 13 parte do corpo, 14 e 15 o que causou, 17 tipo de lesão.
+export type ListasCat = { t13: [string, string][]; t14: [string, string][]; t15: [string, string][]; t17: [string, string][] };
+export const listasCat = (empresaId: string) => chamar<ListasCat>('GET', `/empresas/${empresaId}/cat-listas`);
 export const listarCats = (empresaId: string) => chamar<Cat[]>('GET', `/empresas/${empresaId}/cats`);
 export const criarCat = (empresaId: string, dados: NovaCat) => chamar<Cat>('POST', `/empresas/${empresaId}/cats`, dados);
 export const marcarCatEnviada = (empresaId: string, id: string, recibo: string) =>

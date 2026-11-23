@@ -39,7 +39,7 @@ export const MENU: GrupoMenu[] = [
     itens: [
       assunto('Cadastro da empresa', 'predio', [
         { nome: 'Dados da empresa', rota: '#dados', soConsultoria: true },
-        { nome: 'GHEs, riscos e exames', rota: '#ghes', soConsultoria: true },
+        { nome: 'Grupos (GHE), riscos e exames', rota: '#ghes', soConsultoria: true },
         { nome: 'Trazer PGR antigo (IA)', rota: '/importar-pdf', soConsultoria: true },
       ]),
       assunto('Colaboradores', 'pessoas', [

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { dicionario } from '@/lib/dicionario';
 import { AJUDA_CAMPOS, AREAS } from '@/lib/ajudaCampos';
+import { TextoAjuda } from '@/components/CampoAjuda';
 
 const SIGLAS = [...dicionario].sort((a, b) => a.sigla.localeCompare(b.sigla));
 const semAcento = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -50,11 +51,8 @@ export function BaseConhecimento({ idBusca = 'busca-base' }: { idBusca?: string 
             {g.itens.map((c) => (
               <div key={c.campo} className="text-sm">
                 <dt className="font-semibold text-text">{c.campo}</dt>
-                <dd className="mt-1 space-y-1 text-text/80">
-                  <p><b>O que é:</b> {c.ajuda.oQueE}</p>
-                  {c.ajuda.ondeAcho && <p><b>Onde acho:</b> {c.ajuda.ondeAcho}</p>}
-                  {c.ajuda.exemplo && <p><b>Exemplo:</b> {c.ajuda.exemplo}</p>}
-                  {c.ajuda.baseLegal && <p className="text-text/60"><b>Base legal:</b> {c.ajuda.baseLegal}</p>}
+                <dd className="text-text/80">
+                  <TextoAjuda ajuda={c.ajuda} />
                 </dd>
               </div>
             ))}

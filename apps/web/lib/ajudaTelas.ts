@@ -77,7 +77,7 @@ export const GUIAS: GuiaTela[] = [
     partes: [
       { titulo: '1. Dados da empresa', aba: 'dados', passos: ['Confira CNAE, grau de risco e número de funcionários.', 'Envie a logo da empresa cliente (sai no cabeçalho dos PDFs).', 'Preencha o responsável técnico, o registro profissional e o representante legal.', 'Clique em salvar.'] },
       {
-        titulo: '2. GHEs, riscos e exames',
+        titulo: '2. Grupos (GHE), riscos e exames',
         aba: 'ghes',
         passos: [
           'GHE é um grupo de pessoas que têm os mesmos riscos (ex.: "Produção", "Escritório"). Crie um para cada grupo.',

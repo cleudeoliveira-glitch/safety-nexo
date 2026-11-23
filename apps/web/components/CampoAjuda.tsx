@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// O "?" de cada campo: o que é, onde achar, exemplo e base legal.
+// O "?" de cada campo, sempre na mesma ordem: o que é, para que serve, como preencher e um exemplo.
+// O texto vem de lib/ajudaCampos.ts: a 1ª frase de oQueE é "O que é", o resto é "Para que serve",
+// ondeAcho é "Como preencher" e a base legal fica por último, em letra mais clara.
 export type Ajuda = { oQueE: string; ondeAcho?: string; exemplo?: string; baseLegal?: string };
 
 // alinhar="direita" abre o balão para a esquerda, para campos perto da borda direita da tela.
@@ -54,12 +56,26 @@ export function CampoAjuda({ titulo, ajuda, alinhar = 'esquerda' }: { titulo: st
             <strong className="block text-primary">{titulo}</strong>
             <button type="button" onClick={() => setPos(null)} aria-label="Fechar ajuda" className="-mr-1 -mt-1 rounded px-1.5 text-lg leading-none text-text/50 hover:text-primary">×</button>
           </span>
-          <span className="mt-2 block"><b>O que é:</b> {ajuda.oQueE}</span>
-          {ajuda.ondeAcho && <span className="mt-2 block"><b>Onde acho:</b> {ajuda.ondeAcho}</span>}
-          {ajuda.exemplo && <span className="mt-2 block"><b>Exemplo:</b> {ajuda.exemplo}</span>}
-          {ajuda.baseLegal && <span className="mt-2 block text-text/60"><b>Base legal:</b> {ajuda.baseLegal}</span>}
+          <TextoAjuda ajuda={ajuda} />
         </span>
       )}
     </span>
   );
+}
+
+// O texto da ajuda, igual no "?" e na Base de Conhecimento.
+export function TextoAjuda({ ajuda }: { ajuda: Ajuda }) {
+  const [oQueE, ...resto] = dividirFrases(ajuda.oQueE);
+  return (<>
+    <span className="mt-2 block"><b>O que é:</b> {oQueE}</span>
+    {resto.length > 0 && <span className="mt-2 block"><b>Para que serve:</b> {resto.join(' ')}</span>}
+    {ajuda.ondeAcho && <span className="mt-2 block"><b>Como preencher:</b> {ajuda.ondeAcho}</span>}
+    {ajuda.exemplo && <span className="mt-2 block rounded-lg bg-primary/5 px-2.5 py-1.5"><b>Exemplo:</b> {ajuda.exemplo}</span>}
+    {ajuda.baseLegal && <span className="mt-2 block text-xs text-text/60"><b>Base legal:</b> {ajuda.baseLegal}</span>}
+  </>);
+}
+
+// Separa em frases sem quebrar abreviações como "art. 58", "nº 7" ou "ex.: ".
+function dividirFrases(t: string): string[] {
+  return t.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/).map((f) => f.trim()).filter(Boolean);
 }
