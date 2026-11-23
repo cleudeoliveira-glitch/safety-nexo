@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { DUVIDAS_PLANOS, DUVIDAS_SISTEMA, LinkWhatsApp, ListaDuvidas } from '@/components/DuvidasPlanos';
 import { Icone, NomeIcone } from '@/components/Icone';
 import { BotaoPlanoSite, GradePlanos } from '@/components/Planos';
-import { CarrosselTelas } from '@/components/CarrosselTelas';
+import { VitrineTopo } from '@/components/VitrineTopo';
 import { PLANOS_DESTAQUE_LANDING } from '@/lib/planos';
 
 // Página inicial para quem ainda não entrou: apresenta o sistema e leva à escolha do plano.
@@ -59,37 +59,9 @@ export function Landing() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl space-y-20 px-4 py-6 sm:px-6 sm:py-10 lg:space-y-28 lg:py-12">
-        <section className="fundo-destaque overflow-hidden rounded-3xl px-6 pt-12 text-white shadow-xl sm:px-12 sm:pt-16 lg:grid lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-10 lg:py-20 lg:pr-0">
-          <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-menta">Gestão inteligente de SST</p>
-          <h1 className="mt-4 max-w-3xl text-[2.1rem] font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[3.4rem]">
-            Toda a SST dos seus clientes num lugar só.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/85 sm:text-xl">
-            Cadastre uma vez e PGR, PCMSO, LTCAT e OS saem atualizados juntos. Funciona no campo sem internet.
-          </p>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link
-              href="/cadastro?plano=FREE"
-              className="flex min-h-[3.25rem] items-center justify-center whitespace-nowrap rounded-xl bg-menta px-7 py-3.5 text-lg font-bold text-primary-escuro shadow-lg shadow-black/20 transition hover:brightness-95"
-            >
-              Começar grátis
-            </Link>
-            <a
-              href="#recursos"
-              className="flex min-h-[3.25rem] items-center justify-center whitespace-nowrap rounded-xl border-2 border-white/60 px-7 py-3 text-lg font-semibold text-white transition hover:bg-white hover:text-primary-escuro"
-            >
-              Ver o que ele faz
-            </a>
-          </div>
-          <p className="mt-3 text-sm text-white/75">14 dias com tudo liberado, sem falar com ninguém.</p>
-          </div>
-          <div className="mt-12 lg:mt-0 lg:w-[125%]">
-            <CarrosselTelas />
-          </div>
-        </section>
+      <VitrineTopo />
 
+      <div className="mx-auto max-w-6xl space-y-20 px-4 py-16 sm:px-6 lg:space-y-28 lg:py-24">
         <section id="recursos" className="scroll-mt-24">
           <Titulo sobre="Para que serve" titulo="Menos papel e retrabalho, mais tempo para a segurança">
             Você cadastra a empresa uma vez, monta os setores (GHE) com os riscos de cada função, e o sistema gera os programas, os laudos e os
