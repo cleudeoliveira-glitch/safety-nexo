@@ -1,5 +1,6 @@
 'use client';
 
+import { NovoRegistro, useNovo } from '@/components/NovoRegistro';
 import { TopoTela } from '@/components/TopoTela';
 import { materialDa } from '@/lib/materiais';
 import Link from 'next/link';
@@ -42,6 +43,7 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
   const [catalogo, setCatalogo] = useState<ModeloTreinamento[]>([]);
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
+  const novo = useNovo(turmas.length === 0);
   const [modelo, setModelo] = useState<ModeloTreinamento>(vazio);
   const [chaveForm, setChaveForm] = useState(0);
   const [participantes, setParticipantes] = useState<string[]>([]);
@@ -136,10 +138,10 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
 
       <TreinamentosSugeridos empresaId={empresaId} versao={turmas.length} usar={(nome, pessoas) => {
-        escolherModelo(nome); setParticipantes(pessoas);
-        document.getElementById('tr-modelo')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        novo.abrirE(() => { escolherModelo(nome); setParticipantes(pessoas); document.getElementById('tr-modelo')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
       }} />
 
+      <NovoRegistro rotulo="Nova turma de treinamento" {...novo}>
       <Cartao titulo="Nova turma de treinamento">
         <Selecao id="tr-modelo" rotulo="Começar de um modelo" value={modelo.nome} onChange={(e) => escolherModelo(e.target.value)} className="mb-4"
           ajuda={{ oQueE: `${catalogo.length} modelos de ${new Set(catalogo.map((m) => m.norma).filter(Boolean)).size} NRs. Preenche nome, norma, carga horária, validade e conteúdo. Você pode ajustar tudo antes de salvar.` }}>
@@ -178,6 +180,7 @@ export default function TreinamentosPage({ params }: { params: { id: string } })
           <div className="flex justify-end"><Botao type="submit">Criar turma</Botao></div>
         </form>
       </Cartao>
+      </NovoRegistro>
 
       <Cartao titulo="Turmas">
         {turmas.length === 0 ? <p className="text-sm text-text/60">Nenhuma turma ainda.</p> : (

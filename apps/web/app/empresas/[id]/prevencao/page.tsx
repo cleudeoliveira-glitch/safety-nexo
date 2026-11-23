@@ -1,5 +1,6 @@
 'use client';
 
+import { NovoRegistro, useNovo } from '@/components/NovoRegistro';
 import { TopoTela } from '@/components/TopoTela';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -146,6 +147,7 @@ function AbaRelatos({ empresaId, empresa, consultoria, iaLigada, avisar, irParaI
 
 function AbaAcoes({ empresaId, empresa, consultoria, avisar, aoMudar }: { empresaId: string; empresa: Empresa; consultoria: boolean; avisar: Avisar; aoMudar: () => void }) {
   const [acoes, setAcoes] = useState<AcaoCorretiva[] | null>(null);
+  const novo = useNovo(acoes !== null && acoes.length === 0);
   const [ghes, setGhes] = useState<Ghe[]>([]);
   const [avaliando, setAvaliando] = useState<string | null>(null);
   const carregar = useCallback(() => prevencao.acoes(empresaId).then(setAcoes).catch((e: Error) => avisar('erro', e.message)), [empresaId, avisar]);
@@ -267,6 +269,7 @@ function AbaAcoes({ empresaId, empresa, consultoria, avisar, aoMudar }: { empres
 
   return (
     <div className="space-y-6">
+      <NovoRegistro rotulo="Nova ação" {...novo}>
       <Cartao titulo="Nova ação">
         <form className="grid gap-3 md:grid-cols-2" onSubmit={nova}>
           <Campo id="acao-descricao" name="descricao" rotulo="O que fazer" required className="md:col-span-2" placeholder="Ex.: Trocar a proteção do cilindro de massa" />
@@ -291,6 +294,7 @@ function AbaAcoes({ empresaId, empresa, consultoria, avisar, aoMudar }: { empres
           <div className="flex justify-end md:col-span-2"><Botao type="submit">Incluir ação</Botao></div>
         </form>
       </Cartao>
+      </NovoRegistro>
 
       <Cartao titulo="Quadro do plano de ação" acao={<div className="flex flex-wrap gap-2">
         {consultoria && <Botao variante="secundario" onClick={() => agir(async () => { const r = await prevencao.acoesDosRiscos(empresaId); if (!r.criadas) throw new Error('Todos os riscos moderados ou acima já têm ação aberta.'); return r; }, 'Ações criadas a partir dos riscos do PGR. Revise o texto e o responsável de cada uma.')}>Criar ações dos riscos do PGR</Botao>}
@@ -332,6 +336,7 @@ const medidaVazia = (): Medida => ({ descricao: '', responsavel: '', prazo: '', 
 
 function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMudar }: { empresaId: string; empresa: Empresa; iaLigada: boolean; avisar: Avisar; deRelato: Relato | null; aoMudar: () => void }) {
   const [lista, setLista] = useState<Investigacao[] | null>(null);
+  const novo = useNovo(lista !== null && lista.length === 0);
   const [cats, setCats] = useState<Cat[]>([]);
   const [catId, setCatId] = useState('');
   const [titulo, setTitulo] = useState('');
@@ -353,6 +358,7 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
   useEffect(() => { carregar(); listarCats(empresaId).then(setCats).catch(() => setCats([])); }, [empresaId, carregar]);
   useEffect(() => {
     if (!deRelato) return;
+    novo.abrir();
     setTitulo(`${TIPOS_RELATO[deRelato.tipo]} (relato nº ${deRelato.numero})`); setLocal(deRelato.local ?? ''); setDescricao(deRelato.descricao); setDataOc(deRelato.criadoEm.slice(0, 10)); setCatId('');
   }, [deRelato]);
 
@@ -393,6 +399,7 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
 
   return (
     <div className="space-y-6">
+      <NovoRegistro rotulo="Nova investigação" {...novo}>
       <Cartao titulo="Nova investigação">
         <form className="space-y-4" onSubmit={salvar}>
           <p className="text-sm text-text/70">A NR-01 pede que a empresa analise os acidentes e as doenças do trabalho. O objetivo é achar as causas e evitar que se repita, <strong>não achar culpados</strong>.</p>
@@ -473,6 +480,7 @@ function AbaInvestigacao({ empresaId, empresa, iaLigada, avisar, deRelato, aoMud
           <div className="flex justify-end"><Botao type="submit">{abrirCat && !catId ? 'Salvar e abrir a CAT' : 'Salvar investigação'}</Botao></div>
         </form>
       </Cartao>
+      </NovoRegistro>
 
       <Cartao titulo="Investigações feitas">
         {lista === null ? <p className="text-sm text-text/60">Carregando…</p> : lista.length === 0 ? <p className="text-sm text-text/60">Nenhuma investigação ainda.</p> : (

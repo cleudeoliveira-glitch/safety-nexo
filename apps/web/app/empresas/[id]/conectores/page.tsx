@@ -1,5 +1,6 @@
 'use client';
 
+import { NovoRegistro, useNovo } from '@/components/NovoRegistro';
 import { TopoTela } from '@/components/TopoTela';
 import Link from 'next/link';
 import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
@@ -97,6 +98,7 @@ function AbaRh({ empresaId, avisar, recarregar }: { empresaId: string; avisar: A
 // ---------- Terceiros ----------
 function AbaTerceiros({ empresaId, avisar }: { empresaId: string; avisar: Avisar }) {
   const [lista, setLista] = useState<Terceiro[]>([]);
+  const novo = useNovo(lista.length === 0);
   const [sugeridos, setSugeridos] = useState<string[]>([]);
   const [aberto, setAberto] = useState<string | null>(null);
   const [chave, setChave] = useState(0);
@@ -110,6 +112,7 @@ function AbaTerceiros({ empresaId, avisar }: { empresaId: string; avisar: Avisar
 
   return (
     <div className="space-y-6">
+      <NovoRegistro rotulo="Nova empresa terceirizada" {...novo}>
       <Cartao titulo="Nova empresa terceirizada">
         <p className="mb-4 text-sm text-text/60">Empresas que prestam serviço dentro do cliente: limpeza, manutenção, obra, vigilância. O sistema avisa quando falta documento ou quando algo vence.</p>
         <form key={chave} className="grid gap-4 md:grid-cols-3" onSubmit={(ev) => {
@@ -131,6 +134,7 @@ function AbaTerceiros({ empresaId, avisar }: { empresaId: string; avisar: Avisar
           <div className="flex justify-end md:col-span-3"><Botao type="submit">Cadastrar</Botao></div>
         </form>
       </Cartao>
+      </NovoRegistro>
 
       {!lista.length ? <Cartao titulo="Terceirizadas"><p className="text-sm text-text/60">Nenhuma terceirizada cadastrada.</p></Cartao> : lista.map((t) => (
         <Cartao key={t.id} titulo={t.razaoSocial} acao={
@@ -251,6 +255,7 @@ function Barras({ titulo, itens }: { titulo: string; itens: { nome: string; hora
 function AbaFaltas({ empresaId, colaboradores, cliente, avisar }: { empresaId: string; colaboradores: Colaborador[]; cliente: boolean; avisar: Avisar }) {
   const [ano, setAno] = useState(new Date().getFullYear());
   const [lista, setLista] = useState<Atestado[]>([]);
+  const novo = useNovo(lista.length === 0);
   const [ind, setInd] = useState<Absenteismo | null>(null);
   const [tipos, setTipos] = useState<Record<string, string>>({});
   const [chave, setChave] = useState(0);
@@ -278,6 +283,7 @@ function AbaFaltas({ empresaId, colaboradores, cliente, avisar }: { empresaId: s
         </Aviso>
       ))}
 
+      <NovoRegistro rotulo="Lançar atestado" {...novo}>
       <Cartao titulo="Lançar atestado">
         <form key={chave} className="grid gap-4 md:grid-cols-3" onSubmit={(ev) => {
           ev.preventDefault(); const d = new FormData(ev.currentTarget);
@@ -313,6 +319,7 @@ function AbaFaltas({ empresaId, colaboradores, cliente, avisar }: { empresaId: s
           <div className="flex justify-end md:col-span-3"><Botao type="submit">Lançar</Botao></div>
         </form>
       </Cartao>
+      </NovoRegistro>
 
       {ind && (
         <Cartao titulo={`Absenteísmo ${ind.ano}`} acao={

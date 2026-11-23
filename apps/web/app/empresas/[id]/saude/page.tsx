@@ -1,5 +1,6 @@
 'use client';
 
+import { NovoRegistro, useNovo } from '@/components/NovoRegistro';
 import { TopoTela } from '@/components/TopoTela';
 import Link from 'next/link';
 import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
@@ -56,6 +57,7 @@ function Texto({ id, rotulo, ajuda, ...area }: React.TextareaHTMLAttributes<HTML
 function AbaAet({ empresaId, lista, cliente, recarregar, avisar, baixar }: {
   empresaId: string; lista: Aet[]; cliente: boolean; recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
 }) {
+  const novo = useNovo(lista.length === 0);
   const vazia: RecomendacaoAet = { recomendacao: '', prazo: '', responsavel: '' };
   const [recomendacoes, setRecomendacoes] = useState<RecomendacaoAet[]>([vazia]);
   const [chave, setChave] = useState(0);
@@ -92,6 +94,7 @@ function AbaAet({ empresaId, lista, cliente, recarregar, avisar, baixar }: {
         <Link href={`/empresas/${empresaId}/operacao#checklist`} className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white">Fazer a AEP</Link>
       </div>
       {!cliente && (
+        <NovoRegistro rotulo="Nova AET" {...novo}>
         <Cartao titulo="Nova Análise Ergonômica do Trabalho">
           <p className="mb-4 text-sm text-text/60">
             Siga as etapas da NR-17 (item 17.3.3). Use a AET quando a avaliação preliminar do PGR não bastar, quando houver queixas ou afastamentos ligados à ergonomia, ou quando o PCMSO indicar.
@@ -129,6 +132,7 @@ function AbaAet({ empresaId, lista, cliente, recarregar, avisar, baixar }: {
             <div className="flex justify-end md:col-span-3"><Botao type="submit">Salvar AET</Botao></div>
           </form>
         </Cartao>
+        </NovoRegistro>
       )}
 
       <Cartao titulo="AETs feitas">
@@ -154,6 +158,7 @@ function AbaAet({ empresaId, lista, cliente, recarregar, avisar, baixar }: {
 function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }: {
   empresaId: string; colaboradores: Colaborador[]; lista: Cat[]; recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
 }) {
+  const novo = useNovo(lista.length === 0);
   const [chave, setChave] = useState(0);
   const [recibos, setRecibos] = useState<Record<string, string>>({});
   // Vindo da investigação ("Abrir CAT"): já traz o local e o relato do acidente.
@@ -161,7 +166,8 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('investigacao');
     if (!id) return;
-    prevencao.investigacoes(empresaId).then((l) => setDeInv(l.find((x) => x.id === id && !x.catId) ?? null)).catch(() => setDeInv(null));
+    prevencao.investigacoes(empresaId).then((l) => { const inv = l.find((x) => x.id === id && !x.catId) ?? null; setDeInv(inv); if (inv) novo.abrir(); }).catch(() => setDeInv(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [empresaId]);
 
   async function salvar(ev: React.FormEvent<HTMLFormElement>) {
@@ -215,6 +221,7 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
 
   return (
     <div className="space-y-6">
+      <NovoRegistro rotulo="Registrar acidente (CAT)" {...novo}>
       <Cartao titulo="Registrar acidente (CAT)">
         {deInv && (
           <div className="mt-3"><Aviso tipo="info">Abrindo a CAT da investigação <strong>{deInv.titulo}</strong> (ocorrência em {data(deInv.dataOcorrencia)}). O local e a descrição já vieram de lá. Escolha o acidentado e confira a data e a hora.</Aviso></div>
@@ -256,6 +263,7 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
           <div className="flex items-end justify-end"><Botao type="submit">Registrar CAT</Botao></div>
         </form>
       </Cartao>
+      </NovoRegistro>
 
       <Cartao titulo="CATs registradas">
         {lista.length === 0 ? <p className="text-sm text-text/60">Nenhum acidente registrado.</p> : (

@@ -82,3 +82,9 @@ textarea:disabled {
 .card-nao { background: #fee2e2; border: 1px solid #fecaca; }
 .card-pendente { background: #fef3c7; border: 1px solid #fde68a; }
 .card-total { background: #dbeafe; border: 1px solid #bfdbfe; }
+
+/* "Falta isto": depois de tocar em salvar, o campo obrigatório vazio fica com a borda vermelha. */
+form.tentou-salvar :is(input, select, textarea):invalid {
+  border-color: var(--color-danger) !important;
+  box-shadow: 0 0 0 2px rgb(239 68 68 / 0.15);
+}

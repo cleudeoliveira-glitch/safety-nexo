@@ -41,6 +41,19 @@ const RESPOSTAS: [ItemInspecao['resposta'], string, string][] = [
   ['NC', 'Não conforme', 'bg-danger text-white'],
   ['NA', 'Não se aplica', 'bg-text/60 text-white'],
 ];
+// Atalhos para os modelos mais usados em campo (procura pelo nome do modelo).
+const RAPIDOS: [string, string][] = [['incêndio', '🧯 Extintores e incêndio (NR-23)'], ['máquinas', '⚙️ Máquinas (NR-12)'], ['altura', '🪜 Trabalho em altura (NR-35)'], ['eletricidade', '⚡ Elétrica (NR-10)'], ['individual', '🦺 EPI (NR-06)']];
+
+function BotaoEscolha({ titulo, texto, onClick, destaque }: { titulo: string; texto: string; onClick: () => void; destaque?: boolean }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`min-h-[64px] rounded-2xl border-2 p-3 text-left transition active:scale-[0.99] ${destaque ? 'border-primary bg-primary text-white' : 'border-border bg-white hover:border-primary'}`}>
+      <span className="block font-semibold">{titulo}</span>
+      <span className={`block text-xs ${destaque ? 'text-white/80' : 'text-text/60'}`}>{texto}</span>
+    </button>
+  );
+}
+
 const PRAZOS: [number, string][] = [[30, '30 dias'], [90, '3 meses'], [180, '6 meses'], [365, '1 ano']];
 const NIVEL = (p: number, s: number) => (p * s >= 15 ? ['Alto', 'text-danger'] : p * s >= 8 ? ['Médio', 'text-[#c2410c]'] : ['Baixo', 'text-success']);
 
@@ -309,6 +322,22 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
   const [iaLigada, setIaLigada] = useState(false);
   const [ocupada, setOcupada] = useState<string | null>(null);
   const [cliente, setCliente] = useState(false);
+  // Começa perguntando o que vai inspecionar; a lista de inspeções feitas fica logo abaixo.
+  const [modo, setModo] = useState<'escolher' | 'foto' | 'lista'>('escolher');
+
+  // "Repetir a última": mesmo modelo, itens, local e inspetor, com a data de hoje. As respostas ficam em branco.
+  function repetir(i: Inspecao) {
+    setModelo(modelos.some((m) => m.modelo === i.modelo) ? i.modelo : '');
+    setItens(i.itens.map((x) => ({ texto: x.texto, resposta: '', grau: x.grau })));
+    setDataInsp(hoje()); setProxima(''); setFotos([]);
+    setModo('lista');
+    setTimeout(() => {
+      const por = (id: string, v: string) => { const el = document.getElementById(id) as HTMLInputElement | null; if (el) el.value = v; };
+      por('ck-local', i.local); por('ck-inspetor', i.inspetor); por('ck-titulo', i.titulo);
+      document.getElementById('ck-local')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+    avisar('ok', `Inspeção "${i.titulo}" copiada com a data de hoje. Responda os itens de novo.`);
+  }
 
   useEffect(() => { const c = ehEmpresa(); setCliente(c); if (!c) ia.status().then((s) => setIaLigada(s.ligada)).catch(() => undefined); }, []);
 
@@ -323,6 +352,7 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
     ev.preventDefault();
     const d = new FormData(ev.currentTarget);
     const t = (c: string) => String(d.get(c) ?? '').trim();
+    if (!itens.length) return avisar('erro', 'Falta a lista: escolha um modelo ou inclua pelo menos um item em "Incluir item".');
     const faltam = itens.filter((i) => !i.resposta).length;
     if (faltam) return avisar('erro', `Responda todos os itens: faltam ${faltam}.`);
     setSalvando(true);
@@ -342,7 +372,7 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
       lembrar({ 'inspecao.inspetor': t('inspetor') });
       fotos.forEach((f) => URL.revokeObjectURL(f.previa));
       setModelo(''); setItens([]); setFotos([]); setProxima(''); setDataInsp(hoje()); setChave((k) => k + 1);
-      setAberta(criada.id);
+      setAberta(criada.id); setModo('escolher');
       avisar('ok', `Inspeção salva.${textoFotos} Baixe o relatório: as não conformidades já saem no plano de ação.`);
       await recarregar();
     } catch (e) {
@@ -386,7 +416,25 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
 
   return (
     <div className="space-y-6">
-      <InspecaoComImagem empresaId={empresaId} locais={[...new Set([...locais.map((l) => l[l.length - 1].local), ...setores])]} localPadrao={localPadrao} cliente={cliente} recarregar={recarregar} avisar={avisar} aoSalvar={setAberta} />
+      {modo === 'escolher' && (
+        <Cartao titulo="Nova inspeção: o que vai inspecionar?">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {!cliente && <BotaoEscolha destaque onClick={() => setModo('foto')} titulo="📷 Por foto" texto="Tire fotos do local e marque OK ou Não OK em cada uma. O mais rápido." />}
+            {lista[0] && <BotaoEscolha onClick={() => repetir(lista[0])} titulo="↻ Repetir a última" texto={`${lista[0].titulo}, em ${lista[0].local}. Os itens vêm para responder de novo.`} />}
+            {RAPIDOS.map(([busca, nome]) => {
+              const m = modelos.find((x) => x.titulo.toLowerCase().includes(busca));
+              return m && <BotaoEscolha key={m.modelo} onClick={() => { escolher(m.modelo); setModo('lista'); }} titulo={nome} texto={`${m.itens.length} itens prontos da norma`} />;
+            })}
+            <BotaoEscolha onClick={() => { escolher(''); setModo('lista'); setTimeout(() => document.getElementById('ck-modelo')?.focus(), 80); }} titulo="Outro modelo ou livre" texto="Escolha entre todos os modelos das NRs ou monte a sua lista do zero." />
+          </div>
+        </Cartao>
+      )}
+      {modo === 'foto' && (<div className="space-y-2">
+        <div className="flex justify-end"><button type="button" onClick={() => setModo('escolher')} className="min-h-[44px] px-2 text-sm font-semibold text-text/60 hover:text-primary">Fechar ✕</button></div>
+      <InspecaoComImagem empresaId={empresaId} locais={[...new Set([...locais.map((l) => l[l.length - 1].local), ...setores])]} localPadrao={localPadrao} cliente={cliente} recarregar={recarregar} avisar={avisar} aoSalvar={(id) => { setAberta(id); setModo('escolher'); }} />
+      </div>)}
+      {modo === 'lista' && (<div className="space-y-2">
+      <div className="flex justify-end"><button type="button" onClick={() => setModo('escolher')} className="min-h-[44px] px-2 text-sm font-semibold text-text/60 hover:text-primary">Fechar formulário ✕</button></div>
       <Cartao titulo="Nova inspeção pelos modelos das NRs">
         <form key={chave} className="space-y-4" onSubmit={salvar}>
           <div className="grid gap-4 md:grid-cols-3">
@@ -469,9 +517,10 @@ export function AbaChecklist({ empresaId, lista, modelos, recarregar, avisar, lo
             </div>
           </div>
 
-          <div className="flex justify-end"><Botao type="submit" disabled={!itens.length || salvando}>{salvando ? 'Salvando…' : 'Salvar inspeção'}</Botao></div>
+          <div className="flex justify-end"><Botao type="submit" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar inspeção'}</Botao></div>
         </form>
       </Cartao>
+      </div>)}
 
       <Cartao titulo="Inspeções feitas" acao={lista.length > 0 && (
         <div className="flex gap-1" role="tablist" aria-label="Como ver as inspeções">
