@@ -287,7 +287,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       )}
 
       {aba === 'ghes' && (
-      <Cartao titulo="GHEs, riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
+      <Cartao titulo="Grupos de exposição (GHE), riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
         {!cliente && <div className="mb-4"><CopiarDados empresaId={empresaId} aoCopiar={(t, erro) => { setAviso({ tipo: erro ? 'erro' : 'ok', texto: t }); if (!erro) recarregar(); }} /></div>}
         <FuncoesDaEmpresa ghes={ghes} colaboradores={colaboradores} />
         <details className="rounded-card border border-primary/30 bg-primary/5 p-4" open={ghes.length === 0}>
@@ -625,7 +625,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
 type Aba = 'dados' | 'ghes' | 'documentos';
 const ABAS: { id: Aba; nome: string }[] = [
   { id: 'dados', nome: 'Dados e responsáveis' },
-  { id: 'ghes', nome: 'GHEs e riscos' },
+  { id: 'ghes', nome: 'Grupos (GHE) e riscos' },
   { id: 'documentos', nome: 'Documentos' },
 ];
 // Endereços antigos (#medico, #cipa...) continuam funcionando: cada um abre a aba onde a parte está.

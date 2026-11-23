@@ -211,7 +211,7 @@ export default function CulturaPage({ params }: { params: { id: string } }) {
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <TopoTela empresaId={empresaId} titulo={aba === 'sipat' ? 'SIPAT' : 'Programa 5S'} empresa={empresa.razaoSocial}
-        frase={aba === 'sipat' ? 'Monte a semana de prevenção: datas, palestras e atividades.' : 'Faça a auditoria 5S por setor e acompanhe a nota de cada um.'} />
+        frase={aba === 'sipat' ? 'Semana Interna de Prevenção de Acidentes: monte as datas, palestras e atividades.' : 'Faça a auditoria 5S por setor e acompanhe a nota de cada um.'} />
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
       {aba === 'sipat' ? <AbaSipat empresaId={empresaId} colaboradores={colaboradores} agir={agir} baixar={baixar} /> : <Aba5s empresaId={empresaId} ghes={ghes} agir={agir} baixar={baixar} />}
     </main>

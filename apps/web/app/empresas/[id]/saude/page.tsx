@@ -1,5 +1,6 @@
 'use client';
 
+import { EscolhaOficial } from '@/components/EscolhaOficial';
 import { NovoRegistro, useNovo } from '@/components/NovoRegistro';
 import { TopoTela } from '@/components/TopoTela';
 import Link from 'next/link';
@@ -7,6 +8,8 @@ import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
+  listasCat,
+  type ListasCat,
   Aet,
   buscarEmpresa,
   Cat,
@@ -163,6 +166,8 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
   const [recibos, setRecibos] = useState<Record<string, string>>({});
   // Vindo da investigação ("Abrir CAT"): já traz o local e o relato do acidente.
   const [deInv, setDeInv] = useState<Investigacao | null>(null);
+  const [listas, setListas] = useState<ListasCat | null>(null);
+  useEffect(() => { listasCat(empresaId).then(setListas).catch(() => setListas(null)); }, [empresaId]);
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('investigacao');
     if (!id) return;
@@ -191,6 +196,12 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
         ...(t('atendimentoData') ? { atendimentoData: t('atendimentoData') } : {}),
         ...(t('diasTratamento') ? { diasTratamento: Number(t('diasTratamento')) } : {}),
         ...(deInv ? { investigacaoId: deInv.id } : {}),
+        // Códigos oficiais escolhidos na lista: o S-2210 já sai com eles.
+        ...(t('codParteAting') || t('codAgntCausador') || t('codLesao') ? { esocial: {
+          ...(t('codParteAting') ? { codParteAting: t('codParteAting') } : {}),
+          ...(t('codAgntCausador') ? { codAgntCausador: t('codAgntCausador') } : {}),
+          ...(t('codLesao') ? { codLesao: t('codLesao') } : {}),
+        } } : {}),
       });
       setChave((k) => k + 1);
       if (deInv) { setDeInv(null); window.history.replaceState(null, '', `${window.location.pathname}#cat`); }
@@ -240,9 +251,15 @@ function AbaCat({ empresaId, colaboradores, lista, recarregar, avisar, baixar }:
           </Selecao>
           <Campo id="cat-horas" name="horasTrabalhadas" rotulo="Horas trabalhadas antes" placeholder="Ex.: 03:30" />
           <Campo id="cat-local" name="local" rotulo="Local do acidente" required placeholder="Ex.: Setor de forno" className="md:col-span-3" defaultValue={deInv?.local} />
-          <Campo id="cat-parte" name="parteAtingida" rotulo="Parte do corpo atingida" required placeholder="Ex.: Mão direita" />
-          <Campo id="cat-agente" name="agenteCausador" rotulo="Agente causador" required placeholder="Ex.: Bandeja quente" />
-          <Campo id="cat-natureza" name="naturezaLesao" rotulo="Natureza da lesão" required placeholder="Ex.: Queimadura" />
+          <EscolhaOficial id="cat-parte" name="parteAtingida" nameCodigo="codParteAting" rotulo="Parte do corpo atingida" required itens={listas?.t13 ?? []}
+            comuns={[['755070000', 'Dedo'], ['755050000', 'Mão'], ['753070100', 'Olho'], ['757050000', 'Pé'], ['757010400', 'Joelho'], ['753510000', 'Braço'], ['757010000', 'Perna'], ['756040000', 'Costas e coluna'], ['753080000', 'Cabeça']]} exemplo="mão, joelho"
+            ajuda={{ oQueE: 'Onde a pessoa se machucou.', exemplo: 'Toque num botão ou procure: "dedo", "joelho". A lista é a oficial do eSocial (Tabela 13), então a CAT já sai pronta para o envio.' }} />
+          <EscolhaOficial id="cat-agente" name="agenteCausador" nameCodigo="codAgntCausador" rotulo="O que causou" required itens={listas?.t14 ?? []}
+            comuns={[['302010300', 'Piso'], ['302030900', 'Escada'], ['303010120', 'Faca'], ['303020900', 'Máquina'], ['303010900', 'Ferramenta manual'], ['303060000', 'Forno ou fogão'], ['303075900', 'Veículo'], ['305004900', 'Produto químico']]} exemplo="faca, forno, escada"
+            ajuda={{ oQueE: 'O objeto, máquina ou situação que machucou a pessoa.', exemplo: 'Procure pelo nome: "faca", "forno". Lista oficial do eSocial (Tabela 14).' }} />
+          <EscolhaOficial id="cat-natureza" name="naturezaLesao" nameCodigo="codLesao" rotulo="Tipo de lesão" required itens={listas?.t17 ?? []}
+            comuns={[['702010000', 'Corte'], ['702015000', 'Pancada (contusão)'], ['702035000', 'Fratura'], ['702040000', 'Queimadura'], ['702020000', 'Torção'], ['702005000', 'Arranhão (escoriação)']]} exemplo="corte, queimadura"
+            ajuda={{ oQueE: 'Que machucado foi.', exemplo: 'Corte, fratura, queimadura. Lista oficial do eSocial (Tabela 17).' }} />
           <Texto id="cat-desc" name="descricao" rotulo="Como aconteceu" required ajuda="Descreva o que a pessoa fazia, o que deu errado e o resultado." defaultValue={deInv?.descricao} />
           <Selecao id="cat-afast" name="houveAfastamento" rotulo="Houve afastamento?" defaultValue="N">
             <option value="N">Não</option><option value="S">Sim</option>
