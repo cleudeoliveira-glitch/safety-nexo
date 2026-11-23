@@ -9,16 +9,38 @@ export type Secao = { titulo: string; html: string };
 
 // Numera as seções na ordem e monta o sumário no começo. Seções vazias (null/false) são puladas,
 // assim a numeração nunca fica com buraco.
+// O "Controle do documento" (código, revisões) vai junto do sumário, sem número: assim o texto do documento
+// começa logo depois, pela introdução, em vez de abrir com tabelas. A tabela de identificação, quando vem antes
+// da introdução, desce para logo depois do objetivo e do campo de aplicação.
 // Documentos curtos (plano de emergência, plano de resgate) usam sumario: false ou quebra: false,
 // para não gastar uma página só com o índice.
+const PREAMBULO = /^controle do documento$/i;
+const INTRODUCAO = /^introdu/i;
+const IDENTIFICACAO = /^identifica/i;
+const ANTES_DA_IDENTIFICACAO = /^(objetivo|objetivos|campo de aplica)/i;
+
+function ordenar(secoes: Secao[]): Secao[] {
+  const iIdent = secoes.findIndex((s) => IDENTIFICACAO.test(s.titulo));
+  const iIntro = secoes.findIndex((s) => INTRODUCAO.test(s.titulo));
+  if (iIdent < 0 || iIntro < 0 || iIdent > iIntro) return secoes;
+  const [ident] = secoes.splice(iIdent, 1);
+  let depois = secoes.findIndex((s) => INTRODUCAO.test(s.titulo));
+  secoes.forEach((s, i) => { if (ANTES_DA_IDENTIFICACAO.test(s.titulo) && i > depois) depois = i; });
+  secoes.splice(depois + 1, 0, ident);
+  return secoes;
+}
+
 export function secoesNumeradas(secoes: (Secao | null | false | undefined)[], opcoes: { sumario?: boolean; quebra?: boolean } = {}): string {
-  const validas = secoes.filter((s): s is Secao => !!s);
+  const todas = secoes.filter((s): s is Secao => !!s);
+  const preambulo = opcoes.sumario === false ? [] : todas.filter((s) => PREAMBULO.test(s.titulo));
+  const validas = ordenar(todas.filter((s) => !preambulo.includes(s)));
   const sumario = opcoes.sumario === false ? '' : `
     <section class="sumario${opcoes.quebra === false ? ' sem-quebra' : ''}">
-      <h2>Sumário</h2>
-      <ol>${validas.map((s) => `<li>${escape(s.titulo)}</li>`).join('')}</ol>
+      <h2 class="sem-numero">Sumário</h2>
+      <ol class="indice${validas.length > 10 ? ' duas-colunas' : ''}">${validas.map((s, i) => `<li><span class="n">${i + 1}</span><span class="t">${escape(s.titulo)}</span></li>`).join('')}</ol>
+      ${preambulo.map((s) => `<div class="preambulo"><h2 class="sem-numero">${escape(s.titulo)}</h2>${s.html}</div>`).join('')}
     </section>`;
-  const corpo = validas.map((s, i) => `<section class="secao"><h2>${i + 1}. ${escape(s.titulo)}</h2>${s.html}</section>`).join('');
+  const corpo = validas.map((s, i) => `<section class="secao"><h2><span class="num">${i + 1}</span>${escape(s.titulo)}</h2>${s.html}</section>`).join('');
   return sumario + corpo;
 }
 
@@ -108,11 +130,13 @@ export type Assinante = { nome: string | null; papel: string; registro?: string 
 
 export function blocoAssinaturas(local: string | null, emitidoEm: Date, assinantes: Assinante[]): string {
   return `
-    <p class="local-data">${local ? `${escape(local)}, ` : ''}${emitidoEm.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' })}.</p>
-    <div class="assinaturas">
-      ${assinantes
-        .map((a) => `<div class="assinatura">${a.nome ? escape(a.nome) : '&nbsp;'}<span>${escape(a.papel)}${a.registro ? ` · ${escape(a.registro)}` : ''}</span></div>`)
-        .join('')}
+    <div class="bloco-assinaturas">
+      <p class="local-data">${local ? `${escape(local)}, ` : ''}${emitidoEm.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' })}.</p>
+      <div class="assinaturas">
+        ${assinantes
+          .map((a) => `<div class="assinatura">${a.nome ? escape(a.nome) : '&nbsp;'}<span>${escape(a.papel)}${a.registro ? ` · ${escape(a.registro)}` : ''}</span><span class="data">Data: ____/____/________</span></div>`)
+          .join('')}
+      </div>
     </div>`;
 }
 
@@ -127,16 +151,26 @@ export function cidadeDoEndereco(endereco: string | null): string | null {
 export const CSS_SECOES = `
   .sumario { page-break-after: always; }
   .sumario.sem-quebra { page-break-after: auto; }
-  .sumario ol { line-height: 1.9; padding-left: 22px; }
+  .indice { list-style: none; padding: 0; margin: 4px 0 18px; columns: 1; }
+  .indice li { display: flex; align-items: baseline; gap: 10px; padding: 5px 0; border-bottom: 1px dotted ${tokens.colors.border}; margin: 0; }
+  .indice .n { flex: 0 0 26px; height: 20px; line-height: 20px; text-align: center; border-radius: 5px; background: ${tokens.colors.primary}; color: #fff; font-weight: 700; font-size: 10.5px; }
+  .indice .t { font-weight: 500; }
+  .indice.duas-colunas { columns: 2; column-gap: 28px; }
+  .indice.duas-colunas li { break-inside: avoid; }
+  .preambulo h2 { margin-top: 18px; }
   .secao { margin-bottom: 6px; }
-  .secao p, .secao li { line-height: 1.55; text-align: justify; }
-  h3 { color: ${tokens.colors.primary}; font-size: 13px; margin: 14px 0 4px; }
-  h4 { font-size: 12px; margin: 10px 0 4px; color: #334155; }
+  .secao:first-of-type h2 { margin-top: 0; }
+  .secao p, .secao li { text-align: justify; }
+  h2 .num { display: inline-block; min-width: 24px; height: 24px; line-height: 24px; padding: 0 6px; margin-right: 10px; border-radius: 6px; background: ${tokens.colors.primary}; color: #fff; text-align: center; font-size: 12.5px; vertical-align: 1px; }
   .ficha th { width: 32%; }
   .duas td:first-child { width: 30%; }
-  .local-data { margin-top: 28px; }
-  .falta { color: #b45309; font-style: italic; }
-  .nota { font-size: 11px; color: #475569; }
+  .bloco-assinaturas { page-break-inside: avoid; }
+  .destaque-conclusao { background: #EEF6F7; border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; }
+  .destaque-conclusao p:last-child { margin-bottom: 0; }
+  .numeros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 14px; page-break-inside: avoid; }
+  .numeros div { border: 1px solid ${tokens.colors.border}; border-radius: 8px; padding: 8px 10px; text-align: center; }
+  .numeros strong { display: block; font-size: 20px; color: ${tokens.colors.primary}; line-height: 1.1; }
+  .numeros span { font-size: 10px; color: #5B6B73; }
 `;
 
 // Dados de cabeça que quase todo programa ou laudo usa, montados de uma vez a partir da empresa.
@@ -186,8 +220,8 @@ export function identificacaoBasica(x: ExtrasDoc, total: number, responsavel: { 
 
 // Caixa curta no começo dos documentos de campo (APR, PT, inspeção, investigação): diz para que
 // serve o documento e em que norma ele se apoia, sem transformar um formulário em apostila.
-export const objetivoDoc = (texto: string) =>
-  `<section style="background:#F1F5F9;border-radius:8px;padding:8px 12px;margin-bottom:10px"><h2 style="margin-top:0">Para que serve</h2><p style="margin:0;line-height:1.5">${texto}</p></section>`;
+export const objetivoDoc = (texto: string, titulo = 'Para que serve') =>
+  `<section class="caixa-texto"><h2>${escape(titulo)}</h2><p>${texto}</p></section>`;
 
 // Cronograma anual de ações: 12 meses a partir da emissão, com P (previsto) e R (realizado).
 // É o quadro que todo programa costuma trazer: treinamentos, palestras, inspeções, revisão do programa etc.

@@ -1,5 +1,5 @@
 import { NOME_NIVEL, medidasPartes, nivelRisco, nomeSeveridade } from '../documentos/nivel-risco';
-import { cabecalhoHtml, documentoHtml, escape, folhaHtml, Moldura, rodapeHtml } from '../documentos/layout';
+import { documentoHtml, documentoVariasFolhasHtml, escape, Moldura } from '../documentos/layout';
 import { ANEXOS_NR15, ANEXOS_NR16, GRAUS, Grau, ehGrau } from './conteudo';
 import { CSS_SECOES, ExtrasDoc, blocoAssinaturas, controleDocumento, dataBr, identificacaoBasica, lista, p, secoesNumeradas, tabelaDuasColunas, tabelaReferencias } from '../documentos/secoes';
 
@@ -409,9 +409,15 @@ function paginaOs(d: DadosOs, c: CabecalhoOs): string {
       <tr><th>Setor / GHE</th><td>${escape(d.ghe?.nome ?? '') || '________'}</td><th>Início na função</th><td>${col.dataAdmissao ? col.dataAdmissao.toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '___/___/______'}</td></tr>
       <tr><th>Base</th><td colspan="3">${c.pgr ? `PGR versão ${c.pgr.versao}, de ${dataBr(c.pgr.data)}` : 'PGR da empresa'} · OS emitida em ${dataBr(c.emitidoEm)} · revisão em 12 meses ou quando a função ou os riscos mudarem</td></tr>
     </tbody></table>
-    <p class="objetivo">Esta ordem de serviço informa ao trabalhador os riscos da sua função, como se proteger, o que é obrigatório e o que é
-    proibido, e o que fazer em caso de acidente. Ela atende à CLT (art. 157, II) e à NR-01 (item 1.4.1, alínea c) e deve ser explicada
-    antes de o trabalhador começar a atividade e sempre que a função ou os riscos mudarem.</p>
+    <section class="caixa-texto">
+      <h2>Introdução</h2>
+      <p>Esta ordem de serviço é a conversa por escrito entre a ${escape(c.empresa)} e ${escape(col.nome)} sobre a segurança no trabalho
+      de ${escape(col.cargo)}: o que a função faz, quais riscos existem, como se proteger e o que fazer se algo der errado.</p>
+      <h2>Objetivo</h2>
+      <p>Informar ao trabalhador os riscos da sua função e as medidas de prevenção, o que é obrigatório e o que é proibido, como pedem a
+      CLT (art. 157, II) e a NR-01 (item 1.4.1, alínea c). Ela é explicada antes de a pessoa começar a atividade e refeita sempre que a
+      função ou os riscos mudarem.</p>
+    </section>
 
     <h2>1. Descrição da função</h2>
     <p>${atividades.length ? escape(atividades[0]) : '<span class="falta">Descreva o que esta função faz no cadastro do GHE (funções e atividades).</span>'}</p>
@@ -477,8 +483,13 @@ function paginaOs(d: DadosOs, c: CabecalhoOs): string {
     </ul>
     <p>O trabalhador pode interromper a atividade quando perceber risco grave e iminente para a sua vida ou saúde, avisando o superior na hora (NR-01, item 1.4.3).</p>
 
+    <h2>14. Conclusão</h2>
+    <p>Seguindo esta ordem de serviço, usando os EPIs e respeitando as proibições, ${escape(col.nome)} trabalha protegido(a) dos riscos
+    conhecidos da função. Se surgir uma situação nova, um risco que não está descrito aqui ou qualquer dúvida, a orientação é parar e
+    perguntar antes de continuar. Esta OS vale até a próxima revisão do PGR ou até a função mudar.</p>
+
     <div class="termo">
-    <h2>Termo de recebimento e compromisso</h2>
+    <h2>Ciência do trabalhador: termo de recebimento e compromisso</h2>
     <p>Recebi da ${escape(c.empresa)} as orientações desta ordem de serviço e uma cópia dela. Ela me foi explicada, entendi o que está escrito
     e me comprometo a seguir as orientações, que reconheço serem necessárias para a minha segurança e a dos meus colegas. Declaro também que
     recebi os EPIs obrigatórios da minha função e me comprometo a usá-los durante toda a jornada, pedindo a troca sempre que precisar.</p>
@@ -491,19 +502,16 @@ function paginaOs(d: DadosOs, c: CabecalhoOs): string {
     </div>`;
 }
 
-const CSS_OS = `body { font-size: 11px; } h2 { font-size: 12.5px; margin: 12px 0 4px; } td, th { padding: 3px 6px; } table { width: 100%; }
+const CSS_OS = `body { font-size: 11.5px; } h2 { font-size: 13px; margin: 14px 0 6px; } td, th { padding: 3px 6px; } table { width: 100%; }
   .ident th { width: 16%; text-align: left; } .epis th:first-child { width: 45%; } .riscos th { width: 16%; text-align: left; vertical-align: top; }
   ul { margin: 4px 0 8px; padding-left: 18px; } li { margin-bottom: 2px; line-height: 1.4; } p { line-height: 1.5; text-align: justify; }
-  .duas-col { columns: 2; column-gap: 24px; } .objetivo { background: #F1F5F9; border-radius: 6px; padding: 6px 8px; margin-top: 8px; }
+  .duas-col { columns: 2; column-gap: 24px; } .caixa-texto h2 { font-size: 12px; margin-bottom: 2px; } .caixa-texto p { margin-bottom: 6px; }
   .destaque { font-weight: 600; } .falta { color: #b45309; font-style: italic; } .local-data { margin-top: 18px; }
   .termo { page-break-inside: avoid; }
   .assinaturas.tres { grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-top: 36px; }`;
 
 export function osHtml(moldura: Moldura, lista: DadosOs[], cab: CabecalhoOs): string {
   if (lista.length === 1) return documentoHtml(moldura, paginaOs(lista[0], cab), CSS_OS);
-  // Uma ordem por trabalhador, cada uma começando em página nova, com as duas logos.
-  const paginas = lista
-    .map((d, i) => `<div class="${i < lista.length - 1 ? 'quebra' : ''}">${cabecalhoHtml({ ...moldura, infos: [] })}${paginaOs(d, cab)}${rodapeHtml(moldura)}</div>`)
-    .join('');
-  return folhaHtml(paginas, CSS_OS);
+  // Uma ordem por trabalhador, cada uma começando em página nova, no mesmo padrão visual.
+  return documentoVariasFolhasHtml(moldura, lista.map((d) => paginaOs(d, cab)), CSS_OS);
 }

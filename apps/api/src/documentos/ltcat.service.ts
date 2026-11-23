@@ -41,6 +41,7 @@ export class LtcatService {
         colaboradores: g._count.colaboradores,
         cargos: [...new Set(colaboradores.filter((c) => c.gheId === g.id).map((c) => c.cargo))].sort(),
         agentes: g.riscos.filter((r) => ehAgenteLtcat(r.tipo)),
+        periculosidadeAnexo: g.periculosidadeAnexo,
       })),
       { nome: empresa.responsavelTecnicoNome, registro: empresa.responsavelTecnicoRegistro },
       {

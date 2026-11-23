@@ -1,11 +1,13 @@
 import { documentoHtml, escape, Moldura } from './layout';
+import { ANEXOS_NR16, GRAUS, Grau, ehGrau } from '../laudos/conteudo';
 import { Controle, CSS_SECOES, blocoAssinaturas, controleDocumento, dataBr, lista, p, secoesNumeradas, tabelaDuasColunas, tabelaReferencias } from './secoes';
 
 export type AgenteLtcat = {
   tipo: string; agente: string; fonteGeradora: string; tipoAvaliacao: string | null; intensidade: string | null; limiteTolerancia: string | null;
   tecnicaMedicao: string | null; epcEficaz: boolean | null; epiEficaz: boolean | null; epiCa: string | null; codigoAnexoIv: string | null; aposentadoriaEspecial: boolean;
+  grauInsalubridade?: string | null; // NR-15, quando já avaliado no laudo de insalubridade
 };
-export type GheLtcat = { nome: string; descricao: string | null; cargos: string[]; colaboradores: number; agentes: AgenteLtcat[]; ambiente?: string | null };
+export type GheLtcat = { nome: string; descricao: string | null; cargos: string[]; colaboradores: number; agentes: AgenteLtcat[]; ambiente?: string | null; periculosidadeAnexo?: string | null };
 export type ExtrasLtcat = {
   controle: Controle;
   empresa: { razaoSocial: string; cnae: string | null; endereco: string | null; numFuncionarios: number };
@@ -57,6 +59,22 @@ function blocoGhe(g: GheLtcat): string {
     </section>`;
 }
 
+// Insalubridade e periculosidade no quadro final: o LTCAT não é o laudo trabalhista, mas quem lê quer a resposta
+// no mesmo lugar. Usa o que já foi avaliado nos riscos do GHE (grau da NR-15 e anexo da NR-16).
+const ORDEM_GRAU: Grau[] = ['NAO', 'MINIMO', 'MEDIO', 'MAXIMO'];
+function insalubridadeDo(g: GheLtcat): string {
+  const graus = g.agentes.map((a) => a.grauInsalubridade).filter((x): x is Grau => !!x && ehGrau(x));
+  if (!graus.length) return 'Não avaliada';
+  const grau = graus.reduce((m, x) => (ORDEM_GRAU.indexOf(x) > ORDEM_GRAU.indexOf(m) ? x : m), 'NAO' as Grau);
+  return grau === 'NAO' ? 'Não' : `${GRAUS[grau].nome} (${GRAUS[grau].percentual}%)`;
+}
+function periculosidadeDo(g: GheLtcat): string {
+  if (!g.periculosidadeAnexo) return 'Não avaliada';
+  if (g.periculosidadeAnexo === 'NENHUM') return 'Não';
+  const anexo = ANEXOS_NR16.find((a) => a.codigo === g.periculosidadeAnexo);
+  return anexo ? `Sim, ${anexo.anexo} (30%)` : 'Sim (30%)';
+}
+
 export function renderLtcatHtml(moldura: Moldura, ghes: GheLtcat[], responsavel: Responsavel, extras: ExtrasLtcat): string {
   const e = extras.empresa;
   const nomeEmpresa = escape(e.razaoSocial);
@@ -102,8 +120,16 @@ export function renderLtcatHtml(moldura: Moldura, ghes: GheLtcat[], responsavel:
       ]),
     },
     {
-      titulo: 'Referências legais e técnicas',
-      html: tabelaReferencias([
+      titulo: 'Campo de aplicação',
+      html: p(
+        `Este laudo vale para o estabelecimento da ${nomeEmpresa}${e.endereco ? `, em ${escape(e.endereco)}` : ''}, e abrange ${total} trabalhador(es)
+        em ${ghes.length} grupo(s) de exposição. Entram todas as funções que, na data da avaliação, tinham contato com agentes físicos, químicos ou biológicos.`,
+        'Os riscos de acidente e ergonômicos não entram aqui, porque não dão direito à aposentadoria especial. Eles estão no PGR.',
+      ),
+    },
+    {
+      titulo: 'Base legal',
+      html: `${p('O LTCAT é exigido pela Lei 8.213/91 (art. 58, § 1º) e segue os critérios do Decreto 3.048/99 e da IN PRES/INSS 128/2022. As referências usadas estão abaixo:')}${tabelaReferencias([
         ['Lei 8.213/1991, art. 57 e 58', 'Aposentadoria especial e exigência do laudo técnico'],
         ['Decreto 3.048/1999, art. 64 a 70 e Anexo IV', 'Regulamento da Previdência e classificação dos agentes nocivos'],
         ['IN PRES/INSS 128/2022', 'Procedimentos do INSS para caracterização da atividade especial e conteúdo do LTCAT'],
@@ -111,7 +137,8 @@ export function renderLtcatHtml(moldura: Moldura, ghes: GheLtcat[], responsavel:
         ['NR-09', 'Avaliação e controle das exposições ocupacionais'],
         ['NHOs da Fundacentro', 'Normas de higiene ocupacional com os métodos de medição (ruído, calor, vibração, poeiras e outros)'],
         ['LINACH (Portaria Interministerial 9/2014)', 'Lista de agentes cancerígenos para humanos, avaliados de forma qualitativa'],
-      ]),
+        ['CLT, art. 189 a 195, NR-15 e NR-16', 'Insalubridade e periculosidade, citadas no quadro de conclusão'],
+      ])}`,
     },
     {
       titulo: 'Definições',
@@ -143,7 +170,16 @@ export function renderLtcatHtml(moldura: Moldura, ghes: GheLtcat[], responsavel:
       html: `${p('Com base nas avaliações acima, a conclusão por grupo e função é a seguinte:')}
         <table><thead><tr><th>GHE</th><th>Cargos</th><th>Agente nocivo</th><th class="c">Aposentadoria especial</th><th>Código Anexo IV</th></tr></thead>
         <tbody>${conclusaoLinhas.join('') || '<tr><td colspan="5">Nenhum GHE cadastrado.</td></tr>'}</tbody></table>
-        ${p('Esta conclusão vale para as condições encontradas na data da avaliação. Ela não se confunde com o laudo de insalubridade ou periculosidade, que segue a CLT e tem critérios próprios.')}`,
+        <h3>Insalubridade e periculosidade</h3>
+        ${p('O quadro abaixo resume, para os mesmos grupos, o que já foi avaliado sobre insalubridade (NR-15) e periculosidade (NR-16). Esses adicionais seguem a CLT e são fundamentados no laudo de insalubridade e periculosidade (LIP).')}
+        <table><thead><tr><th>GHE</th><th>Insalubridade (NR-15)</th><th>Periculosidade (NR-16)</th></tr></thead>
+        <tbody>${ghes.map((g) => `<tr><td>${escape(g.nome)}</td><td>${insalubridadeDo(g)}</td><td>${periculosidadeDo(g)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum GHE cadastrado.</td></tr>'}</tbody></table>
+        <div class="destaque-conclusao">${p(
+          ghes.some((g) => g.agentes.some((a) => a.aposentadoriaEspecial))
+            ? `Conclui-se que há, na ${nomeEmpresa}, exposição a agente nocivo que enquadra para aposentadoria especial nos grupos indicados acima. Essas informações devem constar no PPP e no evento S-2240 do eSocial de cada trabalhador desses grupos.`
+            : `Conclui-se que, nas condições encontradas, não há na ${nomeEmpresa} exposição a agente nocivo que enquadre para aposentadoria especial. O PPP e o evento S-2240 devem refletir essa conclusão.`,
+          'Esta conclusão vale para as condições encontradas na data da avaliação. Se o ambiente, as máquinas, os produtos ou as proteções mudarem, o laudo precisa ser revisto.',
+        )}</div>`,
     },
     {
       titulo: 'Revisão e vigência',

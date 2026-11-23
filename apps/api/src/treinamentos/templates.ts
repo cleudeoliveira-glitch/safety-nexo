@@ -17,10 +17,15 @@ export function listaPresencaHtml(moldura: Moldura, turma: TurmaPdf, participant
   return documentoHtml(
     moldura,
     `
-    <section>
-      <h2>${escape(titulo(turma))}</h2>
-      <p>${periodo(turma.inicio, turma.fim)} · ${turma.cargaHoraria} horas · ${escape(turma.local)} · instrutor(a) ${escape(turma.instrutor)}</p>
+    <section class="caixa-texto">
+      <h2>Introdução</h2>
+      <p>Este registro comprova a realização do treinamento <strong>${escape(titulo(turma))}</strong>, com ${turma.cargaHoraria} hora(s) de duração,
+      em ${periodo(turma.inicio, turma.fim)}, em ${escape(turma.local)}, ministrado por ${escape(turma.instrutor)}${turma.qualificacao ? ` (${escape(turma.qualificacao)})` : ''}.</p>
+      <h2>Objetivo</h2>
+      <p>Preparar os participantes para reconhecer os riscos do seu trabalho e agir com segurança${turma.norma ? `, como pede a ${escape(turma.norma)}` : ''}.
+      A NR-01 (item 1.7) pede que todo treinamento tenha conteúdo, carga horária, instrutor e lista dos participantes registrados.</p>
     </section>
+    ${turma.conteudo.length ? `<section><h2>Conteúdo programático</h2><ul class="conteudo">${turma.conteudo.map((c) => `<li>${escape(c)}</li>`).join('')}</ul></section>` : ''}
     <section>
       <h2>Lista de presença</h2>
       <table>
@@ -31,7 +36,14 @@ export function listaPresencaHtml(moldura: Moldura, turma: TurmaPdf, participant
       </table>
       ${participantes.some((p) => p.toque) ? NOTA_TOQUE : ''}
     </section>
+    <section>
+      <h2>Conclusão</h2>
+      <div class="caixa-texto"><p>O treinamento foi concluído com ${participantes.filter((p) => !p.faltou).length} participante(s) presente(s).
+      Quem participou recebe o certificado com QR Code de validação${turma.validade ? ` e deve fazer a reciclagem até ${data(turma.validade)}` : ''}.
+      Este registro fica guardado junto com os certificados para a fiscalização.</p></div>
+    </section>
     <div class="assinaturas">${assinatura(turma.instrutor, 'Instrutor(a)')}${assinatura(turma.responsavelTecnico, 'Responsável técnico')}</div>`,
+    '.conteudo { columns: 2; column-gap: 24px; }',
   );
 }
 

@@ -110,8 +110,11 @@ export function renderPcmsoHtml(moldura: Moldura, medico: Medico, ghes: GhePcmso
       ),
     },
     {
-      titulo: 'Referências normativas',
-      html: tabelaReferencias([
+      titulo: 'Base legal',
+      html: `${p(
+        'Este programa cumpre a NR-07, que obriga toda organização com empregados a manter um PCMSO coordenado por médico do trabalho, planejado a partir dos riscos do PGR. A CLT (art. 168) torna os exames obrigatórios e por conta do empregador.',
+        'As demais normas usadas estão no quadro abaixo:',
+      )}${tabelaReferencias([
         ['NR-07', 'Programa de Controle Médico de Saúde Ocupacional e seus anexos (audiometria, agentes químicos, exames de imagem e outros)'],
         ['NR-01', 'Gerenciamento de riscos ocupacionais: o PGR é a base deste programa'],
         ['NR-09 e NR-15', 'Avaliação dos agentes físicos, químicos e biológicos e seus limites'],
@@ -120,7 +123,7 @@ export function renderPcmsoHtml(moldura: Moldura, medico: Medico, ghes: GhePcmso
         ['CLT, art. 168 e 169', 'Exames médicos obrigatórios e notificação de doenças profissionais'],
         ['Lei 8.213/1991, art. 19 a 23', 'Acidente do trabalho, doença ocupacional e emissão da CAT'],
         ['eSocial S-2220', 'Envio das informações do monitoramento da saúde do trabalhador'],
-      ]),
+      ])}`,
     },
     {
       titulo: 'Definições',
@@ -145,6 +148,22 @@ export function renderPcmsoHtml(moldura: Moldura, medico: Medico, ghes: GhePcmso
         ['Setor pessoal ou RH', 'Agendar os exames nos prazos, encaminhar o trabalhador, arquivar o ASO e enviar o evento S-2220 ao eSocial.'],
         ['Trabalhador', 'Comparecer aos exames, informar o médico sobre a sua saúde com sinceridade e seguir as orientações recebidas.'],
       ]),
+    },
+    {
+      titulo: 'Metodologia',
+      html: `${p(
+        `O ponto de partida foi o PGR da ${nomeEmpresa}: o inventário de riscos de cada grupo de exposição, as funções e as atividades. Para cada
+        risco, o médico responsável avaliou que efeito ele pode ter na saúde e escolheu os exames capazes de mostrar esse efeito cedo,
+        seguindo os anexos da NR-07 (audiometria para ruído, indicadores biológicos para agentes químicos, raio-X e espirometria para poeiras, e assim por diante).`,
+        `A frequência de cada exame leva em conta o tamanho do risco, o tempo de exposição e a condição de saúde de cada pessoa. Os resultados
+        são lidos de dois jeitos: um a um, no ASO e no prontuário, e em conjunto, por grupo, para ver se algum setor está adoecendo mais que os outros.`,
+      )}
+      ${lista([
+        '<strong>Planejar:</strong> definir exames e prazos por grupo a partir dos riscos do PGR.',
+        '<strong>Executar:</strong> fazer os exames nos momentos certos (admissional, periódico, retorno, mudança de risco e demissional).',
+        '<strong>Analisar:</strong> comparar os resultados com os anteriores e entre os grupos.',
+        '<strong>Agir:</strong> avisar a empresa quando um resultado indicar falha na proteção, para o PGR ser revisto.',
+      ])}`,
     },
     {
       titulo: 'Riscos considerados e exames por grupo',
@@ -194,13 +213,6 @@ export function renderPcmsoHtml(moldura: Moldura, medico: Medico, ghes: GhePcmso
       ])}`,
     },
     {
-      titulo: 'Relatório analítico',
-      html: p(
-        'Uma vez por ano, o médico responsável prepara o relatório analítico do PCMSO, com o número de exames feitos, os resultados alterados por grupo e os casos de doença ligada ao trabalho, comparando com o ano anterior.',
-        'O relatório é apresentado à empresa e discutido com a CIPA, quando existir. Ele serve para avaliar se as medidas do PGR estão protegendo de fato.',
-      ),
-    },
-    {
       titulo: 'Cronograma anual de ações de saúde',
       html: `${p('Além dos exames, o programa prevê ações de saúde ao longo do ano. O quadro abaixo mostra quando cada uma acontece nos próximos 12 meses.')}
         ${cronogramaHtml(extras.controle.emitidoEm, (() => {
@@ -226,10 +238,23 @@ export function renderPcmsoHtml(moldura: Moldura, medico: Medico, ghes: GhePcmso
         ${lista(['o PGR for atualizado ou surgirem riscos novos;', 'mudar a estrutura da empresa, os setores ou as funções;', 'os resultados dos exames indicarem necessidade de ajuste;', 'mudar a NR-07 ou outra norma que se aplique.'])}`,
     },
     {
-      titulo: 'Considerações finais',
+      titulo: 'Conclusão',
+      html: `<div class="destaque-conclusao">${p(
+        `Este PCMSO define, para os ${total} trabalhador(es) da ${nomeEmpresa}, os exames que cada grupo precisa fazer e quando, com base nos riscos
+        do PGR e no que pede a NR-07.${medico.nome ? ` A coordenação é de ${medicoTexto}.` : ''}`,
+        'Com os exames feitos no prazo e os resultados usados para melhorar as condições de trabalho, o programa cumpre o seu papel: perceber cedo qualquer efeito do trabalho na saúde e agir antes que vire doença.',
+      )}</div>
+      ${p(
+        'Um exame alterado não é motivo de punição. É um sinal para agir: rever a proteção, ajustar a função ou encaminhar a pessoa para tratamento.',
+        'Este programa deve ficar disponível na empresa para os trabalhadores, para a CIPA e para a fiscalização. O balanço do ano sai no relatório analítico anual, descrito logo a seguir, que também é a base para a próxima revisão.',
+      )}`,
+    },
+    {
+      titulo: 'Relatório analítico anual',
       html: p(
-        'O PCMSO só cumpre o seu papel se os exames forem feitos no prazo e se os resultados forem usados para melhorar as condições de trabalho. Um exame alterado não é motivo de punição: é um sinal para agir.',
-        'Este programa deve ficar disponível na empresa para os trabalhadores, para a CIPA e para a fiscalização.',
+        'Uma vez por ano, o médico responsável prepara o relatório analítico do PCMSO, com o número de exames feitos, os resultados alterados por grupo e os casos de doença ligada ao trabalho, comparando com o ano anterior.',
+        'O relatório é apresentado à empresa e discutido com a CIPA, quando existir. Ele serve para avaliar se as medidas do PGR estão protegendo de fato.',
+        `O próximo relatório deste programa cobre o período até ${dataBr(extras.controle.proximaRevisao)} e é gerado no próprio sistema, a partir dos ASOs registrados, já no formato pedido pela NR-07 (item 7.6.2).`,
       ),
     },
   ]);

@@ -83,11 +83,21 @@ export function inspecaoHtml(moldura: Moldura, d: { modelo: string; titulo: stri
       ${secaoIa(d.relatorioIa ?? null)}
       ${secaoFotos(d.fotos ?? [])}
     </section>
+    <section>
+      <h2>Conclusão</h2>
+      <div class="destaque-conclusao"><p>${
+        !c.aplicaveis
+          ? 'Nenhum item aplicável foi verificado nesta inspeção.'
+          : c.naoConformes === 0
+            ? `O local inspecionado atendeu a todos os ${c.aplicaveis} itens aplicáveis. A recomendação é manter as condições e repetir a inspeção na data prevista.`
+            : `O local atendeu a ${c.percentual}% dos itens aplicáveis. ${c.naoConformes === 1 ? 'A não conformidade encontrada deve' : `As ${c.naoConformes} não conformidades encontradas devem`} entrar no plano de ação do PGR, com responsável e prazo, e ser conferida${c.naoConformes === 1 ? '' : 's'} na próxima inspeção${d.proximaInspecao ? `, prevista para ${d.proximaInspecao.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}` : ''}.`
+      }</p></div>
+    </section>
     <div class="assinaturas">
       <div class="assinatura">${escape(d.inspetor)}<span>Inspetor(a)</span></div>
       <div class="assinatura">&nbsp;<span>Responsável pela área</span></div>
     </div>`,
-    `.resumo { padding: 8px 10px; border-radius: 8px; } .resumo.bom { background: #ECFDF5; } .resumo.ruim { background: #FEF2F2; }
+    `.destaque-conclusao { background: #EEF6F7; border-radius: 8px; padding: 10px 14px; } .destaque-conclusao p { margin: 0; } .resumo { padding: 8px 10px; border-radius: 8px; } .resumo.bom { background: #ECFDF5; } .resumo.ruim { background: #FEF2F2; }
      .r-C { color: #10B981; font-weight: 600; } .r-NC { color: #EF4444; font-weight: 600; } .r-NA { color: #6b7280; } .itens td:nth-child(2) { width: 45%; }
      .fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } figure { margin: 0; break-inside: avoid; }
      figure img { width: 100%; max-height: 260px; object-fit: cover; border-radius: 6px; border: 1px solid #E5E7EB; } figcaption { font-size: 10px; color: #6b7280; margin-top: 3px; }

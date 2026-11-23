@@ -11,7 +11,7 @@ RUN cd apps/api && npx prisma generate && npx nest build
 
 FROM node:22-bookworm-slim
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends chromium poppler-utils openssl ca-certificates fonts-dejavu-core fonts-liberation fonts-noto-color-emoji \
+RUN apt-get update && apt-get install -y --no-install-recommends chromium poppler-utils openssl ca-certificates fonts-dejavu-core fonts-liberation fonts-inter fonts-noto-color-emoji \
   && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production CHROMIUM_PATH=/usr/bin/chromium ARQUIVOS_DIR=/data/arquivos LOGOS_DIR=/data/logos PORT=8080
 COPY --from=build /app /app
