@@ -85,7 +85,7 @@ export type Aso = {
   medicoExaminadorNome: string; medicoExaminadorCrm: string; exames: string[]; riscos: string[]; proximoExame: string | null;
   arquivoPath?: string | null; // PDF do ASO feito pela clínica
 };
-export type EntregaEpi = { id: string; epi: string; ca: string; validadeCa: string | null; fabricante?: string | null; quantidade: number; motivo: string; dataEntrega: string; estoqueId?: string | null; devolvidoEm?: string | null; motivoDevolucao?: string | null };
+export type EntregaEpi = { id: string; epi: string; ca: string; validadeCa: string | null; fabricante?: string | null; quantidade: number; motivo: string; dataEntrega: string; estoqueId?: string | null; devolvidoEm?: string | null; motivoDevolucao?: string | null; vidaUtilDias?: number | null };
 export const MOTIVOS_DEVOLUCAO = [['TROCA', 'Troca por outro'], ['DANIFICADO', 'Danificado'], ['SAIDA_EMPRESA', 'Saída da empresa'], ['OUTRO', 'Outro motivo']] as const;
 // Situação do exame demissional de quem saiu (NR-07: dispensa se o último exame for recente).
 export type SituacaoDemissional = { feito: boolean; dispensa: boolean; limite: number; dias: number | null };
@@ -914,16 +914,20 @@ export const rosto = {
 };
 
 // Almoxarifado de EPI.
-export type ItemEstoque = { id: string; epi: string; ca: string; validadeCa: string | null; tamanho: string | null; fabricante?: string | null; quantidade: number; minimo: number; ativo: boolean; baixo: boolean; caVencido: boolean };
+export type ItemEstoque = { id: string; epi: string; ca: string; validadeCa: string | null; tamanho: string | null; fabricante?: string | null; quantidade: number; minimo: number; vidaUtilDias?: number | null; ativo: boolean; baixo: boolean; caVencido: boolean };
 export type MovEstoque = { id: string; tipo: 'ENTRADA' | 'SAIDA' | 'AJUSTE'; quantidade: number; saldo: number; observacao: string | null; colaborador: string | null; createdAt: string };
 export const estoque = {
   listar: (e: string) => chamar<ItemEstoque[]>('GET', `/empresas/${e}/estoque`),
-  criar: (e: string, d: { epi: string; ca: string; validadeCa?: string; tamanho?: string; fabricante?: string; quantidade: number; minimo?: number }) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque`, d),
-  editar: (e: string, id: string, d: { validadeCa?: string | null; minimo?: number; ativo?: boolean; fabricante?: string }) => chamar<ItemEstoque>('PATCH', `/empresas/${e}/estoque/${id}`, d),
+  criar: (e: string, d: { epi: string; ca: string; validadeCa?: string; tamanho?: string; fabricante?: string; quantidade: number; minimo?: number; vidaUtilDias?: number }) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque`, d),
+  editar: (e: string, id: string, d: { validadeCa?: string | null; minimo?: number; ativo?: boolean; fabricante?: string; vidaUtilDias?: number }) => chamar<ItemEstoque>('PATCH', `/empresas/${e}/estoque/${id}`, d),
   entrada: (e: string, id: string, quantidade: number, observacao?: string) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque/${id}/entrada`, { quantidade, observacao }),
   ajuste: (e: string, id: string, quantidade: number, observacao: string) => chamar<ItemEstoque>('POST', `/empresas/${e}/estoque/${id}/ajuste`, { quantidade, observacao }),
   movimentos: (e: string, id: string) => chamar<MovEstoque[]>('GET', `/empresas/${e}/estoque/${id}/movimentos`),
+  trocas: (e: string, dias = 30) => chamar<TrocasEpi>('GET', `/empresas/${e}/estoque/trocas?dias=${dias}`),
 };
+// Troca de EPI pela vida útil: quem precisa trocar e quanto comprar para dar conta.
+export type TrocaEpi = { entregaId: string; colaboradorId: string; nome: string; cargo: string; epi: string; ca: string; quantidade: number; entregueEm: string; trocaEm: string; atrasada: boolean; estoqueId: string | null };
+export type TrocasEpi = { dias: number; trocas: TrocaEpi[]; compra: { estoqueId: string; epi: string; ca: string; tamanho: string | null; saldo: number; precisa: number; comprar: number }[] };
 
 // Lista de toque: cada pessoa assina com o dedo na lista de presença do DDS ou do treinamento.
 export type PessoaLista = { colaboradorId: string; nome: string; cargo: string; cpf: string | null; foto: string | null; assinadoEm: string | null; testemunha: string | null };

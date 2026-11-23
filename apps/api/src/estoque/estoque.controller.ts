@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { CriarItemDto, EditarItemDto, MovimentoDto } from './dto';
@@ -9,6 +9,7 @@ import { EstoqueService } from './estoque.service';
 export class EstoqueController {
   constructor(private readonly estoque: EstoqueService) {}
   @Get() listar(@ConsultoriaId() c: string, @Param('e') e: string) { return this.estoque.listar(c, e); }
+  @Get('trocas') trocas(@ConsultoriaId() c: string, @Param('e') e: string, @Query('dias') dias?: string) { return this.estoque.trocas(c, e, Math.min(Math.max(Number(dias) || 30, 1), 180)); }
   @Post() criar(@ConsultoriaId() c: string, @Param('e') e: string, @Body() dto: CriarItemDto) { return this.estoque.criar(c, e, dto); }
   @Patch(':id') editar(@ConsultoriaId() c: string, @Param('e') e: string, @Param('id') id: string, @Body() dto: EditarItemDto) { return this.estoque.editar(c, e, id, dto); }
   @Post(':id/entrada') entrada(@ConsultoriaId() c: string, @Param('e') e: string, @Param('id') id: string, @Body() dto: MovimentoDto) { return this.estoque.entrada(c, e, id, dto); }
