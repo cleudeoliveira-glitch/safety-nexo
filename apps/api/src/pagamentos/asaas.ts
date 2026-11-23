@@ -1,4 +1,5 @@
 import { BadGatewayException, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { registrarFalha } from '../diagnostico/falhas';
 
 // Conversa com o Asaas, o serviço que cobra o plano do Safety Nexo (cartão de crédito todo mês, Pix Automático e boleto).
 // Precisa de ASAAS_API_KEY no servidor. ASAAS_AMBIENTE=producao usa a conta de verdade; sem ele, usa a de testes (sandbox).
@@ -28,6 +29,7 @@ async function chamar<T>(metodo: string, caminho: string, corpo?: unknown): Prom
   if (!r.ok) {
     const motivo = (dados?.errors ?? []).map((e: { description?: string }) => e.description).filter(Boolean).join(' ');
     log.warn(`${metodo} ${caminho} -> ${r.status} ${texto.slice(0, 500)}`);
+    registrarFalha({ origem: 'ASAAS', rota: `${metodo} ${caminho}`, status: r.status, mensagem: motivo || `O Asaas respondeu ${r.status}.`, detalhe: texto.slice(0, 1500) });
     throw new BadGatewayException(motivo ? `O serviço de pagamento recusou: ${motivo}` : 'O serviço de pagamento não respondeu. Tente de novo em alguns minutos.');
   }
   return dados as T;
@@ -42,5 +44,7 @@ export const asaas = {
   criarAssinatura: (d: { customer: string; billingType: 'CREDIT_CARD' | 'PIX' | 'UNDEFINED'; value: number; nextDueDate: string; description: string; externalReference: string }) =>
     chamar<AsaasAssinatura>('POST', '/subscriptions', { ...d, cycle: 'MONTHLY' }),
   apagarAssinatura: (id: string) => chamar<{ deleted: boolean }>('DELETE', `/subscriptions/${id}`),
+  // Só confere se a chave funciona (usado pelo Diagnóstico do Painel ADM).
+  conferir: () => chamar<{ totalCount?: number }>('GET', '/customers?limit=1'),
   pagamentosDaAssinatura: (id: string) => chamar<{ data: AsaasPagamento[] }>('GET', `/subscriptions/${id}/payments`),
 };

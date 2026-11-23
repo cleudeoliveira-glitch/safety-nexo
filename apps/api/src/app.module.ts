@@ -2,6 +2,7 @@ import { CalculosModule } from './calculos/calculos';
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
+import { DiagnosticoModule } from './diagnostico/diagnostico';
 import { CnaeModule } from './cnae/cnae.module';
 import { AcessosModule } from './acessos/acessos';
 import { CipaModule } from './cipa/cipa.module';
@@ -47,7 +48,7 @@ import { ContaModule } from './conta/conta';
 import { PushModule } from './push/push';
 
 @Module({
-  imports: [PushModule, AuthModule, AdminModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule, PresencaModule, NormasModule, IaModule, PrevencaoModule, PortalModule, AvisosModule, PagamentosModule, ContaModule, CalculosModule, ConferenciaModule, DossieModule, FiscalizacaoModule, RelatorioMensalModule],
+  imports: [PushModule, AuthModule, AdminModule, DiagnosticoModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule, PresencaModule, NormasModule, IaModule, PrevencaoModule, PortalModule, AvisosModule, PagamentosModule, ContaModule, CalculosModule, ConferenciaModule, DossieModule, FiscalizacaoModule, RelatorioMensalModule],
   controllers: [HealthController],
 })
 export class AppModule {}

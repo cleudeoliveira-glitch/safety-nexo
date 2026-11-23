@@ -332,7 +332,7 @@ function Menu({ caminho }: { caminho: string }) {
           <Link
             href="/admin"
             className={`mb-1 flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-semibold transition ${
-              caminho === '/admin' ? 'bg-white text-primary' : 'text-amber-200 hover:bg-white/10'
+              caminho === '/admin' || caminho.startsWith('/admin/') ? 'bg-white text-primary' : 'text-amber-200 hover:bg-white/10'
             }`}
           >
             <Icone nome="coroa" className="h-[18px] w-[18px]" /> Painel ADM da plataforma

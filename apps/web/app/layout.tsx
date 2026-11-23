@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Moldura } from '@/components/Moldura';
 import { RegistrarSw } from '@/components/RegistrarSw';
+import { VigiaErros } from '@/components/VigiaErros';
 import { PreviaDocumento } from '@/components/PreviaDocumento';
 import './globals.css';
 
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR">
       <body className="min-h-screen bg-background font-sans text-text antialiased">
         <RegistrarSw />
+        <VigiaErros />
         <Moldura>{children}</Moldura>
         <PreviaDocumento />
       </body>

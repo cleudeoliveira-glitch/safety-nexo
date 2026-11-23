@@ -120,7 +120,8 @@ async function chamar<T>(metodo: string, caminho: string, corpo?: unknown): Prom
   if (!res.ok) {
     const erro = await res.json().catch(() => null);
     const mensagem = Array.isArray(erro?.message) ? erro.message.join('; ') : erro?.message;
-    throw new Error(mensagem ?? `Não foi possível concluir a operação (${res.status}).`);
+    // O status vai junto: o vigia de erros da tela ignora os recusados pelo motor (ex.: campo inválido), que não são falha do sistema.
+    throw Object.assign(new Error(mensagem ?? `Não foi possível concluir a operação (${res.status}).`), { status: res.status });
   }
   // Resposta vazia (ex.: "ainda não há certificado") vira null em vez de erro.
   const corpoTexto = await res.text();
@@ -984,7 +985,32 @@ export const admin = {
   ligarAvisosCelular: (d: { endpoint: string; keys: { p256dh: string; auth: string }; aparelho: string }) => chamar<{ ok: boolean }>('POST', '/admin/avisos-celular', d),
   desligarAvisosCelular: (endpoint: string) => chamar<{ ok: boolean }>('DELETE', '/admin/avisos-celular', { endpoint }),
   testarAvisosCelular: () => chamar<{ enviados: number; aparelhos: number }>('POST', '/admin/avisos-celular/teste'),
+  diagnostico: () => chamar<Diagnostico>('GET', '/admin/diagnostico'),
+  resolverFalha: (id: string) => chamar<{ ok: boolean }>('DELETE', `/admin/diagnostico/falhas/${id}`),
 };
+
+// Diagnóstico do Painel ADM ("Doutor Nexo").
+export type SituacaoDiagnostico = 'ok' | 'atencao' | 'falha';
+export type ItemDiagnostico = {
+  id: string; grupo: string; titulo: string; situacao: SituacaoDiagnostico; resumo: string;
+  detalhes?: string[]; comoResolver?: string; pedido?: string; falhaId?: string; resolvido?: boolean;
+};
+export type Diagnostico = {
+  feitoEm: string; levouMs: number; saude: number;
+  totais: { falha: number; atencao: number; ok: number; resolvidos: number };
+  itens: ItemDiagnostico[]; pedidoGeral: string | null;
+};
+
+// Erro que o cliente viu numa tela: vai para o caderno do Diagnóstico. Nunca atrapalha a tela se falhar.
+let falhasEnviadas = 0;
+export function avisarFalhaDaTela(mensagem: string, detalhe?: string) {
+  if (typeof window === 'undefined' || falhasEnviadas >= 5) return;
+  falhasEnviadas++;
+  fetch(`${API_URL}/diagnostico/falha-tela`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+    body: JSON.stringify({ mensagem: mensagem.slice(0, 1000), rota: window.location.pathname.slice(0, 300), detalhe: detalhe?.slice(0, 4000) }),
+  }).catch(() => undefined);
+}
 
 // ---------- Novidades: normas, prevenção, IA, votação da CIPA, espaço do trabalhador, e-mail ----------
 
