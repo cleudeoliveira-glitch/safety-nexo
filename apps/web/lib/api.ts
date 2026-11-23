@@ -195,6 +195,10 @@ export type TipoDocumento = 'pgr' | 'pcmso' | 'ltcat' | 'lip' | 'lpp' | 'pgrtr' 
 export const gerarDocumento = (empresaId: string, tipo: TipoDocumento) =>
   baixarPdf(`/empresas/${empresaId}/documentos/${tipo}`, tipo === 'os' ? 'as ordens de serviço' : tipo === 'mapa-risco' ? 'mapa de risco' : tipo.toUpperCase());
 
+// Relatório mensal da consultoria para o cliente (mes no formato AAAA-MM).
+export const gerarRelatorioMensal = (empresaId: string, mes: string) =>
+  baixarPdf(`/empresas/${empresaId}/relatorio-mensal?mes=${mes}`, 'relatório mensal');
+
 // Relatório analítico anual do PCMSO (NR-07).
 export const gerarRelatorioPcmso = (empresaId: string, ano: number) =>
   baixarPdf(`/empresas/${empresaId}/documentos/pcmso/relatorio/${ano}`, 'relatório analítico do PCMSO');

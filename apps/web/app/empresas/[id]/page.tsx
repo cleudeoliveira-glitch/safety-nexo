@@ -37,6 +37,7 @@ import {
   enviarLogoEmpresa,
   gerarCipa,
   gerarDocumento,
+  gerarRelatorioMensal,
   gerarRelatorioPcmso,
   Ghe,
   listarColaboradores,
@@ -162,6 +163,9 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     cipa: ['CIPA', 'Dimensionamento da CIPA gerado.'],
   };
   const [anoRelatorio, setAnoRelatorio] = useState(new Date().getFullYear() - 1);
+  // Mês do relatório ao cliente: por padrão o mês anterior, que é o que se fecha no começo do mês.
+  const mesesRelatorio = [1, 2, 3, 0].map((n) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n); return { valor: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, nome: d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) }; });
+  const [mesRelatorio, setMesRelatorio] = useState(mesesRelatorio[0].valor);
   async function baixar(tipo: TipoDocumento | 'cipa') {
     try {
       const pdf = tipo === 'cipa' ? await gerarCipa(empresaId) : await gerarDocumento(empresaId, tipo);
@@ -583,6 +587,16 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
               try { salvarArquivo(await gerarRelatorioPcmso(empresaId, anoRelatorio), `Relatorio-PCMSO-${anoRelatorio}-${empresa?.razaoSocial ?? 'empresa'}.pdf`); setAviso({ tipo: 'ok', texto: `Relatório do PCMSO de ${anoRelatorio} gerado. Falta o médico escrever a análise e assinar.` }); }
               catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
             }}>Relatório anual do PCMSO</Botao>
+          </span>
+          <span className="flex items-center gap-1">
+            <select aria-label="Mês do relatório ao cliente" value={mesRelatorio} onChange={(e) => setMesRelatorio(e.target.value)}
+              className="rounded-card border border-border bg-white px-2 py-2 text-sm">
+              {mesesRelatorio.map((m) => <option key={m.valor} value={m.valor}>{m.nome}</option>)}
+            </select>
+            <Botao variante="secundario" title="Prestação de contas ao cliente: o que foi feito no mês, como a empresa está e o que vem no próximo mês" onClick={async () => {
+              try { salvarArquivo(await gerarRelatorioMensal(empresaId, mesRelatorio), `Relatorio-mensal-${mesRelatorio}-${empresa?.razaoSocial ?? 'empresa'}.pdf`); setAviso({ tipo: 'ok', texto: 'Relatório mensal gerado. Pode mandar para o cliente.' }); }
+              catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+            }}>Relatório mensal ao cliente</Botao>
           </span>
           <Botao onClick={() => baixar('ltcat')}>Gerar LTCAT</Botao>
           <Botao onClick={() => baixar('lip')}>Gerar LIP</Botao>

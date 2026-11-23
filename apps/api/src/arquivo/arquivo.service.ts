@@ -39,7 +39,7 @@ const CATEGORIAS: [RegExp, string][] = [
   [/Lista-de-presenca|Certificados/i, 'Treinamentos'],
   [/emergencia|Brigada/i, 'Emergência'],
   [/^FAP/i, 'Previdência e custos'],
-  [/^SSMA/i, 'Indicadores'],
+  [/^SSMA|^Relatorio-mensal/i, 'Indicadores'],
 ];
 export const categoriaDoNome = (nome: string) => CATEGORIAS.find(([r]) => r.test(nome))?.[1] ?? 'Outros';
 

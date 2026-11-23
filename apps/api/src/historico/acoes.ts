@@ -111,6 +111,7 @@ const REGRAS: [string, RegExp, string][] = [
   ['POST', /\/documentos\/ppr$/, 'Gerou o PPR (proteção respiratória)'],
   ['POST', /\/dossie$/, 'Baixou o dossiê do trabalhador'],
   ['POST', /\/fiscalizacao\/pasta$/, 'Baixou a pasta da fiscalização'],
+  ['POST', /\/relatorio-mensal$/, 'Gerou o relatório mensal'],
   ['POST', /\/os$/, 'Gerou ordem de serviço'],
   ['POST', /\/aets\/:id\/pdf$/, 'Baixou uma AET'],
   ['POST', /\/aets$/, 'Registrou uma AET'],
