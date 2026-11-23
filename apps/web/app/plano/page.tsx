@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { GradePlanos, InclusoEmTodos } from '@/components/Planos';
 import { Aviso, Botao } from '@/components/ui';
 import { VigenciaPlano } from '@/components/VigenciaPlano';
+import { PagamentoDoPlano, usePagamentoPlano } from '@/components/PagamentoPlano';
 import { MeuPlano, meuPlano } from '@/lib/api';
 import { PLANOS_SITE, textoLimite } from '@/lib/planos';
 import { esquecerRecursos, planoMinimo } from '@/lib/plano';
@@ -24,6 +25,10 @@ export default function PaginaMeuPlano() {
   const [erro, setErro] = useState('');
   const [ok, setOk] = useState('');
   const [enviando, setEnviando] = useState('');
+  // Cobrança automática (cartão, Pix Automático ou boleto). Desligada no servidor, vale o pedido ao ADM.
+  const [pagto, setPagto] = usePagamentoPlano();
+  const [escolhido, setEscolhido] = useState<string | null>(null);
+  const automatico = !!pagto?.ligado;
 
   // Veio de um item com cadeado (?recurso=...): explica o que libera.
   const [recursoPedido, setRecursoPedido] = useState<string | null>(null);
@@ -54,7 +59,7 @@ export default function PaginaMeuPlano() {
       {recursoPedido && (
         <div className="card-pendente rounded-card p-4 text-sm">
           <p className="font-semibold">{NOME_RECURSO[recursoPedido] ?? 'Este recurso'} faz parte do plano {planoMinimo(recursoPedido)} ou maior.</p>
-          <p className="mt-1 text-text/70">Escolha o plano abaixo e a equipe do Safety Nexo libera para você.</p>
+          <p className="mt-1 text-text/70">{automatico ? 'Escolha o plano abaixo e pague no cartão, no Pix ou no boleto. Libera assim que o pagamento cair.' : 'Escolha o plano abaixo e a equipe do Safety Nexo libera para você.'}</p>
         </div>
       )}
       {dados?.emTeste && dados.testeAte && (
@@ -97,10 +102,15 @@ export default function PaginaMeuPlano() {
                 emTeste={dados.emTeste}
                 testeAte={dados.testeAte}
                 criadaEm={dados.criadaEm}
+                consultaDesde={dados.consultaDesde}
               />
             </>
           )}
         </section>
+      )}
+
+      {dados && !dados.acessoTotal && pagto && automatico && (
+        <PagamentoDoPlano dados={dados} pagto={pagto} setPagto={setPagto} escolhido={escolhido} setEscolhido={setEscolhido} />
       )}
 
       <section>
@@ -110,6 +120,15 @@ export default function PaginaMeuPlano() {
           acao={(p) => {
             if (!dados || dados.acessoTotal) return null;
             if (p.codigo === dados.plano) return <p className="text-center text-sm font-semibold text-success">Plano atual</p>;
+            if (automatico) {
+              if (p.precoMensal === 0) return null;
+              if (p.limiteEmpresas !== null && p.limiteEmpresas < dados.empresas) return <p className="text-center text-xs text-text/50">Você já tem mais empresas que este plano permite</p>;
+              return (
+                <Botao type="button" variante={p.destaque ? 'primario' : 'secundario'} className="w-full" onClick={() => setEscolhido(p.codigo)}>
+                  {pagto?.assinatura ? `Mudar para o ${p.nome}` : `Assinar o ${p.nome}`}
+                </Botao>
+              );
+            }
             if (p.codigo === dados.pedidoPlano) return <p className="text-center text-sm font-semibold text-primary">Pedido enviado</p>;
             if (p.limiteEmpresas !== null && p.limiteEmpresas < dados.empresas) return <p className="text-center text-xs text-text/50">Você já tem mais empresas que este plano permite</p>;
             return (

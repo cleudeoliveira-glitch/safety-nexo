@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ehAdminPlataforma, SOMENTE_ADMIN } from '../admin/admin-plataforma';
-import { caixaPlano, mensagemUpgrade, planoEfetivo, Recurso, RECURSO, temRecurso } from '../common/plano';
+import { caixaPlano, emPrevia, mensagemConsulta, mensagemUpgrade, planoEfetivo, Recurso, RECURSO, temRecurso, travaConsulta } from '../common/plano';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { PERMITE_EMPRESA } from './permite-empresa.decorator';
@@ -32,7 +32,7 @@ export class AuthGuard implements CanActivate {
     }
 
     // Lê o usuário a cada pedido: um acesso removido para de funcionar na hora.
-    const usuario = await this.prisma.usuario.findUnique({ where: { id: sub }, include: { consultoria: { select: { bloqueada: true, plano: true, testeAte: true, usuarios: { where: { papel: 'CONSULTORIA' }, select: { email: true } } } } } });
+    const usuario = await this.prisma.usuario.findUnique({ where: { id: sub }, include: { consultoria: { select: { bloqueada: true, plano: true, testeAte: true, planoPagoAte: true, assinaturaStatus: true, usuarios: { where: { papel: 'CONSULTORIA' }, select: { email: true } } } } } });
     if (!usuario) throw new UnauthorizedException('Seu acesso foi removido. Fale com a sua consultoria.');
     const admin = usuario.papel === 'CONSULTORIA' && ehAdminPlataforma(usuario.email);
     // Consultoria bloqueada pelo painel ADM para de funcionar na hora (inclusive o login das empresas dela).
@@ -48,6 +48,11 @@ export class AuthGuard implements CanActivate {
     // Último acesso (para o painel ADM), gravado no máximo uma vez por hora.
     if (!usuario.ultimoAcesso || Date.now() - usuario.ultimoAcesso.getTime() > 3600_000) {
       this.prisma.usuario.update({ where: { id: usuario.id }, data: { ultimoAcesso: new Date() } }).catch(() => undefined);
+    }
+
+    // Plano vencido há mais de 5 dias: a conta fica só para consulta (vê e baixa, não cria nem muda). Nada é apagado.
+    if (plano.situacao === 'CONSULTA' && !admin && travaConsulta(req.method, String(req.path ?? ''), emPrevia())) {
+      throw new ForbiddenException(mensagemConsulta(plano, usuario.papel === 'EMPRESA'));
     }
 
     const exige = this.reflector.getAllAndOverride<{ r: Recurso; oQue: string } | undefined>(RECURSO, alvos);

@@ -326,6 +326,11 @@ function VencimentoAdm({ c, renovar, mudar }: { c: ConsultoriaAdm; renovar: (mes
       <span className={`block font-semibold ${cor}`}>
         {c.planoPagoAte ? `Pago até ${dataBr(c.planoPagoAte)}${faltam !== null && faltam < 0 ? ' (vencido)' : ''}` : 'Sem vencimento lançado'}
       </span>
+      <span className="block text-text/60">
+        {c.assinatura
+          ? `Automático: ${({ CARTAO: 'cartão', PIX: c.assinatura.pixAutomatico ? 'Pix Automático' : 'Pix', BOLETO: 'boleto' } as Record<string, string>)[c.assinatura.forma ?? ''] ?? c.assinatura.forma}${c.assinatura.status === 'AGUARDANDO' ? ' (aguardando 1º pagamento)' : c.assinatura.status === 'ATRASADA' ? ' (atrasado)' : ''}`
+          : 'Pagamento manual'}
+      </span>
       <span className="mt-1 flex gap-2">
         <button type="button" onClick={() => renovar(1)} className="font-semibold text-primary hover:underline">+1 mês</button>
         <button type="button" onClick={() => renovar(12)} className="font-semibold text-primary hover:underline">+1 ano</button>

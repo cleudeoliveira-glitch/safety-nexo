@@ -944,6 +944,7 @@ export type ConsultoriaAdm = {
   bloqueada: boolean; motivoBloqueio: string | null; observacaoAdm: string | null; criadaEm: string;
   pedidoPlano: string | null; pedidoPlanoEm: string | null; dono: boolean;
   planoDesde: string | null; planoPagoAte: string | null;
+  assinatura: { forma: FormaPagamento | null; status: string | null; plano: string | null; pixAutomatico: boolean } | null;
   responsavel: { nome: string; email: string } | null;
   empresas: number; usuarios: number; colaboradores: number; documentos: number; ultimoAcesso: string | null;
 };
@@ -1122,10 +1123,22 @@ export type MeuPlano = {
   plano: string; nomePlano: string; limiteEmpresas: number | null; empresas: number; acessoTotal: boolean;
   pedidoPlano: string | null; pedidoPlanoEm: string | null;
   planoDesde?: string | null; planoPagoAte?: string | null; criadaEm?: string;
+  situacao?: SituacaoPlano; consultaDesde?: string | null;
   emTeste?: boolean; testeAte?: string | null; recursos?: string[];
   limites?: { funcionarios: number | null; psicossocialMes: number | null; equipe: number | null } | null;
 };
-export type RecursosPlano = { codigo: string; nome: string; emTeste: boolean; testeAte: string | null; recursos: string[]; limites: MeuPlano['limites'] };
+export type SituacaoPlano = 'EM_DIA' | 'TOLERANCIA' | 'CONSULTA';
+export type RecursosPlano = {
+  codigo: string; nome: string; emTeste: boolean; testeAte: string | null; recursos: string[]; limites: MeuPlano['limites'];
+  situacao?: SituacaoPlano; pagoAte?: string | null; consultaDesde?: string | null;
+};
+export type FormaPagamento = 'CARTAO' | 'PIX' | 'BOLETO';
+export type PagamentoPlano = {
+  ligado: boolean; teste: boolean; toleranciaDias: number;
+  assinatura: { plano: string | null; forma: FormaPagamento | null; status: 'AGUARDANDO' | 'ATIVA' | 'ATRASADA' | 'CANCELADA' | null; pixAutomatico: boolean } | null;
+  faturaAberta: { link: string; valorCentavos: number; vencimento: string; status: string } | null;
+  historico: { id: string; plano: string; valorCentavos: number; forma: string | null; vencimento: string; status: string; pagoEm: string | null; linkFatura: string | null }[];
+};
 export type PessoaEquipe = { id: string; nome: string; email: string; createdAt: string; ultimoAcesso: string | null };
 export const equipe = {
   listar: () => chamar<{ pessoas: PessoaEquipe[]; limite: number | null; eu: string }>('GET', '/equipe'),
@@ -1136,6 +1149,10 @@ export const meuPlano = {
   recursos: () => chamar<RecursosPlano>('GET', '/meu-plano/recursos'),
   ver: () => chamar<MeuPlano>('GET', '/meu-plano'),
   pedir: (plano: string) => chamar<MeuPlano>('POST', '/meu-plano/pedido', { plano }),
+  pagamento: () => chamar<PagamentoPlano>('GET', '/meu-plano/pagamento'),
+  assinar: (dados: { plano: string; forma: FormaPagamento; cpfCnpj: string }) =>
+    chamar<{ link: string | null; vencimento: string; emDia: boolean }>('POST', '/meu-plano/pagamento/assinar', dados),
+  cancelarAssinatura: () => chamar<PagamentoPlano>('POST', '/meu-plano/pagamento/cancelar'),
 };
 
 // ---------- Resumo de emissões, perfil e integrações ----------

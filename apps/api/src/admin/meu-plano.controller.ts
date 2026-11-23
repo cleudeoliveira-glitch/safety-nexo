@@ -13,7 +13,7 @@ class PedidoPlanoDto {
 }
 
 // "Meu plano": a consultoria vê o plano dela, quantas empresas já usa e pede a troca.
-// A troca é feita pelo dono da plataforma no painel ADM (não há cobrança automática do SaaS).
+// Com a cobrança automática ligada (ASAAS_API_KEY), o pagamento é feito em pagamentos/; sem ela, a troca é feita pelo ADM.
 @Controller('meu-plano')
 export class MeuPlanoController {
   constructor(
@@ -47,6 +47,8 @@ export class MeuPlanoController {
       testeAte: sessao?.plano?.testeAte ?? null,
       recursos: sessao?.plano?.recursos ?? [],
       limites: sessao?.plano?.limites ?? null,
+      situacao: sessao?.plano?.situacao ?? 'EM_DIA',
+      consultaDesde: sessao?.plano?.consultaDesde ?? null,
     };
   }
 
@@ -54,7 +56,11 @@ export class MeuPlanoController {
   @PermiteEmpresa()
   @Get('recursos')
   recursos(@Sessao() s: SessaoUsuario) {
-    return { codigo: s.plano?.codigo ?? 'FREE', nome: s.plano?.nome ?? 'Grátis', emTeste: s.plano?.emTeste ?? false, testeAte: s.plano?.testeAte ?? null, recursos: s.plano?.recursos ?? [], limites: s.plano?.limites ?? null };
+    return {
+      codigo: s.plano?.codigo ?? 'FREE', nome: s.plano?.nome ?? 'Grátis', emTeste: s.plano?.emTeste ?? false, testeAte: s.plano?.testeAte ?? null, recursos: s.plano?.recursos ?? [], limites: s.plano?.limites ?? null,
+      // Pagamento em dia, na tolerância (aviso) ou só para consulta (o site mostra a faixa no alto).
+      situacao: s.plano?.situacao ?? 'EM_DIA', pagoAte: s.plano?.pagoAte ?? null, consultaDesde: s.plano?.consultaDesde ?? null,
+    };
   }
 
   @Post('pedido')
