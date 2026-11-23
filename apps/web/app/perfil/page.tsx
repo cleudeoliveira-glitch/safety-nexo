@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao } from '@/components/ui';
 import { conta, equipe, MinhaConta } from '@/lib/api';
-import { lerToken, lerUsuario, salvarUsuario } from '@/lib/sessao';
+import { lerToken, lerUsuario, sair, salvarUsuario } from '@/lib/sessao';
 
 // Meu perfil: nome, e-mail e senha de quem entrou; para a consultoria, também os dados e a logo
 // que saem no rodapé de todos os documentos.
@@ -30,9 +30,12 @@ export default function MeuPerfil() {
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-primary">Meu perfil</h1>
-        <p className="text-sm text-text/60">{consultoria ? 'Seus dados de acesso e os dados da consultoria que saem nos documentos.' : 'Seus dados de acesso ao sistema.'}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-primary">Meu perfil</h1>
+          <p className="text-sm text-text/60">{consultoria ? 'Seus dados de acesso e os dados da consultoria que saem nos documentos.' : 'Seus dados de acesso ao sistema.'}</p>
+        </div>
+        <Botao type="button" variante="secundario" onClick={sair}>Sair da conta</Botao>
       </div>
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
       {!dados && !aviso && <div className="h-40 animate-pulse rounded-card bg-white" />}
