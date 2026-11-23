@@ -16,12 +16,12 @@ export default function PaginaMaterial() {
   const [aba, setAba] = useState<Aba>('slides');
   const [n, setN] = useState(0);
   const [gabarito, setGabarito] = useState(false);
+  const [cheia, setCheia] = useState(false);
   const plano = usePlano();
   const liberado = libera(plano, 'slides');
-  const caixa = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const ler = () => { setCodigo(window.location.hash.slice(1) || null); setN(0); setAba('slides'); };
+    const ler = () => { setCodigo(window.location.hash.slice(1) || null); setN(0); setAba('slides'); setCheia(false); };
     ler();
     window.addEventListener('hashchange', ler);
     return () => window.removeEventListener('hashchange', ler);
@@ -30,6 +30,7 @@ export default function PaginaMaterial() {
   const m = MATERIAIS.find((x) => x.codigo === codigo);
   const total = m ? (liberado ? m.slides.length : 1) : 0;
   const ir = useCallback((d: number) => setN((x) => Math.max(0, Math.min(total - 1, x + d))), [total]);
+  const arrastar = useArrastar(ir);
 
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
@@ -71,19 +72,23 @@ export default function PaginaMaterial() {
       )}
 
       {aba === 'slides' && (
-        <div ref={caixa} className="space-y-3 bg-white">
-          <SlideTela m={m} n={n} />
+        <div className="space-y-3 bg-white">
+          <button onClick={() => setCheia(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-card bg-primary px-5 py-3.5 text-base font-bold text-white shadow-sm print:hidden sm:w-auto">
+            <IconeTelaCheia /> Ver só os slides (tela cheia)
+          </button>
+          <div {...arrastar} className="touch-pan-y"><SlideTela m={m} n={n} /></div>
           <div className="flex items-center justify-between gap-2 print:hidden">
             <button onClick={() => ir(-1)} disabled={n === 0} className="rounded-card border border-border bg-white px-4 py-3 text-sm font-semibold disabled:opacity-40 sm:px-5">← Voltar</button>
             <span className="text-sm text-text/60">{n + 1} de {m.slides.length}</span>
-            <div className="flex gap-2">
-              <button onClick={() => caixa.current?.requestFullscreen?.().catch(() => undefined)} className="hidden rounded-card border border-border bg-white px-4 py-3 text-sm font-semibold sm:block">Tela cheia</button>
-              <button onClick={() => ir(1)} disabled={n >= total - 1} className="rounded-card bg-primary px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">Avançar →</button>
-            </div>
+            <button onClick={() => ir(1)} disabled={n >= total - 1} className="rounded-card bg-primary px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">Avançar →</button>
           </div>
+          <p className="text-center text-xs text-text/50 print:hidden sm:hidden">Dica: arraste o slide para o lado com o dedo para passar.</p>
           {liberado && <p className="rounded-card bg-background p-3 text-sm print:hidden"><strong>O que falar:</strong> {m.slides[n].fala}</p>}
         </div>
       )}
+
+      {cheia && aba === 'slides' && <TelaCheia m={m} n={n} total={total} ir={ir} fechar={() => setCheia(false)} />}
 
       {aba === 'roteiro' && (liberado ? (
         <ol className="space-y-4">
@@ -133,6 +138,112 @@ export default function PaginaMaterial() {
 
       <p className="text-xs text-text/50 print:hidden">Material-base para apoiar o treinamento. Revise e adapte à realidade da empresa antes de aplicar. Lista de presença e certificado ficam na turma, em Treinamentos.</p>
     </main>
+  );
+}
+
+// Passar o slide com o dedo: arrastar para a esquerda avança, para a direita volta.
+// Só conta o gesto de lado (de cima para baixo a tela continua rolando normalmente).
+function useArrastar(ir: (d: number) => void) {
+  const inicio = useRef<{ x: number; y: number } | null>(null);
+  return {
+    onTouchStart: (e: React.TouchEvent) => { const t = e.touches[0]; inicio.current = { x: t.clientX, y: t.clientY }; },
+    onTouchEnd: (e: React.TouchEvent) => {
+      const i = inicio.current;
+      inicio.current = null;
+      if (!i) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - i.x;
+      const dy = t.clientY - i.y;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) ir(dx < 0 ? 1 : -1);
+    },
+  };
+}
+
+function IconeTelaCheia({ sair = false }: { sair?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {sair ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}
+    </svg>
+  );
+}
+
+// Tela cheia: só os slides, sem menu nem o resto do sistema. Funciona em qualquer celular
+// (no iPhone o navegador não deixa "tela cheia" de verdade, então a tela cobre tudo por cima).
+// Sair: botão "Sair" no alto, tecla Esc ou o "voltar" do próprio celular.
+function TelaCheia({ m, n, total, ir, fechar }: { m: Material; n: number; total: number; ir: (d: number) => void; fechar: () => void }) {
+  const arrastar = useArrastar(ir);
+  const [dica, setDica] = useState(true);
+  const caixa = useRef<HTMLDivElement>(null);
+  const fecharRef = useRef(fechar);
+  fecharRef.current = fechar;
+
+  useEffect(() => {
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    // Onde o navegador deixa (Android, computador), esconde também as barras do navegador.
+    caixa.current?.requestFullscreen?.().catch(() => undefined);
+    // O "voltar" do celular fecha a tela cheia em vez de sair da página.
+    history.pushState({ snTelaCheia: true }, '');
+    const voltar = () => fecharRef.current();
+    window.addEventListener('popstate', voltar);
+    // Saiu da tela cheia do navegador (ex.: gesto do Android): fecha a nossa também.
+    let entrou = false;
+    const mudou = () => { if (document.fullscreenElement) entrou = true; else if (entrou) fecharRef.current(); };
+    document.addEventListener('fullscreenchange', mudou);
+    const t = setTimeout(() => setDica(false), 3500);
+    return () => {
+      document.body.style.overflow = antes;
+      window.removeEventListener('popstate', voltar);
+      document.removeEventListener('fullscreenchange', mudou);
+      clearTimeout(t);
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
+    };
+  }, []);
+
+  // "Sair" desfaz o passo guardado no histórico; o "voltar" do celular então fecha a tela cheia.
+  const sair = () => {
+    if ((history.state as { snTelaCheia?: boolean } | null)?.snTelaCheia) history.back();
+    else fechar();
+  };
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') sairRef.current(); };
+    window.addEventListener('keydown', tecla);
+    return () => window.removeEventListener('keydown', tecla);
+  }, []);
+  const sairRef = useRef(sair);
+  sairRef.current = sair;
+
+  return (
+    <div ref={caixa} role="dialog" aria-modal="true" aria-label={`Slides em tela cheia: ${m.norma} ${m.nome}`}
+      className="fixed inset-0 z-[200] flex flex-col bg-[#06202a] text-white">
+      <div className="flex items-center gap-3 px-3 py-2" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white/80">{m.norma} · {n + 1} de {m.slides.length}</span>
+        <button onClick={sair} className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-primary shadow-lg">
+          <IconeTelaCheia sair /> Sair
+        </button>
+      </div>
+
+      <div {...arrastar} className="relative flex flex-1 touch-pan-y overflow-y-auto px-2 pb-2 sm:px-6">
+        <div className="m-auto w-full max-w-6xl rounded-2xl bg-white text-text">
+          <SlideTela m={m} n={n} />
+        </div>
+        {dica && (
+          <p className="pointer-events-none fixed bottom-24 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/75 px-4 py-2 text-sm font-semibold text-white">
+            Arraste para o lado para passar
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 px-3 py-2" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+        <button onClick={() => ir(-1)} disabled={n === 0} aria-label="Slide anterior"
+          className="h-14 w-20 rounded-2xl bg-white/15 text-2xl font-bold disabled:opacity-30">←</button>
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/20">
+          <div className="h-full rounded-full bg-menta transition-all" style={{ width: `${((n + 1) / m.slides.length) * 100}%` }} />
+        </div>
+        <button onClick={() => ir(1)} disabled={n >= total - 1} aria-label="Próximo slide"
+          className="h-14 w-20 rounded-2xl bg-menta text-2xl font-bold text-primary-escuro disabled:opacity-30">→</button>
+      </div>
+    </div>
   );
 }
 
