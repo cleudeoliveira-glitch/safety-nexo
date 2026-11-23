@@ -4,10 +4,41 @@ import { dirname, join } from 'path';
 // Onde ficam os arquivos (logos e documentos).
 // Com SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY: no Supabase Storage (bucket privado), que não se perde quando o servidor reinicia.
 // Sem elas: numa pasta do disco (uso local).
-const URL_SB = process.env.SUPABASE_URL?.replace(/\/$/, '');
-const CHAVE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Endereço do Supabase (https://<ref>.supabase.co). Se o SUPABASE_URL do Render estiver vazio ou com um texto
+// que não é endereço (já aconteceu de colarem a dica "Project Settings > API > Project URL."), o endereço é
+// montado a partir do DATABASE_URL, que no pooler do Supabase traz o ref no usuário (postgres.<ref>).
+export function enderecoSupabase(env: NodeJS.ProcessEnv = process.env): { url?: string; aviso?: string } {
+  const bruto = env.SUPABASE_URL?.trim();
+  if (bruto) {
+    try {
+      const u = new URL(bruto);
+      if (u.protocol === 'https:' || u.protocol === 'http:') return { url: u.origin };
+    } catch { /* não é endereço: tenta o DATABASE_URL abaixo */ }
+  }
+  const ref = refDoBanco(env.DATABASE_URL);
+  const url = ref ? `https://${ref}.supabase.co` : undefined;
+  if (!bruto) return { url };
+  const errado = `o SUPABASE_URL no Render está "${bruto.slice(0, 60)}", que não é um endereço (o certo é https://xxxx.supabase.co)`;
+  return { url, aviso: url ? `Usando ${url}, tirado do DATABASE_URL, porque ${errado}.` : `Não dá para guardar arquivos: ${errado}.` };
+}
+
+function refDoBanco(dbUrl?: string): string | undefined {
+  if (!dbUrl) return undefined;
+  try {
+    const u = new URL(dbUrl);
+    const doUsuario = /^postgres\.([a-z0-9]{15,30})$/i.exec(decodeURIComponent(u.username))?.[1];
+    const doHost = /^db\.([a-z0-9]{15,30})\.supabase\.co$/i.exec(u.hostname)?.[1];
+    return (doUsuario ?? doHost)?.toLowerCase();
+  } catch { return undefined; }
+}
+
+const ENDERECO = enderecoSupabase();
+const URL_SB = ENDERECO.url;
+const CHAVE = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 const BUCKET = process.env.SUPABASE_BUCKET ?? 'safety-nexo';
 export const guardaNaNuvem = !!(URL_SB && CHAVE);
+if (ENDERECO.aviso) console.warn(`[guarda] ${ENDERECO.aviso}`);
 
 // Chave antiga (JWT "eyJ..."): vai também no Authorization. Chave nova (sb_secret_...): só no apikey,
 // porque o Supabase recusa no Authorization o que não é JWT.
@@ -25,11 +56,16 @@ function garantirBucket() {
 
 // Diagnóstico: o Supabase Storage responde e a pasta (bucket) existe?
 export async function conferirGuarda(): Promise<{ ok: boolean; motivo: string }> {
-  if (!guardaNaNuvem) return { ok: false, motivo: 'Sem SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY: os arquivos ficam no disco do servidor e somem quando ele reinicia.' };
+  if (!guardaNaNuvem) {
+    if (CHAVE && ENDERECO.aviso) return { ok: false, motivo: ENDERECO.aviso };
+    return { ok: false, motivo: 'Sem SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY: os arquivos ficam no disco do servidor e somem quando ele reinicia.' };
+  }
+  const obs = ENDERECO.aviso ? ` Funciona, mas vale corrigir: ${ENDERECO.aviso}` : '';
   try {
     const r = await fetch(`${URL_SB}/storage/v1/bucket/${BUCKET}`, { headers: cabecalho(), signal: AbortSignal.timeout(8000) });
-    if (r.ok) return { ok: true, motivo: `Pasta "${BUCKET}" do Supabase Storage respondendo.` };
-    if (r.status === 404 || r.status === 400) return { ok: true, motivo: `A pasta "${BUCKET}" ainda não existe; ela é criada sozinha no primeiro arquivo enviado.` };
+    if (r.ok) return { ok: true, motivo: `Pasta "${BUCKET}" do Supabase Storage respondendo.${obs}` };
+    if (r.status === 404 || r.status === 400) return { ok: true, motivo: `A pasta "${BUCKET}" ainda não existe; ela é criada sozinha no primeiro arquivo enviado.${obs}` };
+    if (r.status === 401 || r.status === 403) return { ok: false, motivo: `O Supabase recusou a chave (${r.status}). Confira se o SUPABASE_SERVICE_ROLE_KEY no Render é a chave secreta (service_role ou sb_secret_...) do mesmo projeto de ${URL_SB}.` };
     return { ok: false, motivo: `O Supabase Storage respondeu ${r.status}: ${(await r.text()).slice(0, 200)}` };
   } catch (e) {
     return { ok: false, motivo: `O Supabase Storage não respondeu: ${(e as Error).message}` };

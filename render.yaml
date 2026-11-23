@@ -21,7 +21,7 @@ services:
         value: Safety Nexo <avisos@safetynexo.com.br>
       - key: DATABASE_URL       # Supabase > Connect > Session pooler (porta 5432)
         sync: false
-      - key: SUPABASE_URL       # Supabase > Project Settings > API > Project URL
+      - key: SUPABASE_URL       # o endereço https://xxxx.supabase.co (fica em Supabase > Project Settings > Data API). Cole só o endereço.
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY   # Supabase > Project Settings > API Keys > service_role (secreta)
         sync: false
