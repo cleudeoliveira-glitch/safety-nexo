@@ -762,7 +762,7 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 md:p-10">
       <div>
-        <Link href="/" className="text-sm text-primary">← Voltar ao painel</Link>
+        <Link href={`/?empresa=${empresaId}`} className="text-sm text-primary">← Voltar ao painel</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">Operação diária</h1>
         <p className="text-text/60">{empresa.razaoSocial}</p>
       </div>
