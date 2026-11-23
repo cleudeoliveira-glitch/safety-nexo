@@ -171,11 +171,11 @@ export function Landing() {
             <figure className="flex flex-col rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-6">
               <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-xl bg-background px-4 py-6">
                 <img src="/vitrine/pgr-capa.webp" alt="Primeira página de um PGR gerado no Safety Nexo" className="w-[58%] -rotate-3 rounded-md border border-border shadow-lg" />
-                <img src="/vitrine/pgr-inventario.webp" alt="Inventário de riscos de um PGR gerado no Safety Nexo" className="-ml-[22%] mt-12 w-[64%] rotate-2 rounded-md border border-border shadow-xl" />
+                <img src="/vitrine/pgr-matriz.webp" alt="Matriz de risco de um PGR gerado no Safety Nexo" className="-ml-[22%] mt-12 w-[64%] rotate-2 rounded-md border border-border shadow-xl" />
               </div>
               <figcaption className="mt-4">
                 <span className="block text-lg font-semibold">PGR gerado no sistema</span>
-                <span className="mt-1 block text-base text-text/70">Inventário de riscos, matriz e plano de ação saindo prontos em PDF.</span>
+                <span className="mt-1 block text-base text-text/70">Capa, matriz de risco, inventário e plano de ação saindo prontos em PDF.</span>
               </figcaption>
             </figure>
           </div>
