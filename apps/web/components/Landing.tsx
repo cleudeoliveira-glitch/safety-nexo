@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { DUVIDAS_PLANOS, DUVIDAS_SISTEMA, LinkWhatsApp, ListaDuvidas } from '@/components/DuvidasPlanos';
 import { Icone, NomeIcone } from '@/components/Icone';
 import { BotaoPlanoSite, GradePlanos } from '@/components/Planos';
+import { CarrosselTelas } from '@/components/CarrosselTelas';
 import { PLANOS_DESTAQUE_LANDING } from '@/lib/planos';
 
 // Página inicial para quem ainda não entrou: apresenta o sistema e leva à escolha do plano.
@@ -84,12 +85,8 @@ export function Landing() {
           </div>
           <p className="mt-3 text-sm text-white/75">14 dias com tudo liberado, sem falar com ninguém.</p>
           </div>
-          <div className="mt-12 lg:mt-0">
-            <img
-              src="/vitrine/painel-visao-geral.webp"
-              alt="Painel do Safety Nexo com a empresa em foco, os números e o que fazer hoje"
-              className="-mb-2 w-full rounded-t-xl border border-white/20 shadow-2xl shadow-black/40 lg:mb-0 lg:w-[125%] lg:max-w-none lg:rounded-xl"
-            />
+          <div className="mt-12 lg:mt-0 lg:w-[125%]">
+            <CarrosselTelas />
           </div>
         </section>
 
