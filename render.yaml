@@ -25,6 +25,12 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY   # Supabase > Project Settings > API Keys > service_role (secreta)
         sync: false
+      - key: ASAAS_API_KEY      # cobrança dos planos: Asaas > Integrações > Chave de API (sem ela, o pagamento fica manual)
+        sync: false
+      - key: ASAAS_WEBHOOK_TOKEN  # o mesmo token colocado no webhook do Asaas (endereço .../pagamentos/asaas)
+        sync: false
+      - key: ASAAS_AMBIENTE     # "sandbox" para testar; "producao" para cobrar de verdade
+        value: sandbox
       - key: FACE_API_ENABLED
         value: "true"
       - key: FACE_RECOGNITION_THRESHOLD

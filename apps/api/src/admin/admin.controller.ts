@@ -85,6 +85,8 @@ export class AdminController {
       pedidoPlanoEm: c.pedidoPlanoEm,
       planoDesde: c.planoDesde,
       planoPagoAte: c.planoPagoAte,
+      // Cobrança automática (Asaas): forma, situação e se o Pix Automático foi autorizado.
+      assinatura: c.asaasAssinaturaId && c.assinaturaStatus !== 'CANCELADA' ? { forma: c.assinaturaForma, status: c.assinaturaStatus, plano: c.assinaturaPlano, pixAutomatico: c.pixAutomatico } : null,
       // Consultoria do dono da plataforma: acesso total, não paga plano e não entra na receita.
       dono: c.usuarios.some((u) => ehAdminPlataforma(u.email)),
       criadaEm: c.createdAt,

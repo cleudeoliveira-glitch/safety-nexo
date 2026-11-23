@@ -1,4 +1,5 @@
-# Todo dia às 9h (Brasília) pede ao servidor para mandar os avisos de cobrança (antes e depois do vencimento).
+# Todo dia às 9h (Brasília) pede ao servidor para mandar os avisos de cobrança (antes e depois do vencimento)
+# e os avisos de vencimento do plano do Safety Nexo (e volta para o Grátis quem cancelou e o mês pago acabou).
 # Precisa do segredo TAREFAS_SEGREDO no GitHub (Settings > Secrets and variables > Actions),
 # igual ao do servidor no Render. O primeiro pedido também acorda o servidor gratuito.
 name: Avisos de cobrança por e-mail
@@ -21,3 +22,11 @@ jobs:
           curl -sS --fail-with-body --max-time 600 --retry 3 --retry-delay 30 \
             -X POST -H "x-tarefa-segredo: $SEGREDO" \
             https://safety-nexo-api.onrender.com/tarefas/regua-cobranca
+      - name: Avisos de vencimento do plano
+        if: always()
+        env:
+          SEGREDO: ${{ secrets.TAREFAS_SEGREDO }}
+        run: |
+          curl -sS --fail-with-body --max-time 600 --retry 3 --retry-delay 30 \
+            -X POST -H "x-tarefa-segredo: $SEGREDO" \
+            https://safety-nexo-api.onrender.com/tarefas/avisos-plano

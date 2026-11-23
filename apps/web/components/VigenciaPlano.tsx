@@ -9,6 +9,7 @@ type Props = {
   emTeste?: boolean;
   testeAte?: string | null;
   criadaEm?: string;
+  consultaDesde?: string | null;
 };
 
 function textoDias(n: number) {
@@ -20,7 +21,7 @@ function textoDias(n: number) {
 }
 
 // Vencimento e vigência do plano, mês a mês ("Meu plano").
-export function VigenciaPlano({ gratis, planoDesde, planoPagoAte, emTeste, testeAte, criadaEm }: Props) {
+export function VigenciaPlano({ gratis, planoDesde, planoPagoAte, emTeste, testeAte, criadaEm, consultaDesde }: Props) {
   if (gratis) {
     return (
       <div className="mt-4 rounded-card border border-border bg-background p-4 text-sm">
@@ -61,10 +62,14 @@ export function VigenciaPlano({ gratis, planoDesde, planoPagoAte, emTeste, teste
         </div>
       </div>
       {faltam < 0 && (
-        <p className="text-sm font-semibold text-danger">O seu plano venceu. Fale com a gente pelo WhatsApp para renovar e não ficar sem os recursos pagos.</p>
+        <p className="text-sm font-semibold text-danger">
+          {consultaDesde && diasAte(consultaDesde) > 0
+            ? `O seu plano venceu. Tudo funciona normalmente até ${dataBr(new Date(new Date(consultaDesde).getTime() - 86400000).toISOString())}. Depois disso, a conta fica só para consulta até o pagamento. Nada é apagado.`
+            : 'O seu plano venceu e a conta está só para consulta: você vê e baixa tudo, mas não cria nem muda nada até o pagamento. Nada foi apagado.'}
+        </p>
       )}
       {faltam >= 0 && faltam <= 7 && (
-        <p className="text-sm font-semibold text-[#c2410c]">O seu plano vence em poucos dias. Fale com a gente pelo WhatsApp para renovar.</p>
+        <p className="text-sm font-semibold text-[#c2410c]">O seu plano vence em poucos dias. Se você paga no cartão, a cobrança é feita sozinha.</p>
       )}
       {periodos.length > 0 && (
         <details className="rounded-card border border-border" open={periodos.length <= 6}>
