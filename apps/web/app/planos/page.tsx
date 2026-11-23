@@ -14,14 +14,14 @@ export default function PaginaPlanos() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <Link href={logado ? '/' : '/entrar'}><img src="/logo.png" alt="Safety Nexo" className="h-10 w-auto" /></Link>
+        <Link href="/"><img src="/logo.png" alt="Safety Nexo" className="h-10 w-auto" /></Link>
         <nav className="flex gap-2 text-sm">
           {logado ? (
             <Link href="/plano" className="rounded-card bg-primary px-4 py-2 font-semibold text-white">Meu plano</Link>
           ) : (
             <>
               <Link href="/entrar" className="rounded-card border border-border bg-white px-4 py-2 font-semibold">Entrar</Link>
-              <Link href="/cadastro" className="rounded-card bg-primary px-4 py-2 font-semibold text-white">Criar conta grátis</Link>
+              <Link href="/cadastro" className="rounded-card bg-primary px-4 py-2 font-semibold text-white">Começar</Link>
             </>
           )}
         </nav>
