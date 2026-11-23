@@ -45,6 +45,7 @@ export default function ColaboradoresPage({ params }: { params: { id: string } }
   const [ghes, setGhes] = useState<Ghe[]>([]);
   const [lista, setLista] = useState<ColaboradorComSituacao[] | null>(null);
   const [busca, setBusca] = useState('');
+  useEffect(() => { const b = new URLSearchParams(window.location.search).get('busca'); if (b) setBusca(b); }, []); // vindo da busca geral
   const [filtro, setFiltro] = useState<'ativos' | 'pendentes' | 'sairam' | 'todos'>('ativos');
   const [novoAberto, setNovoAberto] = useState(false);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);

@@ -576,7 +576,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
                     <span className={`font-semibold ${cor}`}>{rotulo}</span>
                     {p.tipo === 'ESPACO_CONFINADO' && <span className="text-text/60"> · {p.espaco ? `${p.espaco.codigo} · ` : ''}{p.medicoes?.length ?? 0} medição(ões)</span>}
                   </span>
-                  <span className="flex gap-2">
+                  <span className="flex flex-wrap gap-2">
                     {!p.encerradaEm && p.tipo === 'ESPACO_CONFINADO' && (
                       <NovaMedicao aoSalvar={async (m) => {
                         try { await registrarMedicaoGas(empresaId, p.id, m); avisar('ok', `Medição lançada na permissão nº ${p.numero}.`); await recarregar(); }

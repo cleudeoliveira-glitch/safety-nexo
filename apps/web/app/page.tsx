@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { MeuDia } from '@/components/MeuDia';
 import { useCallback, useEffect, useState } from 'react';
 import { Landing } from '@/components/Landing';
 import { CampoAjuda } from '@/components/CampoAjuda';
@@ -117,6 +118,7 @@ function PainelInicial() {
       )}
 
       {!semEmpresa && <BotoesDoCampo base={empresaId ? base : ''} cliente={empresaCliente} />}
+      {!semEmpresa && empresaId && !empresaCliente && <MeuDia empresaId={empresaId} />}
 
       {semEmpresa ? (
         <BoasVindas cliente={empresaCliente} />
