@@ -242,10 +242,11 @@ function Menu({ caminho }: { caminho: string }) {
     );
   }
 
+  // Em tela baixa (notebook), o menu inteiro rola junto: topo, itens e rodapé. Assim nenhum item fica escondido.
   const conteudo = (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 px-5 pb-4 pt-5">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-md shadow-black/20">
+    <div className="menu-rolagem flex h-full flex-col baixa:overflow-y-auto">
+      <div className="flex items-center gap-3 px-5 pb-4 pt-5 baixa:pb-2 baixa:pt-3">
+        <span className="flex h-11 w-11 baixa:h-9 baixa:w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-md shadow-black/20">
           <img src="/logo.png" alt="" className="h-7 w-auto" />
         </span>
         <div className="min-w-0">
@@ -257,8 +258,8 @@ function Menu({ caminho }: { caminho: string }) {
         </button>
       </div>
 
-      <div className="mx-4 mb-3 hidden md:block"><BuscaGeral empresaId={empresaId} empresas={empresas} cliente={cliente} claro /></div>
-      <div className="mx-4 rounded-xl bg-white/[0.07] p-3 ring-1 ring-white/10" data-tour="empresa">
+      <div className="mx-4 mb-3 hidden md:block baixa:mb-2"><BuscaGeral empresaId={empresaId} empresas={empresas} cliente={cliente} claro /></div>
+      <div className="mx-4 rounded-xl bg-white/[0.07] p-3 ring-1 ring-white/10 baixa:p-2.5" data-tour="empresa">
         <label htmlFor="menu-empresa" className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
           Empresa em foco
         </label>
@@ -268,7 +269,7 @@ function Menu({ caminho }: { caminho: string }) {
             value={empresaId}
             onChange={(e) => trocarEmpresa(e.target.value)}
             disabled={cliente}
-            className="mt-1 w-full cursor-pointer truncate rounded-lg border-0 bg-white/95 px-2.5 py-2 text-sm font-semibold text-primary focus:outline-none focus:ring-2 focus:ring-menta disabled:cursor-default"
+            className="mt-1 w-full cursor-pointer truncate rounded-lg border-0 bg-white/95 px-2.5 py-2 baixa:py-1.5 text-sm font-semibold text-primary focus:outline-none focus:ring-2 focus:ring-menta disabled:cursor-default"
           >
             {empresas.map((e) => (
               <option key={e.id} value={e.id}>
@@ -281,22 +282,24 @@ function Menu({ caminho }: { caminho: string }) {
             {erro ? 'Não consegui falar com o servidor. Tente de novo em instantes.' : empresas ? 'Nenhuma empresa cadastrada ainda.' : 'Carregando…'}
           </p>
         )}
+        <div className="mt-2 grid grid-cols-2 gap-2">
         {!cliente && (
           <Link
             href="/empresas/nova"
-            className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-menta px-3 py-2 text-sm font-bold text-primary-escuro transition hover:brightness-105"
+            className="flex items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-menta px-1.5 py-2 text-xs font-bold text-primary-escuro transition hover:brightness-105"
           >
-            <Icone nome="mais" className="h-4 w-4" /> Nova empresa
+            <Icone nome="mais" className="h-3.5 w-3.5" /> Nova empresa
           </Link>
         )}
         <Link
           href={libera(plano, 'offline') ? '/campo' : '/plano?recurso=offline'}
           title={libera(plano, 'offline') ? 'Para usar na obra, mesmo sem internet' : `Faz parte do plano ${planoMinimo('offline')} ou maior`}
-          className="mt-2 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/25 transition hover:bg-white/10"
+          className={`flex items-center justify-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 text-xs font-semibold text-white ring-1 ring-white/25 transition hover:bg-white/10 ${cliente ? 'col-span-2' : ''}`}
         >
-          <Icone nome="sinal" className="h-4 w-4" /> Modo campo
+          <Icone nome="sinal" className="h-3.5 w-3.5" /> Modo campo
           {!libera(plano, 'offline') && <Icone nome="cadeado" className="h-4 w-4 text-white/60" />}
         </Link>
+        </div>
       </div>
 
       {empresas && !empresa && !cliente && (
@@ -305,7 +308,7 @@ function Menu({ caminho }: { caminho: string }) {
         </p>
       )}
 
-      <nav className="menu-rolagem mt-3 flex-1 overflow-y-auto px-3 pb-4" aria-label="Menu principal">
+      <nav className="menu-rolagem mt-3 flex-1 overflow-y-auto px-3 pb-4 baixa:mt-1 baixa:flex-none baixa:overflow-visible baixa:pb-2" aria-label="Menu principal">
         {MENU.map((grupo) => {
           const itens = grupo.itens.filter((i) => (i.partes ? partesVisiveis(i).length > 0 : visivel(i)));
           if (!itens.length) return null;
@@ -340,7 +343,7 @@ function Menu({ caminho }: { caminho: string }) {
         })}
       </nav>
 
-      <div className="border-t border-white/10 px-3 py-3">
+      <div className="border-t border-white/10 px-3 py-2">
         {usuario?.adminPlataforma && (
           <Link
             href="/admin"
@@ -351,11 +354,13 @@ function Menu({ caminho }: { caminho: string }) {
             <Icone nome="coroa" className="h-[18px] w-[18px]" /> Painel ADM da plataforma
           </Link>
         )}
-        <Link href="/ajuda" className={`flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition ${caminho === '/ajuda' ? 'bg-white text-primary' : 'text-white/85 hover:bg-white/10'}`}>
-          <Icone nome="interrogacao" className="h-[18px] w-[18px] text-menta/80" /> Central de ajuda
-        </Link>
-        <div className="mt-1 px-1"><BotaoLuvaSol claro /></div>
-        <div className="mt-2 flex items-center gap-3 rounded-lg bg-black/15 px-2.5 py-2">
+        <div className="flex items-center gap-2">
+          <Link href="/ajuda" className={`flex min-h-[36px] flex-1 items-center gap-2 whitespace-nowrap rounded-lg px-2 text-[13px] transition ${caminho === '/ajuda' ? 'bg-white text-primary' : 'text-white/85 hover:bg-white/10'}`}>
+            <Icone nome="interrogacao" className="h-[18px] w-[18px] text-menta/80" /> Central de ajuda
+          </Link>
+          <BotaoLuvaSol claro pequeno />
+        </div>
+        <div className="mt-1.5 flex items-center gap-2 rounded-lg bg-black/15 px-2.5 py-1.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-menta text-sm font-bold text-primary-escuro">
             {(usuario?.nome ?? '?').trim().charAt(0).toUpperCase()}
           </span>
@@ -363,11 +368,11 @@ function Menu({ caminho }: { caminho: string }) {
             <p className="truncate text-sm font-semibold text-white">{usuario?.nome ?? 'Minha conta'}</p>
             <p className="text-xs text-white/50">{cliente ? 'Empresa cliente' : 'Consultoria'} · meu perfil</p>
           </Link>
+          {/* Sair bem à vista: para entrar com outra conta (ex.: ver o sistema como um cliente vê). */}
+          <button type="button" onClick={sair} title="Sair da conta" className="flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-white/85 transition hover:bg-white/10 hover:text-white">
+            <Icone nome="sair" className="h-4 w-4 text-menta/80" /> Sair
+          </button>
         </div>
-        {/* Sair bem à vista: para entrar com outra conta (ex.: ver o sistema como um cliente vê). */}
-        <button type="button" onClick={sair} className="mt-1 flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10 hover:text-white">
-          <Icone nome="sair" className="h-[18px] w-[18px] text-menta/80" /> Sair da conta
-        </button>
       </div>
     </div>
   );
