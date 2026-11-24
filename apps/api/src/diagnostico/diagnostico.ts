@@ -502,6 +502,7 @@ export class DiagnosticoService {
       { rota: '/tarefas/avisos-plano', nome: 'Avisos de vencimento do plano', maxHoras: 36, arquivo: '.github/workflows/regua-cobranca.yml' },
       { rota: '/tarefas/regua-cobranca', nome: 'Régua de cobrança das consultorias', maxHoras: 36, arquivo: '.github/workflows/regua-cobranca.yml' },
       { rota: '/tarefas/avisos-semanais', nome: 'E-mail semanal de vencimentos (segunda)', maxHoras: 8 * 24, arquivo: '.github/workflows/avisos-semanais.yml' },
+      { rota: '/tarefas/normas-dou', nome: 'Busca de mudanças nas NRs (Diário Oficial)', maxHoras: 36, arquivo: '.github/workflows/normas-dou.yml' },
     ];
     const salvas = await this.prisma.configPlataforma.findMany({ where: { chave: { in: lista.map((t) => `chamada:${t.rota}`) } } });
     const problemas: string[] = [];
@@ -514,7 +515,7 @@ export class DiagnosticoService {
       else if (Date.now() - new Date(u.em).getTime() > t.maxHoras * HORA) problemas.push(`${t.nome}: a última vez foi ${haQuanto(u.em)}, está atrasada`);
       else ok.push(`${t.nome}: rodou ${haQuanto(u.em)}`);
     }
-    if (!problemas.length) return [{ id: 'tarefas', grupo: GRUPOS.pagamentos, titulo: 'Tarefas automáticas rodando', situacao: 'ok', resumo: 'Avisos de vencimento, régua de cobrança e e-mail semanal em dia.', detalhes: ok }];
+    if (!problemas.length) return [{ id: 'tarefas', grupo: GRUPOS.pagamentos, titulo: 'Tarefas automáticas rodando', situacao: 'ok', resumo: 'Avisos de vencimento, régua de cobrança, e-mail semanal e busca de mudanças nas NRs em dia.', detalhes: ok }];
     const algumaFalhou = problemas.some((p) => p.includes('falhou'));
     return [{
       id: 'tarefas', grupo: GRUPOS.pagamentos, titulo: 'Tarefas automáticas com atraso', situacao: algumaFalhou ? 'falha' : 'atencao',

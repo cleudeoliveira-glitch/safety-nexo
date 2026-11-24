@@ -1213,6 +1213,11 @@ model AvisoNorma {
   cnaePrefixos    String[] // Ex.: ["41", "42", "43"] = construção
   grauRiscoMin    Int?
   funcionariosMin Int?
+  status          String   @default("PUBLICADO") // RASCUNHO (achado sozinho, esperando a dona conferir) | PUBLICADO | DESCARTADO
+  origem          String   @default("MANUAL")    // MANUAL | AUTOMATICO (busca diária no Diário Oficial)
+  fonte           String?  @unique               // chave do ato oficial ("portaria:1419:2024"), para não cadastrar duas vezes
+  textoOficial    String?                         // texto do ato, para conferir sem sair do sistema
+  publicadoEm     DateTime?
   criadoEm        DateTime @default(now())
   lidos           AvisoNormaLido[]
 }

@@ -8,24 +8,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -sS -L -A "Mozilla/5.0" -o busca.html -w "%{http_code} %{size_download}\n" --max-time 90 "https://www.in.gov.br/consulta/-/buscar/dou?q=%22Norma+Regulamentadora%22&s=do1&exactDate=ano&sortType=0&delta=50"
+          UA="Mozilla/5.0 (compatible; SafetyNexo/1.0; acompanhamento de normas)"
+          curl -sS -L -A "$UA" -o busca1.html -w "busca1 %{http_code} %{size_download}\n" --max-time 90 "https://www.in.gov.br/consulta/-/buscar/dou?q=%22Norma+Regulamentadora%22&s=do1&exactDate=ano&sortType=1&orgPrin=Minist%C3%A9rio+do+Trabalho+e+Emprego" || true
+          curl -sS -L -A "$UA" -o dia.html -w "dia %{http_code} %{size_download}\n" --max-time 90 "https://www.in.gov.br/leiturajornal?data=27-08-2024&secao=do1" || true
           python3 - <<'PY'
-          import re, json, urllib.request
-          h = open('busca.html', encoding='utf-8').read()
-          k = h.find('_params'); print('POS', k, repr(h[k-150:k+400]))
-          m = re.search(r'BuscaDouPortlet_params"[^>]*>(.*?)</script>', h, re.S)
-          if not m: print(h[:1500]); raise SystemExit(0)
-          d = json.loads(m.group(1))
-          print('chaves', list(d.keys()))
-          arr = d.get('jsonArray', [])
-          print('itens', len(arr))
-          for i in arr[:40]:
-              print(json.dumps({k: i.get(k) for k in ('title','pubDate','artType','hierarchyStr','urlTitle','content')}, ensure_ascii=False)[:600])
-          if arr:
-              u = 'https://www.in.gov.br/web/dou/-/' + arr[0]['urlTitle']
-              req = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0'})
-              p = urllib.request.urlopen(req, timeout=60).read().decode('utf-8')
-              k = p.find('texto-dou')
-              print('PAGINA', u, len(p), k)
-              print(p[k-200:k+3000])
+          import re, json
+          for f in ('busca1.html', 'dia.html'):
+              h = open(f, encoding='utf-8', errors='ignore').read()
+              m = re.search(r'<script[^>]+type="application/json"[^>]*>(.*?)</script>', h, re.S)
+              arr = json.loads(m.group(1)).get('jsonArray', []) if m else []
+              print('ARQ', f, len(arr), list(arr[0].keys()) if arr else '')
+              for i in [x for x in arr if 'Trabalho' in x.get('hierarchyStr','')][:15]:
+                  print('  ', i.get('pubDate'), '|', i.get('title'), '|', i.get('hierarchyStr'), '|', re.sub('<[^>]+>','',i.get('content',''))[:300])
+              if f == 'busca1.html' and arr:
+                  open('url.txt','w').write('https://www.in.gov.br/web/dou/-/' + arr[0]['urlTitle'])
           PY
+          U=$(cat url.txt 2>/dev/null || echo "")
+          if [ -n "$U" ]; then
+            curl -sS -L -A "$UA" -o ato.html -w "ato %{http_code} %{size_download}\n" --max-time 90 "$U" || true
+            python3 -c "
+          h=open('ato.html',encoding='utf-8',errors='ignore').read(); k=h.find('texto-dou'); print('pos',k); print(h[max(k-300,0):k+3000])"
+          fi

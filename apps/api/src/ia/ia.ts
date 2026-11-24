@@ -110,3 +110,24 @@ Liste o que está certo (boas práticas), se houver.
 Em prazoSugeridoDias, sugira em quantos dias inspecionar o local de novo: menos dias quando há risco alto.
 Se uma foto não mostra um ambiente de trabalho, ignore essa foto e diga isso no resumo.`,
   `Contexto informado pela técnica: ${contexto || 'nenhum'}.`, imagens);
+
+// Mudança em NR achada no Diário Oficial: explica em linguagem simples para a consultora de SST.
+export const MudancaNorma = z.object({
+  titulo: z.string(),
+  normas: z.array(z.string()),
+  resumo: z.string(),
+  oQueFazer: z.string(),
+  vigenciaEm: z.string().nullable(),
+});
+export type MudancaNorma = z.infer<typeof MudancaNorma>;
+
+export const explicarMudancaNorma = (textoOficial: string) => perguntar(MudancaNorma,
+  `Você recebe o texto de um ato publicado no Diário Oficial da União que mexe em uma ou mais Normas Regulamentadoras.
+Explique para uma consultora de SST, como uma colega explicaria, sem juridiquês e sem cara de texto de robô.
+titulo: até 90 caracteres, começando pelas NRs (ex.: "NR-01: prazo do capítulo 1.5 adiado para 2027").
+normas: as NRs afetadas no formato "NR-01", "NR-35".
+resumo: o que mudou de fato, em 3 a 6 frases curtas. Diga o que era antes e como fica, quando o texto permitir. Cite o item da NR só quando estiver no texto.
+oQueFazer: o que a consultora precisa revisar nas empresas (PGR, PCMSO, treinamentos, fichas, laudos etc.), em 1 a 4 frases. Se não precisa fazer nada agora, diga isso.
+vigenciaEm: a data em que passa a valer, no formato AAAA-MM-DD, ou null se o texto não diz.
+Use só o que está no texto. Não invente prazos nem itens.`,
+  textoOficial.slice(0, 120000));

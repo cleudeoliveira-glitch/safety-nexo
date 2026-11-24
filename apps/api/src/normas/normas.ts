@@ -1,9 +1,13 @@
-import { BadRequestException, Body, Controller, Delete, Get, Injectable, Module, NotFoundException, Param, Post, Put } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Headers, Injectable, Module, NotFoundException, Param, Post, Put } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsDateString, IsInt, IsOptional, IsString, IsUrl, Length, MaxLength, Min } from 'class-validator';
 import { SomenteAdmin } from '../admin/admin-plataforma';
+import { Publica } from '../auth/publica.decorator';
+import { conferirSegredo } from '../common/segredo';
+import { iaConfigurada } from '../importacao/leitor';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { MonitorNormasService } from './monitor';
 
 export class AvisoNormaDto {
   @IsString() @Length(3, 200, { message: 'Dê um título ao aviso.' }) titulo!: string;
@@ -50,10 +54,23 @@ export class NormasService {
   constructor(private readonly prisma: PrismaService) {}
 
   listarAdmin() {
-    return this.prisma.avisoNorma.findMany({ orderBy: { criadoEm: 'desc' }, include: { _count: { select: { lidos: true } } } });
+    return this.prisma.avisoNorma.findMany({ where: { status: { not: 'DESCARTADO' } }, orderBy: { criadoEm: 'desc' }, include: { _count: { select: { lidos: true } } } });
   }
 
-  criar(d: AvisoNormaDto) { return this.prisma.avisoNorma.create({ data: dados(d) }); }
+  criar(d: AvisoNormaDto) { return this.prisma.avisoNorma.create({ data: { ...dados(d), publicadoEm: new Date() } }); }
+
+  // Um toque da dona: o rascunho achado sozinho vai para as consultorias (tela e e-mail da semana).
+  async publicar(id: string) {
+    await this.existe(id);
+    return this.prisma.avisoNorma.update({ where: { id }, data: { status: 'PUBLICADO', publicadoEm: new Date() } });
+  }
+
+  // Descartado fica guardado (sem aparecer) para a busca não cadastrar o mesmo ato de novo.
+  async descartar(id: string) {
+    await this.existe(id);
+    await this.prisma.avisoNorma.update({ where: { id }, data: { status: 'DESCARTADO' } });
+    return { ok: true };
+  }
 
   async atualizar(id: string, d: AvisoNormaDto) {
     await this.existe(id);
@@ -61,7 +78,9 @@ export class NormasService {
   }
 
   async remover(id: string) {
-    await this.existe(id);
+    const a = await this.prisma.avisoNorma.findUnique({ where: { id }, select: { fonte: true } });
+    if (!a) throw new NotFoundException('Aviso não encontrado');
+    if (a.fonte) return this.descartar(id); // achado no Diário Oficial: só some, para não voltar na próxima busca
     await this.prisma.avisoNorma.delete({ where: { id } });
     return { ok: true };
   }
@@ -73,12 +92,12 @@ export class NormasService {
   // Para a consultoria: cada aviso com as empresas clientes dela que são afetadas.
   async daConsultoria(consultoriaId: string) {
     const [avisos, empresas, lidos] = await Promise.all([
-      this.prisma.avisoNorma.findMany({ orderBy: [{ vigenciaEm: 'desc' }, { criadoEm: 'desc' }], take: 100 }),
+      this.prisma.avisoNorma.findMany({ where: { status: 'PUBLICADO' }, orderBy: [{ vigenciaEm: 'desc' }, { criadoEm: 'desc' }], take: 100 }),
       this.prisma.empresa.findMany({ where: { consultoriaId }, select: { id: true, razaoSocial: true, cnae: true, grauRisco: true, numFuncionarios: true } }),
       this.prisma.avisoNormaLido.findMany({ where: { consultoriaId }, select: { avisoId: true } }),
     ]);
     const lido = new Set(lidos.map((l) => l.avisoId));
-    return avisos.map((a) => ({
+    return avisos.map(({ textoOficial: _t, fonte: _f, ...a }) => ({
       ...a,
       lido: lido.has(a.id),
       empresas: empresas.filter((e) => afeta(a, e)).map((e) => ({ id: e.id, razaoSocial: e.razaoSocial })),
@@ -86,7 +105,7 @@ export class NormasService {
   }
 
   async marcarLido(consultoriaId: string, avisoId: string) {
-    await this.existe(avisoId);
+    if (!(await this.prisma.avisoNorma.findFirst({ where: { id: avisoId, status: 'PUBLICADO' }, select: { id: true } }))) throw new NotFoundException('Aviso não encontrado');
     await this.prisma.avisoNormaLido.upsert({ where: { avisoId_consultoriaId: { avisoId, consultoriaId } }, create: { avisoId, consultoriaId }, update: {} });
     return { ok: true };
   }
@@ -95,8 +114,12 @@ export class NormasService {
 @SomenteAdmin()
 @Controller('admin/normas')
 export class NormasAdminController {
-  constructor(private readonly normas: NormasService) {}
+  constructor(private readonly normas: NormasService, private readonly monitor: MonitorNormasService) {}
   @Get() listar() { return this.normas.listarAdmin(); }
+  @Get('busca') async busca() { return { ultima: await this.monitor.ultima(), iaLigada: iaConfigurada() }; }
+  @Post('busca') buscarAgora() { return this.monitor.buscar(); }
+  @Post(':id/publicar') publicar(@Param('id') id: string) { return this.normas.publicar(id); }
+  @Post(':id/descartar') descartar(@Param('id') id: string) { return this.normas.descartar(id); }
   @Post() criar(@Body() d: AvisoNormaDto) { return this.normas.criar(d); }
   @Put(':id') atualizar(@Param('id') id: string, @Body() d: AvisoNormaDto) { return this.normas.atualizar(id, d); }
   @Delete(':id') remover(@Param('id') id: string) { return this.normas.remover(id); }
@@ -112,5 +135,17 @@ export class NormasController {
   }
 }
 
-@Module({ controllers: [NormasAdminController, NormasController], providers: [NormasService], exports: [NormasService] })
+// Chamado todo dia pelo agendador do GitHub (.github/workflows/normas-dou.yml).
+@Publica()
+@Controller('tarefas')
+export class NormasTarefaController {
+  constructor(private readonly monitor: MonitorNormasService) {}
+  @Post('normas-dou')
+  buscar(@Headers('x-tarefa-segredo') segredo?: string) {
+    conferirSegredo(segredo, process.env.TAREFAS_SEGREDO, 'Falta TAREFAS_SEGREDO no servidor.', 'Segredo da tarefa incorreto.');
+    return this.monitor.buscar();
+  }
+}
+
+@Module({ controllers: [NormasAdminController, NormasController, NormasTarefaController], providers: [NormasService, MonitorNormasService], exports: [NormasService] })
 export class NormasModule {}
