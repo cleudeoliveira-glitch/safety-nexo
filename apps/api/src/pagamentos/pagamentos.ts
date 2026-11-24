@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Headers, HttpCode, Injectable, Logger, Module, NotFoundException, Post, ServiceUnavailableException } from '@nestjs/common';
 import { IsIn, IsString, Matches } from 'class-validator';
-import { ehAdminPlataforma } from '../admin/admin-plataforma';
+import { ehAdminPlataforma, SomenteAdmin } from '../admin/admin-plataforma';
 import { ILIMITADO, PLANOS, planoPorCodigo } from '../admin/planos';
 import { fimDoPeriodo, hojeMeioDia, meioDia, somarDias } from '../admin/vigencia';
 import { Publica } from '../auth/publica.decorator';
@@ -12,6 +12,7 @@ import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push';
 import { asaas, asaasLigado, AsaasPagamento, asaasProducao } from './asaas';
+import { dataBrasilia, diasAteBrasilia, EmailPronto, emailPlanoConfirmado, emailTesteAcabando, emailTesteAcabou } from './emails-plano';
 
 // Formas que o cliente escolhe na tela "Meu plano".
 // CARTAO: cartão de crédito, cobra sozinho todo mês. PIX: no 1º pagamento o banco oferece o Pix Automático.
@@ -36,6 +37,7 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 const dataBr = (d: Date) => d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 const valorDe = (plano: string) => planoPorCodigo(plano)?.precoMensal ?? 0;
 const limiteDe = (plano: string) => planoPorCodigo(plano)?.limiteEmpresas ?? ILIMITADO;
+const DIA = 86_400_000;
 
 @Injectable()
 export class PagamentosService {
@@ -202,6 +204,7 @@ export class PagamentosService {
         },
       });
       this.push.avisarAdmins({ titulo: 'Pagamento recebido', corpo: `${c.nome} pagou R$ ${p.value.toFixed(2).replace('.', ',')} do plano ${planoPorCodigo(r.plano)?.nome ?? r.plano}.`, url: '/admin', tag: `pago-${p.id}` }, 'plano');
+      await this.mandarRecibo(c.id, p.id, r.plano, p.value, pagoAte, trocou || c.plano === 'FREE' || !c.planoDesde);
     } else if (r.depois === 'ATRASADO' && daAssinaturaAtual && c.assinaturaStatus === 'ATIVA') {
       await this.prisma.consultoria.update({ where: { id: c.id }, data: { assinaturaStatus: 'ATRASADA' } });
     } else if (r.depois === 'ESTORNADO' && r.antes !== 'ESTORNADO') {
@@ -211,9 +214,83 @@ export class PagamentosService {
     return { ok: true };
   }
 
+  // E-mail "recebemos o seu pagamento" (ou "seu plano está liberado", no primeiro). Um só por pagamento:
+  // a marca reciboEm é gravada antes de mandar, então dois avisos do Asaas ao mesmo tempo não mandam dois e-mails.
+  private async mandarRecibo(consultoriaId: string, asaasId: string, plano: string, valor: number, pagoAte: Date, primeiro: boolean) {
+    if (!emailLigado()) return;
+    const marcou = await this.prisma.pagamentoPlano.updateMany({ where: { asaasId, reciboEm: null }, data: { reciboEm: new Date() } });
+    if (!marcou.count) return;
+    const usuarios = await this.prisma.usuario.findMany({ where: { consultoriaId, papel: 'CONSULTORIA' }, select: { nome: true, email: true }, orderBy: { createdAt: 'asc' } });
+    if (!usuarios.length || usuarios.some((u) => ehAdminPlataforma(u.email))) return;
+    const e = emailPlanoConfirmado({ nome: usuarios[0].nome, plano: planoPorCodigo(plano)?.nome ?? plano, valor, pagoAte, primeiro });
+    await enviarEmail(usuarios.map((u) => u.email), `Safety Nexo: ${e.assunto.charAt(0).toLowerCase()}${e.assunto.slice(1)}`, e.html)
+      .catch(async (erro) => {
+        // Não saiu: tira a marca para tentar de novo no próximo aviso do Asaas.
+        this.log.error(`recibo ${asaasId}: ${(erro as Error).message}`);
+        await this.prisma.pagamentoPlano.updateMany({ where: { asaasId }, data: { reciboEm: null } });
+      });
+  }
+
+  // Todo dia, para quem está no teste de 14 dias: e-mail 3 dias antes de acabar e outro no dia em que acabou.
+  // Cada e-mail sai uma vez só (marca em avisosPlano) e o ADM recebe o aviso no celular junto.
+  private async avisosDoTeste() {
+    const agora = Date.now();
+    const contas = await this.prisma.consultoria.findMany({
+      // Teste que acaba nos próximos 4 dias ou que acabou nas últimas 48 horas (não manda para quem acabou faz tempo).
+      where: { plano: 'FREE', bloqueada: false, testeAte: { gte: new Date(agora - 2 * DIA), lte: new Date(agora + 4 * DIA) } },
+      include: { usuarios: { where: { papel: 'CONSULTORIA' }, select: { nome: true, email: true }, orderBy: { createdAt: 'asc' } } },
+    });
+    let enviados = 0; let falhas = 0;
+    for (const c of contas) {
+      if (!c.usuarios.length || c.usuarios.some((u) => ehAdminPlataforma(u.email))) continue;
+      const fim = c.testeAte!;
+      const dias = diasAteBrasilia(fim);
+      const acabou = fim.getTime() <= agora;
+      const tipo = acabou ? 'FIM' : dias >= 1 && dias <= 3 ? 'ANTES' : null;
+      if (!tipo) continue;
+      const marca = `teste:${iso(fim)}:${tipo}`;
+      // Quem já recebeu o aviso de "acabou" não precisa mais do "vai acabar".
+      if (c.avisosPlano.includes(marca) || (tipo === 'ANTES' && c.avisosPlano.includes(`teste:${iso(fim)}:FIM`))) continue;
+      const e: EmailPronto = tipo === 'ANTES' ? emailTesteAcabando(c.usuarios[0].nome, fim, dias) : emailTesteAcabou(c.usuarios[0].nome, fim);
+      try {
+        await enviarEmail(c.usuarios.map((u) => u.email), e.assunto, e.html);
+        await this.prisma.consultoria.update({ where: { id: c.id }, data: { avisosPlano: { push: marca } } });
+        enviados++;
+        this.push.avisarAdmins({
+          titulo: tipo === 'ANTES' ? 'Teste acabando' : 'Teste terminou',
+          corpo: tipo === 'ANTES'
+            ? `O teste de ${c.nome} acaba em ${dataBrasilia(fim)}. Mandei o e-mail lembrando dos planos para ${c.usuarios[0].email}.`
+            : `O teste de ${c.nome} terminou e a conta passou para o Grátis. Mandei o e-mail com os planos para ${c.usuarios[0].email}.`,
+          url: '/admin', tag: `teste-${c.id}`,
+        }, 'teste');
+      } catch (erro) {
+        falhas++;
+        this.log.error(`aviso do teste ${c.id}: ${(erro as Error).message}`);
+      }
+    }
+    return { enviados, falhas };
+  }
+
+  // Painel ADM: manda os e-mails do teste e do plano, como o cliente recebe, só para o e-mail de quem pediu.
+  async exemplos(usuarioId: string) {
+    if (!emailLigado()) throw new ServiceUnavailableException('Falta a chave RESEND_API_KEY no servidor para mandar e-mails.');
+    const u = await this.prisma.usuario.findUnique({ where: { id: usuarioId }, select: { nome: true, email: true } });
+    if (!u) throw new NotFoundException('Usuário não encontrado.');
+    const daqui = (dias: number) => new Date(Date.now() + dias * DIA);
+    const lista = [
+      emailTesteAcabando(u.nome, daqui(3), 3),
+      emailTesteAcabou(u.nome, daqui(0)),
+      emailPlanoConfirmado({ nome: u.nome, plano: 'Profissional', valor: 197, pagoAte: daqui(30), primeiro: true }),
+      emailPlanoConfirmado({ nome: u.nome, plano: 'Profissional', valor: 197, pagoAte: daqui(60), primeiro: false }),
+    ];
+    for (const e of lista) await enviarEmail([u.email], `[Exemplo] ${e.assunto}`, e.html);
+    return { enviados: lista.length, para: u.email };
+  }
+
   // Todo dia: e-mail antes de vencer (quem não paga no cartão), logo depois de vencer, na véspera e no dia de ficar só para consulta.
   async avisosDeVencimento() {
     if (!emailLigado()) throw new ServiceUnavailableException('Falta a chave RESEND_API_KEY no servidor para mandar e-mails.');
+    const teste = await this.avisosDoTeste();
     const contas = await this.prisma.consultoria.findMany({
       where: { plano: { not: 'FREE' }, planoPagoAte: { not: null }, bloqueada: false },
       include: { usuarios: { where: { papel: 'CONSULTORIA' }, select: { nome: true, email: true } } },
@@ -253,12 +330,13 @@ export class PagamentosService {
         await enviarEmail(c.usuarios.map((u) => u.email), `Safety Nexo: ${assunto.toLowerCase()}`, html);
         await this.prisma.consultoria.update({ where: { id: c.id }, data: { avisosPlano: { push: marca } } });
         enviados++;
+        this.push.avisarAdmins({ titulo: 'Aviso de vencimento enviado', corpo: `${c.nome}: mandei o e-mail "${assunto}" para ${c.usuarios[0].email}.`, url: '/admin', tag: `vencimento-${c.id}` }, 'plano');
       } catch (e) {
         falhas++;
         this.log.error(`aviso de vencimento ${c.id}: ${(e as Error).message}`);
       }
     }
-    return { enviados, falhas };
+    return { enviados: enviados + teste.enviados, falhas: falhas + teste.falhas, teste };
   }
 }
 
@@ -286,6 +364,14 @@ export class AvisoAsaasController {
   }
 }
 
+@SomenteAdmin()
+@Controller('admin/emails-plano')
+export class EmailsPlanoController {
+  constructor(private readonly s: PagamentosService) {}
+  @Post('exemplos') @HttpCode(200)
+  exemplos(@Sessao() sessao: SessaoUsuario) { return this.s.exemplos(sessao.sub); }
+}
+
 // Chamado todo dia pelo agendador do GitHub (.github/workflows/regua-cobranca.yml).
 @Publica()
 @Controller('tarefas')
@@ -298,5 +384,5 @@ export class AvisosPlanoController {
   }
 }
 
-@Module({ controllers: [PagamentoPlanoController, AvisoAsaasController, AvisosPlanoController], providers: [PagamentosService] })
+@Module({ controllers: [PagamentoPlanoController, AvisoAsaasController, AvisosPlanoController, EmailsPlanoController], providers: [PagamentosService] })
 export class PagamentosModule {}

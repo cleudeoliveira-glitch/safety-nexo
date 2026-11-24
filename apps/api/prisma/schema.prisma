@@ -1416,6 +1416,7 @@ model PagamentoPlano {
   status        String      // PENDENTE, PAGO, ATRASADO, ESTORNADO, CANCELADO
   pagoEm        DateTime?
   linkFatura    String?
+  reciboEm      DateTime?   // quando o e-mail "recebemos o seu pagamento" saiu (um por pagamento)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 

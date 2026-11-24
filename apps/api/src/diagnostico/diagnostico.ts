@@ -332,7 +332,7 @@ export class DiagnosticoService {
     if (testeAcabando.length) {
       itens.push({
         id: 'cad:teste-acabando', grupo: g, titulo: `${testeAcabando.length} teste(s) grátis acabando em até 3 dias`, situacao: 'atencao',
-        resumo: 'Bom momento para uma mensagem oferecendo o plano.', detalhes: testeAcabando.map((c) => `${c.nome} · ${c.usuarios[0]?.email ?? ''} · teste até ${dia(c.testeAte!)}`),
+        resumo: 'O cliente recebe sozinho um e-mail lembrando dos planos 3 dias antes. Bom momento para uma mensagem sua também.', detalhes: testeAcabando.map((c) => `${c.nome} · ${c.usuarios[0]?.email ?? ''} · teste até ${dia(c.testeAte!)}`),
         comoResolver: 'Não é erro. Mande uma mensagem com o link de Planos para essas pessoas.',
       });
     }

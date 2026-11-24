@@ -32,6 +32,7 @@ export type AvisoPush = { titulo: string; corpo: string; url?: string; tag?: str
 export const TIPOS_AVISO = {
   cadastro: { nome: 'Cadastro novo', padrao: true },
   plano: { nome: 'Plano contratado, pagamento, cancelamento', padrao: true },
+  teste: { nome: 'Teste de 14 dias acabando ou terminado (e o e-mail que o cliente recebeu)', padrao: true },
   primeiroAcesso: { nome: 'Cliente entrou pela primeira vez', padrao: true },
   acessos: { nome: 'Toda vez que um cliente entra (pode ser muito aviso)', padrao: false },
   erro: { nome: 'Erro novo que um cliente viu', padrao: true },
@@ -46,6 +47,7 @@ const chavePref = (usuarioId: string) => `avisos:tipos:${usuarioId}`;
 class PreferenciasDto {
   @IsOptional() @IsBoolean() cadastro?: boolean;
   @IsOptional() @IsBoolean() plano?: boolean;
+  @IsOptional() @IsBoolean() teste?: boolean;
   @IsOptional() @IsBoolean() primeiroAcesso?: boolean;
   @IsOptional() @IsBoolean() acessos?: boolean;
   @IsOptional() @IsBoolean() erro?: boolean;
