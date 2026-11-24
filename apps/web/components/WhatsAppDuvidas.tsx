@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { lerToken } from '@/lib/sessao';
+
 // Botão flutuante do WhatsApp para dúvidas.
 // Aparece SÓ na página de Planos e no Painel inicial. Nas telas de preenchimento fica escondido,
 // para não cobrir o botão de salvar nem o teclado do celular.
@@ -10,7 +13,12 @@ const NUMERO = (process.env.NEXT_PUBLIC_WHATSAPP_SUPORTE ?? '5562994343838').rep
 const MENSAGEM = 'Olá! Tenho uma dúvida sobre o Safety Nexo.';
 
 export function WhatsAppDuvidas({ caminho }: { caminho: string }) {
+  // Na vitrine (endereço "/" sem login) o WhatsApp fica no topo, nas Dúvidas e no rodapé, e não flutua:
+  // assim não cobre texto, botão nem as setinhas do topo (pedido do Rodrigo em 24/11).
+  const [logado, setLogado] = useState<boolean | null>(null);
+  useEffect(() => setLogado(!!lerToken()), []);
   if (!NUMERO || !TELAS_COM_WHATSAPP.includes(caminho)) return null;
+  if (caminho === '/' && !logado) return null;
   return (
     <a
       href={`https://wa.me/${NUMERO}?text=${encodeURIComponent(MENSAGEM)}`}

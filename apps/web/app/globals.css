@@ -104,3 +104,8 @@ html.luva-sol .campo-sn,
 html.luva-sol main input:not([type='checkbox']):not([type='radio']),
 html.luva-sol main select,
 html.luva-sol main textarea { border-width: 3px; border-color: #000000; }
+
+/* Vitrine (página inicial aberta): fonte dos títulos. A variável vem do Landing; fora dele, usa a fonte normal. */
+.fonte-titulo {
+  font-family: var(--fonte-titulo, inherit);
+}
