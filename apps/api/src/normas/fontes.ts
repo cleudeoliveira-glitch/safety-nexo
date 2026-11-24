@@ -98,7 +98,7 @@ export function pontosDoTexto(texto: string): { ementa: string | null; artigos: 
   const limpo = texto.replace(/\s+/g, ' ');
   const em = limpo.match(/\d{4}\s+((?:Aprova|Altera|Disp[õo]e|Prorroga|Revoga|Estabelece|Institui|Inclui|Acrescenta|Atualiza|D[áa] nova reda[çc][ãa]o)(?:[^.]|\.(?=\S)){10,400}\.)/);
   const artigos: string[] = [];
-  for (const m of limpo.matchAll(/Art\.\s*(\d+)[º°o]?\.?\s*(.{10,600}?)(?=\s+Art\.\s*\d+[º°o]?|$)/g)) {
+  for (const m of limpo.matchAll(/Art\.\s*(\d+)[º°o]?\.?\s*(.{10,4000}?)(?=\s+Art\.\s*\d+[º°o]?|$)/g)) {
     if (artigos.length >= 4) break;
     let a = m[2].trim();
     if (/^Esta Portaria entra em vigor/i.test(a)) continue;

@@ -67,7 +67,7 @@ export function rascunhoSemIa(ato: AtoDou, texto: string, normas: string[]): Ras
   if (vig) partes.push(`Começa a valer em ${dia(vig)}.`);
   const dicas = normas.map((n) => O_QUE_REVISAR[n]).filter(Boolean);
   return {
-    titulo: corta(`${normas.join(', ')}: ${assunto}`, 200),
+    titulo: corta(`${normas.join(', ')}: ${assunto}`, 160),
     normas,
     resumo: corta(partes.join('\n\n'), 5000),
     oQueFazer: [...new Set(dicas)].concat('Leia o texto completo no link oficial antes de mudar os documentos.').join(' '),
@@ -105,11 +105,12 @@ export class MonitorNormasService {
 
   private async executar(): Promise<ResultadoBusca> {
     // Na primeira vez olha o último ano (traz as mudanças recentes para conferir); depois, a última semana.
-    const periodo: 'semana' | 'ano' = (await this.ultima()) ? 'semana' : 'ano';
+    const anterior = await this.ultima();
+    const periodo: 'semana' | 'ano' = anterior && anterior.lidos > 0 ? 'semana' : 'ano';
     const r: ResultadoBusca = { em: new Date().toISOString(), periodo, lidos: 0, mudancas: 0, novos: [], jaCadastrados: 0, erros: [] };
     const atos = new Map<string, AtoDou>();
-    // A busca devolve 20 por vez e mistura outros órgãos; a segunda frase puxa só o Ministério do Trabalho.
-    for (const termo of ['"Norma Regulamentadora"', '"Norma Regulamentadora" "Ministério do Trabalho e Emprego"', '"NR-" "Ministério do Trabalho e Emprego"']) {
+    // A busca devolve 20 por vez, misturando outros órgãos; o filtro abaixo fica só com o Ministério do Trabalho.
+    for (const termo of ['"Norma Regulamentadora"', '"Normas Regulamentadoras"']) {
       try {
         const url = urlBuscaDou(termo, periodo);
         for (const a of lerBuscaDou((await baixar(url, 90000)).toString('utf-8'))) atos.set(a.url, a);
@@ -131,7 +132,8 @@ export class MonitorNormasService {
           if (lido.ementa) ato.ementa = lido.ementa;
         } catch (e) { this.log.warn(`Texto de ${ato.titulo} não abriu: ${(e as Error).message}`); }
         if (!atoQueMudaNr(ato)) continue; // com a ementa verdadeira, confere de novo
-        const normas = nrsCitadas(`${ato.titulo} ${ato.ementa} ${texto}`);
+        // NRs da ementa (o assunto do ato). O texto inteiro cita muitas outras de passagem.
+        const normas = nrsCitadas(`${ato.titulo} ${ato.ementa}`).length ? nrsCitadas(`${ato.titulo} ${ato.ementa}`) : nrsCitadas(texto);
         if (!normas.length) continue;
         let d = rascunhoSemIa(ato, texto, normas);
         let comIa = false;
