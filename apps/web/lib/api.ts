@@ -1038,9 +1038,13 @@ export async function imagemProtegida(caminho: string): Promise<string> {
 export type AvisoNorma = {
   id: string; titulo: string; normas: string[]; resumo: string; oQueFazer: string | null; linkOficial: string | null;
   publicadaEm: string | null; vigenciaEm: string | null; cnaePrefixos: string[]; grauRiscoMin: number | null; funcionariosMin: number | null; criadoEm: string;
+  status?: 'RASCUNHO' | 'PUBLICADO' | 'DESCARTADO'; origem?: 'MANUAL' | 'AUTOMATICO'; textoOficial?: string | null; publicadoEm?: string | null;
+};
+export type BuscaNormas = {
+  em: string; periodo: string; lidos: number; mudancas: number; novos: { titulo: string; comIa: boolean }[]; jaCadastrados: number; erros: string[];
 };
 export type AvisoNormaConsultoria = AvisoNorma & { lido: boolean; empresas: { id: string; razaoSocial: string }[] };
-export type NovoAvisoNorma = Omit<AvisoNorma, 'id' | 'criadoEm' | 'oQueFazer' | 'linkOficial' | 'publicadaEm' | 'vigenciaEm' | 'grauRiscoMin' | 'funcionariosMin'> & {
+export type NovoAvisoNorma = Omit<AvisoNorma, 'id' | 'criadoEm' | 'status' | 'origem' | 'textoOficial' | 'publicadoEm' | 'oQueFazer' | 'linkOficial' | 'publicadaEm' | 'vigenciaEm' | 'grauRiscoMin' | 'funcionariosMin'> & {
   oQueFazer?: string; linkOficial?: string; publicadaEm?: string; vigenciaEm?: string; grauRiscoMin?: number; funcionariosMin?: number;
 };
 export const normas = {
@@ -1050,6 +1054,10 @@ export const normas = {
   adminCriar: (d: NovoAvisoNorma) => chamar<AvisoNorma>('POST', '/admin/normas', d),
   adminAtualizar: (id: string, d: NovoAvisoNorma) => chamar<AvisoNorma>('PUT', `/admin/normas/${id}`, d),
   adminRemover: (id: string) => chamar<{ ok: boolean }>('DELETE', `/admin/normas/${id}`),
+  adminPublicar: (id: string) => chamar<AvisoNorma>('POST', `/admin/normas/${id}/publicar`),
+  adminDescartar: (id: string) => chamar<{ ok: boolean }>('POST', `/admin/normas/${id}/descartar`),
+  adminBusca: () => chamar<{ ultima: BuscaNormas | null; iaLigada: boolean }>('GET', '/admin/normas/busca'),
+  adminBuscarAgora: () => chamar<BuscaNormas>('POST', '/admin/normas/busca'),
 };
 
 export const avisosEmail = {
