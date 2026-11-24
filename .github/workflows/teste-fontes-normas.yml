@@ -36,4 +36,4 @@ jobs:
             }
           })();
           JS
-          cd apps/api && node /tmp/t.js
+          cd apps/api && NODE_PATH=$GITHUB_WORKSPACE/node_modules:$GITHUB_WORKSPACE/apps/api/node_modules node /tmp/t.js
