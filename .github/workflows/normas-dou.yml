@@ -1,0 +1,25 @@
+# Todo dia às 7h (Brasília) pede ao servidor para procurar no Diário Oficial mudanças nas NRs.
+# Cada mudança nova vira um rascunho no Painel ADM > Normas, com aviso no celular da dona, que publica com um toque.
+# Precisa do segredo TAREFAS_SEGREDO no GitHub (Settings > Secrets and variables > Actions),
+# igual ao do servidor no Render. O primeiro pedido também acorda o servidor gratuito.
+name: Mudanças nas NRs (Diário Oficial)
+
+on:
+  schedule:
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+
+jobs:
+  buscar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acordar o servidor
+        run: curl -s --max-time 120 https://safety-nexo-api.onrender.com/health || true
+      - name: Procurar mudanças
+        env:
+          SEGREDO: ${{ secrets.TAREFAS_SEGREDO }}
+        run: |
+          if [ -z "$SEGREDO" ]; then echo "::error::Falta o segredo TAREFAS_SEGREDO no GitHub (Settings > Secrets and variables > Actions)."; exit 1; fi
+          curl -sS --fail-with-body --max-time 900 --retry 2 --retry-delay 60 \
+            -X POST -H "x-tarefa-segredo: $SEGREDO" \
+            https://safety-nexo-api.onrender.com/tarefas/normas-dou
