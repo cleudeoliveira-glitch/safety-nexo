@@ -8,9 +8,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for u in "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-1" \
-                   "https://www.in.gov.br/consulta/-/buscar/dou?q=%22Norma+Regulamentadora%22&s=do1&exactDate=mes&sortType=0"; do
-            curl -sS -L -A "Mozilla/5.0 (SafetyNexo monitor de normas)" -o pagina.html -w "%{http_code} %{size_download}\n" --max-time 60 "$u" || true
-            grep -o 'documentModified.\{0,200\}' pagina.html | head -2 || true
-            grep -o 'BuscaDouPortlet_params[^>]*>.\{0,1500\}' pagina.html | head -1 || true
-          done
+          curl -sS -L -A "Mozilla/5.0" -o busca.html --max-time 60 "https://www.in.gov.br/consulta/-/buscar/dou?q=%22Norma+Regulamentadora%22&s=do1&exactDate=ano&sortType=0&delta=50"
+          python3 - <<'PY'
+          import re, json, urllib.request
+          h = open('busca.html', encoding='utf-8').read()
+          m = re.search(r'BuscaDouPortlet_params"[^>]*>(.*?)</script>', h, re.S)
+          d = json.loads(m.group(1))
+          print('chaves', list(d.keys()))
+          arr = d.get('jsonArray', [])
+          print('itens', len(arr))
+          for i in arr[:40]:
+              print(json.dumps({k: i.get(k) for k in ('title','pubDate','artType','hierarchyStr','urlTitle','content')}, ensure_ascii=False)[:600])
+          if arr:
+              u = 'https://www.in.gov.br/web/dou/-/' + arr[0]['urlTitle']
+              req = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0'})
+              p = urllib.request.urlopen(req, timeout=60).read().decode('utf-8')
+              k = p.find('texto-dou')
+              print('PAGINA', u, len(p), k)
+              print(p[k-200:k+3000])
+          PY
