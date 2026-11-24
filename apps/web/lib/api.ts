@@ -1002,6 +1002,7 @@ export const admin = {
   atualizar: (id: string, dados: { plano?: string; limiteEmpresas?: number; bloqueada?: boolean; motivoBloqueio?: string; observacaoAdm?: string; renovarMeses?: 1 | 12; pagoAte?: string }) =>
     chamar<unknown>('PATCH', `/admin/consultorias/${id}`, dados),
   convites: () => chamar<{ link: string; whatsapp: string }>('GET', '/admin/convites'),
+  exemplosEmailsPlano: () => chamar<{ enviados: number; para: string }>('POST', '/admin/emails-plano/exemplos'),
   linkSenha: (usuarioId: string) => chamar<{ link: string; whatsapp: string }>('POST', `/admin/usuarios/${usuarioId}/link-senha`),
   avisosCelular: () => chamar<{ chavePublica: string; aparelhos: { endpoint: string; aparelho: string | null; criadoEm: string }[]; preferencias: Record<string, boolean>; tipos: { id: string; nome: string }[] }>('GET', '/admin/avisos-celular'),
   preferenciasAvisos: (p: Record<string, boolean>) => chamar<Record<string, boolean>>('PUT', '/admin/avisos-celular/preferencias', p),

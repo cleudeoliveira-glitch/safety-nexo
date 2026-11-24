@@ -2,7 +2,8 @@ import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoun
 import { Prisma } from '@prisma/client';
 import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 import { AuthService } from '../auth/auth.service';
-import { WEB } from '../common/email';
+import { emailLigado, enviarEmail, WEB } from '../common/email';
+import { emailPlanoConfirmado } from '../pagamentos/emails-plano';
 import { PrismaService } from '../prisma/prisma.service';
 import { ehAdminPlataforma, SomenteAdmin } from './admin-plataforma';
 import { ILIMITADO, PLANOS, planoPorCodigo } from './planos';
@@ -194,6 +195,16 @@ export class AdminController {
       dados.motivoBloqueio = dto.bloqueada ? (dto.motivoBloqueio?.trim() || null) : null;
     }
     if (dto.observacaoAdm !== undefined) dados.observacaoAdm = dto.observacaoAdm.trim() || null;
-    return this.prisma.consultoria.update({ where: { id }, data: dados });
+    const salva = await this.prisma.consultoria.update({ where: { id }, data: dados });
+    // Plano pago liberado à mão por quem saiu do Grátis: o cliente recebe o e-mail avisando que já pode usar.
+    const novo = dto.plano ? planoPorCodigo(dto.plano) : null;
+    if (novo && novo.precoMensal > 0 && atual.plano === 'FREE' && emailLigado()) {
+      const usuarios = await this.prisma.usuario.findMany({ where: { consultoriaId: id, papel: 'CONSULTORIA' }, select: { nome: true, email: true }, orderBy: { createdAt: 'asc' } });
+      if (usuarios.length && !usuarios.some((u) => ehAdminPlataforma(u.email))) {
+        const e = emailPlanoConfirmado({ nome: usuarios[0].nome, plano: novo.nome, valor: null, pagoAte: salva.planoPagoAte, primeiro: true });
+        await enviarEmail(usuarios.map((u) => u.email), `Safety Nexo: ${e.assunto.charAt(0).toLowerCase()}${e.assunto.slice(1)}`, e.html).catch(() => undefined);
+      }
+    }
+    return salva;
   }
 }

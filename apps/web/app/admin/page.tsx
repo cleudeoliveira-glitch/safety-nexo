@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Aviso, Botao } from '@/components/ui';
 import { AvisosCelular } from '@/components/AvisosCelular';
+import { EmailsDoPlano } from '@/components/EmailsDoPlano';
 import { AbasAdm } from '@/components/AbasAdm';
 import { admin, ConsultoriaAdm, ConsultoriaAdmDetalhe, PainelAdm } from '@/lib/api';
 import { lerToken } from '@/lib/sessao';
@@ -112,6 +113,7 @@ export default function PainelAdmPage() {
       </div>
       <AbasAdm />
       <AvisosCelular />
+      <EmailsDoPlano />
       <ConvidarCliente />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
