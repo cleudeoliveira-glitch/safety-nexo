@@ -68,7 +68,7 @@ export class MeuPlanoController {
     const c = await this.prisma.consultoria.update({ where: { id: consultoriaId }, data: { pedidoPlano: dto.plano, pedidoPlanoEm: new Date() } });
     const plano = planoPorCodigo(dto.plano);
     const preco = plano?.precoMensal ? ` (R$ ${plano.precoMensal}/mês)` : '';
-    this.push.avisarAdmins({ titulo: 'Novo pedido de plano', corpo: `${c.nome} pediu o plano ${plano?.nome ?? dto.plano}${preco}. Confira no Painel ADM.`, url: '/admin', tag: `plano-${consultoriaId}` });
+    this.push.avisarAdmins({ titulo: 'Novo pedido de plano', corpo: `${c.nome} pediu o plano ${plano?.nome ?? dto.plano}${preco}. Confira no Painel ADM.`, url: '/admin', tag: `plano-${consultoriaId}` }, 'plano');
     return this.ver(consultoriaId, sessao);
   }
 }

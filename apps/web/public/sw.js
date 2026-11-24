@@ -1,7 +1,7 @@
 // Service worker do Safety Nexo: guarda as telas e os arquivos do site para abrir sem internet.
 // Os dados (empresas, checklists e o que foi preenchido no campo) ficam no próprio aparelho, pela tela /campo.
 // Os modelos do reconhecimento facial também ficam guardados, para usar o rosto sem internet.
-// Também recebe os avisos do Painel ADM (novo cadastro, pedido de plano), que aparecem com a tela bloqueada.
+// Também recebe os avisos do Painel ADM (cadastro, plano, erro novo, pedido de cliente, norma, resumo do dia), que aparecem com a tela bloqueada.
 const VERSAO = 'sn-v5';
 const ESSENCIAIS = ['/campo', '/material', '/calculadoras', '/manifest.webmanifest', '/logo.png', '/icone-192.png'];
 

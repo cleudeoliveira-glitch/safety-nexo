@@ -53,7 +53,7 @@ export class AuthService {
         },
       },
     });
-    this.push.avisarAdmins({ titulo: 'Novo cadastro no Safety Nexo', corpo: `${usuario.nome} (${dto.nomeConsultoria.trim()}) acabou de criar a conta.`, url: '/admin', tag: 'cadastro' });
+    this.push.avisarAdmins({ titulo: 'Novo cadastro no Safety Nexo', corpo: `${usuario.nome} (${dto.nomeConsultoria.trim()}) acabou de criar a conta.`, url: '/admin', tag: 'cadastro' }, 'cadastro');
     return this.emitir(usuario);
   }
 
@@ -84,10 +84,11 @@ export class AuthService {
     } catch {
       throw new BadRequestException('Este link venceu. Peça um link novo em "Esqueci minha senha".');
     }
-    const usuario = dados.uso === 'senha' ? await this.prisma.usuario.findUnique({ where: { id: dados.sub }, include: { consultoria: { select: { bloqueada: true } } } }) : null;
+    const usuario = dados.uso === 'senha' ? await this.prisma.usuario.findUnique({ where: { id: dados.sub }, include: { consultoria: { select: { bloqueada: true, nome: true } } } }) : null;
     if (!usuario || usuario.senhaHash.slice(-12) !== dados.v) throw new BadRequestException('Este link já foi usado. Peça um link novo em "Esqueci minha senha".');
     if (usuario.consultoria.bloqueada && !this.ehAdmin(usuario)) throw new ForbiddenException('Este acesso está suspenso. Fale com o suporte do Safety Nexo.');
     const atualizado = await this.prisma.usuario.update({ where: { id: usuario.id }, data: { senhaHash: await bcrypt.hash(dto.senha, 10), ultimoAcesso: new Date() } });
+    this.avisarEntrada(usuario);
     return this.emitir(atualizado);
   }
 
@@ -98,7 +99,7 @@ export class AuthService {
     }
     const usuario = await this.prisma.usuario.findUnique({
       where: { email },
-      include: { consultoria: { select: { bloqueada: true } } },
+      include: { consultoria: { select: { bloqueada: true, nome: true } } },
     });
     const senhaOk = await bcrypt.compare(dto.senha, usuario?.senhaHash ?? HASH_FALSO);
     if (!usuario || !senhaOk) {
@@ -110,7 +111,21 @@ export class AuthService {
       throw new ForbiddenException('Este acesso está suspenso. Fale com o suporte do Safety Nexo.');
     }
     await this.prisma.usuario.update({ where: { id: usuario.id }, data: { ultimoAcesso: new Date() } });
+    this.avisarEntrada(usuario);
     return this.emitir(usuario);
+  }
+
+  // Aviso no celular do dono quando um cliente entra: sempre na primeira vez; nas outras, só se ele ligou
+  // "toda vez que um cliente entra", e no máximo um aviso a cada 6 horas por pessoa. O próprio ADM não avisa.
+  private avisarEntrada(usuario: { id: string; nome: string; email: string; papel: string; ultimoAcesso: Date | null; consultoria: { nome: string } }) {
+    if (this.ehAdmin(usuario)) return;
+    const quem = `${usuario.nome}${usuario.papel === 'EMPRESA' ? ' (empresa cliente de ' : ' ('}${usuario.consultoria.nome})`;
+    if (!usuario.ultimoAcesso) {
+      this.push.avisarAdmins({ titulo: 'Primeiro acesso', corpo: `${quem} entrou no sistema pela primeira vez.`, url: '/admin', tag: `acesso-${usuario.id}` }, 'primeiroAcesso');
+      return;
+    }
+    if (Date.now() - usuario.ultimoAcesso.getTime() < 6 * 3600_000) return;
+    this.push.avisarAdmins({ titulo: 'Cliente entrou', corpo: `${quem} entrou no sistema agora.`, url: '/admin', tag: `acesso-${usuario.id}` }, 'acessos');
   }
 
   verificar(token: string): Sessao {

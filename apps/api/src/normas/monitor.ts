@@ -166,10 +166,10 @@ export class MonitorNormasService {
     await this.prisma.configPlataforma.upsert({ where: { chave: CHAVE_ULTIMA }, create: { chave: CHAVE_ULTIMA, valor: JSON.stringify(r) }, update: { valor: JSON.stringify(r) } });
     if (r.novos.length) {
       this.push.avisarAdmins({
-        titulo: r.novos.length === 1 ? 'Mudança em NR para conferir' : `${r.novos.length} mudanças em NRs para conferir`,
-        corpo: r.novos.map((n) => n.titulo).join(' · ').slice(0, 180),
+        titulo: r.novos.length === 1 ? 'Norma nova para você aprovar' : `${r.novos.length} normas novas para você aprovar`,
+        corpo: `${r.novos.map((n) => n.titulo).join(' · ').slice(0, 150)}. Confira e toque em Publicar para mandar aos assinantes.`,
         url: '/admin/normas', tag: 'normas',
-      });
+      }, 'normas');
     }
     this.log.log(`Busca de normas: ${r.lidos} atos lidos, ${r.mudancas} mudam NR, ${r.novos.length} novos, ${r.erros.length} erros.`);
     return r;

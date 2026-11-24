@@ -360,6 +360,11 @@ function Menu({ caminho }: { caminho: string }) {
           </Link>
           <BotaoLuvaSol claro pequeno />
         </div>
+        {!usuario?.adminPlataforma && (
+          <Link href={`/suporte?tela=${encodeURIComponent(caminho)}`} className={`flex min-h-[36px] items-center gap-2 whitespace-nowrap rounded-lg px-2 text-[13px] transition ${caminho === '/suporte' ? 'bg-white text-primary' : 'text-white/85 hover:bg-white/10'}`}>
+            <Icone nome="balao" className="h-[18px] w-[18px] text-menta/80" /> Relatar problema
+          </Link>
+        )}
         <div className="mt-1.5 flex items-center gap-2 rounded-lg bg-black/15 px-2.5 py-1.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-menta text-sm font-bold text-primary-escuro">
             {(usuario?.nome ?? '?').trim().charAt(0).toUpperCase()}

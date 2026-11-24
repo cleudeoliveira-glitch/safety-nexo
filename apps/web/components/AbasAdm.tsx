@@ -2,11 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { admin } from '@/lib/api';
 import { DoutorNexo } from './DoutorNexo';
 
-// Abas do Painel ADM: consultorias, avisos de normas e o Diagnóstico (premium).
+// Abas do Painel ADM: consultorias, pedidos dos clientes, avisos de normas e o Diagnóstico (premium).
 export function AbasAdm() {
   const caminho = usePathname();
+  const [semResposta, setSemResposta] = useState(0);
+  useEffect(() => { admin.suporte().then((l) => setSemResposta(l.filter((p) => p.status === 'ABERTO').length)).catch(() => undefined); }, [caminho]);
   const aba = (href: string, conteudo: React.ReactNode) => {
     const ativa = caminho === href;
     return (
@@ -18,6 +22,10 @@ export function AbasAdm() {
   return (
     <nav className="flex gap-1 overflow-x-auto border-b border-border">
       {aba('/admin', 'Consultorias')}
+      {aba('/admin/suporte', <>
+        Pedidos dos clientes
+        {semResposta > 0 && <span className="rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-bold text-white">{semResposta}</span>}
+      </>)}
       {aba('/admin/normas', 'Avisos de normas')}
       {aba('/admin/diagnostico', <>
         <DoutorNexo tamanho={24} /> Diagnóstico

@@ -3,13 +3,36 @@ import { BaseExceptionFilter } from '@nestjs/core';
 import { createHash } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import type { PrismaService } from '../prisma/prisma.service';
+import type { PushService } from '../push/push';
 
 // Caderno de falhas do Diagnóstico (Painel ADM).
 // Guarda cada erro que um cliente viu, para o dono do sistema não precisar abrir os registros do Render.
 // Erros iguais (mesma origem, rota e mensagem) viram uma linha só, com a contagem de vezes.
 
 let banco: PrismaService | null = null;
-export const ligarCadernoDeFalhas = (prisma: PrismaService) => { banco = prisma; };
+let aviso: PushService | null = null;
+export const ligarCadernoDeFalhas = (prisma: PrismaService, push?: PushService) => { banco = prisma; aviso = push ?? null; };
+
+// Erro novo (que ainda não estava no caderno) vira aviso no celular do dono.
+// No máximo 6 avisos de erro por hora, para uma pane grande não encher o celular: o resto fica no Diagnóstico.
+const ONDE: Record<Falha['origem'], string> = { MOTOR: 'no sistema', TELA: 'numa tela', ASAAS: 'no pagamento (Asaas)', EMAIL: 'no envio de e-mail' };
+let avisosNaHora: number[] = [];
+function avisarErroNovo(f: Falha & { mensagem: string }, rota: string | null) {
+  if (!aviso || !banco) return;
+  const agora = Date.now();
+  avisosNaHora = avisosNaHora.filter((t) => agora - t < 3600_000);
+  if (avisosNaHora.length >= 6) return;
+  avisosNaHora.push(agora);
+  const push = aviso;
+  const nomeCliente = f.consultoriaId
+    ? banco.consultoria.findUnique({ where: { id: f.consultoriaId }, select: { nome: true } }).then((c) => c?.nome ?? null).catch(() => null)
+    : Promise.resolve(null);
+  nomeCliente.then((cliente) => push.avisarAdmins({
+    titulo: `Erro novo ${ONDE[f.origem]}`,
+    corpo: `${cliente ? `${cliente} viu um erro` : 'Apareceu um erro'}${rota ? ` em ${rota}` : ''}: "${f.mensagem.slice(0, 110)}". Veja no Diagnóstico.`,
+    url: '/admin/diagnostico', tag: `erro-${agora}`,
+  }, 'erro'));
+}
 
 export type Falha = { origem: 'MOTOR' | 'TELA' | 'ASAAS' | 'EMAIL'; rota?: string | null; status?: number | null; mensagem: string; detalhe?: string | null; consultoriaId?: string | null; usuarioId?: string | null };
 
@@ -31,6 +54,7 @@ export function registrarFalha(f: Falha) {
       create: { chave, origem: f.origem, rota, status: f.status ?? null, mensagem, detalhe, consultoriaId: f.consultoriaId ?? null, usuarioId: f.usuarioId ?? null, ultimaEm: agora },
       update: { vezes: { increment: 1 }, ultimaEm: agora, status: f.status ?? undefined, detalhe: detalhe ?? undefined, consultoriaId: f.consultoriaId ?? undefined, usuarioId: f.usuarioId ?? undefined },
     })
+    .then((r) => { if (r.vezes === 1) avisarErroNovo({ ...f, mensagem }, rota); })
     .catch(() => undefined);
 }
 

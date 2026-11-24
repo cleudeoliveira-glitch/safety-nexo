@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Global, Injectable, Logger, Module, Post, ServiceUnavailableException } from '@nestjs/common';
-import { IsOptional, IsString, Matches, MaxLength, ValidateNested } from 'class-validator';
+import { Body, Controller, Delete, Get, Global, Injectable, Logger, Module, Post, Put, ServiceUnavailableException } from '@nestjs/common';
+import { IsBoolean, IsOptional, IsString, Matches, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import * as webpush from 'web-push';
 import { emailsAdmin, SomenteAdmin } from '../admin/admin-plataforma';
@@ -7,7 +7,7 @@ import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 // Avisos que caem na tela do celular, mesmo bloqueada (Web Push), para os ADMs da plataforma:
-// novo cadastro e novo pedido de plano. Não usa serviço pago: o aviso vai pelo próprio Google (Android/Chrome),
+// cadastro, plano, primeiro acesso, erro novo, cliente pedindo ajuda, norma para aprovar e o resumo do dia. Não usa serviço pago: o aviso vai pelo próprio Google (Android/Chrome),
 // Apple (iPhone) ou Mozilla, que entregam de graça.
 // As duas chaves que assinam os avisos são criadas sozinhas na primeira vez e ficam guardadas no banco.
 // Se quiser fixar, dá para pôr VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY no Render (opcional).
@@ -26,6 +26,33 @@ class SairDto {
 }
 
 export type AvisoPush = { titulo: string; corpo: string; url?: string; tag?: string };
+
+// Tipos de aviso que cada ADM liga ou desliga no Painel ADM (cartão "Avisos no celular").
+// "acessos" (cada vez que um cliente entra) vem desligado para não virar excesso; o resto vem ligado.
+export const TIPOS_AVISO = {
+  cadastro: { nome: 'Cadastro novo', padrao: true },
+  plano: { nome: 'Plano contratado, pagamento, cancelamento', padrao: true },
+  primeiroAcesso: { nome: 'Cliente entrou pela primeira vez', padrao: true },
+  acessos: { nome: 'Toda vez que um cliente entra (pode ser muito aviso)', padrao: false },
+  erro: { nome: 'Erro novo que um cliente viu', padrao: true },
+  suporte: { nome: 'Cliente relatou um problema', padrao: true },
+  normas: { nome: 'Norma nova para aprovar', padrao: true },
+  resumo: { nome: 'Resumo do dia às 8h (pendências)', padrao: true },
+} as const;
+export type TipoAviso = keyof typeof TIPOS_AVISO;
+type Preferencias = Record<TipoAviso, boolean>;
+const chavePref = (usuarioId: string) => `avisos:tipos:${usuarioId}`;
+
+class PreferenciasDto {
+  @IsOptional() @IsBoolean() cadastro?: boolean;
+  @IsOptional() @IsBoolean() plano?: boolean;
+  @IsOptional() @IsBoolean() primeiroAcesso?: boolean;
+  @IsOptional() @IsBoolean() acessos?: boolean;
+  @IsOptional() @IsBoolean() erro?: boolean;
+  @IsOptional() @IsBoolean() suporte?: boolean;
+  @IsOptional() @IsBoolean() normas?: boolean;
+  @IsOptional() @IsBoolean() resumo?: boolean;
+}
 
 type Chaves = { publica: string; privada: string };
 
@@ -81,15 +108,39 @@ export class PushService {
     return this.prisma.avisoCelular.findMany({ where: { usuarioId }, select: { endpoint: true, aparelho: true, criadoEm: true }, orderBy: { criadoEm: 'desc' } });
   }
 
-  // Manda para os aparelhos dos ADMs. Nunca derruba quem chamou: se falhar, só fica no registro.
-  avisarAdmins(aviso: AvisoPush) {
-    this.enviarParaAdmins(aviso).catch((e) => this.log.warn(`Aviso no celular não saiu: ${(e as Error).message}`));
+  async preferencias(usuarioId: string): Promise<Preferencias> {
+    const padrao = Object.fromEntries(Object.entries(TIPOS_AVISO).map(([k, v]) => [k, v.padrao])) as Preferencias;
+    const salvo = await this.prisma.configPlataforma.findUnique({ where: { chave: chavePref(usuarioId) } });
+    if (!salvo) return padrao;
+    try { return { ...padrao, ...(JSON.parse(salvo.valor) as Partial<Preferencias>) }; } catch { return padrao; }
   }
 
-  async enviarParaAdmins(aviso: AvisoPush, soUsuarioId?: string) {
+  async salvarPreferencias(usuarioId: string, dto: PreferenciasDto) {
+    const atual = await this.preferencias(usuarioId);
+    for (const k of Object.keys(TIPOS_AVISO) as TipoAviso[]) if (typeof dto[k] === 'boolean') atual[k] = dto[k]!;
+    const valor = JSON.stringify(atual);
+    await this.prisma.configPlataforma.upsert({ where: { chave: chavePref(usuarioId) }, create: { chave: chavePref(usuarioId), valor }, update: { valor } });
+    return atual;
+  }
+
+  // Manda para os aparelhos dos ADMs que querem esse tipo de aviso. Nunca derruba quem chamou: se falhar, só fica no registro.
+  avisarAdmins(aviso: AvisoPush, tipo: TipoAviso) {
+    this.enviarParaAdmins(aviso, undefined, tipo).catch((e) => this.log.warn(`Aviso no celular não saiu: ${(e as Error).message}`));
+  }
+
+  // Algum ADM quer este tipo de aviso? Serve para não fazer trabalho à toa (ex.: aviso de cada entrada).
+  async alguemQuer(tipo: TipoAviso) {
+    const usuarios = await this.prisma.usuario.findMany({ where: { email: { in: emailsAdmin() } }, select: { id: true } });
+    for (const u of usuarios) if ((await this.preferencias(u.id))[tipo]) return true;
+    return false;
+  }
+
+  async enviarParaAdmins(aviso: AvisoPush, soUsuarioId?: string, tipo?: TipoAviso) {
     const emails = emailsAdmin();
     const usuarios = await this.prisma.usuario.findMany({ where: soUsuarioId ? { id: soUsuarioId } : { email: { in: emails } }, select: { id: true } });
-    const inscricoes = await this.prisma.avisoCelular.findMany({ where: { usuarioId: { in: usuarios.map((u) => u.id) } } });
+    const querem: string[] = [];
+    for (const u of usuarios) if (!tipo || (await this.preferencias(u.id))[tipo]) querem.push(u.id);
+    const inscricoes = await this.prisma.avisoCelular.findMany({ where: { usuarioId: { in: querem } } });
     if (!inscricoes.length) return { enviados: 0, aparelhos: 0 };
     const chaves = await this.obterChaves();
     const opcoes: webpush.RequestOptions = {
@@ -123,7 +174,17 @@ export class PushController {
 
   @Get()
   async ver(@Sessao() s: SessaoUsuario) {
-    return { chavePublica: await this.push.chavePublica(), aparelhos: (await this.push.aparelhos(s.sub)).map((a) => ({ ...a, endpoint: a.endpoint.slice(-24) })) };
+    return {
+      chavePublica: await this.push.chavePublica(),
+      aparelhos: (await this.push.aparelhos(s.sub)).map((a) => ({ ...a, endpoint: a.endpoint.slice(-24) })),
+      preferencias: await this.push.preferencias(s.sub),
+      tipos: Object.entries(TIPOS_AVISO).map(([id, t]) => ({ id, nome: t.nome })),
+    };
+  }
+
+  @Put('preferencias')
+  preferencias(@Sessao() s: SessaoUsuario, @Body() dto: PreferenciasDto) {
+    return this.push.salvarPreferencias(s.sub, dto);
   }
 
   @Post()

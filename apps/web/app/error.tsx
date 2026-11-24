@@ -10,7 +10,10 @@ export default function ErroDaTela({ error, reset }: { error: Error & { digest?:
     <main className="mx-auto max-w-lg space-y-4 p-10 text-center">
       <h1 className="text-2xl font-semibold text-primary">Algo deu errado nesta tela</h1>
       <p className="text-text/70">Já avisamos a equipe do Safety Nexo. Tente de novo; se continuar, volte daqui a pouco.</p>
-      <button onClick={reset} className="rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white">Tentar de novo</button>
+      <div className="flex flex-wrap justify-center gap-3">
+        <button onClick={reset} className="rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white">Tentar de novo</button>
+        <button type="button" onClick={() => { window.location.href = `/suporte?tela=${encodeURIComponent(window.location.pathname)}`; }} className="rounded-card border border-border px-4 py-2.5 text-sm font-semibold text-primary">Contar o que aconteceu</button>
+      </div>
     </main>
   );
 }
