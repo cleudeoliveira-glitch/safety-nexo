@@ -994,12 +994,25 @@ export const admin = {
     chamar<unknown>('PATCH', `/admin/consultorias/${id}`, dados),
   convites: () => chamar<{ link: string; whatsapp: string }>('GET', '/admin/convites'),
   linkSenha: (usuarioId: string) => chamar<{ link: string; whatsapp: string }>('POST', `/admin/usuarios/${usuarioId}/link-senha`),
-  avisosCelular: () => chamar<{ chavePublica: string; aparelhos: { endpoint: string; aparelho: string | null; criadoEm: string }[] }>('GET', '/admin/avisos-celular'),
+  avisosCelular: () => chamar<{ chavePublica: string; aparelhos: { endpoint: string; aparelho: string | null; criadoEm: string }[]; preferencias: Record<string, boolean>; tipos: { id: string; nome: string }[] }>('GET', '/admin/avisos-celular'),
+  preferenciasAvisos: (p: Record<string, boolean>) => chamar<Record<string, boolean>>('PUT', '/admin/avisos-celular/preferencias', p),
+  suporte: () => chamar<PedidoSuporteAdm[]>('GET', '/admin/suporte'),
+  responderSuporte: (id: string, d: { resposta?: string; status?: StatusSuporte }) => chamar<PedidoSuporte>('PATCH', `/admin/suporte/${id}`, d),
   ligarAvisosCelular: (d: { endpoint: string; keys: { p256dh: string; auth: string }; aparelho: string }) => chamar<{ ok: boolean }>('POST', '/admin/avisos-celular', d),
   desligarAvisosCelular: (endpoint: string) => chamar<{ ok: boolean }>('DELETE', '/admin/avisos-celular', { endpoint }),
   testarAvisosCelular: () => chamar<{ enviados: number; aparelhos: number }>('POST', '/admin/avisos-celular/teste'),
   diagnostico: () => chamar<Diagnostico>('GET', '/admin/diagnostico'),
   resolverFalha: (id: string) => chamar<{ ok: boolean }>('DELETE', `/admin/diagnostico/falhas/${id}`),
+};
+
+// "Relatar problema": pedidos de ajuda dos clientes, que avisam o dono no celular.
+export type TipoSuporte = 'PROBLEMA' | 'DUVIDA' | 'SUGESTAO';
+export type StatusSuporte = 'ABERTO' | 'RESPONDIDO' | 'RESOLVIDO';
+export type PedidoSuporte = { id: string; tipo: TipoSuporte; mensagem: string; tela: string | null; status: StatusSuporte; resposta: string | null; respondidoEm: string | null; createdAt: string };
+export type PedidoSuporteAdm = PedidoSuporte & { usuario: { nome: string; email: string; papel: string } | null; consultoria: string | null };
+export const suporte = {
+  enviar: (d: { tipo: TipoSuporte; mensagem: string; tela?: string }) => chamar<PedidoSuporte>('POST', '/suporte', d),
+  meus: () => chamar<PedidoSuporte[]>('GET', '/suporte'),
 };
 
 // Diagnóstico do Painel ADM ("Doutor Nexo").

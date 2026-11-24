@@ -8,6 +8,7 @@ import { caixaPlano } from './common/plano';
 import { cabecalhosSeguranca, limiteDePedidos } from './common/protecao';
 import { FiltroDeFalhas, ligarCadernoDeFalhas, vigiarChamadas } from './diagnostico/falhas';
 import { PrismaService } from './prisma/prisma.service';
+import { PushService } from './push/push';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -21,7 +22,7 @@ async function bootstrap() {
   app.use(cabecalhosSeguranca);
   app.use(limiteDePedidos);
   // Diagnóstico do Painel ADM: anota os erros que os clientes viram e as chamadas do Asaas e das tarefas agendadas.
-  ligarCadernoDeFalhas(app.get(PrismaService));
+  ligarCadernoDeFalhas(app.get(PrismaService), app.get(PushService));
   app.use(vigiarChamadas);
   app.useGlobalFilters(new FiltroDeFalhas(app.get(HttpAdapterHost).httpAdapter));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, exceptionFactory: errosEmPortugues }));

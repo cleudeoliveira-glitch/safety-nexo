@@ -27,12 +27,15 @@ async function registro() {
   return (await navigator.serviceWorker.getRegistration('/')) ?? (await navigator.serviceWorker.register('/sw.js'));
 }
 
-// Cartão do Painel ADM: liga os avisos de novo cadastro e novo pedido de plano na tela do celular.
+// Cartão do Painel ADM: liga os avisos na tela do celular e escolhe quais chegam.
 export function AvisosCelular() {
   const [situacao, setSituacao] = useState<Situacao>('carregando');
   const [ocupado, setOcupado] = useState(false);
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const [aparelho, setAparelho] = useState('Computador');
+  const [tipos, setTipos] = useState<{ id: string; nome: string }[]>([]);
+  const [pref, setPref] = useState<Record<string, boolean>>({});
+  const [qtosAparelhos, setQtosAparelhos] = useState<number | null>(null);
 
   async function conferir() {
     const qual = qualAparelho();
@@ -50,7 +53,14 @@ export function AvisosCelular() {
 
   useEffect(() => {
     conferir().catch(() => setSituacao('sem-suporte'));
+    admin.avisosCelular().then((r) => { setTipos(r.tipos ?? []); setPref(r.preferencias ?? {}); setQtosAparelhos(r.aparelhos.length); }).catch(() => undefined);
   }, []);
+
+  async function trocarTipo(id: string, ligado: boolean) {
+    setPref((p) => ({ ...p, [id]: ligado }));
+    try { setPref(await admin.preferenciasAvisos({ [id]: ligado })); }
+    catch (e) { setPref((p) => ({ ...p, [id]: !ligado })); setMsg({ tipo: 'erro', texto: (e as Error).message }); }
+  }
 
   async function ligar() {
     setOcupado(true);
@@ -69,6 +79,7 @@ export function AvisosCelular() {
       const j = inscricao.toJSON();
       await admin.ligarAvisosCelular({ endpoint: inscricao.endpoint, keys: { p256dh: j.keys?.p256dh ?? '', auth: j.keys?.auth ?? '' }, aparelho });
       setSituacao('ligado');
+      setQtosAparelhos((n) => (n ?? 0) + 1);
       setMsg({ tipo: 'ok', texto: 'Pronto! Este aparelho vai receber os avisos. Toque em "Mandar um teste" para conferir.' });
     } catch (e) {
       setMsg({ tipo: 'erro', texto: `Não deu para ligar: ${(e as Error).message}` });
@@ -111,8 +122,13 @@ export function AvisosCelular() {
     <section className="rounded-card border border-border bg-white p-5 shadow-sm">
       <h2 className="text-lg font-semibold text-primary">Avisos no celular</h2>
       <p className="mt-1 text-sm text-text/70">
-        Quando alguém criar conta ou pedir um plano, o aviso cai na tela do seu celular, mesmo bloqueada. Ligue em cada aparelho que você usa (o seu e o da Cleude, por exemplo).
+        O aviso cai na tela do seu celular, mesmo bloqueada: cadastro novo, plano contratado, cliente entrando pela primeira vez, erro novo, cliente pedindo ajuda, norma para aprovar e um resumo do dia às 8h. Ligue em cada aparelho que você usa.
       </p>
+      {qtosAparelhos !== null && (
+        <p className={`mt-2 text-sm font-semibold ${qtosAparelhos ? 'text-success' : 'text-[#9a3412]'}`}>
+          {qtosAparelhos ? `${qtosAparelhos} aparelho(s) seu(s) recebendo avisos.` : 'Nenhum aparelho seu recebe avisos ainda. Abra esta tela no celular e toque em "Ligar avisos neste aparelho".'}
+        </p>
+      )}
 
       <div className="mt-4 space-y-3">
         {situacao === 'carregando' && <p className="text-sm text-text/60">Conferindo este aparelho…</p>}
@@ -152,6 +168,23 @@ export function AvisosCelular() {
 
         {msg && <Aviso tipo={msg.tipo}>{msg.texto}</Aviso>}
       </div>
+
+      {tipos.length > 0 && (
+        <details className="mt-4 rounded-card border border-border bg-background p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-primary">Escolher o que chega no celular</summary>
+          <p className="mt-2 text-xs text-text/60">Vale para todos os seus aparelhos.</p>
+          <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+            {tipos.map((t) => (
+              <li key={t.id}>
+                <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg bg-white px-3 py-2 text-sm">
+                  <input type="checkbox" className="h-5 w-5 accent-primary" checked={!!pref[t.id]} onChange={(e) => trocarTipo(t.id, e.target.checked)} />
+                  {t.nome}
+                </label>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </section>
   );
 }

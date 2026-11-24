@@ -119,7 +119,7 @@ export class PagamentosService {
     const pagamentos = (await asaas.pagamentosDaAssinatura(nova.id)).data ?? [];
     for (const p of pagamentos) await this.guardar(c.id, nova.id, plano.codigo, p, true);
     const primeiro = pagamentos.sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
-    this.push.avisarAdmins({ titulo: 'Plano assinado', corpo: `${c.nome} escolheu o plano ${plano.nome} no ${NOME_FORMA[dto.forma]}.`, url: '/admin', tag: `plano-${c.id}` });
+    this.push.avisarAdmins({ titulo: 'Plano assinado', corpo: `${c.nome} escolheu o plano ${plano.nome} no ${NOME_FORMA[dto.forma]}.`, url: '/admin', tag: `plano-${c.id}` }, 'plano');
     return { link: primeiro?.invoiceUrl ?? null, vencimento: iso(primeiroVencimento), emDia };
   }
 
@@ -130,7 +130,7 @@ export class PagamentosService {
     await asaas.apagarAssinatura(c.asaasAssinaturaId);
     await this.prisma.consultoria.update({ where: { id: c.id }, data: { assinaturaStatus: 'CANCELADA', pixAutomatico: false } });
     await this.prisma.pagamentoPlano.updateMany({ where: { assinaturaId: c.asaasAssinaturaId, status: { in: ['PENDENTE', 'ATRASADO'] } }, data: { status: 'CANCELADO' } });
-    this.push.avisarAdmins({ titulo: 'Cobrança cancelada', corpo: `${c.nome} cancelou a cobrança automática do plano.`, url: '/admin', tag: `plano-${c.id}` });
+    this.push.avisarAdmins({ titulo: 'Cobrança cancelada', corpo: `${c.nome} cancelou a cobrança automática do plano.`, url: '/admin', tag: `plano-${c.id}` }, 'plano');
     return this.resumo(c.id);
   }
 
@@ -201,12 +201,12 @@ export class PagamentosService {
           ...(daAssinaturaAtual ? { assinaturaStatus: 'ATIVA' } : {}),
         },
       });
-      this.push.avisarAdmins({ titulo: 'Pagamento recebido', corpo: `${c.nome} pagou R$ ${p.value.toFixed(2).replace('.', ',')} do plano ${planoPorCodigo(r.plano)?.nome ?? r.plano}.`, url: '/admin', tag: `pago-${p.id}` });
+      this.push.avisarAdmins({ titulo: 'Pagamento recebido', corpo: `${c.nome} pagou R$ ${p.value.toFixed(2).replace('.', ',')} do plano ${planoPorCodigo(r.plano)?.nome ?? r.plano}.`, url: '/admin', tag: `pago-${p.id}` }, 'plano');
     } else if (r.depois === 'ATRASADO' && daAssinaturaAtual && c.assinaturaStatus === 'ATIVA') {
       await this.prisma.consultoria.update({ where: { id: c.id }, data: { assinaturaStatus: 'ATRASADA' } });
     } else if (r.depois === 'ESTORNADO' && r.antes !== 'ESTORNADO') {
       // Estorno ou contestação no cartão: não tira nada sozinho, só avisa o ADM para decidir.
-      this.push.avisarAdmins({ titulo: 'Pagamento estornado', corpo: `${c.nome}: o pagamento de R$ ${p.value.toFixed(2).replace('.', ',')} foi estornado ou contestado. Confira no Painel ADM.`, url: '/admin', tag: `estorno-${p.id}` });
+      this.push.avisarAdmins({ titulo: 'Pagamento estornado', corpo: `${c.nome}: o pagamento de R$ ${p.value.toFixed(2).replace('.', ',')} foi estornado ou contestado. Confira no Painel ADM.`, url: '/admin', tag: `estorno-${p.id}` }, 'plano');
     }
     return { ok: true };
   }

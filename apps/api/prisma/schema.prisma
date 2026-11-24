@@ -1431,3 +1431,20 @@ model FalhaSistema {
 
   @@index([ultimaEm])
 }
+
+// Pedido de ajuda que o cliente manda pelo botão "Relatar problema". Cai como aviso no celular do dono da plataforma.
+model PedidoSuporte {
+  id            String    @id @default(cuid())
+  consultoriaId String
+  usuarioId     String
+  tipo          String    // PROBLEMA, DUVIDA, SUGESTAO
+  mensagem      String
+  tela          String?   // endereço da tela em que a pessoa estava
+  status        String    @default("ABERTO") // ABERTO, RESPONDIDO, RESOLVIDO
+  resposta      String?
+  respondidoEm  DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([consultoriaId])
+}

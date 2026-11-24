@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { GuiaCompleto } from '@/components/AjudaDaTela';
 import { GUIAS } from '@/lib/ajudaTelas';
@@ -60,6 +61,10 @@ export default function CentralDeAjuda() {
               </details>
             ))}
             {guias.length === 0 && <p className="text-text/60">Nada encontrado para “{busca}”.</p>}
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-white p-4 shadow-sm">
+            <p className="text-sm text-text/80">Não achou o que precisava ou algo deu errado? Conte para a equipe do Safety Nexo.</p>
+            <Link href="/suporte?tela=/ajuda" className="rounded-card bg-primary px-4 py-2.5 text-sm font-semibold text-white">Relatar problema</Link>
           </div>
         </>
       )}
