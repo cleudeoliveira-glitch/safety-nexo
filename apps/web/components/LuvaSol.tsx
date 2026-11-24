@@ -10,7 +10,7 @@ export function aplicarLuvaSol() {
   try { document.documentElement.classList.toggle('luva-sol', localStorage.getItem(CHAVE) === '1'); } catch { /* sem memória no aparelho */ }
 }
 
-export function BotaoLuvaSol({ claro = false, pequeno = false }: { claro?: boolean; pequeno?: boolean }) {
+export function BotaoLuvaSol({ claro = false, pequeno = false, compacto = false }: { claro?: boolean; pequeno?: boolean; compacto?: boolean }) {
   const [ligado, setLigado] = useState(false);
   useEffect(() => { aplicarLuvaSol(); setLigado(document.documentElement.classList.contains('luva-sol')); }, []);
   const trocar = () => {
@@ -19,6 +19,16 @@ export function BotaoLuvaSol({ claro = false, pequeno = false }: { claro?: boole
     document.documentElement.classList.toggle('luva-sol', novo);
     try { localStorage.setItem(CHAVE, novo ? '1' : '0'); } catch { /* segue só nesta tela */ }
   };
+  // Rodapé do menu: ícone em cima e nome embaixo, do mesmo tamanho de "Ajuda" e "Relatar".
+  if (compacto) {
+    return (
+      <button type="button" onClick={trocar} aria-pressed={ligado}
+        title="Letras e botões maiores, com mais contraste, para usar de luva ou no sol"
+        className={`flex min-h-[40px] flex-col items-center justify-center rounded-lg px-1 py-1 text-[11px] font-semibold leading-tight transition ${ligado ? 'bg-menta text-primary-escuro' : 'text-white/85 hover:bg-white/10'}`}>
+        <span aria-hidden="true" className="text-[13px] leading-[18px]">🧤☀️</span>Luva e sol
+      </button>
+    );
+  }
   return (
     <button type="button" onClick={trocar} aria-pressed={ligado}
       title="Letras e botões maiores, com mais contraste, para usar de luva ou no sol"

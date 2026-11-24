@@ -39,21 +39,23 @@ function DesenhoSetor({ setor }: { setor: SetorMapa }) {
 function Legenda() {
   return (
     <div className="grid gap-3 rounded-card border border-border p-3 text-xs sm:grid-cols-2">
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <p className="font-semibold text-primary">Cor = tipo de risco</p>
         {ORDEM_GRUPOS.map((k) => (
-          <p key={k} className="flex items-center gap-2">
-            <span className="inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-text/60" style={{ background: GRUPOS_MAPA[k].cor }} />
-            <strong>{GRUPOS_MAPA[k].nome}</strong> <span className="text-text/60">{GRUPOS_MAPA[k].exemplos}</span>
+          <p key={k} className="grid grid-cols-[18px_1fr] items-center gap-x-2">
+            <span className="row-span-2 mt-0.5 inline-block h-3.5 w-3.5 self-start rounded-full border border-text/60" style={{ background: GRUPOS_MAPA[k].cor }} />
+            <strong>{GRUPOS_MAPA[k].nome}</strong>
+            <span className="break-words text-text/60">{GRUPOS_MAPA[k].exemplos}</span>
           </p>
         ))}
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <p className="font-semibold text-primary">Tamanho = intensidade</p>
         {(Object.keys(TAMANHOS_MAPA) as Tamanho[]).map((k) => (
-          <p key={k} className="flex items-center gap-2">
-            <span className="inline-block shrink-0 rounded-full border border-text/60 bg-text/30" style={{ width: TAMANHOS_MAPA[k].raio, height: TAMANHOS_MAPA[k].raio }} />
-            <strong>{TAMANHOS_MAPA[k].nome}</strong> <span className="text-text/60">{TAMANHOS_MAPA[k].explica}</span>
+          <p key={k} className="grid grid-cols-[30px_1fr] items-center gap-x-2">
+            <span className="row-span-2 inline-block self-center justify-self-center rounded-full border border-text/60 bg-text/30" style={{ width: TAMANHOS_MAPA[k].raio, height: TAMANHOS_MAPA[k].raio }} />
+            <strong>{TAMANHOS_MAPA[k].nome}</strong>
+            <span className="break-words text-text/60">{TAMANHOS_MAPA[k].explica}</span>
           </p>
         ))}
         <p className="pt-1 text-text/60">O tamanho sai sozinho do nível do risco no GHE (severidade x probabilidade).</p>

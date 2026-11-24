@@ -147,11 +147,11 @@ function legendaHtml(): string {
   <div class="legenda">
     <div>
       <h3>Cor = tipo de risco</h3>
-      ${ORDEM_GRUPOS.map((k) => `<p>${bolinha(GRUPOS[k].cor, 8)} <strong>${GRUPOS[k].nome}</strong> <span>${GRUPOS[k].exemplos}</span></p>`).join('')}
+      ${ORDEM_GRUPOS.map((k) => `<p class="item">${bolinha(GRUPOS[k].cor, 8)}<strong>${GRUPOS[k].nome}</strong><span>${GRUPOS[k].exemplos}</span></p>`).join('')}
     </div>
     <div>
       <h3>Tamanho = intensidade</h3>
-      ${(Object.keys(TAMANHOS) as Tamanho[]).map((k) => `<p class="tam">${bolinha('#9ca3af', Math.round(TAMANHOS[k].raio / 2.2))} <strong>${TAMANHOS[k].nome}</strong> <span>${TAMANHOS[k].explica}</span></p>`).join('')}
+      ${(Object.keys(TAMANHOS) as Tamanho[]).map((k) => `<p class="item tam">${bolinha('#9ca3af', Math.round(TAMANHOS[k].raio / 2.2))}<strong>${TAMANHOS[k].nome}</strong><span>${TAMANHOS[k].explica}</span></p>`).join('')}
       <p class="nota">O número dentro do círculo leva à tabela de riscos.</p>
     </div>
   </div>`;
@@ -183,12 +183,21 @@ const CSS = `
   .pagina { page-break-after: always; }
   .pagina:last-of-type { page-break-after: auto; }
   .faixa { display: flex; gap: 18px; align-items: flex-start; }
-  .desenho { flex: 1; }
-  .legenda { width: 260px; display: flex; flex-direction: column; gap: 10px; font-size: 11px; }
-  .legenda h3 { font-size: 12px; margin: 0 0 4px; color: ${tokens.colors.primary}; }
-  .legenda p { margin: 2px 0; display: flex; align-items: center; gap: 6px; }
-  .legenda p span { color: #6b7280; font-size: 10px; }
+  .desenho { flex: 1 1 auto; min-width: 0; }
+  .desenho svg { max-width: 100%; height: auto; }
+  /* Legenda: bolinha e nome na mesma linha, exemplos logo abaixo, sem espremer nem sobrepor. */
+  .legenda { flex: 0 0 240px; width: 240px; display: flex; flex-direction: column; gap: 10px; font-size: 11px; line-height: 1.35; }
+  .legenda h3 { font-size: 12px; margin: 0 0 6px; color: ${tokens.colors.primary}; }
+  .legenda p.item { margin: 0 0 6px; display: grid; grid-template-columns: 30px 1fr; column-gap: 6px; align-items: center; }
+  .legenda p.item svg { grid-row: 1 / span 2; justify-self: center; align-self: start; }
+  .legenda p.item strong { grid-column: 2; }
+  .legenda p.item span { grid-column: 2; color: #6b7280; font-size: 10px; overflow-wrap: break-word; }
   .legenda .nota { color: #6b7280; font-size: 10px; display: block; margin-top: 4px; }
+  /* Tela estreita (pré-visualização no notebook ou no celular): a legenda desce para baixo do desenho. */
+  @media screen and (max-width: 1000px) {
+    .faixa { flex-direction: column; }
+    .legenda { flex: none; width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  }
   .geral { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .riscos { margin-top: 8px; font-size: 10.5px; }
   .riscos td, .riscos th { padding: 4px 6px; }
