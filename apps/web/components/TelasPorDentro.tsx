@@ -1,12 +1,14 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Carro-chefe da página inicial: os diferenciais do Safety Nexo mostrados em telas reais e documentos gerados, um por vez.
 // O painel do dia já aparece no topo, por isso não entra aqui.
 // Prints reais, tirados do sistema com empresas de exemplo. Computador: tela-*.webp; celular, sem a barra do sistema: topo-*-celular.webp.
 // Regra da vitrine: o texto fica embaixo do print, nunca por cima. Uma ideia por tela, sem repetir frase.
-// Só passa quando o visitante clica nas setinhas ou nos pontinhos (ou arrasta no celular).
+// Passa sozinho o tempo todo (pedido do Rodrigo em 24/11). Para enquanto o mouse está em cima; clicar nas setinhas,
+// nos pontinhos ou arrastar no celular recomeça a contagem. Quem pediu menos movimento no aparelho não tem a passagem automática.
+const TEMPO_TELA = 5000;
 const TELAS: { nome: string; titulo: string; texto: string; documentos?: string[] }[] = [
   { nome: 'ghe', titulo: 'Preenche uma vez, vale para tudo', texto: 'Os riscos de cada setor e função vão sozinhos para PGR, PCMSO, LTCAT e OS.' },
   { nome: 'pdf', titulo: 'Documento com a sua marca', texto: 'Logo do cliente e da sua consultoria, com QR code para conferir.', documentos: ['/vitrine/pgr-capa.webp', '/vitrine/doc-pcmso.webp', '/vitrine/doc-ltcat.webp'] },
@@ -17,13 +19,26 @@ const TELAS: { nome: string; titulo: string; texto: string; documentos?: string[
 export function TelasPorDentro() {
   const [atual, setAtual] = useState(0);
   const toque = useRef<number | null>(null);
-  const ir = useCallback((i: number) => setAtual(((i % TELAS.length) + TELAS.length) % TELAS.length), []);
+  const [parado, setParado] = useState(false);
+  const [mexeu, setMexeu] = useState(0);
+  const ir = useCallback((i: number) => {
+    setMexeu((m) => m + 1);
+    setAtual(((i % TELAS.length) + TELAS.length) % TELAS.length);
+  }, []);
+
+  useEffect(() => {
+    if (parado || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const t = window.setTimeout(() => setAtual((a) => (a + 1) % TELAS.length), TEMPO_TELA);
+    return () => window.clearTimeout(t);
+  }, [atual, parado, mexeu]);
   const t = TELAS[atual];
 
   return (
     <div
       aria-roledescription="carrossel"
       aria-label="Telas do Safety Nexo"
+      onMouseEnter={() => setParado(true)}
+      onMouseLeave={() => setParado(false)}
       onKeyDown={(e) => {
         if (e.key === 'ArrowRight') ir(atual + 1);
         if (e.key === 'ArrowLeft') ir(atual - 1);
