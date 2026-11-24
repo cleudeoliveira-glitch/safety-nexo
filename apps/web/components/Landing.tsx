@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
-import { DUVIDAS_PLANOS, DUVIDAS_SISTEMA, LinkWhatsApp } from '@/components/DuvidasPlanos';
-import { Icone, NomeIcone } from '@/components/Icone';
+import { LinkWhatsApp } from '@/components/DuvidasPlanos';
+import { Icone } from '@/components/Icone';
 import { TelasPorDentro } from '@/components/TelasPorDentro';
 import { PLANOS_DESTAQUE_LANDING, PLANOS_SITE, PlanoSite, precoAnual, reais } from '@/lib/planos';
 
@@ -11,7 +11,7 @@ import { PLANOS_DESTAQUE_LANDING, PLANOS_SITE, PlanoSite, precoAnual, reais } fr
 // O caminho é: conhecer → escolher o plano → criar a conta → pagar (planos pagos) → usar.
 // Quem já tem conta usa o "Entrar" discreto no topo.
 // Pedido do Rodrigo (24/11): vitrine enxuta, para bater o olho e chamar atenção, falando dos benefícios sem cara de venda
-// escancarada. Por isso são poucas seções: topo → diferenciais em telas reais (carro-chefe) → benefícios → planos → dúvidas → fechamento.
+// escancarada. Por isso são só 4 blocos: topo → diferenciais em telas reais (carro-chefe) → planos → fechamento (com link para as perguntas frequentes da página /planos).
 // Nada aqui promete o que o sistema não faz: se uma função mudar, ajuste o texto.
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
@@ -19,20 +19,6 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['600', '700', '
 
 const WHATSAPP = (process.env.NEXT_PUBLIC_WHATSAPP_SUPORTE ?? '5562994343838').replace(/\D/g, '');
 const LINK_WHATSAPP = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent('Olá! Tenho uma dúvida sobre o Safety Nexo.')}`;
-
-// Os benefícios que as telas do carro-chefe não mostram. Um título curto e uma linha cada.
-const BENEFICIOS: { icone: NomeIcone; titulo: string; texto: string }[] = [
-  { icone: 'sinal', titulo: 'Funciona no campo', texto: 'DDS, APR, inspeção e entrega de EPI pelo celular, até sem internet.' },
-  { icone: 'sino', titulo: 'Nada vence sem aviso', texto: 'ASO, treinamentos, CA de EPI e documentos acompanhados no painel.' },
-  { icone: 'qr', titulo: 'Registro que comprova', texto: 'Assinatura, foto, data e local. Todo PDF sai com QR code.' },
-  { icone: 'pessoas', titulo: 'Várias empresas, um lugar', texto: 'Cada cliente com o próprio acesso para ver os documentos dele.' },
-];
-
-const MODULOS = ['EPI e campo', 'Treinamentos', 'PGR, PCMSO e LTCAT', 'Saúde e eSocial', 'Gestão de atividades', 'Psicossocial NR-01'];
-
-// Na página inicial, só as dúvidas que mais aparecem. As outras ficam na página dos planos.
-const PERGUNTAS = ['Preciso instalar alguma coisa?', 'E se eu estiver numa obra ou fazenda sem internet?', 'Os documentos saem com a minha logo?', 'Meu cliente consegue entrar e ver os documentos dele?', 'Preciso de cartão para testar?', 'Tem fidelidade ou multa?'];
-const DUVIDAS_ENTRADA = PERGUNTAS.map((p) => [...DUVIDAS_SISTEMA, ...DUVIDAS_PLANOS].find((d) => d.pergunta === p)).filter((d): d is NonNullable<typeof d> => !!d);
 
 export function Landing() {
   return (
@@ -63,7 +49,7 @@ export function Landing() {
       {/* Topo: a mensagem principal e um print real ao lado (no computador). */}
       <section className="fundo-destaque relative overflow-hidden text-white">
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(70%_70%_at_70%_40%,black,transparent)]" />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-5 py-16 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:py-24">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-5 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:py-20">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-menta sm:text-sm">
               <span className="h-1.5 w-1.5 rounded-full bg-menta" aria-hidden />
@@ -73,7 +59,7 @@ export function Landing() {
               Toda a SST dos seus clientes num lugar{'\u00a0'}só.
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-white/85 sm:text-xl">
-              Menos digitação, documentos sempre atualizados e cada vencimento sob controle.
+              Menos digitação, documentos sempre atualizados e vencimentos sob controle, até no campo sem internet.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -104,86 +90,29 @@ export function Landing() {
 
       {/* Carro-chefe: os diferenciais em telas e documentos reais, logo depois do topo. */}
       <section id="por-dentro" className="scroll-mt-16 bg-[#F2F7F7]">
-        <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:py-24">
-          <Titulo sobre="Veja por dentro" titulo="O que faz a diferença no seu dia" centro>
-            Telas e documentos reais do sistema, com empresas de exemplo.
-          </Titulo>
-          <div className="mt-10"><TelasPorDentro /></div>
-          <div className="mt-10 flex flex-wrap justify-center gap-2">
-            {MODULOS.map((m) => (
-              <span key={m} className="rounded-full border border-primary/15 bg-white px-3.5 py-1.5 text-sm font-medium text-primary-escuro">{m}</span>
-            ))}
-          </div>
+        <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:py-16">
+          <Titulo sobre="Veja por dentro" titulo="O que faz a diferença no seu dia" centro />
+          <div className="mt-8"><TelasPorDentro /></div>
         </div>
-      </section>
-
-      {/* Benefícios. */}
-      <section id="beneficios" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 lg:py-24">
-        <Titulo sobre="Por que usar" titulo="Menos retrabalho, mais controle" centro>
-          Para consultorias, técnicos e engenheiros de SST, SESMT e clínicas do trabalho, em qualquer ramo.
-        </Titulo>
-        <ul className="mt-12 grid gap-x-8 gap-y-9 sm:grid-cols-2 lg:grid-cols-4">
-          {BENEFICIOS.map((b) => (
-            <li key={b.titulo} className="flex gap-4 lg:flex-col lg:gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/[0.08] text-primary">
-                <Icone nome={b.icone} className="h-5 w-5" />
-              </span>
-              <div>
-                <h3 className="fonte-titulo text-lg font-bold tracking-tight text-primary-escuro">{b.titulo}</h3>
-                <p className="mt-1 text-[0.95rem] leading-relaxed text-text/70">{b.texto}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
       </section>
 
       {/* Planos. */}
-      <section id="planos" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 lg:py-24">
-        <Titulo sobre="Planos" titulo="Escolha o plano e comece hoje" centro>
-          O que muda de um plano para outro é, principalmente, quantas empresas você atende. Todos começam com 14 dias de tudo liberado.
-        </Titulo>
-        <div className="mt-12 grid items-stretch gap-5 md:grid-cols-3">
+      <section id="planos" className="mx-auto max-w-5xl scroll-mt-20 px-4 py-12 sm:px-6 lg:py-16">
+        <Titulo sobre="Planos" titulo="Escolha o plano e comece hoje" centro />
+        <div className="mt-10 grid items-stretch gap-5 md:grid-cols-3">
           {PLANOS_SITE.filter((p) => PLANOS_DESTAQUE_LANDING.includes(p.codigo)).map((p) => <CartaoPlanoVitrine key={p.codigo} p={p} />)}
         </div>
-        <div className="mt-10 flex flex-col items-center gap-3 text-center">
-          <Link
-            href="/planos"
-            className="inline-flex min-h-[3rem] items-center justify-center rounded-xl border-2 border-primary px-6 py-3 text-base font-semibold text-primary hover:bg-primary hover:text-white"
-          >
-            Ver todos os planos
-          </Link>
-          <p className="text-sm text-text/60">Também tem o Start (1 empresa, R$ 47) e o Ilimitado (empresas sem limite, R$ 397).</p>
-        </div>
-      </section>
-
-      {/* Dúvidas. */}
-      <section id="duvidas" className="scroll-mt-16 border-t border-black/5 bg-[#F7FAFA]">
-        <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:py-20">
-          <Titulo sobre="Dúvidas" titulo="Perguntas que sempre aparecem" centro />
-          <div className="mt-10 divide-y divide-black/[0.07] rounded-2xl border border-black/[0.07] bg-white">
-            {DUVIDAS_ENTRADA.map((d) => (
-              <details key={d.pergunta} className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-base font-semibold text-primary-escuro transition hover:bg-[#F7FAFA] sm:px-6 [&::-webkit-details-marker]:hidden">
-                  <span>{d.pergunta}</span>
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/[0.07] text-primary transition group-open:rotate-45" aria-hidden>
-                    <Icone nome="mais" className="h-4 w-4" />
-                  </span>
-                </summary>
-                <p className="px-5 pb-5 text-[0.95rem] leading-relaxed text-text/70 sm:px-6">{d.resposta}</p>
-              </details>
-            ))}
-          </div>
-          <p className="mt-5 text-center text-sm text-text/65">
-            Mais respostas na <Link href="/planos" className="font-semibold text-primary hover:underline">página dos planos</Link> ou no <LinkWhatsApp>WhatsApp</LinkWhatsApp>.
-          </p>
-        </div>
+        <p className="mt-8 text-center text-sm text-text/65">
+          Todos começam com 14 dias de tudo liberado. Também tem o Start (R$ 47) e o Ilimitado (R$ 397).{' '}
+          <Link href="/planos" className="font-semibold text-primary hover:underline">Ver todos os planos</Link>
+        </p>
       </section>
 
       {/* Fechamento. */}
-      <section className="px-4 py-16 sm:px-6 lg:py-20">
+      <section id="duvidas" className="px-4 pb-12 sm:px-6 lg:pb-16">
         <div className="fundo-destaque relative mx-auto max-w-4xl overflow-hidden rounded-3xl px-6 py-12 text-center text-white shadow-xl sm:px-12 sm:py-14">
           <h2 className="fonte-titulo text-3xl font-extrabold tracking-tight sm:text-4xl">Pronto para tirar a SST da planilha?</h2>
-          <p className="mx-auto mt-3 max-w-xl text-lg text-white/85">Em poucos minutos você já cadastra a primeira empresa.</p>
+          <p className="mx-auto mt-3 max-w-xl text-lg text-white/85">Em poucos minutos você cadastra a primeira empresa.</p>
           <Link
             href="/cadastro?plano=FREE"
             className="mt-8 inline-flex min-h-[3.25rem] items-center justify-center rounded-xl bg-menta px-9 py-3.5 text-lg font-bold text-primary-escuro shadow-lg shadow-black/20 hover:brightness-95"
@@ -195,6 +124,10 @@ export function Landing() {
               <li key={t} className="flex items-center gap-2"><Icone nome="check" className="h-4 w-4 text-menta" />{t}</li>
             ))}
           </ul>
+          <p className="mt-6 text-sm text-white/75">
+            Dúvidas? Veja as <Link href="/planos" className="font-semibold text-white underline-offset-2 hover:underline">perguntas frequentes</Link> ou chame no{' '}
+            <a href={LINK_WHATSAPP} target="_blank" rel="noreferrer" className="font-semibold text-white underline-offset-2 hover:underline">WhatsApp</a>.
+          </p>
         </div>
       </section>
 
@@ -221,15 +154,14 @@ function CartaoPlanoVitrine({ p }: { p: PlanoSite }) {
   return (
     <div
       className={`relative flex flex-col rounded-2xl p-6 sm:p-7 ${
-        destaque ? 'bg-primary-escuro text-white shadow-[0_30px_60px_-25px_rgba(8,47,58,0.6)] md:-my-3 md:py-10' : 'border border-black/[0.08] bg-white'
+        destaque ? 'bg-primary-escuro text-white shadow-[0_30px_60px_-25px_rgba(8,47,58,0.6)] md:-my-2 md:py-8' : 'border border-black/[0.08] bg-white'
       }`}
     >
       {destaque && (
         <span className="absolute -top-3.5 left-6 rounded-full bg-menta px-3.5 py-1 text-xs font-bold uppercase tracking-wide text-primary-escuro shadow-sm">Mais escolhido</span>
       )}
       <h3 className={`fonte-titulo text-xl font-bold ${destaque ? 'text-white' : 'text-primary-escuro'}`}>{p.nome}</h3>
-      <p className={`mt-1 text-sm ${destaque ? 'text-white/70' : 'text-text/60'}`}>{p.paraQuem}</p>
-      <p className="mt-6 flex items-baseline gap-1">
+      <p className="mt-3 flex items-baseline gap-1">
         <span className="fonte-titulo text-4xl font-extrabold tracking-tight">{p.precoMensal ? reais(p.precoMensal) : 'R$ 0'}</span>
         <span className={destaque ? 'text-white/60' : 'text-text/55'}>/mês</span>
       </p>
@@ -240,7 +172,7 @@ function CartaoPlanoVitrine({ p }: { p: PlanoSite }) {
           'Sem cartão e sem prazo para acabar'
         )}
       </p>
-      <p className={`mt-6 flex flex-1 items-start gap-2.5 border-t pt-5 text-base font-semibold leading-snug ${destaque ? 'border-white/15' : 'border-black/[0.07] text-primary-escuro'}`}>
+      <p className={`mt-5 flex flex-1 items-start gap-2.5 border-t pt-4 text-base font-semibold leading-snug ${destaque ? 'border-white/15' : 'border-black/[0.07] text-primary-escuro'}`}>
         <Icone nome="check" className={`mt-0.5 h-5 w-5 shrink-0 ${destaque ? 'text-menta' : 'text-emerald-600'}`} />
         <span>{p.resultado}</span>
       </p>
