@@ -52,6 +52,7 @@ import { DimensionamentoCipa } from '@/components/DimensionamentoCipa';
 import { TopoTela } from '@/components/TopoTela';
 import { CopiarDados } from '@/components/CopiarDados';
 import { FormGhe } from '@/components/FormGhe';
+import { sugestaoParaAgente } from '@/lib/agentesMedicao';
 import { rolarParaAncora } from '@/lib/abaDoEndereco';
 
 const TIPOS_RISCO = [
@@ -688,7 +689,10 @@ function AjustarRisco({ risco, salvar }: { risco: Risco; salvar: (dados: { sever
 
 function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosLaudo | null; salvar: (dados: AvaliacaoRisco) => void }) {
   const avaliado = Boolean(risco.tipoAvaliacao);
-  const [tipo, setTipo] = useState(risco.tipoAvaliacao ?? 'QUANTITATIVA');
+  // Sugestão pelo nome do agente: preenche só o que ainda está vazio. A consultora confere antes de salvar.
+  const sug = sugestaoParaAgente(risco.agente);
+  const pre = avaliado ? null : sug; // risco já avaliado: só mostra a dica, não preenche nada
+  const [tipo, setTipo] = useState(risco.tipoAvaliacao ?? pre?.avaliacao ?? 'QUANTITATIVA');
   const [anexo, setAnexo] = useState(risco.anexoNr15 ?? '');
   const [grau, setGrau] = useState<string>(risco.grauInsalubridade ?? '');
   // Ao escolher o anexo, sugere o grau que a própria NR-15 define (quando define).
@@ -734,15 +738,26 @@ function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosL
           });
         }}
       >
+        {sug && (
+          <div className="rounded-card border border-primary/30 bg-primary/5 p-3 text-sm md:col-span-3">
+            <p><strong>Sugestão para {sug.nome}:</strong> avaliação {sug.avaliacao === 'QUANTITATIVA' ? `quantitativa${sug.unidade ? `, em ${sug.unidade}` : ''}` : 'qualitativa'}. {sug.tecnica}.
+              {sug.limite ? ` Limite: ${sug.limite}.` : ''}{sug.anexoNr15 ? ` NR-15, Anexo ${sug.anexoNr15}.` : ''}</p>
+            {sug.obs && <p className="mt-1 text-text/70">{sug.obs}</p>}
+            {pre && <p className="mt-1 text-xs text-text/60">Os campos que estavam vazios já vêm com a sugestão. Confira e ajuste antes de salvar.</p>}
+            {sug.anexoNr15 && anexo !== sug.anexoNr15 && anexos?.nr15.some((a) => a.anexo === sug.anexoNr15) && (
+              <button type="button" className="mt-1 text-sm font-semibold text-primary hover:underline" onClick={() => escolherAnexo(sug.anexoNr15!)}>Usar o Anexo {sug.anexoNr15} da NR-15</button>
+            )}
+          </div>
+        )}
         <Selecao id={`av-tipo-${risco.id}`} rotulo="Avaliação" value={tipo} onChange={(e) => setTipo(e.target.value as AvaliacaoRisco['tipoAvaliacao'])}>
           <option value="QUANTITATIVA">Quantitativa (medida)</option>
           <option value="QUALITATIVA">Qualitativa</option>
         </Selecao>
         {tipo === 'QUANTITATIVA' && (<>
-          <Campo id={`av-int-${risco.id}`} name="intensidade" rotulo="Resultado da medição" defaultValue={risco.intensidade ?? ''} placeholder="Ex.: 88 dB(A)" />
-          <Campo id={`av-lim-${risco.id}`} name="limite" rotulo="Limite de tolerância" defaultValue={risco.limiteTolerancia ?? ''} placeholder="Ex.: 85 dB(A)" />
+          <Campo id={`av-int-${risco.id}`} name="intensidade" rotulo="Resultado da medição" defaultValue={risco.intensidade ?? ''} placeholder={sug?.unidade ? `Em ${sug.unidade}` : 'Ex.: 88 dB(A)'} />
+          <Campo id={`av-lim-${risco.id}`} name="limite" rotulo="Limite de tolerância" defaultValue={risco.limiteTolerancia || pre?.limite || ''} placeholder="Ex.: 85 dB(A)" />
         </>)}
-        <Campo id={`av-tec-${risco.id}`} name="tecnica" rotulo="Técnica utilizada" defaultValue={risco.tecnicaMedicao ?? ''} className="md:col-span-3"
+        <Campo id={`av-tec-${risco.id}`} name="tecnica" rotulo="Técnica utilizada" defaultValue={risco.tecnicaMedicao || pre?.tecnica || ''} className="md:col-span-3"
           placeholder={tipo === 'QUANTITATIVA' ? 'Ex.: Dosimetria, NHO 01 da Fundacentro' : 'Ex.: Inspeção do ambiente e entrevista'} />
         <Selecao id={`av-epc-${risco.id}`} name="epc" rotulo="EPC eficaz?" defaultValue={valor(risco.epcEficaz)}>
           <option value="">Não se aplica</option><option value="S">Sim</option><option value="N">Não</option>
@@ -771,7 +786,7 @@ function AvaliarRisco({ risco, anexos, salvar }: { risco: Risco; anexos: AnexosL
           <EscolhaTabela id={`av-t24-${risco.id}`} name="codAgNoc" rotulo="Agente nocivo (Tabela 24)" itens={tabelas?.t24 ?? []} valor={es.codAgNoc}
             busca={risco.agente} className="md:col-span-3" />
           {tipo === 'QUANTITATIVA' && (
-            <Selecao id={`av-un-${risco.id}`} name="unMed" rotulo="Unidade da medição" defaultValue={es.unMed ?? ''}>
+            <Selecao id={`av-un-${risco.id}`} name="unMed" rotulo="Unidade da medição" defaultValue={es.unMed ?? pre?.unMed ?? ''}>
               <option value="">Escolha</option>
               {UNIDADES_ESOCIAL.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
             </Selecao>

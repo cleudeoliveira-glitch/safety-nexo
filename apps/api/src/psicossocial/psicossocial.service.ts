@@ -1,3 +1,4 @@
+import { lerFuncoes } from '../empresas/ghe-ambiente';
 import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { SessaoUsuario } from '../common/sessao.decorator';
@@ -40,6 +41,13 @@ export function combinar(questionario: number | null, tecnica: number | null) {
 
 export type CelulaMatriz = { questionario: number | null; tecnica: number | null; final: number | null; probabilidade: string | null; severidade: string; nivel: Nivel | null };
 const NIVEIS_PGR: Nivel[] = ['MODERADO', 'ALTO', 'CRITICO'];
+
+// "Produção · Padeiro, Ajudante": como a pessoa reconhece o próprio setor na lista.
+function rotuloGhe(g: { nome: string; setor: string | null; funcoes: unknown }) {
+  const funcoes = lerFuncoes(g.funcoes).map((f) => f.nome);
+  const base = g.setor?.trim() && g.setor.trim() !== g.nome ? `${g.nome} (${g.setor.trim()})` : g.nome;
+  return funcoes.length ? `${base} · ${funcoes.slice(0, 4).join(', ')}${funcoes.length > 4 ? '…' : ''}` : base;
+}
 
 @Injectable()
 export class PsicossocialService {
@@ -117,16 +125,16 @@ export class PsicossocialService {
       return { setor, respostas: lista.length, oculto, valores, matriz: matriz(setor, valores), tecnica: tecnica[setor] ?? null };
     };
     // Na triagem de fatores, todos os GHEs aparecem: dá para lançar a avaliação técnica mesmo sem respostas.
-    if (comPgr) {
-      const ghes = await this.prisma.ghe.findMany({ where: { empresaId }, select: { nome: true } });
-      for (const g of ghes) if (!porSetor.has(g.nome)) porSetor.set(g.nome, []);
-    }
+    // Setores e funções vêm do cadastro de GHEs: não precisa digitar de novo.
+    const ghes = await this.prisma.ghe.findMany({ where: { empresaId }, select: { nome: true, setor: true, funcoes: true }, orderBy: { nome: 'asc' } });
+    if (comPgr) for (const g of ghes) if (!porSetor.has(g.nome)) porSetor.set(g.nome, []);
     const setores = [...porSetor.entries()].sort((x, y) => x[0].localeCompare(y[0])).map(([s, l]) => linha(s, l));
     return {
       avaliacao: { ...a, link: `${WEB()}/psicossocial/${a.token}` },
       questionario: { id: q.id, sigla: q.sigla, nome: q.nome, fonte: q.fonte, dimensoes: q.dimensoes, escala: q.escala, validado: q.validado, comPgr },
       total: linha(TODOS, respostas.map((r) => r.valores as Record<string, number>)),
       setores,
+      ghes: ghes.map((g) => ({ nome: g.nome, setor: g.setor, funcoes: lerFuncoes(g.funcoes).map((f) => f.nome) })),
       acoes,
     };
   }
@@ -259,7 +267,7 @@ export class PsicossocialService {
   // ---------- Link público (anônimo) ----------
 
   private async porToken(token: string) {
-    const a = await this.prisma.avaliacaoPsicossocial.findUnique({ where: { token }, include: { empresa: { select: { razaoSocial: true, ghes: { select: { nome: true }, orderBy: { nome: 'asc' } }, consultoria: { select: { nome: true } } } } } });
+    const a = await this.prisma.avaliacaoPsicossocial.findUnique({ where: { token }, include: { empresa: { select: { razaoSocial: true, ghes: { select: { nome: true, setor: true, funcoes: true }, orderBy: { nome: 'asc' } }, consultoria: { select: { nome: true } } } } } });
     if (!a) throw new NotFoundException('Link não encontrado. Peça um novo a quem enviou.');
     return a;
   }
@@ -271,6 +279,8 @@ export class PsicossocialService {
     return {
       titulo: a.titulo, empresa: a.empresa.razaoSocial, consultoria: a.empresa.consultoria.nome, aberta: a.status === 'ABERTA',
       setores: a.empresa.ghes.map((g) => g.nome),
+      // A pessoa nem sempre sabe o nome do GHE, mas sabe a própria função: a lista mostra setor e funções.
+      opcoes: a.empresa.ghes.map((g) => ({ valor: g.nome, rotulo: rotuloGhe(g) })),
       questionario: { sigla: q.sigla, nome: q.nome, descricao: q.descricao, instrucao: q.instrucao ?? null, escala: q.escala, itens: q.itens.map(({ n, texto }) => ({ n, texto })), aviso: q.aviso ?? null },
     };
   }
