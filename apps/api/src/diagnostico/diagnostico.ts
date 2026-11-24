@@ -505,25 +505,37 @@ export class DiagnosticoService {
       { rota: '/tarefas/normas-dou', nome: 'Busca de mudanças nas NRs (Diário Oficial)', maxHoras: 36, arquivo: '.github/workflows/normas-dou.yml' },
       { rota: '/tarefas/resumo-do-dia', nome: 'Resumo do dia no celular (8h)', maxHoras: 36, arquivo: '.github/workflows/resumo-do-dia.yml' },
     ];
-    const salvas = await this.prisma.configPlataforma.findMany({ where: { chave: { in: lista.map((t) => `chamada:${t.rota}`) } } });
+    const salvas = await this.prisma.configPlataforma.findMany({ where: { chave: { in: lista.flatMap((t) => [`chamada:${t.rota}`, `tarefa:vista:${t.rota}`]) } } });
     const problemas: string[] = [];
     const ok: string[] = [];
     for (const t of lista) {
       const s = salvas.find((x) => x.chave === `chamada:${t.rota}`);
       const u = s ? (JSON.parse(s.valor) as { em: string; status: number }) : null;
-      if (!u) problemas.push(`${t.nome}: ainda não rodou desde que o Diagnóstico foi ligado`);
+      if (!u) {
+        // Tarefa nova que ainda não chegou ao primeiro horário: não é problema. Anota quando o Diagnóstico a viu
+        // pela primeira vez e só reclama se passar do prazo dela (ex.: 36 horas) sem rodar nenhuma vez.
+        const vista = salvas.find((x) => x.chave === `tarefa:vista:${t.rota}`);
+        let desde = vista ? new Date(vista.valor) : null;
+        if (!desde || Number.isNaN(desde.getTime())) {
+          desde = new Date();
+          await this.prisma.configPlataforma.upsert({ where: { chave: `tarefa:vista:${t.rota}` }, create: { chave: `tarefa:vista:${t.rota}`, valor: desde.toISOString() }, update: { valor: desde.toISOString() } });
+        }
+        if (Date.now() - desde.getTime() <= t.maxHoras * HORA) ok.push(`${t.nome}: tarefa nova, aguardando a primeira execução no horário marcado`);
+        else problemas.push(`${t.nome}: nunca rodou, e já passou do horário marcado (vista pela primeira vez ${haQuanto(desde)})`);
+        continue;
+      }
       else if (u.status >= 400) problemas.push(`${t.nome}: falhou ${haQuanto(u.em)} (código ${u.status})`);
       else if (Date.now() - new Date(u.em).getTime() > t.maxHoras * HORA) problemas.push(`${t.nome}: a última vez foi ${haQuanto(u.em)}, está atrasada`);
       else ok.push(`${t.nome}: rodou ${haQuanto(u.em)}`);
     }
     if (!problemas.length) return [{ id: 'tarefas', grupo: GRUPOS.pagamentos, titulo: 'Tarefas automáticas rodando', situacao: 'ok', resumo: 'Avisos de vencimento, régua de cobrança, e-mail semanal, busca de mudanças nas NRs e resumo do dia em dia.', detalhes: ok }];
-    const algumaFalhou = problemas.some((p) => p.includes('falhou'));
+    const algumaFalhou = problemas.some((p) => p.includes('falhou') || p.includes('nunca rodou'));
     return [{
       id: 'tarefas', grupo: GRUPOS.pagamentos, titulo: 'Tarefas automáticas com atraso', situacao: algumaFalhou ? 'falha' : 'atencao',
       resumo: `${problemas.length} de ${lista.length} tarefas automáticas não rodaram como deviam.`, detalhes: [...problemas, ...ok],
       comoResolver: problemas.some((p) => p.includes('401'))
         ? 'O segredo das tarefas no GitHub está diferente do que está no Render. Abra o Render (safety-nexo-api > Environment), copie o valor de TAREFAS_SEGREDO e cole o mesmo valor no GitHub em Settings > Secrets and variables > Actions > TAREFAS_SEGREDO (botão de lápis > Update secret). Depois rode a tarefa de novo em Actions > Run workflow.'
-        : 'No GitHub, aba Actions: veja se as tarefas estão ligadas e se o segredo TAREFAS_SEGREDO é igual ao do Render. Logo depois de ligar o Diagnóstico é normal aparecer "ainda não rodou" até a próxima execução.',
+        : 'No GitHub, aba Actions: veja se as tarefas estão ligadas e se o segredo TAREFAS_SEGREDO é igual ao do Render. Tarefa nova só aparece aqui se passar do horário marcado sem rodar nenhuma vez.',
       pedido: montarPedido({ titulo: 'Tarefas agendadas do GitHub não estão rodando', achado: problemas.join('; '), ondeOlhar: lista.map((t) => `${t.arquivo} → POST ${t.rota}`).filter((v, i, a) => a.indexOf(v) === i), oQueFazer: 'Confira os workflows e os logs no GitHub Actions, descubra por que falharam e corrija.' }),
     }];
   }
