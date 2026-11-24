@@ -8,11 +8,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -sS -L -A "Mozilla/5.0" -o busca.html --max-time 60 "https://www.in.gov.br/consulta/-/buscar/dou?q=%22Norma+Regulamentadora%22&s=do1&exactDate=ano&sortType=0&delta=50"
+          curl -sS -L -A "Mozilla/5.0" -o busca.html -w "%{http_code} %{size_download}\n" --max-time 90 "https://www.in.gov.br/consulta/-/buscar/dou?q=%22Norma+Regulamentadora%22&s=do1&exactDate=ano&sortType=0&delta=50"
           python3 - <<'PY'
           import re, json, urllib.request
           h = open('busca.html', encoding='utf-8').read()
+          k = h.find('_params'); print('POS', k, repr(h[k-150:k+400]))
           m = re.search(r'BuscaDouPortlet_params"[^>]*>(.*?)</script>', h, re.S)
+          if not m: print(h[:1500]); raise SystemExit(0)
           d = json.loads(m.group(1))
           print('chaves', list(d.keys()))
           arr = d.get('jsonArray', [])
