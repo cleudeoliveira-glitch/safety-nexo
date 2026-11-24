@@ -20,7 +20,7 @@ jobs:
           (async () => {
             const atos = new Map();
             for (const termo of ['"Norma Regulamentadora"', '"Norma Regulamentadora" "Ministério do Trabalho e Emprego"', '"NR-" "Ministério do Trabalho e Emprego"']) {
-              const url = `${f.DOU}/consulta/-/buscar/dou?q=${encodeURIComponent(termo)}&s=do1&exactDate=ano&sortType=1`;
+              const url = f.urlBuscaDou(termo, "ano"); console.log(url);
               try { const l = f.lerBuscaDou((await f.baixar(url, 90000)).toString('utf-8')); console.log('busca', termo, l.length); l.forEach((a) => atos.set(a.url, a)); } catch (e) { console.log('ERRO busca', termo, e.message); }
             }
             const mud = [...atos.values()].filter(f.atoQueMudaNr);

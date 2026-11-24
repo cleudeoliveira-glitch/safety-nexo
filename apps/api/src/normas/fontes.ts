@@ -9,11 +9,21 @@ export const DOU = 'https://www.in.gov.br';
 // Nome honesto do robô: o DOU atende normalmente quem se identifica assim.
 const NAVEGADOR = 'Mozilla/5.0 (compatible; SafetyNexo/1.0; acompanhamento de normas)';
 
+// O DOU às vezes responde 502/503 por alguns segundos: tenta de novo até 3 vezes.
 export async function baixar(url: string, tempo = 30000): Promise<Buffer> {
+  for (let tentativa = 1; ; tentativa++) {
+    try { return await baixarUmaVez(url, tempo); } catch (e) {
+      if (tentativa >= 3 || !/respondeu 5\d\d|demorou|fetch failed/.test((e as Error).message)) throw e;
+      await new Promise((r) => setTimeout(r, 4000 * tentativa));
+    }
+  }
+}
+
+async function baixarUmaVez(url: string, tempo: number): Promise<Buffer> {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), tempo);
   try {
-    const r = await fetch(url, { signal: ctl.signal, redirect: 'follow', headers: { 'user-agent': NAVEGADOR, accept: 'text/html,application/pdf,*/*' } });
+    const r = await fetch(url, { signal: ctl.signal, redirect: 'follow', headers: { 'user-agent': NAVEGADOR, accept: '*/*' } });
     if (!r.ok) throw new Error(`${new URL(url).host} respondeu ${r.status}`);
     return Buffer.from(await r.arrayBuffer());
   } catch (e) {
@@ -99,6 +109,11 @@ export function pontosDoTexto(texto: string): { ementa: string | null; artigos: 
 }
 
 // ---------- Diário Oficial da União ----------
+
+// Endereço da busca do DOU (espaço vira "+", como o próprio site faz).
+export function urlBuscaDou(termo: string, periodo: 'dia' | 'semana' | 'mes' | 'ano') {
+  return `${DOU}/consulta/-/buscar/dou?${new URLSearchParams({ q: termo, s: 'do1', exactDate: periodo, sortType: '1' })}`;
+}
 
 export type AtoDou = { chave: string | null; titulo: string; ementa: string; orgao: string; publicadaEm: string | null; url: string; tipo: string };
 

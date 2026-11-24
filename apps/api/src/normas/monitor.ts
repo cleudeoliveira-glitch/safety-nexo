@@ -3,7 +3,7 @@ import { iaConfigurada } from '../importacao/leitor';
 import { explicarMudancaNorma } from '../ia/ia';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push';
-import { AtoDou, DOU, atoQueMudaNr, baixar, lerAtoDou, lerBuscaDou, nrsCitadas, pontosDoTexto, vigencia } from './fontes';
+import { AtoDou, atoQueMudaNr, urlBuscaDou, baixar, lerAtoDou, lerBuscaDou, nrsCitadas, pontosDoTexto, vigencia } from './fontes';
 
 // Quem costuma ser afetado por cada NR setorial (começo do CNAE). As NRs gerais valem para todas.
 // A Cleude ajusta no rascunho antes de publicar.
@@ -105,13 +105,13 @@ export class MonitorNormasService {
 
   private async executar(): Promise<ResultadoBusca> {
     // Na primeira vez olha o último ano (traz as mudanças recentes para conferir); depois, a última semana.
-    const periodo = (await this.ultima()) ? 'semana' : 'ano';
+    const periodo: 'semana' | 'ano' = (await this.ultima()) ? 'semana' : 'ano';
     const r: ResultadoBusca = { em: new Date().toISOString(), periodo, lidos: 0, mudancas: 0, novos: [], jaCadastrados: 0, erros: [] };
     const atos = new Map<string, AtoDou>();
     // A busca devolve 20 por vez e mistura outros órgãos; a segunda frase puxa só o Ministério do Trabalho.
     for (const termo of ['"Norma Regulamentadora"', '"Norma Regulamentadora" "Ministério do Trabalho e Emprego"', '"NR-" "Ministério do Trabalho e Emprego"']) {
       try {
-        const url = `${DOU}/consulta/-/buscar/dou?q=${encodeURIComponent(termo)}&s=do1&exactDate=${periodo}&sortType=1`;
+        const url = urlBuscaDou(termo, periodo);
         for (const a of lerBuscaDou((await baixar(url, 90000)).toString('utf-8'))) atos.set(a.url, a);
       } catch (e) { r.erros.push(`Busca no Diário Oficial (${termo}): ${(e as Error).message}`); }
     }
