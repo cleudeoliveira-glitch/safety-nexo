@@ -1,5 +1,5 @@
 import { lerToken, sair, type Usuario } from './sessao';
-import { pedirAutorizacao, VOLTOU_PARA_CORRIGIR } from './previa';
+import { pedirAutorizacao, VOLTOU_PARA_CORRIGIR, type AvisoAntes } from './previa';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3101';
 
@@ -177,12 +177,17 @@ export function enviarLogoEmpresa(empresaId: string, arquivo: File) {
 // Pede um PDF à API e devolve o arquivo para baixar.
 // Antes, mostra o documento inteiro na tela: o PDF só é gerado depois que a pessoa autoriza.
 async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
+  // PGR, PCMSO e LTCAT: junto com a prévia vem a lista do que falta conferir. Se falhar, a prévia abre sem ela.
+  const conferido = /\/documentos\/(pgr|pcmso|ltcat)$/.test(caminho);
+  const avisos: Promise<AvisoAntes[]> = conferido
+    ? fetch(`${API_URL}${caminho}/antes-de-gerar`, { headers: cabecalhos() }).then((r) => (r.ok ? r.json() : [])).catch(() => [])
+    : Promise.resolve([]);
   const previa = await fetch(`${API_URL}${caminho}`, { method: 'POST', headers: { ...cabecalhos(), 'X-Previa': '1' } });
   verificarSessao(previa);
   if (!previa.ok) { const erro = await previa.json().catch(() => null); throw new Error(erro?.message ?? `Não foi possível montar o ${nome} (${previa.status}).`); }
   // A API antiga (sem pré-visualização) devolve o PDF direto: nesse caso segue como antes.
   if ((previa.headers.get('Content-Type') ?? '').includes('text/html')) {
-    if (!(await pedirAutorizacao(nome, await previa.text()))) throw new Error(VOLTOU_PARA_CORRIGIR);
+    if (!(await pedirAutorizacao(nome, await previa.text(), await avisos))) throw new Error(VOLTOU_PARA_CORRIGIR);
   } else {
     return previa.blob();
   }
@@ -251,12 +256,14 @@ export const reunioesCipa = {
 };
 
 export type EtapaApr = { etapa: string; riscos: string; medidas: string; epis: string };
-export type Apr = { id: string; numero: number; atividade: string; local: string; gheId?: string | null; data: string; responsavel: string; equipe: string[]; etapas: EtapaApr[] };
+export type Apr = { id: string; numero: number; atividade: string; local: string; gheId?: string | null; data: string; responsavel: string; equipe: string[]; etapas: EtapaApr[]; contextos?: string[] };
+// Situações especiais da APR (altura, espaço confinado...): o que lembrar e a PT que a norma pede.
+export type ContextoApr = { nome: string; norma: string; lembrar: string; pt?: TipoPt };
 export type TipoPt = 'ALTURA' | 'ESPACO_CONFINADO' | 'QUENTE' | 'ELETRICIDADE' | 'ICAMENTO' | 'ESCAVACAO';
 export type DetalhesPt = { equipamento?: string; pesoCargaKg?: number; capacidadeKg?: number; operador?: string; sinaleiro?: string; profundidadeM?: number; tipoSolo?: string; contencao?: string };
 export type Permissao = {
   id: string; numero: number; tipo: TipoPt; atividade: string; local: string; inicio: string; fim: string;
-  executantes: string[]; emitente: string; checklist: { item: string; ok: boolean }[]; encerradaEm: string | null; apr: { numero: number } | null;
+  executantes: string[]; emitente: string; checklist: { item: string; ok: boolean }[]; encerradaEm: string | null; apr: { numero: number } | null; aprId?: string | null; gheId?: string | null;
   supervisorEntrada?: string | null; vigia?: string | null; medicoes?: MedicaoGas[];
   detalhes?: DetalhesPt; espacoId?: string | null; planoResgateId?: string | null;
   espaco?: { codigo: string; nome: string } | null; planoResgate?: { numero: number; titulo: string } | null;
@@ -269,7 +276,8 @@ export type SugestoesDds = { temRiscos: boolean; sugestoes: { categoria: string;
 export type TemaDds = { categoria: string; tema: string; conteudo: string; pergunta: string; situacao: string; dinamica: string };
 
 export type ConteudoOperacao = {
-  tiposPt: Record<TipoPt, { nome: string; norma: string; checklist: string[] }>;
+  tiposPt: Record<TipoPt, { nome: string; norma: string; pede?: string; checklist: string[] }>;
+  contextosApr?: Record<string, ContextoApr>;
   temasDds: TemaDds[];
   tiposEspaco: Record<string, string>;
   riscosConfinado: Record<string, string>;
@@ -809,7 +817,7 @@ export type CelulaPs = { questionario: number | null; tecnica: number | null; fi
 export type AvaliacaoPs = { id: string; titulo: string; questionario: string; sigla: string; status: 'ABERTA' | 'ENCERRADA'; minimoGrupo: number; link: string; criadoEm: string; criadoPorNome: string; _count: { respostas: number; acoes: number } };
 export type LinhaPs = { setor: string; respostas: number; oculto: boolean; valores: Record<string, number | null> | null; matriz?: Record<string, CelulaPs> | null; tecnica?: Record<string, number | null> | null };
 export type AcaoPs = { id: string; setor: string | null; dimensao: string; acao: string; responsavel: string | null; prazo: string | null; feita: boolean };
-export type ResultadoPs = { avaliacao: AvaliacaoPs & { enviadoPgrEm?: string | null }; questionario: { id: string; sigla: string; nome: string; fonte: string; dimensoes: DimensaoPs[]; validado: boolean; comPgr: boolean }; total: LinhaPs; setores: LinhaPs[]; acoes: AcaoPs[] };
+export type ResultadoPs = { avaliacao: AvaliacaoPs & { enviadoPgrEm?: string | null }; questionario: { id: string; sigla: string; nome: string; fonte: string; dimensoes: DimensaoPs[]; validado: boolean; comPgr: boolean }; total: LinhaPs; setores: LinhaPs[]; acoes: AcaoPs[]; ghes?: { nome: string; setor: string | null; funcoes: string[] }[] };
 export const psicossocial = {
   questionarios: (e: string) => chamar<QuestionarioPs[]>('GET', `/empresas/${e}/psicossocial/questionarios`),
   listar: (e: string) => chamar<AvaliacaoPs[]>('GET', `/empresas/${e}/psicossocial`),
@@ -825,7 +833,7 @@ export const psicossocial = {
   enviarPgr: (e: string, id: string) => chamar<{ riscos: number; acoes: number; removidos: number }>('POST', `/empresas/${e}/psicossocial/${id}/enviar-pgr`),
 };
 export type FormularioPs = {
-  titulo: string; empresa: string; consultoria: string; aberta: boolean; setores: string[];
+  titulo: string; empresa: string; consultoria: string; aberta: boolean; setores: string[]; opcoes?: { valor: string; rotulo: string }[];
   questionario: { sigla: string; nome: string; descricao: string; instrucao: string | null; escala: { valor: number; rotulo: string }[]; itens: { n: number; texto: string }[]; aviso: string | null };
 };
 export const formularioPs = {

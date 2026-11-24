@@ -45,7 +45,21 @@ function riscosDoAmbiente(amb: { setor: string; riscos: RiscoAmbiente[] } | null
     </section>`;
 }
 
-export function aprHtml(moldura: Moldura, apr: { atividade: string; local: string; data: Date; responsavel: string; etapas: EtapaApr[]; ambiente?: { setor: string; riscos: RiscoAmbiente[] } | null }, equipe: Pessoa[]) {
+export type ContextoAprPdf = { nome: string; norma: string; lembrar: string; pt: string | null };
+
+function situacoesEspeciais(contextos: ContextoAprPdf[] | undefined) {
+  if (!contextos?.length) return '';
+  return `
+    <section>
+      <h2>Situações especiais desta atividade</h2>
+      <table>
+        <thead><tr><th>Situação</th><th>Norma</th><th>Perigos para não esquecer</th><th>Permissão de trabalho</th></tr></thead>
+        <tbody>${contextos.map((c) => `<tr><td><strong>${escape(c.nome)}</strong></td><td>${escape(c.norma)}</td><td>${escape(c.lembrar)}</td><td>${c.pt ? `Pede PT de ${escape(c.pt.toLowerCase())}` : '—'}</td></tr>`).join('')}</tbody>
+      </table>
+    </section>`;
+}
+
+export function aprHtml(moldura: Moldura, apr: { atividade: string; local: string; data: Date; responsavel: string; etapas: EtapaApr[]; ambiente?: { setor: string; riscos: RiscoAmbiente[] } | null; contextos?: ContextoAprPdf[] }, equipe: Pessoa[]) {
   const quebra = (t: string) => escape(t).replace(/\n/g, '<br>');
   return documentoHtml(
     moldura,
@@ -68,6 +82,7 @@ export function aprHtml(moldura: Moldura, apr: { atividade: string; local: strin
         <tr><th>Etapas analisadas</th><td>${apr.etapas.length}</td></tr>
       </tbody></table>
     </section>
+    ${situacoesEspeciais(apr.contextos)}
     ${riscosDoAmbiente(apr.ambiente)}
     <section>
       <h2>Etapas, riscos e medidas de controle</h2>
@@ -161,6 +176,7 @@ export function permissaoHtml(
   pt: {
     tipo?: string; tipoNome: string; norma: string; atividade: string; local: string; inicio: Date; fim: Date; emitente: string; aprNumero: number | null;
     encerradaEm: Date | null; supervisorEntrada?: string | null; vigia?: string | null; detalhes?: DetalhesPt; espaco?: string | null; planoResgate?: string | null;
+    ambiente?: { setor: string; riscos: RiscoAmbiente[] } | null;
   },
   checklist: { item: string; ok: boolean }[],
   executantes: Pessoa[],
@@ -189,6 +205,7 @@ export function permissaoHtml(
       ${confinado ? `<p><strong>Supervisor de entrada:</strong> ${escape(pt.supervisorEntrada ?? '') || '________________'} · <strong>Vigia:</strong> ${escape(pt.vigia ?? '') || '________________'}</p>` : ''}
     </section>
     ${detalhesHtml(pt.tipo, pt.detalhes ?? {})}
+    ${riscosDoAmbiente(pt.ambiente)}
     <section>
       <h2>Verificações antes de liberar</h2>
       <table>

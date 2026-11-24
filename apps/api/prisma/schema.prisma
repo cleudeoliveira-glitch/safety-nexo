@@ -189,6 +189,7 @@ model Ghe {
   exames        ExameGhe[]
   colaboradores Colaborador[]
   aprs          Apr[]
+  permissoes    PermissaoTrabalho[]
   atualizadoEm  DateTime @default(now()) @updatedAt
 
   @@index([empresaId])
@@ -238,6 +239,10 @@ model Documento {
   versao      Int      @default(1)
   vencimento  DateTime?
   geradoEm    DateTime @default(now())
+  // Retrato dos GHEs e riscos usados nesta emissão (ver src/documentos/retrato.ts).
+  // Mudar o cadastro depois não mexe aqui: é a base para dizer o que mudou na próxima versão.
+  retrato     Json?
+  mudancas    String?  // o que mudou desde a versão anterior, como sai no histórico de revisões
 
   @@index([empresaId])
 }
@@ -401,6 +406,7 @@ model Apr {
   responsavel  String
   equipe       String[]            // ids de colaboradores
   etapas       Json                // [{ etapa, riscos, medidas, epis }]
+  contextos    String[]            @default([]) // situações especiais: ALTURA, ESPACO_CONFINADO... (src/operacao/conteudo.ts)
   createdAt    DateTime            @default(now())
   permissoes   PermissaoTrabalho[]
 
@@ -416,6 +422,9 @@ model PermissaoTrabalho {
   tipo        String    // ALTURA | ESPACO_CONFINADO | QUENTE | ELETRICIDADE
   aprId       String?
   apr         Apr?      @relation(fields: [aprId], references: [id], onDelete: SetNull)
+  // Setor (GHE) do serviço: os perigos e EPIs que o PGR já tem para ele saem na PT. Vem da APR quando houver.
+  gheId       String?
+  ghe         Ghe?      @relation(fields: [gheId], references: [id], onDelete: SetNull)
   atividade   String
   local       String
   inicio      DateTime

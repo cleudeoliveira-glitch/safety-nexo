@@ -57,8 +57,9 @@ export default function ResponderPsicossocial({ params }: { params: { token: str
             <div className="mt-4">
               <label htmlFor="setor" className="mb-1.5 block text-sm font-semibold">Seu setor</label>
               <select id="setor" value={setor} onChange={(e) => setSetor(e.target.value)} className="w-full rounded-card border border-border bg-background px-3 py-2">
-                <option value="">Escolha</option>{f.setores.map((s) => <option key={s}>{s}</option>)}
+                <option value="">Escolha</option>{(f.opcoes ?? f.setores.map((s) => ({ valor: s, rotulo: s }))).map((o) => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
               </select>
+              {f.opcoes?.some((o) => o.rotulo !== o.valor) && <p className="mt-1 text-xs text-text/60">Não sabe o nome do setor? Procure pela sua função na lista.</p>}
             </div>
             <ol className="mt-5 space-y-4">
               {f.questionario.itens.map((i) => (

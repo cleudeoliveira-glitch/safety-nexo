@@ -1,4 +1,5 @@
-import { BadRequestException, Controller, ForbiddenException, Param, ParseIntPipe, Post, Res } from '@nestjs/common';
+import { BadRequestException, Controller, ForbiddenException, Get, NotFoundException, Param, ParseIntPipe, Post, Res } from '@nestjs/common';
+import { AntesDeGerarService, DOCUMENTOS_CONFERIDOS, DocConferido } from './antes-de-gerar';
 import { PrismaService } from '../prisma/prisma.service';
 import { emPrevia, mensagemUpgrade, planoAtual, Recurso, temRecurso } from '../common/plano';
 import { Response } from 'express';
@@ -16,7 +17,15 @@ export class DocumentosController {
     private readonly ltcat: LtcatService,
     private readonly mapaRisco: MapaRiscoService,
     private readonly prisma: PrismaService,
+    private readonly antes: AntesDeGerarService,
   ) {}
+
+  // O que falta conferir antes de gerar: aparece no alto da pré-visualização.
+  @Get(':tipo/antes-de-gerar')
+  antesDeGerar(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Param('tipo') tipo: string) {
+    if (!DOCUMENTOS_CONFERIDOS.includes(tipo as DocConferido)) throw new NotFoundException('Esse documento não tem conferência antes de gerar.');
+    return this.antes.conferir(consultoriaId, empresaId, tipo as DocConferido);
+  }
 
   @Recurso('documentos', 'O LTCAT')
   @Post('ltcat')

@@ -1,4 +1,5 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { compararRetratos, lerRetrato, tirarRetrato } from '../documentos/retrato';
 
 // NR-01, 1.5.4.4.6: a avaliação de riscos é revista a cada 2 anos ou quando acontece algo que muda os riscos.
 // Aqui o sistema junta o que aconteceu depois do último PGR emitido e diz se está na hora de revisar.
@@ -30,7 +31,13 @@ export async function gatilhosRevisaoPgr(prisma: PrismaService, empresaId: strin
   const faltam = Math.ceil((venceEm.getTime() - hoje.getTime()) / DIA);
   if (faltam <= 60) motivos.push({ texto: faltam < 0 ? 'Passou de 2 anos desde o último PGR' : `Faltam ${faltam} dias para completar 2 anos`, detalhe: `Último PGR em ${data(desde)}.`, base: 'prazo de 2 anos' });
   if (cats.length) motivos.push({ texto: `${cats.length} acidente(s) depois do último PGR`, detalhe: cats.slice(0, 3).map((c) => `${c.colaborador.nome} em ${data(c.dataHora)}`).join('; '), base: 'acidente ou doença do trabalho' });
-  if (riscos.length || ghes.length) {
+  // Com o retrato do último PGR, a comparação é exata (pega até o que foi apagado). Sem ele, vale a data da última mudança.
+  const retrato = lerRetrato(pgr.retrato);
+  if (retrato) {
+    const atuais = await prisma.ghe.findMany({ where: { empresaId }, include: { riscos: true } });
+    const m = compararRetratos(retrato, tirarRetrato(atuais, hoje));
+    if (m.linhas.length) motivos.push({ texto: `Cadastro de GHEs mudou depois do último PGR (${m.total} mudança${m.total === 1 ? '' : 's'})`, detalhe: m.linhas.join('; '), base: 'mudança no ambiente, processo ou organização do trabalho' });
+  } else if (riscos.length || ghes.length) {
     const onde = [...new Set([...riscos.map((r) => r.ghe.nome), ...ghes.map((g) => g.nome)])];
     motivos.push({ texto: `Inventário mudou em ${onde.length} GHE`, detalhe: `${riscos.length} risco(s) alterado(s) ou incluído(s): ${onde.slice(0, 4).join(', ')}${onde.length > 4 ? '…' : ''}`, base: 'mudança no ambiente, processo ou organização do trabalho' });
   }

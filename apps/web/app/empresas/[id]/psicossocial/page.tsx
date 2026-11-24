@@ -61,6 +61,7 @@ function Fatores({ empresaId, r, agir }: { empresaId: string; r: ResultadoPs; ag
             {r.setores.map((l) => (
               <tr key={l.setor} className="border-t border-border">
                 <td className="py-2 pr-3"><span className="font-semibold">{l.setor}</span>
+                  {(() => { const g = r.ghes?.find((x) => x.nome === l.setor); const info = [g?.setor && g.setor !== g.nome ? g.setor : '', g?.funcoes.join(', ')].filter(Boolean).join(' · '); return info ? <span className="block max-w-[220px] text-[11px] text-text/60">{info}</span> : null; })()}
                   <button className="mt-1 block whitespace-nowrap text-xs text-primary underline" onClick={() => { setEditando(editando === l.setor ? null : l.setor); setNotas({ ...(l.tecnica ?? {}) }); }}>
                     {editando === l.setor ? 'Fechar' : l.tecnica ? 'Ver avaliação técnica' : 'Avaliação técnica'}
                   </button>
@@ -169,7 +170,7 @@ function Resultado({ empresaId, r, agir }: { empresaId: string; r: ResultadoPs; 
           agir(async () => { await psicossocial.acao(empresaId, r.avaliacao.id, { setor: t('setor') || undefined, dimensao: t('dimensao'), acao: t('acao'), responsavel: t('resp') || undefined, prazo: t('prazo') || undefined }); setChave((k) => k + 1); return 'Ação incluída no plano.'; });
         }}>
           <Campo id="pa-acao" name="acao" rotulo="Ação" required className="md:col-span-4" placeholder="Ex.: Rodízio de tarefas no forno e pausa de 10 minutos a cada 2 horas" />
-          <Selecao id="pa-setor" name="setor" rotulo="Setor"><option value="">Empresa toda</option>{r.setores.map((s) => <option key={s.setor}>{s.setor}</option>)}</Selecao>
+          <Selecao id="pa-setor" name="setor" rotulo="Setor"><option value="">Empresa toda</option>{[...new Set([...(r.ghes ?? []).map((g) => g.nome), ...r.setores.map((s) => s.setor)])].map((s) => <option key={s}>{s}</option>)}</Selecao>
           <Selecao id="pa-dim" name="dimensao" rotulo="Tema">{dims.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}</Selecao>
           <Campo id="pa-resp" name="resp" rotulo="Responsável" />
           <Campo id="pa-prazo" name="prazo" type="date" rotulo="Prazo" />

@@ -93,9 +93,14 @@ type Avisar = (tipo: 'erro' | 'ok', texto: string) => void;
 type DaEmpresa = { localPadrao: string; ghes: Ghe[]; nomeEmpresa: string };
 const TIPO_RISCO: Record<string, string> = { FISICO: 'físico', QUIMICO: 'químico', BIOLOGICO: 'biológico', ERGONOMICO: 'ergonômico', ACIDENTE: 'acidente' };
 
-function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, localPadrao, ghes }: {
+function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, localPadrao, ghes, conteudo }: {
   empresaId: string; colaboradores: Colaborador[]; aprs: Apr[]; recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
+  conteudo: ConteudoOperacao | null;
 } & DaEmpresa) {
+  // Situações especiais (altura, espaço confinado...): marcar ajuda a não esquecer um tipo de perigo.
+  const catalogoContextos = conteudo?.contextosApr ?? {};
+  const [contextos, setContextos] = useState<string[]>([]);
+  const marcarContexto = (id: string) => setContextos((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]));
   // Setor (GHE) da atividade: os riscos do ambiente vêm do PGR e entram na APR.
   const [gheId, setGheId] = useState('');
   const gheEscolhido = ghes.find((g) => g.id === gheId) ?? null;
@@ -118,6 +123,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
     if (!etapasVazias(etapas) && !window.confirm(`Trocar as etapas que você já escreveu pelas do modelo "${m.nome}"?`)) return;
     setEtapas(m.etapas.map((e) => ({ ...e })));
     setModeloUsado(m.id);
+    if (m.pt && catalogoContextos[m.pt]) setContextos((l) => (l.includes(m.pt!) ? l : [...l, m.pt!]));
     if (!atividade.trim()) setAtividade(m.nome);
     avisar('ok', `Etapas do modelo "${m.nome}" colocadas. Confira e ajuste para o local antes de salvar.`);
   }
@@ -142,6 +148,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
     porValor('apr-data', hoje());
     setEquipe(a.equipe.filter((id) => colaboradores.some((c) => c.id === id)));
     setEtapas(a.etapas.length ? a.etapas.map((e) => ({ ...e })) : [etapaVazia()]);
+    setContextos(a.contextos ?? []);
     setModeloUsado(null);
     document.getElementById('apr-atividade')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     avisar('ok', `APR nº ${a.numero} copiada para o formulário. Ajuste o que mudou e salve: ela vira uma APR nova.`);
@@ -178,6 +185,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
         responsavel: String(d.get('responsavel')).trim(),
         equipe,
         etapas: etapas.filter((e) => e.etapa.trim()),
+        contextos,
       });
       lembrar({ 'apr.responsavel': String(d.get('responsavel')) });
       form.reset();
@@ -185,6 +193,7 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
       setEquipe([]);
       setGheId('');
       setAtividade('');
+      setContextos([]);
       setModeloUsado(null);
       preencherLembrados({ 'apr-responsavel': 'apr.responsavel' });
       setFotoApr(null); setDicaIa(null);
@@ -223,6 +232,32 @@ function AbaApr({ empresaId, colaboradores, aprs, recarregar, avisar, baixar, lo
               <p>Tem um modelo pronto para essa atividade: <strong>{sugerido.nome}</strong> ({sugerido.norma}), com {sugerido.etapas.length} etapas, riscos, medidas e EPIs.</p>
               <Botao type="button" variante="secundario" onClick={() => usarModelo(sugerido)}>Usar o modelo</Botao>
             </div>
+          )}
+
+          {Object.keys(catalogoContextos).length > 0 && (
+            <fieldset className="rounded-card border border-border p-3 text-sm">
+              <legend className="px-1 font-semibold">A atividade envolve alguma destas situações?</legend>
+              <p className="mb-2 text-xs text-text/60">Marque o que valer. O sistema lembra os perigos que costumam ficar de fora e a permissão que a norma pede.</p>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(catalogoContextos).map(([id, c]) => (
+                  <label key={id} className={`flex min-h-[40px] cursor-pointer items-center gap-2 rounded-full border px-3 py-1 ${contextos.includes(id) ? 'border-primary bg-primary/10 font-semibold text-primary' : 'border-border bg-white'}`}>
+                    <input type="checkbox" className="sr-only" checked={contextos.includes(id)} onChange={() => marcarContexto(id)} />
+                    {contextos.includes(id) ? '✓ ' : ''}{c.nome}
+                  </label>
+                ))}
+              </div>
+              {contextos.length > 0 && (
+                <ul className="mt-3 space-y-1.5">
+                  {contextos.filter((id) => catalogoContextos[id]).map((id) => {
+                    const c = catalogoContextos[id];
+                    return (
+                      <li key={id}><strong>{c.nome}</strong> <span className="text-text/60">({c.norma})</span>: {c.lembrar}
+                        {c.pt && conteudo?.tiposPt[c.pt] && <span className="font-semibold text-[#c2410c]"> Pede permissão de trabalho ({conteudo.tiposPt[c.pt].nome.toLowerCase()}).</span>}</li>
+                    );
+                  })}
+                </ul>
+              )}
+            </fieldset>
           )}
 
           {gheEscolhido && (
@@ -350,12 +385,15 @@ function NovaMedicao({ aoSalvar }: { aoSalvar: (m: MedicaoGas) => Promise<void> 
   );
 }
 
-function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarregar, avisar, baixar, localPadrao, nomeEmpresa }: DaEmpresa & {
+function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarregar, avisar, baixar, localPadrao, nomeEmpresa, ghes }: DaEmpresa & {
   empresaId: string; colaboradores: Colaborador[]; aprs: Apr[]; permissoes: Permissao[]; conteudo: ConteudoOperacao;
   recarregar: () => Promise<void>; avisar: Avisar; baixar: (id: string, nome: string) => void;
 }) {
   const [fotoPt, setFotoPt] = useState<Blob | null>(null);
   const [tipo, setTipo] = useState<TipoPt>('ALTURA');
+  // Setor (GHE) do serviço: os perigos e EPIs que o PGR já tem para ele aparecem aqui e saem no PDF.
+  const [gheIdPt, setGheIdPt] = useState('');
+  const gheDaPt = ghes.find((g) => g.id === gheIdPt) ?? null;
   const [marcados, setMarcados] = useState<string[]>([]);
   const [executantes, setExecutantes] = useState<string[]>([]);
   const [espacos, setEspacos] = useState<EspacoConfinado[]>([]);
@@ -387,7 +425,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
   // As verificações NÃO vêm marcadas: precisam ser conferidas de novo no local.
   function repetir(p: Permissao) {
     novo.abrirE(() => {
-      setTipo(p.tipo); setMarcados([]);
+      setTipo(p.tipo); setMarcados([]); setGheIdPt(p.gheId ?? '');
       setExecutantes(p.executantes.filter((c) => colaboradores.some((x) => x.id === c)));
       setTimeout(() => {
         porValor('pt-atividade', p.atividade); porValor('pt-local', p.local); porValor('pt-emitente', p.emitente);
@@ -412,7 +450,10 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
     porValor('pt-atividade', a.atividade);
     porValor('pt-local', a.local);
     setExecutantes(a.equipe.filter((c) => colaboradores.some((x) => x.id === c)));
-    const tipoSugerido = modeloParaAtividade(a.atividade)?.pt;
+    if (a.gheId) setGheIdPt(a.gheId);
+    // A situação especial marcada na APR manda no tipo; sem ela, vale a palavra da atividade.
+    const doContexto = (a.contextos ?? []).map((c) => conteudo.contextosApr?.[c]?.pt).find((t): t is TipoPt => !!t && !!conteudo.tiposPt[t]);
+    const tipoSugerido = doContexto ?? modeloParaAtividade(a.atividade)?.pt;
     if (tipoSugerido && tipoSugerido !== tipo && conteudo.tiposPt[tipoSugerido]) { setTipo(tipoSugerido); setMarcados([]); }
   }
 
@@ -424,6 +465,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
       const nova = await criarPermissao(empresaId, {
         tipo,
         aprId: String(d.get('aprId') || '') || undefined,
+        gheId: gheIdPt || undefined,
         atividade: String(d.get('atividade')).trim(),
         local: String(d.get('local')).trim(),
         inicio: new Date(String(d.get('inicio'))).toISOString(),
@@ -444,6 +486,7 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
         setFotoPt(null);
       }
       form.reset();
+      setGheIdPt('');
       setPeso('');
       setCapacidade('');
       setMarcados([]);
@@ -483,6 +526,14 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
                     <option value="">Sem APR vinculada</option>
                     {aprs.map((a) => <option key={a.id} value={a.id}>Nº {a.numero} · {a.atividade}</option>)}
                   </Selecao>
+                  {conteudo.tiposPt[tipo]?.pede && <p className="rounded-card bg-primary/5 p-2 text-xs text-text/80 md:col-span-2"><strong>{conteudo.tiposPt[tipo].norma}:</strong> {conteudo.tiposPt[tipo].pede}</p>}
+                  {ghes.length > 0 && (
+                    <Selecao id="pt-ghe" rotulo="Setor (GHE) do serviço" value={gheIdPt} onChange={(e) => setGheIdPt(e.target.value)}
+                      ajuda={{ oQueE: 'O grupo do PGR onde o serviço vai acontecer.', exemplo: 'Os perigos e EPIs que o PGR já tem para o setor aparecem aqui e saem no PDF da permissão.' }}>
+                      <option value="">Fora dos setores cadastrados</option>
+                      {ghes.map((g) => <option key={g.id} value={g.id}>{g.codigo ? `${g.codigo} · ` : ''}{g.nome}</option>)}
+                    </Selecao>
+                  )}
                   <Campo id="pt-atividade" name="atividade" rotulo="Atividade" required placeholder="Ex.: Troca de telhas" />
                   <Campo id="pt-local" name="local" rotulo="Local" required placeholder="Ex.: Galpão" defaultValue={localPadrao} list="locais-empresa" />
                   <Campo id="pt-inicio" name="inicio" type="datetime-local" rotulo="Válida a partir de" required defaultValue={agoraMais(0)} />
@@ -503,6 +554,17 @@ function AbaPt({ empresaId, colaboradores, aprs, permissoes, conteudo, recarrega
                     </Selecao>
                   )}
                 </div>
+                {gheDaPt && (
+                  <div className="rounded-card border border-border bg-background p-3 text-sm">
+                    <p className="font-semibold text-primary">Perigos do setor ({gheDaPt.setor || gheDaPt.nome}), conforme o PGR</p>
+                    {gheDaPt.riscos.length ? (
+                      <ul className="mt-1 list-disc pl-5">
+                        {gheDaPt.riscos.map((r) => <li key={r.id}>{r.agente} · {r.fonteGeradora}{r.medidasEpi ? ` · EPI: ${r.medidasEpi}` : ''}</li>)}
+                      </ul>
+                    ) : <p className="text-text/60">Nenhum risco cadastrado para este setor ainda.</p>}
+                    <p className="mt-1 text-xs text-text/60">Saem no PDF da permissão, sem precisar digitar de novo.</p>
+                  </div>
+                )}
                 {comResgate && (
                   <p className="text-xs text-text/60">
                     {confinado ? 'O cadastro dos espaços e os' : 'Os'} planos de resgate ficam em{' '}
@@ -853,7 +915,7 @@ export default function OperacaoPage({ params }: { params: { id: string } }) {
       <NomesSugeridos pessoas={colaboradores.filter((c) => !c.dataDesligamento).map((c) => c.nome)} />
       <datalist id="locais-empresa">{[...new Set([localPadrao, ...setores].filter(Boolean))].map((l) => <option key={l} value={l} />)}</datalist>
 
-      {aba === 'apr' && <AbaApr {...comum} aprs={aprs} baixar={baixador('aprs')} />}
+      {aba === 'apr' && <AbaApr {...comum} aprs={aprs} conteudo={conteudo} baixar={baixador('aprs')} />}
       {aba === 'pt' && <AbaPt {...comum} aprs={aprs} permissoes={permissoes} conteudo={conteudo} baixar={baixador('permissoes')} />}
       {aba === 'dds' && <AbaDds {...comum} lista={dds} conteudo={conteudo} baixar={baixador('dds')} />}
       {aba === 'checklist' && <AbaChecklist empresaId={empresaId} nomeEmpresa={empresa?.razaoSocial ?? 'empresa'} lista={inspecoes} modelos={modelos} recarregar={recarregar} avisar={avisar} localPadrao={localPadrao} setores={setores} />}

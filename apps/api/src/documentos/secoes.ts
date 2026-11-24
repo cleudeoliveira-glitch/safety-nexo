@@ -49,7 +49,7 @@ export const p = (...textos: (string | false | null | undefined)[]) => textos.fi
 export const lista = (itens: (string | false | null | undefined)[]) => `<ul>${itens.filter(Boolean).map((i) => `<li>${i}</li>`).join('')}</ul>`;
 export const dataBr = (d: Date | null | undefined) => (d ? d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—');
 
-export type Revisao = { versao: number; geradoEm: Date };
+export type Revisao = { versao: number; geradoEm: Date; mudancas?: string | null };
 
 export type Controle = {
   sigla: string;
@@ -59,13 +59,15 @@ export type Controle = {
   proximaRevisao: Date | null;
   responsavel: string | null;
   historico: Revisao[]; // emissões anteriores do mesmo documento
+  mudancas?: string | null; // o que mudou nesta versão (PGR: vem do retrato dos GHEs)
+  baseDados?: Date | null; // quando o cadastro foi lido para montar o documento
 };
 
 // Código fácil de citar: sigla, ano e versão (ex.: PGR-2026-03).
 export const codigoDocumento = (sigla: string, emitidoEm: Date, versao: number) => `${sigla}-${emitidoEm.getFullYear()}-${String(versao).padStart(2, '0')}`;
 
 export function controleDocumento(c: Controle): string {
-  const revisoes = [...c.historico.filter((h) => h.versao < c.versao), { versao: c.versao, geradoEm: c.emitidoEm }].sort((a, b) => a.versao - b.versao);
+  const revisoes: Revisao[] = [...c.historico.filter((h) => h.versao < c.versao), { versao: c.versao, geradoEm: c.emitidoEm, mudancas: c.mudancas }].sort((a, b) => a.versao - b.versao);
   return `
     <table class="ficha">
       <tr><th>Documento</th><td>${escape(c.titulo)}</td></tr>
@@ -74,12 +76,13 @@ export function controleDocumento(c: Controle): string {
       <tr><th>Data de emissão</th><td>${dataBr(c.emitidoEm)}</td></tr>
       ${c.proximaRevisao ? `<tr><th>Próxima revisão</th><td>${dataBr(c.proximaRevisao)}, ou antes, se algo mudar</td></tr>` : ''}
       <tr><th>Elaborado por</th><td>${c.responsavel ? escape(c.responsavel) : '<span class="falta">responsável não informado</span>'}</td></tr>
+      ${c.baseDados ? `<tr><th>Base dos dados</th><td>Cadastro de GHEs e riscos como estava em ${dataBr(c.baseDados)}, às ${c.baseDados.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}. O que mudar depois entra na próxima revisão.</td></tr>` : ''}
     </table>
     <h3>Histórico de revisões</h3>
     <table>
       <thead><tr><th>Revisão</th><th>Data</th><th>O que mudou</th></tr></thead>
       <tbody>${revisoes
-        .map((r) => `<tr><td>${String(r.versao - 1).padStart(2, '0')}</td><td>${dataBr(r.geradoEm)}</td><td>${r.versao === 1 ? 'Emissão inicial.' : 'Revisão e atualização dos dados.'}</td></tr>`)
+        .map((r) => `<tr><td>${String(r.versao - 1).padStart(2, '0')}</td><td>${dataBr(r.geradoEm)}</td><td>${r.versao === 1 ? 'Emissão inicial.' : escape(r.mudancas?.trim() || 'Revisão e atualização dos dados.')}</td></tr>`)
         .join('')}</tbody>
     </table>`;
 }

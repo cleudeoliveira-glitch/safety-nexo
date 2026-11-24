@@ -6,7 +6,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { ContextoDocumentoService } from '../documentos/contexto.service';
 import { PdfService } from '../documentos/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { MODELOS_RESGATE, RISCOS_CONFINADO, TEMAS_DDS, TIPOS_ESPACO, TIPOS_PT, TipoPt } from './conteudo';
+import { CONTEXTOS_APR, ehContextoApr, MODELOS_RESGATE, RISCOS_CONFINADO, TEMAS_DDS, TIPOS_ESPACO, TIPOS_PT, TipoPt } from './conteudo';
 import { CriarAprDto, CriarDdsDto, CriarPermissaoDto, MedicaoGasDto } from './dto';
 import { sugerirTemasDds } from './sugestoes-dds';
 import { aprHtml, ddsHtml, DetalhesPt, EtapaApr, permissaoHtml } from './templates';
@@ -30,7 +30,7 @@ export class OperacaoService {
   ) {}
 
   conteudo() {
-    return { tiposPt: TIPOS_PT, temasDds: TEMAS_DDS, tiposEspaco: TIPOS_ESPACO, riscosConfinado: RISCOS_CONFINADO, modelosResgate: MODELOS_RESGATE };
+    return { tiposPt: TIPOS_PT, contextosApr: CONTEXTOS_APR, temasDds: TEMAS_DDS, tiposEspaco: TIPOS_ESPACO, riscosConfinado: RISCOS_CONFINADO, modelosResgate: MODELOS_RESGATE };
   }
 
   private async empresa(consultoriaId: string, empresaId: string) {
@@ -94,6 +94,7 @@ export class OperacaoService {
         responsavel: dto.responsavel.trim(),
         equipe,
         etapas: dto.etapas.map((e) => ({ etapa: e.etapa, riscos: e.riscos, medidas: e.medidas, epis: e.epis ?? '' })),
+        contextos: [...new Set((dto.contextos ?? []).filter(ehContextoApr))],
       },
     });
   }
@@ -105,7 +106,8 @@ export class OperacaoService {
     const moldura = await this.moldura(consultoriaId, empresaId, `Análise Preliminar de Risco (APR) nº ${apr.numero}`, [['Responsável', apr.responsavel]]);
     // Riscos do ambiente: os que o PGR já levantou para o setor onde a atividade acontece.
     const ambiente = apr.ghe ? { setor: nomeGhe(apr.ghe), riscos: apr.ghe.riscos } : null;
-    return this.pdf.render(aprHtml(moldura, { ...apr, etapas: apr.etapas as EtapaApr[], ambiente }, await this.pessoas(apr.equipe)));
+    const contextos = apr.contextos.filter(ehContextoApr).map((c) => ({ ...CONTEXTOS_APR[c], pt: CONTEXTOS_APR[c].pt ? TIPOS_PT[CONTEXTOS_APR[c].pt!].nome : null }));
+    return this.pdf.render(aprHtml(moldura, { ...apr, etapas: apr.etapas as EtapaApr[], ambiente, contextos }, await this.pessoas(apr.equipe)));
   }
 
   // Permissão de Trabalho
@@ -123,9 +125,11 @@ export class OperacaoService {
     const inicio = new Date(dto.inicio);
     const fim = new Date(dto.fim);
     if (fim <= inicio) throw new BadRequestException('O fim da permissão precisa ser depois do início.');
-    if (dto.aprId && !(await this.prisma.apr.findFirst({ where: { id: dto.aprId, empresaId } }))) {
-      throw new NotFoundException('APR não encontrada nesta empresa');
-    }
+    const apr = dto.aprId ? await this.prisma.apr.findFirst({ where: { id: dto.aprId, empresaId }, select: { gheId: true } }) : null;
+    if (dto.aprId && !apr) throw new NotFoundException('APR não encontrada nesta empresa');
+    // Setor (GHE): o escolhido na PT ou, sem escolha, o da APR.
+    const gheId = dto.gheId || apr?.gheId || null;
+    if (gheId && !(await this.prisma.ghe.findFirst({ where: { id: gheId, empresaId }, select: { id: true } }))) throw new BadRequestException('Esse setor (GHE) não é desta empresa.');
     if (dto.espacoId && !(await this.prisma.espacoConfinado.findFirst({ where: { id: dto.espacoId, empresaId } }))) {
       throw new NotFoundException('Espaço confinado não encontrado nesta empresa');
     }
@@ -147,6 +151,7 @@ export class OperacaoService {
         numero: await this.proximoNumero('permissaoTrabalho', empresaId),
         tipo: dto.tipo,
         aprId: dto.aprId || null,
+        gheId,
         atividade: dto.atividade.trim(),
         local: dto.local.trim(),
         inicio,
@@ -186,7 +191,7 @@ export class OperacaoService {
     await this.empresa(consultoriaId, empresaId);
     const pt = await this.prisma.permissaoTrabalho.findFirst({
       where: { id: ptId, empresaId },
-      include: { apr: { select: { numero: true } }, espaco: { select: { codigo: true, nome: true } }, planoResgate: { select: { numero: true, titulo: true } } },
+      include: { apr: { select: { numero: true } }, espaco: { select: { codigo: true, nome: true } }, planoResgate: { select: { numero: true, titulo: true } }, ghe: { include: { riscos: true } } },
     });
     if (!pt) throw new NotFoundException('Permissão não encontrada');
     const tipo = TIPOS_PT[pt.tipo as TipoPt];
@@ -199,6 +204,7 @@ export class OperacaoService {
           detalhes: (pt.detalhes ?? {}) as DetalhesPt,
           espaco: pt.espaco ? `${pt.espaco.codigo} · ${pt.espaco.nome}` : null,
           planoResgate: pt.planoResgate ? `nº ${pt.planoResgate.numero} · ${pt.planoResgate.titulo}` : null,
+          ambiente: pt.ghe ? { setor: nomeGhe(pt.ghe), riscos: pt.ghe.riscos } : null,
         },
         pt.checklist as { item: string; ok: boolean }[],
         await this.pessoas(pt.executantes),

@@ -46,6 +46,12 @@ export class CriarAprDto {
   @IsString({ each: true })
   equipe!: string[];
 
+  // Situações especiais marcadas (altura, espaço confinado...): ver CONTEXTOS_APR em conteudo.ts.
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  contextos?: string[];
+
   @IsArray()
   @ArrayMinSize(1, { message: 'Inclua pelo menos uma etapa na APR.' })
   @ValidateNested({ each: true })
@@ -100,6 +106,10 @@ export class CriarPermissaoDto {
   @IsOptional()
   @IsString()
   aprId?: string;
+
+  @IsOptional()
+  @IsString()
+  gheId?: string;
 
   @IsString()
   @Length(2, 200)
