@@ -39,7 +39,7 @@ export function TelasPorDentro() {
       <div className="overflow-hidden">
         <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${atual * 100}%)` }}>
           {TELAS.map((x, k) => (
-            <div key={x.nome} className="flex w-full shrink-0 justify-center px-1" aria-hidden={atual !== k}>
+            <div key={x.nome} className={`flex w-full shrink-0 justify-center px-1 transition-opacity duration-500 ${atual === k ? 'opacity-100' : 'opacity-0'}`} aria-hidden={atual !== k}>
               {x.documentos ? (
                 <div className="flex w-full max-w-4xl items-start justify-center gap-3 py-2 sm:gap-6">
                   {x.documentos.map((d, i) => (
