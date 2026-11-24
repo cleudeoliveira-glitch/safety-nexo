@@ -6,8 +6,10 @@ import { SessaoUsuario } from '../common/sessao.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImportarDto } from './dto';
 import { iaConfigurada, lerPdfComIa } from './leitor';
+import { lerPdfSemIa } from './leitor-gratis';
 
-const SEM_IA = 'A leitura com IA ainda não está ligada neste servidor: falta configurar a chave da IA (ANTHROPIC_API_KEY).';
+const SEM_IA = 'A leitura com IA está desligada (ela tem custo). Use "Ler grátis" ou "Digitar à mão", que funcionam sem pagar nada.';
+export type ModoLeitura = 'gratis' | 'ia';
 const chaveRisco = (tipo: string, agente: string) => `${tipo}|${agente.trim().toLowerCase()}`;
 
 @Injectable()
@@ -27,23 +29,34 @@ export class ImportacaoService implements OnModuleInit {
 
   situacao() { return { iaLigada: iaConfigurada() }; }
 
-  async enviar(sessao: SessaoUsuario, e: string, arq: Express.Multer.File | undefined) {
+  // Leitura grátis (sem IA) é o padrão. A IA só entra quando a chave estiver ligada e a pessoa pedir.
+  async enviar(sessao: SessaoUsuario, e: string, arq: Express.Multer.File | undefined, modo: ModoLeitura = 'gratis') {
     await this.empresa(sessao.consultoriaId, e);
     if (!arq) throw new BadRequestException('Escolha o PDF.');
     if (arq.mimetype !== 'application/pdf') throw new BadRequestException('Envie o documento em PDF.');
-    if (!iaConfigurada()) throw new BadRequestException(SEM_IA);
+    if (modo === 'ia' && !iaConfigurada()) throw new BadRequestException(SEM_IA);
     const nome = Buffer.from(arq.originalname, 'latin1').toString('utf8');
-    const guardado = await this.arquivo.enviar(sessao, e, arq, { titulo: `${nome.replace(/\.pdf$/i, '')} (documento antigo)`, categoria: 'Programas e laudos', descricao: 'Enviado para leitura com IA' });
+    const guardado = await this.arquivo.enviar(sessao, e, arq, { titulo: `${nome.replace(/\.pdf$/i, '')} (documento antigo)`, categoria: 'Programas e laudos', descricao: modo === 'ia' ? 'Enviado para leitura com IA' : 'Enviado para leitura grátis' });
     const imp = await this.prisma.importacaoPdf.create({
       data: { empresaId: e, arquivoId: guardado.id, nomeArquivo: nome.slice(0, 200), status: 'LENDO', criadoPorNome: guardado.criadoPorNome },
     });
-    void this.ler(imp.id, arq.buffer);
+    void this.ler(imp.id, arq.buffer, modo);
     return imp;
   }
 
-  private async ler(id: string, pdf: Buffer) {
+  // Sem PDF: abre a tela de conferência vazia para digitar os GHEs e os riscos olhando o documento antigo.
+  async manual(sessao: SessaoUsuario, e: string) {
+    await this.empresa(sessao.consultoriaId, e);
+    const nomeUsuario = (await this.prisma.usuario.findUnique({ where: { id: sessao.sub }, select: { nome: true } }))?.nome ?? '—';
+    const resultado = { tipoDocumento: null, empresa: null, cnpj: null, dataElaboracao: null, responsavelTecnico: null, ghes: [], avisos: ['Digitação à mão: use "Adicionar GHE" e "Adicionar risco" olhando o documento antigo.'] };
+    return this.prisma.importacaoPdf.create({
+      data: { empresaId: e, nomeArquivo: 'Digitado à mão', status: 'PRONTO', criadoPorNome: nomeUsuario, resultado: resultado as unknown as Prisma.InputJsonValue },
+    });
+  }
+
+  private async ler(id: string, pdf: Buffer, modo: ModoLeitura) {
     try {
-      const r = await lerPdfComIa(pdf);
+      const r = modo === 'ia' ? await lerPdfComIa(pdf) : await lerPdfSemIa(pdf);
       await this.prisma.importacaoPdf.update({ where: { id }, data: { status: 'PRONTO', resultado: r as unknown as Prisma.InputJsonValue } });
     } catch (err) {
       this.log.warn(`Leitura ${id} falhou: ${(err as Error).message}`);

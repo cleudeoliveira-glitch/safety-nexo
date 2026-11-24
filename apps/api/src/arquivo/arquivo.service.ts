@@ -1,25 +1,9 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { join } from 'path';
-import { execFile } from 'child_process';
+import { textoDoPdf } from '../common/texto-pdf';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessaoUsuario } from '../common/sessao.decorator';
 import { Guarda } from '../common/guarda';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdfParse: (b: Buffer) => Promise<{ text: string }> = require('pdf-parse/lib/pdf-parse.js');
-
-// Lê o texto do PDF com o pdftotext (poppler-utils, instalar no servidor), que respeita os espaços das tabelas.
-// Sem ele, usa o pdf-parse, que é pior mas não precisa de nada instalado.
-function textoDoPdf(pdf: Buffer): Promise<string> {
-  return new Promise((resolve) => {
-    const p = execFile('pdftotext', ['-layout', '-enc', 'UTF-8', '-', '-'], { maxBuffer: 20_000_000, timeout: 60_000 }, (erro, saida) => {
-      if (!erro) return resolve(saida);
-      pdfParse(pdf).then((r) => resolve(r.text)).catch(() => resolve(''));
-    });
-    p.stdin?.on('error', () => undefined);
-    p.stdin?.end(pdf);
-  });
-}
 
 const guarda = new Guarda('arquivos', process.env.ARQUIVOS_DIR ?? join(__dirname, '..', '..', 'storage', 'arquivos'));
 const TIPOS_ACEITOS: Record<string, string> = {

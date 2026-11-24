@@ -84,7 +84,7 @@ export const GUIAS: GuiaTela[] = [
           'Dentro de cada GHE, inclua os riscos: escolha o tipo (físico, químico, biológico, ergonômico, acidente), o agente, a fonte e a severidade.',
           'Escreva as medidas de controle que já existem (EPC, EPI, procedimentos).',
           'Inclua os exames do PCMSO para o GHE, com o tipo (admissional, periódico...) e de quantos em quantos meses.',
-          'Tem um PGR antigo em PDF? Use "Traga com IA" para preencher mais rápido.',
+          'Tem um PGR antigo em PDF? Use "Traga para cá" para preencher mais rápido, de graça.',
         ],
       },
       { titulo: '3. Médico do PCMSO', passos: ['Informe o nome e o CRM do médico responsável. Ele sai no PCMSO.'] },
@@ -311,9 +311,9 @@ export const GUIAS: GuiaTela[] = [
   {
     id: 'importar-pdf',
     endereco: rota('/importar-pdf'),
-    titulo: 'Trazer PGR antigo (IA)',
-    paraQue: 'Envie um PGR antigo em PDF e a inteligência artificial lê e sugere os GHEs e os riscos.',
-    partes: [{ titulo: 'Como usar', passos: ['Envie o PDF.', 'Espere a leitura terminar.', 'Confira o que foi encontrado e aceite o que estiver certo. Nada entra sem você conferir.'] }],
+    titulo: 'Trazer PGR antigo',
+    paraQue: 'Traga os GHEs e os riscos de um PGR, PPRA ou LTCAT feito em outro sistema, sem digitar tudo de novo.',
+    partes: [{ titulo: 'Como usar', passos: ['Escolha o PDF e clique em "Ler grátis". O sistema procura os GHEs e os riscos pelos nomes dos campos.', 'Abra a leitura em "Conferir", corrija o que veio errado e complete os campos em amarelo.', 'PDF escaneado (foto do papel) não dá para ler de graça: use "Digitar à mão" e preencha olhando o original.', 'Nada entra na empresa sem você conferir e clicar em "Importar".'] }],
   },
   {
     id: 'comercial',

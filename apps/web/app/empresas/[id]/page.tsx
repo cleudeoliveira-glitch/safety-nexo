@@ -288,7 +288,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       )}
 
       {aba === 'ghes' && (
-      <Cartao titulo="Grupos de exposição (GHE), riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga com IA →</Link>}>
+      <Cartao titulo="Grupos de exposição (GHE), riscos e exames" id="ghes" acao={<Link href={`/empresas/${empresaId}/importar-pdf`} className="text-sm font-semibold text-primary hover:underline">Já tem PGR antigo? Traga para cá →</Link>}>
         {!cliente && <div className="mb-4"><CopiarDados empresaId={empresaId} aoCopiar={(t, erro) => { setAviso({ tipo: erro ? 'erro' : 'ok', texto: t }); if (!erro) recarregar(); }} /></div>}
         <FuncoesDaEmpresa ghes={ghes} colaboradores={colaboradores} />
         <details className="rounded-card border border-primary/30 bg-primary/5 p-4" open={ghes.length === 0}>
