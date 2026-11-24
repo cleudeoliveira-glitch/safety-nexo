@@ -1,0 +1,16 @@
+name: Teste temporario fontes de normas
+on:
+  push:
+    branches: [claude/project-thread-c0jh9y]
+    paths: ['.github/workflows/teste-fontes-normas.yml']
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for u in "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-1" \
+                   "https://www.in.gov.br/consulta/-/buscar/dou?q=%22Norma+Regulamentadora%22&s=do1&exactDate=mes&sortType=0"; do
+            curl -sS -L -A "Mozilla/5.0 (SafetyNexo monitor de normas)" -o pagina.html -w "%{http_code} %{size_download}\n" --max-time 60 "$u" || true
+            grep -o 'documentModified.\{0,200\}' pagina.html | head -2 || true
+            grep -o 'BuscaDouPortlet_params[^>]*>.\{0,1500\}' pagina.html | head -1 || true
+          done
