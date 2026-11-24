@@ -14,6 +14,7 @@ type RiscoEd = Omit<RiscoImportar, 'severidade'> & { severidade: RiscoImportar['
 type GheEd = { nome: string; descricao: string; usar: boolean; riscos: RiscoEd[] };
 const entrada = 'w-full rounded border border-border px-2 py-1 text-sm';
 const cor = (falta: boolean) => (falta ? 'bg-warning/25 border-warning' : 'bg-white');
+const riscoVazio = (): RiscoEd => ({ tipo: 'ACIDENTE', agente: '', fonteGeradora: '', medidasControle: '', severidade: '', intensidade: '', limiteTolerancia: '', usar: true, pagina: null });
 
 export default function ImportarPdfPage({ params }: { params: { id: string } }) {
   const empresaId = params.id;
@@ -57,8 +58,9 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
   async function importar() {
     if (!aberta) return;
     const escolhidos = ghes.filter((g) => g.usar);
-    const faltando = escolhidos.flatMap((g) => g.riscos.filter((r) => r.usar && (!r.fonteGeradora.trim() || !r.severidade)).map((r) => `${g.nome}: ${r.agente}`));
-    if (faltando.length) { setAviso({ tipo: 'erro', texto: `Preencha a fonte geradora e a severidade de: ${faltando.join('; ')}. Ou desmarque esses riscos.` }); return; }
+    if (escolhidos.some((g) => g.nome.trim().length < 2)) { setAviso({ tipo: 'erro', texto: 'Todo GHE precisa de nome.' }); return; }
+    const faltando = escolhidos.flatMap((g) => g.riscos.filter((r) => r.usar && (r.agente.trim().length < 2 || !r.fonteGeradora.trim() || !r.severidade)).map((r) => `${g.nome}: ${r.agente || 'risco sem nome'}`));
+    if (faltando.length) { setAviso({ tipo: 'erro', texto: `Preencha o agente, a fonte geradora e a severidade de: ${faltando.join('; ')}. Ou desmarque esses riscos.` }); return; }
     try {
       const r = await importarPdf.importar(empresaId, aberta.id, escolhidos.map((g) => ({
         nome: g.nome, descricao: g.descricao || undefined,
@@ -77,23 +79,38 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
       <div>
         <Link href={`/empresas/${empresaId}`} className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">Trazer PGR ou laudo antigo</h1>
-        <p className="text-text/60">{empresa.razaoSocial} · a IA lê o PDF e separa GHEs e riscos. Você confere tudo antes de entrar no sistema.</p>
+        <p className="text-text/60">{empresa.razaoSocial} · o sistema lê o PDF e separa os GHEs e os riscos. Você confere tudo antes de entrar no sistema.</p>
       </div>
       {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
-      {iaLigada === false && <Aviso tipo="info">A leitura com IA ainda não está ligada neste servidor. Ela começa a funcionar quando a chave da IA for configurada na publicação do site.</Aviso>}
 
       <Cartao titulo="Enviar documento">
-        <p className="mb-3 text-sm text-text/60">PGR, PPRA, LTCAT ou inventário de riscos em PDF, até 20 MB. Pode ser escaneado. Uma cópia fica no arquivo de documentos. A leitura leva de 1 a 5 minutos.</p>
+        <p className="mb-3 text-sm text-text/60">PGR, PPRA, LTCAT ou inventário de riscos em PDF, até 20 MB. Uma cópia fica no arquivo de documentos.</p>
         <form className="flex flex-wrap items-center gap-3" onSubmit={async (ev) => {
-          ev.preventDefault(); const f = new FormData(ev.currentTarget).get('arquivo');
+          ev.preventDefault();
+          const modo = ((ev.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value === 'ia' ? 'ia' : 'gratis';
+          const f = new FormData(ev.currentTarget).get('arquivo');
           if (!(f instanceof File) || !f.size) { setAviso({ tipo: 'erro', texto: 'Escolha o PDF.' }); return; }
           setEnviando(true);
-          try { await importarPdf.enviar(empresaId, f); setAviso({ tipo: 'info', texto: 'Recebido. A IA está lendo; pode sair desta tela e voltar depois.' }); (ev.target as HTMLFormElement).reset(); await carregar(); }
-          catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); } finally { setEnviando(false); }
+          try {
+            await importarPdf.enviar(empresaId, f, modo);
+            setAviso({ tipo: 'info', texto: modo === 'ia' ? 'Recebido. A IA está lendo; pode sair desta tela e voltar depois.' : 'Recebido. Lendo o documento; em poucos segundos aparece em Leituras.' });
+            (ev.target as HTMLFormElement).reset(); await carregar();
+          } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); } finally { setEnviando(false); }
         }}>
-          <input name="arquivo" type="file" accept="application/pdf,.pdf" aria-label="PDF" className="text-sm" disabled={!iaLigada} />
-          <Botao type="submit" disabled={!iaLigada || enviando}>{enviando ? 'Enviando…' : 'Ler com IA'}</Botao>
+          <input name="arquivo" type="file" accept="application/pdf,.pdf" aria-label="PDF" className="text-sm" />
+          <Botao type="submit" value="gratis" disabled={enviando}>{enviando ? 'Enviando…' : 'Ler grátis'}</Botao>
+          {iaLigada && <Botao type="submit" value="ia" variante="secundario" disabled={enviando}>Ler com IA</Botao>}
         </form>
+        <p className="mt-3 text-xs text-text/60">
+          A leitura grátis acha os GHEs e os riscos pelos nomes dos campos do documento. Ela não lê PDF escaneado (foto do papel): nesse caso, digite à mão.
+          {iaLigada === false && ' A leitura com IA, que entende qualquer modelo e PDF escaneado, está desligada porque tem custo por uso.'}
+        </p>
+        <div className="mt-3 border-t border-border pt-3">
+          <Botao variante="secundario" onClick={async () => {
+            try { const l = await importarPdf.manual(empresaId); await carregar(); await abrir(l.id); }
+            catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+          }}>Digitar à mão, sem PDF</Botao>
+        </div>
       </Cartao>
 
       {lista.length > 0 && (
@@ -121,8 +138,8 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
             <p className="text-sm">{[doc.tipoDocumento, doc.empresa, doc.cnpj, doc.dataElaboracao && `elaborado em ${doc.dataElaboracao}`, doc.responsavelTecnico && `por ${doc.responsavelTecnico}`].filter(Boolean).join(' · ') || 'O documento não informa empresa nem data.'}</p>
             {doc.cnpj && empresa.cnpj && doc.cnpj.replace(/\D/g, '') !== empresa.cnpj.replace(/\D/g, '') && <p className="mt-2 text-sm text-danger">Atenção: o CNPJ do documento ({doc.cnpj}) é diferente do desta empresa ({empresa.cnpj}).</p>}
             {doc.avisos.length > 0 && <ul className="mt-3 list-disc pl-5 text-sm text-warning">{doc.avisos.map((a, i) => <li key={i}>{a}</li>)}</ul>}
-            <p className="mt-3 text-xs text-text/60">A IA copia só o que está escrito. Campos em amarelo não estavam no documento: preencha ou desmarque o risco. Confira tudo com o original antes de importar.</p>
-            {!ghes.length && <p className="mt-3 text-sm">Nenhum GHE encontrado neste documento.</p>}
+            <p className="mt-3 text-xs text-text/60">O sistema copia só o que achou escrito. Campos em amarelo não foram achados: preencha ou desmarque o risco. Confira tudo com o original antes de importar.</p>
+            {!ghes.length && <p className="mt-3 text-sm">Nenhum GHE por enquanto. Use &quot;Adicionar GHE&quot; para digitar.</p>}
           </Cartao>
 
           {ghes.map((g, i) => {
@@ -144,8 +161,8 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
                           <tr key={k} className={`align-top ${r.usar ? '' : 'opacity-40'}`}>
                             <td className="py-1"><input type="checkbox" checked={r.usar} onChange={(e) => mudarRisco(i, k, { usar: e.target.checked })} aria-label={`Importar risco ${r.agente}`} /></td>
                             <td className="p-1"><select className={`${entrada} ${cor(false)} min-w-[110px]`} value={r.tipo} onChange={(e) => mudarRisco(i, k, { tipo: e.target.value as TipoRisco })}>{TIPOS.map(([v, n]) => <option key={v} value={v}>{n}</option>)}</select></td>
-                            <td className="p-1"><input className={`${entrada} ${cor(false)}`} value={r.agente} onChange={(e) => mudarRisco(i, k, { agente: e.target.value })} /></td>
-                            <td className="p-1"><input className={`${entrada} ${cor(!r.fonteGeradora.trim())}`} value={r.fonteGeradora} placeholder="Não estava no documento" onChange={(e) => mudarRisco(i, k, { fonteGeradora: e.target.value })} /></td>
+                            <td className="p-1"><input className={`${entrada} ${cor(!r.agente.trim())}`} value={r.agente} placeholder="Ex.: Ruído" onChange={(e) => mudarRisco(i, k, { agente: e.target.value })} /></td>
+                            <td className="p-1"><input className={`${entrada} ${cor(!r.fonteGeradora.trim())}`} value={r.fonteGeradora} placeholder="O que gera o risco" onChange={(e) => mudarRisco(i, k, { fonteGeradora: e.target.value })} /></td>
                             <td className="p-1"><input className={`${entrada} ${cor(false)}`} value={r.medidasControle} onChange={(e) => mudarRisco(i, k, { medidasControle: e.target.value })} /></td>
                             <td className="p-1"><select className={`${entrada} ${cor(!r.severidade)}`} value={r.severidade} onChange={(e) => mudarRisco(i, k, { severidade: e.target.value as RiscoEd['severidade'] })} aria-label={`Severidade de ${r.agente}`}><option value="">Escolha</option>{SEVERIDADES.map(([v, n]) => <option key={v} value={v}>{v} · {n}</option>)}</select></td>
                             <td className="p-1"><input className={`${entrada} ${cor(false)}`} value={r.intensidade} onChange={(e) => mudarRisco(i, k, { intensidade: e.target.value })} /></td>
@@ -156,16 +173,18 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
                       </tbody>
                     </table>
                   </div>
+                  <button type="button" className="mt-2 min-h-[44px] text-sm font-semibold text-primary hover:underline" onClick={() => mudarGhe(i, { riscos: [...g.riscos, riscoVazio()] })}>+ Adicionar risco</button>
                 </div>
               </Cartao>
             );
           })}
-          {ghes.length > 0 && (
-            <div className="flex flex-wrap justify-end gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Botao variante="secundario" onClick={() => setGhes([...ghes, { nome: `GHE ${String(ghes.length + 1).padStart(2, '0')}`, descricao: '', usar: true, riscos: [riscoVazio()] }])}>+ Adicionar GHE</Botao>
+            <div className="flex flex-wrap gap-3">
               <Botao variante="secundario" onClick={() => setAberta(null)}>Fechar</Botao>
-              <Botao onClick={importar}>Importar para a empresa</Botao>
+              {ghes.length > 0 && <Botao onClick={importar}>Importar para a empresa</Botao>}
             </div>
-          )}
+          </div>
         </div>
       )}
     </main>

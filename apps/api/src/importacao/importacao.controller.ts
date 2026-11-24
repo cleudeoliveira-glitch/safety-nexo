@@ -14,7 +14,10 @@ export class ImportacaoController {
   @Get() listar(@ConsultoriaId() c: string, @Param('empresaId') e: string) { return this.imp.listar(c, e); }
   @Post()
   @UseInterceptors(FileInterceptor('arquivo', { limits: { fileSize: 20_000_000 } }))
-  enviar(@Sessao() s: SessaoUsuario, @Param('empresaId') e: string, @UploadedFile() arquivo: Express.Multer.File | undefined) { return this.imp.enviar(s, e, arquivo); }
+  enviar(@Sessao() s: SessaoUsuario, @Param('empresaId') e: string, @UploadedFile() arquivo: Express.Multer.File | undefined, @Body('modo') modo?: string) {
+    return this.imp.enviar(s, e, arquivo, modo === 'ia' ? 'ia' : 'gratis');
+  }
+  @Post('manual') manual(@ConsultoriaId() c: string, @Sessao() s: SessaoUsuario, @Param('empresaId') e: string) { return this.imp.manual({ ...s, consultoriaId: c }, e); }
   @Get(':id') obter(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.imp.obter(c, e, id); }
   @Post(':id/importar') importar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() dto: ImportarDto) { return this.imp.importar(c, e, id, dto); }
   @Delete(':id') remover(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.imp.remover(c, e, id); }

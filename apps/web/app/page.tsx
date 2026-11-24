@@ -327,7 +327,7 @@ function Esqueleto({ linhas }: { linhas: number }) {
 function BoasVindas({ cliente }: { cliente: boolean }) {
   const passos = [
     { titulo: 'Cadastre a empresa cliente', texto: 'CNPJ, CNAE e logo. O grau de risco sai sozinho.' },
-    { titulo: 'Monte os GHEs e os riscos', texto: 'Ou traga um PGR antigo em PDF e a IA preenche para você.' },
+    { titulo: 'Monte os GHEs e os riscos', texto: 'Ou traga um PGR antigo em PDF e o sistema preenche para você.' },
     { titulo: 'Inclua os colaboradores', texto: 'Um por um ou pela planilha do RH.' },
     { titulo: 'Gere o PGR e o PCMSO', texto: 'Em PDF, com a logo da empresa e a da sua consultoria.' },
   ];

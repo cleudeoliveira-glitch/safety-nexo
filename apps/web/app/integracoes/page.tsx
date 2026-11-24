@@ -62,7 +62,7 @@ export default function PaginaIntegracoes() {
     },
     {
       nome: 'Inteligência artificial', icone: 'brilho', situacao: dados.ia.ligada ? 'ligado' : 'falta',
-      texto: 'Lê PGR antigo em PDF, analisa fotos de inspeção e de relatos, sugere APR e ajuda na investigação de acidentes.',
+      texto: 'Analisa fotos de inspeção e de relatos, sugere APR, ajuda na investigação de acidentes e lê PGR antigo escaneado. A leitura de PGR antigo com texto já funciona de graça, sem IA.',
       detalhe: dados.ia.ligada ? 'Funcionando.' : 'Desligada por enquanto: tem custo por uso. Liga com a chave da IA no servidor (Render).',
       link: { href: naEmpresa('/importar-pdf'), rotulo: 'Trazer PGR antigo' },
     },

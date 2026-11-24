@@ -886,7 +886,8 @@ export const importarPdf = {
   situacao: (e: string) => chamar<{ iaLigada: boolean }>('GET', `/empresas/${e}/importar-pdf/situacao`),
   listar: (e: string) => chamar<Leitura[]>('GET', `/empresas/${e}/importar-pdf`),
   obter: (e: string, id: string) => chamar<Leitura & { ghesExistentes: string[] }>('GET', `/empresas/${e}/importar-pdf/${id}`),
-  enviar: (e: string, arq: File) => { const f = new FormData(); f.append('arquivo', arq); return chamar<Leitura>('POST', `/empresas/${e}/importar-pdf`, f); },
+  enviar: (e: string, arq: File, modo: 'gratis' | 'ia' = 'gratis') => { const f = new FormData(); f.append('modo', modo); f.append('arquivo', arq); return chamar<Leitura>('POST', `/empresas/${e}/importar-pdf`, f); },
+  manual: (e: string) => chamar<Leitura>('POST', `/empresas/${e}/importar-pdf/manual`),
   importar: (e: string, id: string, ghes: { nome: string; descricao?: string; riscos: RiscoImportar[] }[]) => chamar<{ novosGhes: number; novosRiscos: number; repetidos: number }>('POST', `/empresas/${e}/importar-pdf/${id}/importar`, { ghes }),
   remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/importar-pdf/${id}`),
 };
