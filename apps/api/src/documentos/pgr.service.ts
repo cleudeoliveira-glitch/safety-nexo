@@ -1,11 +1,13 @@
 import { capaDe, responsavelTecnico } from './capa';
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { ContextoDocumentoService } from './contexto.service';
 import { PdfService } from './pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { renderPgrHtml } from './pgr.template';
 import { lerAmbiente, lerFuncoes, nomeGhe, textoAmbiente } from '../empresas/ghe-ambiente';
 import { cidadeDoEndereco } from './secoes';
+import { compararRetratos, lerRetrato, resumoParaHistorico, tirarRetrato } from './retrato';
 
 @Injectable()
 export class PgrService {
@@ -37,6 +39,12 @@ export class PgrService {
     // Plano de ação único da empresa: o que está aberto primeiro, por prazo.
     const acoes = await this.prisma.acaoCorretiva.findMany({ where: { empresaId }, orderBy: [{ status: 'asc' }, { prazo: 'asc' }] });
     const emergencia = (empresa.emergencia ?? {}) as { pontoEncontro?: string };
+
+    // Retrato dos GHEs desta emissão e o que mudou desde o último PGR que tinha retrato.
+    const retrato = tirarRetrato(empresa.ghes, geradoEm);
+    const anterior = await this.prisma.documento.findFirst({ where: { empresaId, tipo: 'PGR', NOT: { retrato: { equals: Prisma.DbNull } } }, orderBy: { versao: 'desc' }, select: { retrato: true } });
+    const retratoAnterior = lerRetrato(anterior?.retrato);
+    const mudancas = versao === 1 ? null : resumoParaHistorico(retratoAnterior ? compararRetratos(retratoAnterior, retrato) : null);
 
     const html = renderPgrHtml(
       {
@@ -72,7 +80,7 @@ export class PgrService {
         responsavel: { nome: empresa.responsavelTecnicoNome, registro: empresa.responsavelTecnicoRegistro },
         representanteLegal: empresa.representanteLegalNome,
         emitidoEm: geradoEm,
-        controle: { sigla: 'PGR', titulo: 'Programa de Gerenciamento de Riscos (PGR)', versao, emitidoEm: geradoEm, proximaRevisao, responsavel: elaborador, historico },
+        controle: { sigla: 'PGR', titulo: 'Programa de Gerenciamento de Riscos (PGR)', versao, emitidoEm: geradoEm, proximaRevisao, responsavel: elaborador, historico, mudancas, baseDados: geradoEm },
         empresa: { razaoSocial: empresa.razaoSocial, cnae: empresa.cnae, endereco: empresa.endereco, numFuncionarios: empresa.numFuncionarios },
         funcoes: [...porFuncao.values()].sort((a, b) => a.ghe.localeCompare(b.ghe) || a.funcao.localeCompare(b.funcao)),
         terceiros,
@@ -83,7 +91,7 @@ export class PgrService {
     const pdf = await this.pdf.render(html);
 
     // PGR: avaliação de riscos revista a cada 2 anos (NR-01).
-    await this.contexto.registrar(empresaId, 'PGR', versao, geradoEm, 24);
+    await this.contexto.registrar(empresaId, 'PGR', versao, geradoEm, 24, { retrato, mudancas: mudancas ?? undefined });
     return { pdf, versao };
   }
 }

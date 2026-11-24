@@ -1,5 +1,5 @@
 import { lerToken, sair, type Usuario } from './sessao';
-import { pedirAutorizacao, VOLTOU_PARA_CORRIGIR } from './previa';
+import { pedirAutorizacao, VOLTOU_PARA_CORRIGIR, type AvisoAntes } from './previa';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3101';
 
@@ -177,12 +177,17 @@ export function enviarLogoEmpresa(empresaId: string, arquivo: File) {
 // Pede um PDF à API e devolve o arquivo para baixar.
 // Antes, mostra o documento inteiro na tela: o PDF só é gerado depois que a pessoa autoriza.
 async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
+  // PGR, PCMSO e LTCAT: junto com a prévia vem a lista do que falta conferir. Se falhar, a prévia abre sem ela.
+  const conferido = /\/documentos\/(pgr|pcmso|ltcat)$/.test(caminho);
+  const avisos: Promise<AvisoAntes[]> = conferido
+    ? fetch(`${API_URL}${caminho}/antes-de-gerar`, { headers: cabecalhos() }).then((r) => (r.ok ? r.json() : [])).catch(() => [])
+    : Promise.resolve([]);
   const previa = await fetch(`${API_URL}${caminho}`, { method: 'POST', headers: { ...cabecalhos(), 'X-Previa': '1' } });
   verificarSessao(previa);
   if (!previa.ok) { const erro = await previa.json().catch(() => null); throw new Error(erro?.message ?? `Não foi possível montar o ${nome} (${previa.status}).`); }
   // A API antiga (sem pré-visualização) devolve o PDF direto: nesse caso segue como antes.
   if ((previa.headers.get('Content-Type') ?? '').includes('text/html')) {
-    if (!(await pedirAutorizacao(nome, await previa.text()))) throw new Error(VOLTOU_PARA_CORRIGIR);
+    if (!(await pedirAutorizacao(nome, await previa.text(), await avisos))) throw new Error(VOLTOU_PARA_CORRIGIR);
   } else {
     return previa.blob();
   }

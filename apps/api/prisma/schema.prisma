@@ -238,6 +238,10 @@ model Documento {
   versao      Int      @default(1)
   vencimento  DateTime?
   geradoEm    DateTime @default(now())
+  // Retrato dos GHEs e riscos usados nesta emissão (ver src/documentos/retrato.ts).
+  // Mudar o cadastro depois não mexe aqui: é a base para dizer o que mudou na próxima versão.
+  retrato     Json?
+  mudancas    String?  // o que mudou desde a versão anterior, como sai no histórico de revisões
 
   @@index([empresaId])
 }

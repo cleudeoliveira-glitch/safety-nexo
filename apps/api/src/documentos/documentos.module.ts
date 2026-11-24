@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { LogosModule } from '../logos/logos.module';
+import { AntesDeGerarService } from './antes-de-gerar';
 import { ContextoDocumentoService } from './contexto.service';
 import { DocumentosController } from './documentos.controller';
 import { PcmsoService } from './pcmso.service';
@@ -12,7 +13,7 @@ import { ValidacaoDocumentoController } from './validacao.controller';
 @Module({
   imports: [LogosModule],
   controllers: [DocumentosController, ValidacaoDocumentoController],
-  providers: [ContextoDocumentoService, PdfService, PgrService, PcmsoService, LtcatService, MapaRiscoService],
+  providers: [AntesDeGerarService, ContextoDocumentoService, PdfService, PgrService, PcmsoService, LtcatService, MapaRiscoService],
   exports: [ContextoDocumentoService, PdfService],
 })
 export class DocumentosModule {}

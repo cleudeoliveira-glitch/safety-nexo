@@ -25,7 +25,7 @@ export class ContextoDocumentoService {
     if (!empresa) throw new NotFoundException('Empresa não encontrada');
 
     // Emissões anteriores: viram o histórico de revisões no próprio documento.
-    const historico = await this.prisma.documento.findMany({ where: { empresaId, tipo }, orderBy: { versao: 'asc' }, select: { versao: true, geradoEm: true } });
+    const historico = await this.prisma.documento.findMany({ where: { empresaId, tipo }, orderBy: { versao: 'asc' }, select: { versao: true, geradoEm: true, mudancas: true } });
     const versao = historico.length + 1;
     // Logos conforme o plano: Grátis sem logos; Start só a da empresa; do Essencial para cima as duas.
     const plano = planoAtual();
@@ -39,10 +39,10 @@ export class ContextoDocumentoService {
     return { empresa, versao, historico, logoEmpresa, consultoria, geradoEm: new Date() };
   }
 
-  async registrar(empresaId: string, tipo: string, versao: number, geradoEm: Date, validadeMeses: number) {
+  async registrar(empresaId: string, tipo: string, versao: number, geradoEm: Date, validadeMeses: number, extras?: { retrato?: object; mudancas?: string }) {
     if (emPrevia()) return; // só conta versão quando a pessoa autoriza o PDF
     const vencimento = new Date(geradoEm);
     vencimento.setMonth(vencimento.getMonth() + validadeMeses);
-    await this.prisma.documento.create({ data: { empresaId, tipo, versao, geradoEm, vencimento } });
+    await this.prisma.documento.create({ data: { empresaId, tipo, versao, geradoEm, vencimento, retrato: extras?.retrato, mudancas: extras?.mudancas } });
   }
 }
