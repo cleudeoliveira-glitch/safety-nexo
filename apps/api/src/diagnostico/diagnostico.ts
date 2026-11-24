@@ -530,8 +530,13 @@ export class DiagnosticoService {
 
   private async erros(): Promise<ItemDiagnostico[]> {
     await this.prisma.falhaSistema.deleteMany({ where: { ultimaEm: { lt: new Date(Date.now() - 30 * DIA) } } });
-    const recentes = await this.prisma.falhaSistema.findMany({ where: { ultimaEm: { gte: new Date(Date.now() - 48 * HORA) } }, orderBy: [{ ultimaEm: 'desc' }], take: 12 });
-    if (!recentes.length) return [{ id: 'erros', grupo: GRUPOS.erros, titulo: 'Nenhum erro nas últimas 48 horas', situacao: 'ok', resumo: 'Ninguém viu mensagem de erro do sistema, do pagamento ou do e-mail.' }];
+    const achados = await this.prisma.falhaSistema.findMany({ where: { ultimaEm: { gte: new Date(Date.now() - 48 * HORA) } }, orderBy: [{ ultimaEm: 'desc' }], take: 30 });
+    // Erro que parou sozinho: se a mesma chamada (Asaas ou tarefa agendada) deu certo depois do último erro,
+    // o problema já foi resolvido. Sai da lista e do caderno; se voltar a acontecer, aparece de novo.
+    const voltouAFuncionar = await this.chamadasQueVoltaram(achados);
+    if (voltouAFuncionar.length) await this.prisma.falhaSistema.deleteMany({ where: { id: { in: voltouAFuncionar } } });
+    const recentes = achados.filter((f) => !voltouAFuncionar.includes(f.id)).slice(0, 12);
+    if (!recentes.length) return [{ id: 'erros', grupo: GRUPOS.erros, titulo: 'Nenhum erro nas últimas 48 horas', situacao: 'ok', resumo: `Ninguém viu mensagem de erro do sistema, do pagamento ou do e-mail.${voltouAFuncionar.length ? ` ${voltouAFuncionar.length === 1 ? 'Um erro antigo saiu da lista' : `${voltouAFuncionar.length} erros antigos saíram da lista`} porque a mesma chamada voltou a dar certo depois.` : ''}` }];
     const ids = [...new Set(recentes.map((r) => r.consultoriaId).filter(Boolean))] as string[];
     const nomes = new Map((await this.prisma.consultoria.findMany({ where: { id: { in: ids } }, select: { id: true, nome: true } })).map((c) => [c.id, c.nome]));
     const ONDE: Record<string, string> = { MOTOR: 'no motor', TELA: 'numa tela do site', ASAAS: 'na conversa com o Asaas', EMAIL: 'no envio de e-mail' };
@@ -550,6 +555,22 @@ export class DiagnosticoService {
         }),
       } satisfies ItemDiagnostico;
     });
+  }
+
+  // Erros de chamadas vigiadas (POST /pagamentos/asaas e /tarefas/*) que tiveram sucesso depois.
+  private async chamadasQueVoltaram(falhas: { id: string; rota: string | null; ultimaEm: Date }[]): Promise<string[]> {
+    const vigiadas = falhas.filter((f) => f.rota?.startsWith('POST /'));
+    if (!vigiadas.length) return [];
+    const chaves = [...new Set(vigiadas.map((f) => `chamada:${f.rota!.slice(5)}`))];
+    const salvas = await this.prisma.configPlataforma.findMany({ where: { chave: { in: chaves } } });
+    const ultimoSucesso = new Map<string, number>();
+    for (const c of salvas) {
+      try {
+        const v = JSON.parse(c.valor) as { em: string; status: number };
+        if (v.status < 400) ultimoSucesso.set(c.chave, new Date(v.em).getTime());
+      } catch { /* valor estragado: ignora */ }
+    }
+    return vigiadas.filter((f) => (ultimoSucesso.get(`chamada:${f.rota!.slice(5)}`) ?? 0) > f.ultimaEm.getTime()).map((f) => f.id);
   }
 
   // ---------- Site, e-mail e avisos ----------
