@@ -18,9 +18,10 @@ export default function NovaEmpresa() {
   const [salvando, setSalvando] = useState(false);
   const [cnpjAviso, setCnpjAviso] = useState<string | null>(null);
   const [plano, setPlano] = useState<MeuPlano | null>(null);
+  const [planoLido, setPlanoLido] = useState(false); // até saber o plano, não mostra o formulário (evita piscar)
 
   // Já no limite do plano: avisa antes de a pessoa preencher tudo.
-  useEffect(() => { meuPlano.ver().then(setPlano).catch(() => setPlano(null)); }, []);
+  useEffect(() => { meuPlano.ver().then(setPlano).catch(() => setPlano(null)).finally(() => setPlanoLido(true)); }, []);
   const noLimite = !!plano && !plano.acessoTotal && plano.limiteEmpresas !== null && plano.empresas >= plano.limiteEmpresas;
 
   async function consultarCnae(codigo: string) {
@@ -69,7 +70,9 @@ export default function NovaEmpresa() {
       <h1 className="mt-4 text-3xl font-semibold text-primary">Nova empresa</h1>
       <p className="mt-1 text-text/60">Comece pelos dados básicos. Os documentos desta empresa vão sair com a logo dela no cabeçalho.</p>
 
-      {noLimite && plano ? (
+      {!planoLido ? (
+        <p className="mt-8 text-sm text-text/60">Carregando…</p>
+      ) : noLimite && plano ? (
         <div className="mt-8">
           <Cartao titulo="Seu plano já está completo">
             <p className="text-text/70">
