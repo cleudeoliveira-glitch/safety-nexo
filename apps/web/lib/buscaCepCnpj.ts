@@ -1,6 +1,6 @@
 // Busca de endereço pelo CEP e de dados da empresa pelo CNPJ, direto do navegador.
-// Usa serviços públicos e gratuitos, sem chave: ViaCEP e BrasilAPI (com um segundo serviço
-// de reserva para cada um). Se tudo falhar, a pessoa continua digitando à mão.
+// Usa serviços públicos e gratuitos, sem chave: ViaCEP para o CEP e Minha Receita para o CNPJ
+// (com a BrasilAPI de reserva para os dois). Se tudo falhar, a pessoa continua digitando à mão.
 
 export type EnderecoCep = { cep: string; logradouro: string; bairro: string; cidade: string; uf: string };
 
@@ -83,7 +83,8 @@ export async function buscarCep(cep: string): Promise<EnderecoCep> {
 function lerCnpj(r: Bruto, d: string): DadosCnpj {
   const tipo = s(r.descricao_tipo_de_logradouro);
   let rua = s(r.logradouro);
-  if (tipo && rua && !rua.toUpperCase().startsWith(tipo.toUpperCase())) rua = `${tipo} ${rua}`;
+  if (tipo && rua && !new RegExp(`(^|\\s)${tipo}(\\s|$)`, 'i').test(rua)) rua = `${tipo} ${rua}`;
+  const numero = /^(s\/?n|sem n[uú]mero|0)$/i.test(s(r.numero)) ? '' : s(r.numero);
   const ddd = s(r.ddd_telefone_1);
   return {
     cnpj: formatarCnpj(d),
@@ -95,7 +96,7 @@ function lerCnpj(r: Bruto, d: string): DadosCnpj {
     endereco: {
       cep: formatarCep(s(r.cep)),
       logradouro: capitalizar(rua),
-      numero: s(r.numero),
+      numero,
       complemento: capitalizar(s(r.complemento)),
       bairro: capitalizar(s(r.bairro)),
       cidade: capitalizar(s(r.municipio)),
@@ -110,7 +111,8 @@ export async function buscarCnpj(cnpj: string): Promise<DadosCnpj> {
   const d = soDigitos(cnpj);
   if (d.length !== 14) throw new BuscaNaoAchou('O CNPJ tem 14 números.');
   let nenhumRespondeu = true;
-  for (const url of [`https://brasilapi.com.br/api/cnpj/v1/${d}`, `https://minhareceita.org/${d}`]) {
+  // A Minha Receita responde direto ao navegador; a BrasilAPI fica de reserva.
+  for (const url of [`https://minhareceita.org/${d}`, `https://brasilapi.com.br/api/cnpj/v1/${d}`]) {
     try {
       const r = (await pegarJson(url, 10000)) as Bruto | null;
       nenhumRespondeu = false;
