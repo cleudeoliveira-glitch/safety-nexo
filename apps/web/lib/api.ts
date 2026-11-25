@@ -10,8 +10,17 @@ export const EVENTO_MOTOR_LENTO = 'safety-nexo:motor-lento';
 let chamadasLentas = 0;
 async function fetch(entrada: RequestInfo | URL, opcoes?: RequestInit): Promise<Response> {
   let lenta = false;
+  let terminou = false;
   const relogio = typeof window !== 'undefined'
-    ? window.setTimeout(() => { lenta = true; chamadasLentas++; window.dispatchEvent(new CustomEvent(EVENTO_MOTOR_LENTO, { detail: chamadasLentas })); }, 6000)
+    ? window.setTimeout(() => {
+        // Gerar PDF demora por natureza. Só avisa "ligando o sistema" se o motor também não responder ao /health.
+        const corte = new AbortController();
+        const limite = window.setTimeout(() => corte.abort(), 3000);
+        globalThis.fetch(`${API_URL}/health`, { signal: corte.signal })
+          .then((r) => { if (!r.ok) throw new Error('motor'); })
+          .catch(() => { if (terminou) return; lenta = true; chamadasLentas++; window.dispatchEvent(new CustomEvent(EVENTO_MOTOR_LENTO, { detail: chamadasLentas })); })
+          .finally(() => window.clearTimeout(limite));
+      }, 6000)
     : undefined;
   try {
     return await globalThis.fetch(entrada, opcoes);
@@ -19,6 +28,7 @@ async function fetch(entrada: RequestInfo | URL, opcoes?: RequestInit): Promise<
     if ((e as Error)?.name === 'AbortError') throw e;
     throw new Error('Não conseguimos falar com o sistema agora. Confira a internet e tente de novo em alguns segundos.');
   } finally {
+    terminou = true;
     if (relogio !== undefined) window.clearTimeout(relogio);
     if (lenta) { chamadasLentas--; window.dispatchEvent(new CustomEvent(EVENTO_MOTOR_LENTO, { detail: chamadasLentas })); }
   }
