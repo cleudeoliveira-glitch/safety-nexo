@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao } from '@/components/ui';
 import { conta, equipe, MinhaConta } from '@/lib/api';
 import { lerToken, lerUsuario, sair, salvarUsuario } from '@/lib/sessao';
+import { CampoCnpj, preencherComCnpj } from '@/components/BuscaCepCnpj';
 
 // Meu perfil: nome, e-mail e senha de quem entrou; para a consultoria, também os dados e a logo
 // que saem no rodapé de todos os documentos.
@@ -93,7 +94,8 @@ export default function MeuPerfil() {
                 });
               }}>
                 <Campo id="nomeConsultoria" name="nomeConsultoria" rotulo="Nome da consultoria" required defaultValue={dados.consultoria.nome} className="md:col-span-2" />
-                <Campo id="cnpj" name="cnpj" rotulo="CNPJ" defaultValue={dados.consultoria.cnpj ?? ''} placeholder="Só os números ou com pontos" inputMode="numeric" />
+                <CampoCnpj id="cnpj" name="cnpj" defaultValue={dados.consultoria.cnpj ?? ''}
+                  aoAchar={(c, form) => { preencherComCnpj(form, { nomeConsultoria: c.nomeFantasia || c.razaoSocial, cidade: c.endereco.cidade ? `${c.endereco.cidade}/${c.endereco.uf}` : '' }); }} />
                 <Campo id="cidade" name="cidade" rotulo="Cidade" defaultValue={dados.consultoria.cidade ?? ''} placeholder="Ex.: Campinas/SP" />
                 <div className="md:col-span-2">
                   <div className="flex flex-wrap items-center gap-4">

@@ -4,6 +4,8 @@ import { grau5, nivelDoRisco, PROBABILIDADES, SEVERIDADES } from '@/lib/matriz';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { CampoEndereco, CompletarPeloCnpj } from '@/components/BuscaCepCnpj';
+import { montarEndereco } from '@/lib/buscaCepCnpj';
 import { AreaTexto, Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   atualizarEmpresa,
@@ -256,6 +258,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
             if (logo instanceof File && logo.size > 0) await enviarLogoEmpresa(empresaId, logo);
           }, 'Dados da empresa salvos.')}
         >
+          <CompletarPeloCnpj cnpj={empresa.cnpj} className="md:col-span-3 -mb-2"
+            campos={(d) => ({ cnae: d.cnae, endereco: montarEndereco(d.endereco), enderecoNumero: d.endereco.numero, enderecoCep: d.endereco.cep })} />
           <Campo id="razaoSocial" name="razaoSocial" rotulo="Razão social" className="md:col-span-2" required minLength={2} defaultValue={empresa.razaoSocial} />
           <Campo id="cnpj" name="cnpj" rotulo="CNPJ" required defaultValue={empresa.cnpj} placeholder="00.000.000/0000-00" />
           <Campo id="cnae" name="cnae" rotulo="CNAE" defaultValue={empresa.cnae ?? ''} placeholder="Ex.: 10.91-1-01" />
@@ -270,7 +274,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           <Campo id="rtRegistro" name="rtRegistro" rotulo="Registro profissional" defaultValue={empresa.responsavelTecnicoRegistro ?? ''} placeholder="Ex.: CREA-SP 123456" />
           <Campo id="rtFormacao" name="rtFormacao" rotulo="Formação do responsável" defaultValue={empresa.responsavelTecnicoFormacao ?? ''} placeholder="Ex.: Engenheira de Segurança do Trabalho" />
           <Campo id="rtArt" name="rtArt" rotulo="ART ou TRT" defaultValue={empresa.responsavelTecnicoArt ?? ''} placeholder="Ex.: ART 2826543210" />
-          <Campo id="endereco" name="endereco" rotulo="Endereço da empresa" className="md:col-span-2" defaultValue={empresa.endereco ?? ''} placeholder="Rua, número, bairro, cidade/UF, CEP" />
+          <CampoEndereco id="endereco" name="endereco" className="md:col-span-3" defaultValue={empresa.endereco ?? ''} />
           <Campo id="representante" name="representante" rotulo="Representante legal" defaultValue={empresa.representanteLegalNome ?? ''} placeholder="Quem assina o PPP pela empresa" />
           <Campo id="localPadrao" name="localPadrao" rotulo="Local padrão" className="md:col-span-2" defaultValue={empresa.localPadrao ?? ''} placeholder="Ex.: Unidade Centro, Rua das Flores, 120"
             dica="Já vem escrito no campo Local da APR, permissão de trabalho, DDS, inspeção e treinamento. Dá para trocar na hora." />

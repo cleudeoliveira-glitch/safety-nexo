@@ -8,6 +8,7 @@ import {
   excluir,
 } from '@/lib/api';
 import { ehEmpresa } from '@/lib/sessao';
+import { CampoCnpj, preencherComCnpj } from '@/components/BuscaCepCnpj';
 
 type Aba = 'cobrancas' | 'propostas' | 'contratos' | 'servicos' | 'config';
 type Agir = (acao: () => Promise<string>) => void;
@@ -242,7 +243,7 @@ function AbaPropostas({ empresas, lista, agir, baixar, irParaContrato }: { empre
           <Selecao id="pr-emp" rotulo="Cliente" value={empresa} onChange={(e) => setEmpresa(e.target.value)}>
             <option value="">Cliente novo (ainda não cadastrado)</option>{empresas.map((e) => <option key={e.id} value={e.id}>{e.razaoSocial}</option>)}
           </Selecao>
-          {!empresa && <><Campo id="pr-nome" name="nome" rotulo="Nome do cliente" required /><Campo id="pr-cnpj" name="cnpj" rotulo="CNPJ" /></>}
+          {!empresa && <><CampoCnpj id="pr-cnpj" name="cnpj" aoAchar={(c, form) => { preencherComCnpj(form, { nome: c.razaoSocial }); }} /><Campo id="pr-nome" name="nome" rotulo="Nome do cliente" required /></>}
           <Campo id="pr-contato" name="contato" rotulo="Aos cuidados de" placeholder="Nome de quem recebe" />
           <Campo id="pr-data" name="data" type="date" rotulo="Data" required defaultValue={hoje()} />
           <Campo id="pr-val" name="validade" type="number" min={1} rotulo="Validade (dias)" defaultValue={15} />
@@ -408,7 +409,8 @@ function AbaConfig({ config, agir }: { config: ConfigComercial; agir: Agir }) {
         ev.preventDefault(); const d = new FormData(ev.currentTarget);
         agir(async () => { await comercial.salvarConfiguracao({ cnpj: texto(d, 'cnpj'), cidade: texto(d, 'cidade'), pixChave: texto(d, 'chave'), pixNome: texto(d, 'nome') }); return 'Dados salvos.'; });
       }}>
-        <Campo id="cf-cnpj" name="cnpj" rotulo="CNPJ da consultoria" defaultValue={config.cnpj ?? ''} />
+        <CampoCnpj id="cf-cnpj" name="cnpj" rotulo="CNPJ da consultoria" defaultValue={config.cnpj ?? ''}
+          aoAchar={(c, form) => { preencherComCnpj(form, { cidade: c.endereco.cidade ? `${c.endereco.cidade}/${c.endereco.uf}` : '' }); }} />
         <Campo id="cf-cidade" name="cidade" rotulo="Cidade" defaultValue={config.cidade ?? ''} placeholder="Ex.: São Paulo" />
         <Campo id="cf-chave" name="chave" rotulo="Chave Pix" defaultValue={config.pixChave ?? ''} />
         <Campo id="cf-nome" name="nome" rotulo="Nome do recebedor" defaultValue={config.pixNome ?? ''} placeholder="Como aparece no banco" />

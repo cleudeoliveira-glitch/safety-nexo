@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
 import { buscarCnae, CnaeInfo, criarEmpresa, enviarLogoEmpresa, meuPlano, MeuPlano } from '@/lib/api';
 import { avisoCnpj } from '@/lib/documentosBr';
+import { CampoCnpj, CampoEndereco, preencherComCnpj } from '@/components/BuscaCepCnpj';
+import { montarEndereco } from '@/lib/buscaCepCnpj';
 
 export default function NovaEmpresa() {
   const router = useRouter();
@@ -48,6 +50,7 @@ export default function NovaEmpresa() {
         cnae: String(dados.get('cnae')) || undefined,
         grauRisco: grau ? Number(grau) : undefined,
         numFuncionarios: Number(dados.get('numFuncionarios') || 0),
+        endereco: String(dados.get('endereco') ?? '').trim() || undefined,
       });
       const logo = dados.get('logo');
       // A empresa já foi criada: se só a logo falhar, segue para a empresa e avisa (dá para enviar a logo depois).
@@ -84,11 +87,21 @@ export default function NovaEmpresa() {
       <form onSubmit={salvar} className="mt-8">
         <Cartao titulo="Dados da empresa">
           <div className="grid gap-5">
-            <Campo id="razaoSocial" name="razaoSocial" rotulo="Razão social" required placeholder="Ex.: Padaria Pão Quente Ltda" />
             <div>
-              <Campo id="cnpj" name="cnpj" rotulo="CNPJ" required placeholder="00.000.000/0000-00" onBlur={(e) => setCnpjAviso(avisoCnpj(e.target.value))} />
-              {cnpjAviso && <p className="mt-2 text-sm text-danger">{cnpjAviso}</p>}
+            <CampoCnpj id="cnpj" name="cnpj" required onBlur={(e) => setCnpjAviso(avisoCnpj(e.target.value))} aoAchar={(d, form) => {
+              const tinhaCnae = !!(form?.elements.namedItem('cnae') as HTMLInputElement | null)?.value.trim();
+              preencherComCnpj(form, {
+                razaoSocial: d.razaoSocial,
+                cnae: d.cnae,
+                endereco: montarEndereco(d.endereco),
+                enderecoNumero: d.endereco.numero,
+                enderecoCep: d.endereco.cep,
+              });
+              if (d.cnae && !tinhaCnae) consultarCnae(d.cnae);
+            }} />
+            {cnpjAviso && <p className="mt-2 text-sm text-danger">{cnpjAviso}</p>}
             </div>
+            <Campo id="razaoSocial" name="razaoSocial" rotulo="Razão social" required placeholder="Ex.: Padaria Pão Quente Ltda" />
             <div>
               <Campo id="cnae" name="cnae" rotulo="CNAE principal" placeholder="Ex.: 10.91-1-01" onBlur={(e) => consultarCnae(e.target.value)} />
               {cnaeInfo && <p className="mt-2 text-sm text-success">{cnaeInfo.denominacao} · grau de risco {cnaeInfo.grauRisco}</p>}
@@ -102,6 +115,7 @@ export default function NovaEmpresa() {
               <p className="mt-1 text-xs text-text/60">Preenchido pelo CNAE quando o sistema encontra o código. Ele define CIPA e SESMT.</p>
             </div>
             <Campo id="numFuncionarios" name="numFuncionarios" type="number" min={0} rotulo="Número de funcionários" placeholder="Ex.: 25" />
+            <CampoEndereco id="endereco" name="endereco" />
             <Campo id="logo" name="logo" type="file" accept="image/png,image/jpeg" rotulo="Logo da empresa (opcional)" dica="PNG ou JPG, até 2 MB." />
           </div>
         </Cartao>
