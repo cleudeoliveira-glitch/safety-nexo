@@ -2,6 +2,7 @@
 
 import { grau5, nivelDoRisco, PROBABILIDADES, SEVERIDADES } from '@/lib/matriz';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { CampoEndereco, CompletarPeloCnpj } from '@/components/BuscaCepCnpj';
 import { montarEndereco } from '@/lib/buscaCepCnpj';
@@ -165,7 +166,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
     'mapa-risco': ['Mapa-de-risco', 'Mapa de risco gerado: uma folha por setor, para afixar.'],
   };
   const [anoRelatorio, setAnoRelatorio] = useState(new Date().getFullYear() - 1);
-  // Mês do relatório ao cliente: por padrão o mês anterior, que é o que se fecha no começo do mês.
+  // Mês do relatório: por padrão o mês anterior, que é o que se fecha no começo do mês.
   const mesesRelatorio = [1, 2, 3, 0].map((n) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n); return { valor: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, nome: d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) }; });
   const [mesRelatorio, setMesRelatorio] = useState(mesesRelatorio[0].valor);
   async function baixar(tipo: TipoDocumento) {
@@ -239,6 +240,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
           className="grid gap-4 md:grid-cols-3"
           onSubmit={enviar(async (d) => {
             await atualizarEmpresa(empresaId, {
+              razaoSocial: texto(d, 'razaoSocial') || undefined,
+              cnpj: texto(d, 'cnpj') || undefined,
               cnae: texto(d, 'cnae') || undefined,
               grauRisco: texto(d, 'grauRisco') ? Number(texto(d, 'grauRisco')) : undefined,
               numFuncionarios: Number(texto(d, 'numFuncionarios') || 0),
@@ -257,6 +260,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
         >
           <CompletarPeloCnpj cnpj={empresa.cnpj} className="md:col-span-3 -mb-2"
             campos={(d) => ({ cnae: d.cnae, endereco: montarEndereco(d.endereco), enderecoNumero: d.endereco.numero, enderecoCep: d.endereco.cep })} />
+          <Campo id="razaoSocial" name="razaoSocial" rotulo="Razão social" className="md:col-span-2" required minLength={2} defaultValue={empresa.razaoSocial} />
+          <Campo id="cnpj" name="cnpj" rotulo="CNPJ" required defaultValue={empresa.cnpj} placeholder="00.000.000/0000-00" />
           <Campo id="cnae" name="cnae" rotulo="CNAE" defaultValue={empresa.cnae ?? ''} placeholder="Ex.: 10.91-1-01" />
           <Selecao id="grauRisco" name="grauRisco" rotulo="Grau de risco" defaultValue={empresa.grauRisco ?? ''}>
             <option value="">Pelo CNAE</option>
@@ -560,8 +565,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
             }}>Gerar</Botao>
             </div>
             <div className="flex flex-wrap items-center gap-2 rounded-card border border-border p-3">
-              <span className="w-full text-sm font-semibold">Relatório mensal ao cliente</span>
-              <select aria-label="Mês do relatório ao cliente" value={mesRelatorio} onChange={(e) => setMesRelatorio(e.target.value)}
+              <span className="w-full text-sm font-semibold">Relatório mensal da empresa</span>
+              <select aria-label="Mês do relatório" value={mesRelatorio} onChange={(e) => setMesRelatorio(e.target.value)}
                 className="min-h-[44px] rounded-card border border-border bg-white px-2 text-sm">
                 {mesesRelatorio.map((m) => <option key={m.valor} value={m.valor}>{m.nome}</option>)}
               </select>
@@ -579,7 +584,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
       {aba === 'dados' && (
       <Cartao titulo="Acesso da empresa ao sistema" id="acessos">
         <p className="mb-4 text-sm text-text/60">
-          Convide a empresa cliente. Ela recebe um link, cria a própria senha e vê só os dados dela: colaboradores, EPI, DDS, permissões de trabalho,
+          Dê acesso à empresa (cliente ou gestor dela). Quem for convidado recebe um link, cria a própria senha e vê só os dados desta empresa: colaboradores, EPI, DDS, permissões de trabalho,
           treinamentos e vencimentos. Programas e documentos continuam com você.
         </p>
         <form
@@ -598,7 +603,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
         >
           <Campo id="acesso-nome" name="nome" rotulo="Nome de quem vai usar" required placeholder="Ex.: RH da Padaria" icone="cracha" />
           <Campo id="acesso-email" name="email" type="email" rotulo="E-mail" required placeholder="Ex.: rh@empresa.com.br" />
-          <div className="flex justify-end md:col-span-2"><Botao type="submit">Convidar cliente</Botao></div>
+          <div className="flex justify-end md:col-span-2"><Botao type="submit">Enviar convite</Botao></div>
         </form>
         {convite && <LinkConvite convite={convite} fechar={() => setConvite(null)} />}
         {acessos.length > 0 && (
@@ -940,6 +945,7 @@ function EtapasGhe({ atual, ghe, mudar }: { atual: EtapaGhe; ghe: Ghe; mudar: (e
 // Etapa 4: confere o GHE e mostra para onde cada informação vai.
 function ConferirGhe({ ghe, colaboradores, irPara }: { ghe: Ghe; colaboradores: Colaborador[]; irPara: (e: EtapaGhe) => void }) {
   const falta = pendenciasGhe(ghe);
+  const caminhoEmpresa = usePathname().replace(/\/$/, '');
   const funcoes = ghe.funcoes ?? [];
   const chave = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
   const ativos = colaboradores.filter((c) => !c.dataDesligamento && c.gheId === ghe.id);
@@ -955,7 +961,7 @@ function ConferirGhe({ ghe, colaboradores, irPara }: { ghe: Ghe; colaboradores: 
       <ul className="space-y-1">
         {etapas.map(([id, nome, f]) => (
           <li key={id}>
-            {f.length ? <span className="text-warning">⚠ {nome}: falta {f.join(' e ')}. </span> : <span className="text-success">✓ {nome} completo.</span>}
+            {f.length ? <span className="text-warning">⚠ {nome}: falta {f.join(' e ')}. </span> : <span className="text-success">✓ {nome}: pronto.</span>}
             {f.length > 0 && <button type="button" className="font-semibold text-primary hover:underline" onClick={() => irPara(id)}>Completar</button>}
           </li>
         ))}
@@ -969,6 +975,9 @@ function ConferirGhe({ ghe, colaboradores, irPara }: { ghe: Ghe; colaboradores: 
           <li><strong>LTCAT:</strong> {ambientais.length ? `${avaliados.length} de ${ambientais.length} agente(s) físico, químico ou biológico com avaliação feita, com a conclusão por função` : 'sem agente físico, químico ou biológico neste grupo'}.</li>
           <li><strong>Ordem de serviço:</strong> {ativos.length} pessoa(s) recebem os riscos da função{epis.length ? ` e a conferência dos EPIs exigidos (${epis.join(', ')}) com a ficha de cada um` : ''}.</li>
           <li><strong>APR:</strong> ao escolher o setor &quot;{ghe.setor || ghe.nome}&quot; na APR, os riscos deste grupo entram como riscos do ambiente.</li>
+          <li><strong>Plano de ação:</strong> o PGR precisa das ações para controlar os riscos.{' '}
+            <Link href={`${caminhoEmpresa}/prevencao#acoes`} className="font-semibold text-primary hover:underline">Criar as ações dos riscos</Link>
+          </li>
         </ul>
       </div>
       {tudoOk && <p className="text-success">Tudo certo com este GHE. Os documentos já podem ser gerados na aba Documentos.</p>}

@@ -3,6 +3,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { CnaeService } from '../cnae/cnae.service';
 import { ehAdminPlataforma } from '../admin/admin-plataforma';
 import { conferirFuncionarios } from '../common/plano';
+import { conferirCpfRepetido } from '../common/documentos-br';
 import { PrismaService } from '../prisma/prisma.service';
 import { CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CopiarDadosDto, CreateGheDto, CreateGheRiscoDto, UpdateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
 import { chaveFuncao, FuncaoGhe, lerFuncoes } from './ghe-ambiente';
@@ -87,10 +88,15 @@ export class EmpresasService {
       const ghe = await this.prisma.ghe.findFirst({ where: { id: dto.gheId, empresaId } });
       if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
     }
-    // Sem GHE escolhido, entra no GHE da sua função.
-    const gheId = dto.gheId || (await this.gheDaFuncao(empresaId, dto.cargo)) || undefined;
+    await conferirCpfRepetido(this.prisma, empresaId, dto.cpf);
+    // Sem GHE escolhido, entra no GHE da sua função. O cargo fica com a grafia da função do GHE
+    // ("soldador" vira "Soldador"), para não aparecerem dois cargos iguais nas listas e no PGR.
+    const funcao = await this.funcaoDoCargo(empresaId, dto.cargo);
+    const gheId = dto.gheId || funcao?.gheId || undefined;
+    const cargo = funcao?.nome ?? dto.cargo.trim().replace(/\s+/g, ' ');
+    const cbo = dto.cbo || funcao?.cbo || undefined;
     return this.prisma.colaborador.create({
-      data: { ...dto, gheId, empresaId, dataAdmissao: dto.dataAdmissao ? new Date(dto.dataAdmissao) : undefined, cnhValidade: dto.cnhValidade ? new Date(dto.cnhValidade) : undefined },
+      data: { ...dto, cargo, cbo, gheId, empresaId, dataAdmissao: dto.dataAdmissao ? new Date(dto.dataAdmissao) : undefined, cnhValidade: dto.cnhValidade ? new Date(dto.cnhValidade) : undefined },
     });
   }
 
@@ -98,6 +104,7 @@ export class EmpresasService {
   async dadosEsocialColaborador(consultoriaId: string, empresaId: string, colaboradorId: string, dto: EsocialColaboradorDto) {
     await this.buscar(consultoriaId, empresaId);
     const limpo = (v?: string) => (v === undefined ? undefined : v.trim() || null);
+    await conferirCpfRepetido(this.prisma, empresaId, dto.cpf, colaboradorId);
     const { count } = await this.prisma.colaborador.updateMany({
       where: { id: colaboradorId, empresaId },
       data: { matricula: limpo(dto.matricula), codCateg: limpo(dto.codCateg), cpf: limpo(dto.cpf) },
@@ -243,10 +250,15 @@ export class EmpresasService {
   }
 
   // GHE cuja lista de funções tem o cargo do colaborador.
-  private async gheDaFuncao(empresaId: string, cargo: string): Promise<string | null> {
+  // Função de algum GHE com o mesmo nome do cargo (sem ligar para maiúsculas e acentos).
+  private async funcaoDoCargo(empresaId: string, cargo: string): Promise<{ gheId: string; nome: string; cbo: string | null } | null> {
     const chave = chaveFuncao(cargo);
     const ghes = await this.prisma.ghe.findMany({ where: { empresaId }, select: { id: true, funcoes: true }, orderBy: { nome: 'asc' } });
-    return ghes.find((g) => lerFuncoes(g.funcoes).some((f) => chaveFuncao(f.nome) === chave))?.id ?? null;
+    for (const g of ghes) {
+      const f = lerFuncoes(g.funcoes).find((x) => chaveFuncao(x.nome) === chave);
+      if (f) return { gheId: g.id, nome: f.nome.trim(), cbo: f.cbo?.trim() || null };
+    }
+    return null;
   }
 
   async criarRisco(consultoriaId: string, empresaId: string, gheId: string, dto: CreateGheRiscoDto) {

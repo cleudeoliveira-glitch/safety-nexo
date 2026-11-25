@@ -119,8 +119,8 @@ export const DUVIDAS_PLANOS: Duvida[] = [
     pergunta: 'Preciso de cartão para testar?',
     resposta: (
       <>
-        Não. Para criar a conta basta nome, e-mail e senha. Nos primeiros 14 dias você usa o sistema com tudo liberado, como no plano
-        Profissional. Quando o teste acaba, a conta passa sozinha para o plano Grátis e nada é cobrado.
+        Não. Para criar a conta basta nome, e-mail e senha. Nos primeiros 14 dias você usa todos os recursos do sistema, como no plano
+        Profissional, com 1 empresa. Quer testar com mais empresas? Chame a gente no WhatsApp. Quando o teste acaba, a conta passa sozinha para o plano Grátis e nada é cobrado.
       </>
     ),
   },

@@ -32,6 +32,9 @@ export class PgrService {
       atual.quantidade += 1;
       porFuncao.set(chave, atual);
     }
+    // Um número só no documento inteiro (capa, identificação e texto): quem está cadastrado e ativo.
+    // Sem ninguém cadastrado ainda, vale o número que a empresa informou.
+    const trabalhadores = colaboradores.length || empresa.numFuncionarios;
     const proximaRevisao = new Date(geradoEm);
     proximaRevisao.setMonth(proximaRevisao.getMonth() + 24);
     const elaborador = [empresa.responsavelTecnicoNome, empresa.responsavelTecnicoFormacao].filter(Boolean).join(', ') || null;
@@ -56,12 +59,12 @@ export class PgrService {
           ['CNPJ', empresa.cnpj],
           ['CNAE', empresa.cnae],
           ['Grau de risco', empresa.grauRisco],
-          ['Funcionários', empresa.numFuncionarios],
+          ['Funcionários', trabalhadores],
           ['Versão', `${versao} · emitido em ${geradoEm.toLocaleDateString('pt-BR')}`],
           ['Responsável', [empresa.responsavelTecnicoNome, empresa.responsavelTecnicoRegistro].filter(Boolean).join(' · ') || null],
         ],
         aviso: 'Feito com o Safety Nexo.',
-        capa: capaDe('PGR', empresa, versao, geradoEm, [responsavelTecnico(empresa)], 'revisão a cada 2 anos ou quando algo mudar'),
+        capa: capaDe('PGR', { ...empresa, numFuncionarios: trabalhadores }, versao, geradoEm, [responsavelTecnico(empresa)], 'revisão a cada 2 anos ou quando algo mudar'),
       },
       empresa.ghes.map((ghe) => ({
         nome: nomeGhe(ghe),
@@ -81,7 +84,7 @@ export class PgrService {
         representanteLegal: empresa.representanteLegalNome,
         emitidoEm: geradoEm,
         controle: { sigla: 'PGR', titulo: 'Programa de Gerenciamento de Riscos (PGR)', versao, emitidoEm: geradoEm, proximaRevisao, responsavel: elaborador, historico, mudancas, baseDados: geradoEm },
-        empresa: { razaoSocial: empresa.razaoSocial, cnae: empresa.cnae, endereco: empresa.endereco, numFuncionarios: empresa.numFuncionarios },
+        empresa: { razaoSocial: empresa.razaoSocial, cnae: empresa.cnae, endereco: empresa.endereco, numFuncionarios: trabalhadores },
         funcoes: [...porFuncao.values()].sort((a, b) => a.ghe.localeCompare(b.ghe) || a.funcao.localeCompare(b.funcao)),
         terceiros,
         medicoPcmso: empresa.medicoPcmsoNome ? `${empresa.medicoPcmsoNome}${empresa.medicoPcmsoCrm ? ` · CRM ${empresa.medicoPcmsoCrm}` : ''}` : null,

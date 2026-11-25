@@ -1,3 +1,5 @@
+import { chaveFuncao, lerFuncoes } from '../empresas/ghe-ambiente';
+import { conferirCpfRepetido } from '../common/documentos-br';
 import { jaFoiAoEsocial } from '../common/exclusao';
 import { registrarEntrega } from '../estoque/baixa';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
@@ -142,6 +144,18 @@ export class ColaboradoresService {
     return { ok: true };
   }
 
+  // Cargo com a mesma grafia da função cadastrada num GHE ("soldador" vira "Soldador").
+  private async grafiaDaFuncao(empresaId: string, cargo: string) {
+    const limpo = cargo.trim().replace(/\s+/g, ' ');
+    const chave = chaveFuncao(limpo);
+    const ghes = await this.prisma.ghe.findMany({ where: { empresaId }, select: { funcoes: true } });
+    for (const g of ghes) {
+      const f = lerFuncoes(g.funcoes).find((x) => chaveFuncao(x.nome) === chave);
+      if (f) return f.nome.trim();
+    }
+    return limpo;
+  }
+
   // Dados do cadastro, editados pela ficha. Campo vazio apaga (menos nome e cargo, que são obrigatórios).
   async editar(consultoriaId: string, empresaId: string, colaboradorId: string, dto: EditarColaboradorDto) {
     await this.detalhar(consultoriaId, empresaId, colaboradorId);
@@ -151,13 +165,14 @@ export class ColaboradoresService {
       const ghe = await this.prisma.ghe.findFirst({ where: { id: dto.gheId, empresaId }, select: { id: true } });
       if (!ghe) throw new NotFoundException('GHE não encontrado nesta empresa');
     }
+    await conferirCpfRepetido(this.prisma, empresaId, dto.cpf, colaboradorId);
     const dataAdmissao = dataOuNulo(dto.dataAdmissao);
     if (dataAdmissao && Number.isNaN(dataAdmissao.getTime())) throw new BadRequestException('Data de admissão inválida.');
     return this.prisma.colaborador.update({
       where: { id: colaboradorId },
       data: {
         ...(dto.nome?.trim() ? { nome: dto.nome.trim() } : {}),
-        ...(dto.cargo?.trim() ? { cargo: dto.cargo.trim() } : {}),
+        ...(dto.cargo?.trim() ? { cargo: await this.grafiaDaFuncao(empresaId, dto.cargo) } : {}),
         cpf: limpo(dto.cpf),
         cbo: limpo(dto.cbo),
         matricula: limpo(dto.matricula),

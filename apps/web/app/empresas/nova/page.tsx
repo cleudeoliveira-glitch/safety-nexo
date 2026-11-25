@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
-import { buscarCnae, CnaeInfo, criarEmpresa, enviarLogoEmpresa } from '@/lib/api';
+import { buscarCnae, CnaeInfo, criarEmpresa, enviarLogoEmpresa, meuPlano, MeuPlano } from '@/lib/api';
+import { avisoCnpj } from '@/lib/documentosBr';
 import { CampoCnpj, CampoEndereco, preencherComCnpj } from '@/components/BuscaCepCnpj';
 import { montarEndereco } from '@/lib/buscaCepCnpj';
 
@@ -15,6 +16,12 @@ export default function NovaEmpresa() {
   const [grau, setGrau] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [cnpjAviso, setCnpjAviso] = useState<string | null>(null);
+  const [plano, setPlano] = useState<MeuPlano | null>(null);
+
+  // Já no limite do plano: avisa antes de a pessoa preencher tudo.
+  useEffect(() => { meuPlano.ver().then(setPlano).catch(() => setPlano(null)); }, []);
+  const noLimite = !!plano && !plano.acessoTotal && plano.limiteEmpresas !== null && plano.empresas >= plano.limiteEmpresas;
 
   async function consultarCnae(codigo: string) {
     setCnaeInfo(null);
@@ -32,8 +39,10 @@ export default function NovaEmpresa() {
   async function salvar(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     setErro(null);
-    setSalvando(true);
     const dados = new FormData(evento.currentTarget);
+    const problemaCnpj = avisoCnpj(String(dados.get('cnpj') ?? ''));
+    if (problemaCnpj) { setCnpjAviso(problemaCnpj); return; }
+    setSalvando(true);
     try {
       const empresa = await criarEmpresa({
         razaoSocial: String(dados.get('razaoSocial')),
@@ -57,13 +66,29 @@ export default function NovaEmpresa() {
   return (
     <main className="mx-auto max-w-2xl p-6 md:p-10">
       <Link href="/" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
-      <h1 className="mt-4 text-3xl font-semibold text-primary">Nova empresa cliente</h1>
-      <p className="mt-1 text-text/60">Os documentos desta empresa vão sair com a logo dela no cabeçalho.</p>
+      <h1 className="mt-4 text-3xl font-semibold text-primary">Nova empresa</h1>
+      <p className="mt-1 text-text/60">Comece pelos dados básicos. Os documentos desta empresa vão sair com a logo dela no cabeçalho.</p>
 
+      {noLimite && plano ? (
+        <div className="mt-8">
+          <Cartao titulo="Seu plano já está completo">
+            <p className="text-text/70">
+              O plano {plano.nomePlano} permite {plano.limiteEmpresas} empresa{plano.limiteEmpresas === 1 ? '' : 's'} e você já tem {plano.empresas}.
+              {plano.emTeste ? ' Durante o teste, todos os recursos ficam liberados, mas o número de empresas continua o do plano.' : ''}
+              {' '}Para cadastrar outra, escolha um plano com mais empresas.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link href="/plano" className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white">Ver os planos</Link>
+              <Link href="/" className="rounded-card border border-border px-4 py-2 text-sm font-semibold text-primary">Voltar ao painel</Link>
+            </div>
+          </Cartao>
+        </div>
+      ) : (
       <form onSubmit={salvar} className="mt-8">
         <Cartao titulo="Dados da empresa">
           <div className="grid gap-5">
-            <CampoCnpj id="cnpj" name="cnpj" required aoAchar={(d, form) => {
+            <div>
+            <CampoCnpj id="cnpj" name="cnpj" required onBlur={(e) => setCnpjAviso(avisoCnpj(e.target.value))} aoAchar={(d, form) => {
               const tinhaCnae = !!(form?.elements.namedItem('cnae') as HTMLInputElement | null)?.value.trim();
               preencherComCnpj(form, {
                 razaoSocial: d.razaoSocial,
@@ -74,16 +99,21 @@ export default function NovaEmpresa() {
               });
               if (d.cnae && !tinhaCnae) consultarCnae(d.cnae);
             }} />
+            {cnpjAviso && <p className="mt-2 text-sm text-danger">{cnpjAviso}</p>}
+            </div>
             <Campo id="razaoSocial" name="razaoSocial" rotulo="Razão social" required placeholder="Ex.: Padaria Pão Quente Ltda" />
             <div>
               <Campo id="cnae" name="cnae" rotulo="CNAE principal" placeholder="Ex.: 10.91-1-01" onBlur={(e) => consultarCnae(e.target.value)} />
               {cnaeInfo && <p className="mt-2 text-sm text-success">{cnaeInfo.denominacao} · grau de risco {cnaeInfo.grauRisco}</p>}
               {cnaeAviso && <p className="mt-2 text-sm text-warning">{cnaeAviso}</p>}
             </div>
-            <Selecao id="grauRisco" rotulo="Grau de risco" value={grau} onChange={(e) => setGrau(e.target.value)}>
-              <option value="">Selecione</option>
-              {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{g}</option>)}
-            </Selecao>
+            <div>
+              <Selecao id="grauRisco" rotulo="Grau de risco" required value={grau} onChange={(e) => setGrau(e.target.value)}>
+                <option value="">Selecione</option>
+                {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{g}</option>)}
+              </Selecao>
+              <p className="mt-1 text-xs text-text/60">Preenchido pelo CNAE quando o sistema encontra o código. Ele define CIPA e SESMT.</p>
+            </div>
             <Campo id="numFuncionarios" name="numFuncionarios" type="number" min={0} rotulo="Número de funcionários" placeholder="Ex.: 25" />
             <CampoEndereco id="endereco" name="endereco" />
             <Campo id="logo" name="logo" type="file" accept="image/png,image/jpeg" rotulo="Logo da empresa (opcional)" dica="PNG ou JPG, até 2 MB." />
@@ -95,6 +125,7 @@ export default function NovaEmpresa() {
           <Botao type="submit" disabled={salvando}>{salvando ? 'Salvando…' : 'Cadastrar empresa'}</Botao>
         </div>
       </form>
+      )}
     </main>
   );
 }

@@ -158,7 +158,7 @@ function CartaoPlanoVitrine({ p }: { p: PlanoSite }) {
       }`}
     >
       {destaque && (
-        <span className="absolute -top-3.5 left-6 rounded-full bg-menta px-3.5 py-1 text-xs font-bold uppercase tracking-wide text-primary-escuro shadow-sm">Mais escolhido</span>
+        <span className="absolute -top-3.5 left-6 rounded-full bg-menta px-3.5 py-1 text-xs font-bold uppercase tracking-wide text-primary-escuro shadow-sm">Recomendado</span>
       )}
       <h3 className={`fonte-titulo text-xl font-bold ${destaque ? 'text-white' : 'text-primary-escuro'}`}>{p.nome}</h3>
       <p className="mt-3 flex items-baseline gap-1">

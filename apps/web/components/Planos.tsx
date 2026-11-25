@@ -24,7 +24,7 @@ function CartaoPlano({ p, atual, acao, semDetalhes, className }: { p: PlanoSite;
     >
       {(atual || destaque) && (
         <span className={`absolute -top-3.5 left-6 rounded-full px-3.5 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-sm ${atual ? 'bg-success' : 'bg-primary'}`}>
-          {atual ? 'Seu plano' : 'Mais escolhido'}
+          {atual ? 'Seu plano' : 'Recomendado'}
         </span>
       )}
       <h3 className="text-xl font-semibold text-primary">{p.nome}</h3>

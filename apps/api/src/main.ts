@@ -18,6 +18,10 @@ async function bootstrap() {
   app.useBodyParser('json', { limit: '1mb' }); // o desenho da assinatura vem como imagem
   app.set('trust proxy', 1); // IP real de quem assina, atrás do servidor de hospedagem
   app.disable('x-powered-by');
+  // Liberação do site vem antes do limite de tentativas: assim o aviso "espere 5 minutos" chega ao navegador.
+  // WEB_ORIGIN aceita mais de um endereço separado por vírgula (o primeiro é o usado nos QR codes).
+  const origens = (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean);
+  app.enableCors({ origin: origens });
   // Proteção contra invasão: cabeçalhos de segurança e limite de tentativas (ver common/protecao.ts).
   app.use(cabecalhosSeguranca);
   app.use(limiteDePedidos);
@@ -26,9 +30,6 @@ async function bootstrap() {
   app.use(vigiarChamadas);
   app.useGlobalFilters(new FiltroDeFalhas(app.get(HttpAdapterHost).httpAdapter));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, exceptionFactory: errosEmPortugues }));
-  // WEB_ORIGIN aceita mais de um endereço separado por vírgula (o primeiro é o usado nos QR codes).
-  const origens = (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean);
-  app.enableCors({ origin: origens });
   await app.listen(process.env.PORT ?? 3001);
 }
 

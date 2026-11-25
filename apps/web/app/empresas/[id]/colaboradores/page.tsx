@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
+import { avisoCpf } from '@/lib/documentosBr';
 import {
   buscarEmpresa,
   CATEGORIAS_CNH,
@@ -63,6 +64,9 @@ export default function ColaboradoresPage({ params }: { params: { id: string } }
   useEffect(() => { recarregar(); }, [recarregar]);
 
   const nomeGhe = useMemo(() => new Map(ghes.map((g) => [g.id, g.nome])), [ghes]);
+  const [cpfAviso, setCpfAviso] = useState<string | null>(null);
+  // Funções dos GHEs, para o cargo sair com a mesma grafia e a pessoa entrar no GHE certo.
+  const funcoesDaEmpresa = useMemo(() => [...new Set(ghes.flatMap((g) => (g.funcoes ?? []).map((f) => f.nome.trim()).filter(Boolean)))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [ghes]);
   const pendente = (c: ColaboradorComSituacao) => !c.gheId || situacaoAso(c).texto !== 'ASO em dia' || c.caVencido > 0;
 
   const visiveis = useMemo(() => {
@@ -136,8 +140,17 @@ export default function ColaboradoresPage({ params }: { params: { id: string } }
         <Cartao titulo="Novo colaborador">
           <form className="grid gap-4 md:grid-cols-3" onSubmit={cadastrar}>
             <Campo id="colab-nome" name="nome" rotulo="Nome" required placeholder="Ex.: Maria Silva" />
-            <Campo id="colab-cpf" name="cpf" rotulo="CPF" placeholder="Ex.: 123.456.789-00" />
-            <Campo id="colab-cargo" name="cargo" rotulo="Cargo" required placeholder="Ex.: Padeira" />
+            <div>
+              <Campo id="colab-cpf" name="cpf" rotulo="CPF" placeholder="Ex.: 123.456.789-00" onBlur={(e) => setCpfAviso(avisoCpf(e.target.value))} />
+              {cpfAviso && <p className="mt-1 text-sm text-danger">{cpfAviso}</p>}
+            </div>
+            <div>
+              <Campo id="colab-cargo" name="cargo" rotulo="Cargo" required placeholder="Ex.: Padeira" list="funcoes-da-empresa" autoComplete="off" />
+              <datalist id="funcoes-da-empresa">
+                {funcoesDaEmpresa.map((f) => <option key={f} value={f} />)}
+              </datalist>
+              {funcoesDaEmpresa.length > 0 && <p className="mt-1 text-xs text-text/60">Comece a digitar: aparecem as funções dos GHEs. Escolhendo uma delas, a pessoa entra no GHE sozinha.</p>}
+            </div>
             <Campo id="colab-admissao" name="dataAdmissao" type="date" rotulo="Admissão" />
             <Campo id="colab-cbo" name="cbo" rotulo="CBO" placeholder="Ex.: 8483-05" />
             <Campo id="colab-matricula" name="matricula" rotulo="Matrícula no eSocial" placeholder="Ex.: 000123" />
