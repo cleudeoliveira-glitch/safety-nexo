@@ -48,7 +48,9 @@ export default function CampoPage() {
 
   useEffect(() => {
     setLogado(!!lerToken());
-    if (!new URLSearchParams(window.location.search).get('aba')) setAba('rosto'); // abre na primeira aba, a entrega de EPI setOnline(navigator.onLine); setBase(lerBase()); atualizar();
+    if (!new URLSearchParams(window.location.search).get('aba')) setAba('rosto'); // abre na primeira aba, a entrega de EPI
+    // Sem internet, a tela trabalha com o que ficou guardado no aparelho.
+    setOnline(navigator.onLine); setBase(lerBase()); atualizar();
     const pedida = new URLSearchParams(window.location.search).get('aba'); // vindo do menu ou dos botões do painel
     if (pedida === 'epi') setAba('rosto'); else if (pedida === 'dds' || pedida === 'apr' || pedida === 'inspecao') setAba(pedida);
     // Com uma empresa só, já deixa escolhida.

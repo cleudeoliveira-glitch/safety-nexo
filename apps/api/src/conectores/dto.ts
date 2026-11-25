@@ -1,10 +1,11 @@
+import { EhCnpj, EhCpf } from '../common/documentos-br';
 import { Type } from 'class-transformer';
 import { IsArray, IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { TIPOS_ATESTADO } from './absenteismo';
 
 export class TerceiroDto {
   @IsString() @Length(2, 200, { message: 'Informe o nome da empresa prestadora.' }) razaoSocial!: string;
-  @IsOptional() @IsString() @MaxLength(18) cnpj?: string;
+  @IsOptional() @IsString() @MaxLength(18) @EhCnpj() cnpj?: string;
   @IsString() @Length(2, 300, { message: 'Diga qual serviço ela faz.' }) servico!: string;
   @IsOptional() @IsString() @MaxLength(120) contato?: string;
   @IsOptional() @IsString() @MaxLength(30) telefone?: string;
@@ -25,7 +26,7 @@ export class TreinamentoTerceiroDto {
 
 export class TerceiroTrabalhadorDto {
   @IsString() @Length(2, 200, { message: 'Informe o nome do trabalhador.' }) nome!: string;
-  @IsOptional() @IsString() @MaxLength(14) cpf?: string;
+  @IsOptional() @IsString() @MaxLength(14) @EhCpf() cpf?: string;
   @IsOptional() @IsString() @MaxLength(120) funcao?: string;
   @IsOptional() @IsDateString() asoValidade?: string;
   @IsOptional() @IsDateString() integracao?: string;

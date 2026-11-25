@@ -3,6 +3,7 @@ import { Moldura } from '@/components/Moldura';
 import { RegistrarSw } from '@/components/RegistrarSw';
 import { VigiaErros } from '@/components/VigiaErros';
 import { PreviaDocumento } from '@/components/PreviaDocumento';
+import { AvisoMotorLento } from '@/components/AvisoMotorLento';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <VigiaErros />
         <Moldura>{children}</Moldura>
         <PreviaDocumento />
+        <AvisoMotorLento />
       </body>
     </html>
   );

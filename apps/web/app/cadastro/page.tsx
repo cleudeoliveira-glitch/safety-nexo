@@ -71,7 +71,7 @@ export default function Cadastro() {
           {PLANOS_SITE.map((p) => (
             <button key={p.codigo} type="button" onClick={() => escolher(p)}
               className={`flex flex-col rounded-card border bg-white p-5 text-left transition hover:border-primary ${p.destaque ? 'border-primary ring-1 ring-primary' : 'border-border'}`}>
-              {p.destaque && <span className="mb-1 text-xs font-semibold uppercase tracking-wide text-primary">Mais escolhido</span>}
+              {p.destaque && <span className="mb-1 text-xs font-semibold uppercase tracking-wide text-primary">Recomendado</span>}
               <span className="font-semibold">{p.nome}</span>
               <span className="mt-1 text-2xl font-semibold text-primary">{p.precoMensal ? reais(p.precoMensal) : 'R$ 0'}<span className="text-sm font-normal text-text/60">/mês</span></span>
               <span className="mt-1 text-sm font-semibold text-text/80">{textoLimite(p.limiteEmpresas)}</span>
@@ -94,7 +94,7 @@ export default function Cadastro() {
       <form onSubmit={enviar} className="mx-auto max-w-md space-y-5 rounded-card border border-border bg-white p-6 shadow-sm sm:p-8">
         <div>
           <h1 className="text-2xl font-semibold text-primary">Crie a sua conta</h1>
-          <p className="text-sm text-text/60">{pago ? 'Depois daqui você escolhe como pagar: cartão, Pix ou boleto.' : 'São 14 dias com tudo liberado, sem cartão e sem precisar de CNPJ.'}</p>
+          <p className="text-sm text-text/60">{pago ? 'Depois daqui você escolhe como pagar: cartão, Pix ou boleto.' : 'São 14 dias com todos os recursos liberados para 1 empresa, sem cartão e sem precisar de CNPJ.'}</p>
         </div>
         <JaConectado />
         <div className="flex items-center justify-between gap-3 rounded-card border border-primary/30 bg-primary/5 px-4 py-3 text-sm">

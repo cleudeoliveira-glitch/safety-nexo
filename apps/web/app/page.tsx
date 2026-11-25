@@ -14,10 +14,10 @@ import { aoMudarFoco, empresasDaConta, escolherFoco, salvarFoco } from '@/lib/em
 import { ehEmpresa, lerToken, lerUsuario } from '@/lib/sessao';
 
 const passosTour: PassoTour[] = [
-  { alvo: 'empresa', titulo: 'Escolha a empresa', texto: 'Cada empresa cliente tem seus dados e documentos. Troque aqui para ver outra. Todos os módulos ficam no menu da esquerda.' },
+  { alvo: 'empresa', titulo: 'Escolha a empresa', texto: 'Cada empresa tem seus dados e documentos. Troque aqui para ver outra. Todos os módulos ficam no menu da esquerda.' },
   { alvo: 'hoje', titulo: 'O que fazer hoje', texto: 'Aqui aparece o que falta para os documentos ficarem completos e o que está vencendo.' },
   { alvo: 'saude', titulo: 'Cadastro completo', texto: 'Mostra quanto da empresa já está preenchido. A meta é 100%.' },
-  { alvo: 'gerar', titulo: 'Gere o documento', texto: 'Com os dados completos, o PGR sai em PDF com a logo da empresa cliente.' },
+  { alvo: 'gerar', titulo: 'Gere o documento', texto: 'Com os dados completos, o PGR sai em PDF com a logo da empresa.' },
   { alvo: 'ajuda', titulo: 'Ajuda sempre à mão', texto: 'Toda tela tem o botão "Como usar esta tela?" no alto (no celular, o "Ajuda" na barra de cima). O "?" do lado de cada campo explica o que preencher. Tudo junto fica na Central de ajuda, no fim do menu.' },
 ];
 
@@ -118,7 +118,8 @@ function PainelInicial() {
       )}
 
       {!semEmpresa && <BotoesDoCampo base={empresaId ? base : ''} cliente={empresaCliente} />}
-      {!semEmpresa && empresaId && !empresaCliente && <MeuDia empresaId={empresaId} />}
+      {/* Empresa recém-cadastrada, sem ninguém ainda: o "Meu dia" (DDS, PT, EPI) só confunde. Primeiro vem o "O que fazer hoje". */}
+      {!semEmpresa && empresaId && !empresaCliente && (painel?.numeros?.colaboradores ?? 0) > 0 && <MeuDia empresaId={empresaId} />}
 
       {semEmpresa ? (
         <BoasVindas cliente={empresaCliente} />
@@ -326,7 +327,7 @@ function Esqueleto({ linhas }: { linhas: number }) {
 // Primeira vez: ainda não há empresa cadastrada.
 function BoasVindas({ cliente }: { cliente: boolean }) {
   const passos = [
-    { titulo: 'Cadastre a empresa cliente', texto: 'CNPJ, CNAE e logo. O grau de risco sai sozinho.' },
+    { titulo: 'Cadastre a empresa', texto: 'CNPJ, CNAE e logo. O grau de risco sai sozinho.' },
     { titulo: 'Monte os GHEs e os riscos', texto: 'Ou traga um PGR antigo em PDF e o sistema preenche para você.' },
     { titulo: 'Inclua os colaboradores', texto: 'Um por um ou pela planilha do RH.' },
     { titulo: 'Gere o PGR e o PCMSO', texto: 'Em PDF, com a logo da empresa e a da sua consultoria.' },
@@ -341,7 +342,7 @@ function BoasVindas({ cliente }: { cliente: boolean }) {
           <h1 className="text-2xl font-bold md:text-3xl">Boas-vindas ao Safety Nexo</h1>
           <p className="max-w-2xl text-white/90">Safety Nexo é gestão inteligente de SST. Você elabora PGR, PCMSO, LTCAT e os demais documentos, todos ligados entre si, com foto, assinatura e reconhecimento facial como prova, até no campo sem internet.</p>
           <p className="mt-1 text-white/80">
-            {cliente ? 'Sua consultoria ainda não liberou a empresa para este acesso.' : 'Comece cadastrando a primeira empresa cliente. Leva 2 minutos.'}
+            {cliente ? 'Sua consultoria ainda não liberou a empresa para este acesso.' : 'Comece cadastrando a primeira empresa (a sua ou a de um cliente). Leva 2 minutos.'}
           </p>
         </div>
       </div>

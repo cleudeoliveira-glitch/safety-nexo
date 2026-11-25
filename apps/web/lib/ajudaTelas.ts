@@ -93,6 +93,17 @@ export const GUIAS: GuiaTela[] = [
     ],
   },
   {
+    id: 'colaboradores',
+    endereco: rota('/colaboradores'),
+    titulo: 'Colaboradores',
+    paraQue: 'A lista das pessoas da empresa, com o que falta de cada uma (ASO e EPI).',
+    partes: [
+      { titulo: 'Cadastrar', passos: ['Clique em "+ Novo colaborador" e preencha nome e cargo. CPF, admissão e CBO podem vir depois.', 'Escreva o cargo igual à função cadastrada no GHE (o sistema sugere os nomes). Assim a pessoa entra no GHE sozinha.', 'Tem muita gente? Use "Importar do RH" e traga a planilha inteira de uma vez.'] },
+      { titulo: 'Consultar', passos: ['Procure por nome, cargo, CPF, matrícula ou GHE.', 'Use "Com pendência" para ver quem está sem ASO ou sem EPI.', 'Clique em "Abrir ficha" para registrar ASO, entregar EPI ou registrar a saída da pessoa.'] },
+    ],
+    dicas: ['O sistema não deixa cadastrar duas pessoas com o mesmo CPF na mesma empresa.'],
+  },
+  {
     id: 'colaborador',
     endereco: rota('/colaboradores/[^/]+'),
     titulo: 'Ficha do colaborador',
@@ -286,6 +297,27 @@ export const GUIAS: GuiaTela[] = [
       { titulo: 'Terceirizadas', aba: 'terceiros', passos: ['Cadastre a empresa terceirizada com o serviço, o responsável e as datas do contrato.', 'Inclua os documentos (com validade) e os trabalhadores com ASO e treinamentos.', 'Documento vencido aparece no painel.'] },
       { titulo: 'Atestados e faltas', aba: 'faltas', passos: ['Escolha o funcionário, o primeiro dia, quantos dias e o motivo.', 'Se o atestado tiver CID, informe.', 'Passou de 15 dias pela mesma doença, o painel avisa para encaminhar ao INSS.'] },
     ],
+  },
+  {
+    id: 'conferencia',
+    endereco: rota('/conferencia'),
+    titulo: 'Conferência dos documentos',
+    paraQue: 'Cruza o PGR com o PCMSO, o LTCAT, o plano de ação, os treinamentos, as fichas de EPI e os ASOs, e mostra o que não bate.',
+    partes: [{ titulo: 'Como usar', passos: ['Abra a tela: a conferência roda sozinha e dá uma nota para a empresa.', 'Comece pelos itens em vermelho. Cada item diz onde corrigir.', 'Depois de corrigir, clique em "Conferir de novo".', 'Antes de uma fiscalização, use a pasta da fiscalização para juntar os documentos num PDF só.'] }],
+  },
+  {
+    id: 'confinados',
+    endereco: rota('/confinados'),
+    titulo: 'Espaços confinados e resgate',
+    paraQue: 'Cadastro dos espaços confinados da empresa (NR-33) e o plano de resgate de cada um.',
+    partes: [{ titulo: 'Como usar', passos: ['Cadastre cada espaço confinado com o local, os riscos e como se entra nele.', 'Preencha o plano de resgate: equipe, equipamentos e o passo a passo.', 'Baixe o cadastro e o plano em PDF. A permissão de entrada (PT) é emitida em APR e permissão de trabalho.'] }],
+  },
+  {
+    id: 'material',
+    endereco: /^\/material$/,
+    titulo: 'Slides para aplicar',
+    paraQue: 'Slides prontos dos treinamentos das NRs, para apresentar na tela ou na TV.',
+    partes: [{ titulo: 'Como usar', passos: ['Escolha a NR do treinamento.', 'Abra em tela cheia e passe os slides com as setas ou arrastando o dedo.', 'Depois do treinamento, registre a turma em Treinamentos das NRs para gerar a lista de presença e os certificados.'] }],
   },
   {
     id: 'arquivo',

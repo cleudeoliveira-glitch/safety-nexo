@@ -1,3 +1,4 @@
+import { EhCpf } from '../common/documentos-br';
 import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Length, Matches, MaxLength, Max, Min, ValidateIf } from 'class-validator';
 import { CATEGORIAS_CNH } from '../empresas/dto';
 import { TIPOS_ASO } from './regras';
@@ -92,7 +93,7 @@ export class DevolucaoEpiDto {
 export class EditarColaboradorDto {
   @IsOptional() @IsString() @Length(2, 200, { message: 'Escreva o nome completo.' }) nome?: string;
   @IsOptional() @IsString() @Length(2, 120, { message: 'Escreva o cargo.' }) cargo?: string;
-  @IsOptional() @Matches(/^(\d{3}\.?\d{3}\.?\d{3}-?\d{2})?$/, { message: 'CPF inválido.' }) cpf?: string;
+  @IsOptional() @EhCpf() cpf?: string;
   @IsOptional() @Matches(/^(\d{4}-?\d{2})?$/, { message: 'O CBO tem 6 números (ex.: 7823-05).' }) cbo?: string;
   @IsOptional() @IsString() @MaxLength(30) matricula?: string;
   @IsOptional() @Matches(/^(\d{4}-\d{2}-\d{2}.*)?$/, { message: 'Data de admissão inválida.' }) dataAdmissao?: string;

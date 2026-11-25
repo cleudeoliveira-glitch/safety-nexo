@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+import { EhCnpj, EhCpf } from '../common/documentos-br';
 import { ArrayMinSize, IsArray, IsDateString, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
 
 export class CreateEmpresaDto {
@@ -7,7 +8,8 @@ export class CreateEmpresaDto {
   razaoSocial!: string;
 
   @IsString()
-  @Length(14, 18)
+  @Length(14, 18, { message: 'O CNPJ tem 14 números.' })
+  @EhCnpj()
   cnpj!: string;
 
   @IsOptional()
@@ -112,7 +114,7 @@ export class CreateColaboradorDto {
 
   @IsOptional()
   @IsString()
-  @Length(11, 14)
+  @EhCpf()
   cpf?: string;
 
   @IsString()
@@ -139,7 +141,7 @@ export class CreateColaboradorDto {
 export class EsocialColaboradorDto {
   @IsOptional() @IsString() @Length(0, 30) matricula?: string;
   @IsOptional() @Matches(/^(\d{3})?$/, { message: 'A categoria do eSocial tem 3 dígitos (ex.: 901 para estagiário).' }) codCateg?: string;
-  @IsOptional() @Matches(/^(\d{3}\.?\d{3}\.?\d{3}-?\d{2})?$/, { message: 'CPF inválido.' }) cpf?: string;
+  @IsOptional() @EhCpf() cpf?: string;
 }
 
 export class CodigoExameDto {
@@ -261,9 +263,9 @@ const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','P
 
 export class UpdateEmpresaDto {
   // eSocial
-  @IsOptional() @Matches(/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/, { message: 'CPF do médico do PCMSO inválido.' }) medicoPcmsoCpf?: string;
+  @IsOptional() @EhCpf('CPF do médico do PCMSO inválido. Confira os números.') medicoPcmsoCpf?: string;
   @IsOptional() @IsIn(UFS, { message: 'UF do CRM do médico do PCMSO inválida.' }) medicoPcmsoUf?: string;
-  @IsOptional() @Matches(/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/, { message: 'CPF do responsável técnico inválido.' }) responsavelTecnicoCpf?: string;
+  @IsOptional() @EhCpf('CPF do responsável técnico inválido. Confira os números.') responsavelTecnicoCpf?: string;
   @IsOptional() @IsIn(['CRM', 'CREA', 'OUTRO']) responsavelTecnicoConselho?: string;
   @IsOptional() @IsIn(UFS, { message: 'UF do registro do responsável técnico inválida.' }) responsavelTecnicoUf?: string;
   @IsOptional() @IsIn(['PRODUCAO_RESTRITA', 'PRODUCAO']) esocialAmbiente?: string;
@@ -272,6 +274,12 @@ export class UpdateEmpresaDto {
   @IsString()
   @Length(2, 200)
   razaoSocial?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(14, 18, { message: 'O CNPJ tem 14 números.' })
+  @EhCnpj()
+  cnpj?: string;
 
   @IsOptional()
   @IsString()

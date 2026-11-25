@@ -3,6 +3,27 @@ import { pedirAutorizacao, VOLTOU_PARA_CORRIGIR, type AvisoAntes } from './previ
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3101';
 
+// Todas as chamadas ao motor passam por aqui:
+// - sem conexão, a mensagem sai em português (o navegador diria só "Failed to fetch");
+// - se o motor demorar (o servidor gratuito "dorme" quando fica parado), a tela avisa que está ligando.
+export const EVENTO_MOTOR_LENTO = 'safety-nexo:motor-lento';
+let chamadasLentas = 0;
+async function fetch(entrada: RequestInfo | URL, opcoes?: RequestInit): Promise<Response> {
+  let lenta = false;
+  const relogio = typeof window !== 'undefined'
+    ? window.setTimeout(() => { lenta = true; chamadasLentas++; window.dispatchEvent(new CustomEvent(EVENTO_MOTOR_LENTO, { detail: chamadasLentas })); }, 6000)
+    : undefined;
+  try {
+    return await globalThis.fetch(entrada, opcoes);
+  } catch (e) {
+    if ((e as Error)?.name === 'AbortError') throw e;
+    throw new Error('Não conseguimos falar com o sistema agora. Confira a internet e tente de novo em alguns segundos.');
+  } finally {
+    if (relogio !== undefined) window.clearTimeout(relogio);
+    if (lenta) { chamadasLentas--; window.dispatchEvent(new CustomEvent(EVENTO_MOTOR_LENTO, { detail: chamadasLentas })); }
+  }
+}
+
 function cabecalhos(): Record<string, string> {
   const token = lerToken();
   return token ? { Authorization: `Bearer ${token}` } : {};

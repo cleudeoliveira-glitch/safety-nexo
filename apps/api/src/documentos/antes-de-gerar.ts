@@ -43,6 +43,7 @@ export class AntesDeGerarService {
       return avisos;
     }
     if (!empresa.responsavelTecnicoNome?.trim()) add('FALTA', 'Falta o responsável técnico. O documento sai sem nome e registro de quem elaborou.', 'Cadastro da empresa, aba Dados e responsáveis.');
+    if (!empresa.grauRisco) add('ATENCAO', 'Falta o grau de risco da empresa. Ele define a CIPA, o SESMT e aparece na identificação do documento.', 'Cadastro da empresa, aba Dados e responsáveis: informe o CNAE ou escolha o grau.');
 
     if (doc === 'pgr') {
       const semRisco = ghes.filter((g) => !g.riscos.length).map(nomeGhe);
@@ -58,6 +59,11 @@ export class AntesDeGerarService {
       const vazios = ghes.filter((g) => !g._count.colaboradores).map(nomeGhe);
       if (vazios.length) add('INFO', `${qt(vazios.length, 'GHE', 'GHEs')} sem colaborador ligado: ${lista(vazios)}. O PGR sai, mas o número de expostos fica zero.`, 'Colaboradores: ligue cada pessoa ao seu grupo.');
       if (!empresa.descricaoProcessos?.trim()) add('INFO', 'Sem a descrição dos processos da empresa. O PGR usa um texto geral.', 'Cadastro da empresa, aba Dados e responsáveis.');
+      // A NR-01 pede o inventário e o plano de ação juntos: PGR sem nenhuma ação fica incompleto.
+      const temRiscoRelevante = ghes.some((g) => g.riscos.some((r) => nivelRisco(r.severidade, r.probabilidade) !== 'BAIXO'));
+      if (temRiscoRelevante && !(await this.prisma.acaoCorretiva.count({ where: { empresaId } }))) {
+        add('ATENCAO', 'O plano de ação está vazio. O PGR sai com "Ainda não há ações cadastradas", e a NR-01 pede o inventário junto com o plano.', 'Prevenção, Plano de ação: use "Criar ações dos riscos do PGR" e ajuste prazos e responsáveis.');
+      }
       // O que mudou desde o último PGR emitido, pelo retrato guardado na emissão.
       const ultimo = await this.prisma.documento.findFirst({ where: { empresaId, tipo: 'PGR', NOT: { retrato: { equals: Prisma.DbNull } } }, orderBy: { versao: 'desc' }, select: { versao: true, geradoEm: true, retrato: true } });
       const retrato = lerRetrato(ultimo?.retrato);

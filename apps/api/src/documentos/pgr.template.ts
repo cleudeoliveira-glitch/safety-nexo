@@ -171,7 +171,8 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
   const prioritarios = todos.filter((x) => x.nivel === 'ALTO' || x.nivel === 'CRITICO');
   const psicossociais = todos.filter((x) => ehPsicossocial(x.r));
   const e = extras.empresa;
-  const totalTrabalhadores = ghes.reduce((t, g) => t + g.colaboradores, 0) || e.numFuncionarios;
+  // Já vem calculado pelo serviço: os ativos cadastrados (ou o número informado, sem cadastro).
+  const totalTrabalhadores = e.numFuncionarios;
   const nomeEmpresa = escape(e.razaoSocial);
 
   const inventario = ghes

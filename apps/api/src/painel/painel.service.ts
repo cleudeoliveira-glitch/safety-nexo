@@ -59,7 +59,8 @@ export class PainelService {
     const itens: { ok: boolean; falta?: Omit<Pendencia, 'nivel'> }[] = [
       {
         ok: Boolean(empresa.cnae && empresa.grauRisco && empresa.numFuncionarios > 0),
-        falta: { titulo: 'Complete os dados da empresa', detalhe: 'CNAE, grau de risco e número de funcionários' },
+        // Diz exatamente o que falta, para a pessoa não procurar campo por campo.
+        falta: { titulo: 'Complete os dados da empresa', detalhe: `Falta: ${[!empresa.cnae && 'CNAE', !empresa.grauRisco && 'grau de risco', !(empresa.numFuncionarios > 0) && 'número de funcionários'].filter(Boolean).join(', ')}` },
       },
       {
         ok: empresa.ghes.length > 0,
