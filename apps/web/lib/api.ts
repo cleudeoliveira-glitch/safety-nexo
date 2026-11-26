@@ -921,7 +921,7 @@ export const importarPdf = {
   enviar: (e: string, arq: File, modo: 'gratis' | 'ia' = 'gratis') => { const f = new FormData(); f.append('modo', modo); f.append('arquivo', arq); return chamar<Leitura>('POST', `/empresas/${e}/importar-pdf`, f); },
   manual: (e: string) => chamar<Leitura>('POST', `/empresas/${e}/importar-pdf/manual`),
   importar: (e: string, id: string, ghes: { nome: string; descricao?: string; riscos: RiscoImportar[] }[]) => chamar<{ novosGhes: number; novosRiscos: number; repetidos: number }>('POST', `/empresas/${e}/importar-pdf/${id}/importar`, { ghes }),
-  remover: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/importar-pdf/${id}`),
+  remover: (e: string, id: string, levarCadastro = false) => chamar<{ ok: boolean; riscos: number; ghes: number }>('DELETE', `/empresas/${e}/importar-pdf/${id}${levarCadastro ? '?cadastro=1' : ''}`),
 };
 
 // ---------- Prontuário de saúde ----------
@@ -1329,7 +1329,17 @@ export const excluir = {
   contrato: (id: string) => chamar<Ok>('DELETE', `/comercial/contratos/${id}`),
   servico: (id: string) => chamar<Ok>('DELETE', `/comercial/servicos/${id}`),
   cobranca: (id: string) => chamar<Ok>('DELETE', `/comercial/cobrancas/${id}`),
+  colaborador: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/colaboradores/${id}`),
+  oQueSaiColaborador: (e: string, id: string) => chamar<{ nome: string; saiu: boolean; itens: string[]; noEsocial: number }>('GET', `/empresas/${e}/colaboradores/${id}/exclusao`),
+  exameGhe: (e: string, gheId: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/ghes/${gheId}/exames/${id}`),
+  emissao: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/emissoes/${id}`),
+  itemEstoque: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/estoque-epi/${id}`),
+  relato: (e: string, id: string) => chamar<Ok>('DELETE', `/empresas/${e}/relatos/${id}`),
 };
+
+// Versões emitidas dos programas e laudos (o histórico de revisões que sai no PDF).
+export type Emissao = { id: string; tipo: string; nome: string; versao: number; geradoEm: string; vencimento: string | null; mudancas: string | null };
+export const listarEmissoes = (e: string) => chamar<Emissao[]>('GET', `/empresas/${e}/emissoes`);
 
 // Fotos de CAT, investigação e PT ficam no Arquivo da empresa (pasta "Fotos"), com um título que diz de onde vieram.
 export async function guardarFotos(empresaId: string, fotos: Blob[], titulo: string, descricao?: string) {

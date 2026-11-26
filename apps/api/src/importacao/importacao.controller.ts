@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
@@ -20,5 +20,5 @@ export class ImportacaoController {
   @Post('manual') manual(@ConsultoriaId() c: string, @Sessao() s: SessaoUsuario, @Param('empresaId') e: string) { return this.imp.manual({ ...s, consultoriaId: c }, e); }
   @Get(':id') obter(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.imp.obter(c, e, id); }
   @Post(':id/importar') importar(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Body() dto: ImportarDto) { return this.imp.importar(c, e, id, dto); }
-  @Delete(':id') remover(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.imp.remover(c, e, id); }
+  @Delete(':id') remover(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string, @Query('cadastro') cadastro?: string) { return this.imp.remover(c, e, id, cadastro === '1'); }
 }

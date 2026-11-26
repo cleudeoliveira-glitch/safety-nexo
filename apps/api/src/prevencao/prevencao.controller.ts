@@ -60,6 +60,7 @@ export class PrevencaoConsultoriaController {
     return this.p.eficacia(s.consultoriaId, e, id, u?.nome ?? '—', d);
   }
   @Post('acoes/dos-riscos') dosRiscos(@ConsultoriaId() c: string, @Param('empresaId') e: string) { return this.p.acoesDosRiscos(c, e); }
+  @Delete('relatos/:id') removerRelato(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.p.removerRelato(c, e, id); }
   @Delete('acoes/:id') remover(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) { return this.p.removerAcao(c, e, id); }
   @Get('investigacoes') investigacoes(@ConsultoriaId() c: string, @Param('empresaId') e: string) { return this.p.investigacoes(c, e); }
   @Post('investigacoes') criarInv(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Body() d: InvestigacaoDto) { return this.p.criarInvestigacao(c, e, d); }

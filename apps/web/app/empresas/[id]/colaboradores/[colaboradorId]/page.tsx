@@ -445,6 +445,8 @@ export default function ColaboradorPage({ params }: { params: { id: string; cola
         }}
       />
 
+      <ExcluirColaborador empresaId={empresaId} colaboradorId={colaboradorId} nome={colaborador.nome} />
+
       {camera === 'cadastro' && (
         <CameraRosto titulo={`Cadastrar o rosto de ${colaborador.nome}`} modo="cadastro" onFechar={() => setCamera(null)}
           onCaptura={async (c) => { setStRosto(await rosto.cadastrar(empresaId, colaboradorId, c.descritores, consente)); return 'Rosto cadastrado. Já pode usar na entrega de EPI e nas presenças.'; }} />
@@ -495,6 +497,49 @@ function CartaoSaida({ dataDesligamento, demissional, salvar }: {
           <p className="w-full text-xs text-text/60">Quem saiu deixa de aparecer nos alertas de ASO, EPI e treinamento, mas todo o histórico continua aqui.</p>
         </form>
       )}
+    </Cartao>
+  );
+}
+
+// Cadastro feito por engano ou repetido: sai a pessoa e tudo dela. Quem trabalhou de verdade deve ter a saída registrada.
+function ExcluirColaborador({ empresaId, colaboradorId, nome }: { empresaId: string; colaboradorId: string; nome: string }) {
+  const [cliente, setCliente] = useState(true);
+  const [info, setInfo] = useState<{ itens: string[]; noEsocial: number } | null>(null);
+  const [erro, setErro] = useState('');
+  const [ocupado, setOcupado] = useState(false);
+  useEffect(() => setCliente(ehEmpresa()), []);
+  if (cliente) return null;
+  return (
+    <Cartao titulo="Excluir cadastro">
+      {!info ? (
+        <div className="space-y-2 text-sm">
+          <p className="text-text/70">Use só para cadastro feito por engano ou repetido. Se a pessoa trabalhou na empresa, registre a saída acima: a NR-07 pede guardar o prontuário por 20 anos.</p>
+          <button type="button" className="font-semibold text-danger hover:underline"
+            onClick={async () => { setErro(''); try { setInfo(await excluir.oQueSaiColaborador(empresaId, colaboradorId)); } catch (e) { setErro((e as Error).message); } }}>Excluir {nome}…</button>
+        </div>
+      ) : (
+        <div className="space-y-2 rounded-card border border-danger/40 bg-danger/5 p-3 text-sm">
+          <p className="font-semibold text-danger">Excluir {nome}?</p>
+          {info.noEsocial > 0 ? (
+            <p>{nome} tem {info.noEsocial} evento(s) já enviado(s) ao eSocial, então não dá para excluir. Use &quot;Registrar saída&quot;: o histórico fica guardado e a pessoa some dos alertas.</p>
+          ) : (
+            <>
+              <p>{info.itens.length ? <>Sai junto: {info.itens.join(', ')}.</> : 'Não tem nada registrado além do cadastro.'} Isso não tem volta.</p>
+              <div className="flex gap-2">
+                <Botao variante="secundario" onClick={() => setInfo(null)} disabled={ocupado}>Cancelar</Botao>
+                <button type="button" disabled={ocupado} className="rounded-card bg-danger px-3 py-2 font-semibold text-white disabled:opacity-50"
+                  onClick={async () => {
+                    setOcupado(true);
+                    try { await excluir.colaborador(empresaId, colaboradorId); window.location.href = `/empresas/${empresaId}/colaboradores`; }
+                    catch (e) { setErro((e as Error).message); setOcupado(false); }
+                  }}>{ocupado ? 'Excluindo…' : 'Excluir de vez'}</button>
+              </div>
+            </>
+          )}
+          {info.noEsocial > 0 && <Botao variante="secundario" onClick={() => setInfo(null)}>Fechar</Botao>}
+        </div>
+      )}
+      {erro && <div className="mt-2"><Aviso tipo="erro">{erro}</Aviso></div>}
     </Cartao>
   );
 }

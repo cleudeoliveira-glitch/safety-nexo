@@ -103,31 +103,50 @@ export class ImportacaoService implements OnModuleInit {
     return this.prisma.$transaction(async (tx) => {
       const atuais = await tx.ghe.findMany({ where: { empresaId: e }, include: { riscos: { select: { tipo: true, agente: true } } } });
       let novosGhes = 0; let novosRiscos = 0; let repetidos = 0;
+      // Guarda o que entrou por esta leitura, para poder tirar tudo junto se o PGR antigo for apagado.
+      const criados: { ghes: string[]; riscos: string[] } = { ghes: [], riscos: [] };
       for (const g of dto.ghes) {
         let ghe = atuais.find((x) => x.nome.trim().toLowerCase() === g.nome.trim().toLowerCase());
-        if (!ghe) { ghe = { ...(await tx.ghe.create({ data: { empresaId: e, nome: g.nome.trim(), descricao: g.descricao?.trim() || null } })), riscos: [] }; novosGhes++; }
+        if (!ghe) { ghe = { ...(await tx.ghe.create({ data: { empresaId: e, nome: g.nome.trim(), descricao: g.descricao?.trim() || null } })), riscos: [] }; novosGhes++; criados.ghes.push(ghe.id); }
         const ja = new Set(ghe.riscos.map((r) => chaveRisco(r.tipo, r.agente)));
         for (const r of g.riscos) {
           const k = chaveRisco(r.tipo, r.agente);
           if (ja.has(k)) { repetidos++; continue; }
           ja.add(k);
           const quantitativo = !!r.intensidade?.trim();
-          await tx.gheRisco.create({ data: {
+          const novo = await tx.gheRisco.create({ data: {
             gheId: ghe.id, tipo: r.tipo, agente: r.agente.trim(), fonteGeradora: r.fonteGeradora.trim(), medidasControle: r.medidasControle?.trim() || null, severidade: grau5(r.severidade),
             intensidade: r.intensidade?.trim() || null, limiteTolerancia: r.limiteTolerancia?.trim() || null, tipoAvaliacao: quantitativo ? 'QUANTITATIVA' : null,
           } });
+          criados.riscos.push(novo.id);
           novosRiscos++;
         }
       }
-      await tx.importacaoPdf.update({ where: { id }, data: { status: 'IMPORTADO', importadoEm: new Date() } });
+      await tx.importacaoPdf.update({ where: { id }, data: { status: 'IMPORTADO', importadoEm: new Date(), resultado: { ...((imp.resultado as object | null) ?? {}), criados } as unknown as Prisma.InputJsonValue } });
       return { novosGhes, novosRiscos, repetidos };
     });
   }
 
-  async remover(c: string, e: string, id: string) {
+  // Apagar o PGR antigo: sai a leitura e a cópia do PDF no arquivo de documentos.
+  // Com levarCadastro, saem também os riscos que vieram dele e os GHEs que ele criou (se não tiverem outros riscos).
+  async remover(c: string, e: string, id: string, levarCadastro = false) {
     await this.empresa(c, e);
-    const r = await this.prisma.importacaoPdf.deleteMany({ where: { id, empresaId: e, status: { not: 'LENDO' } } });
-    if (!r.count) throw new BadRequestException('Não dá para apagar uma leitura em andamento.');
-    return { ok: true };
+    const imp = await this.prisma.importacaoPdf.findFirst({ where: { id, empresaId: e } });
+    if (!imp) throw new NotFoundException('Leitura não encontrada');
+    // Leitura parada há mais de 5 minutos já não vai terminar: pode apagar.
+    if (imp.status === 'LENDO' && Date.now() - imp.createdAt.getTime() < 5 * 60_000) throw new BadRequestException('A leitura ainda está em andamento. Espere alguns minutos e tente de novo.');
+    const criados = ((imp.resultado as { criados?: { ghes?: string[]; riscos?: string[] } } | null)?.criados) ?? { ghes: [], riscos: [] };
+    let riscos = 0; let ghes = 0;
+    await this.prisma.$transaction(async (tx) => {
+      if (levarCadastro) {
+        riscos = (await tx.gheRisco.deleteMany({ where: { id: { in: criados.riscos ?? [] }, ghe: { empresaId: e } } })).count;
+        const vazios = await tx.ghe.findMany({ where: { id: { in: criados.ghes ?? [] }, empresaId: e, riscos: { none: {} } }, select: { id: true } });
+        ghes = (await tx.ghe.deleteMany({ where: { id: { in: vazios.map((g) => g.id) } } })).count;
+      }
+      await tx.importacaoPdf.delete({ where: { id } });
+    });
+    if (imp.arquivoId) await this.arquivo.remover(c, e, imp.arquivoId).catch(() => undefined);
+    return { ok: true, riscos, ghes };
   }
+
 }

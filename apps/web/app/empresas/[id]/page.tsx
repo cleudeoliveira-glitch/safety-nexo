@@ -48,11 +48,15 @@ import {
   RiscoEsocial,
   buscarTabelasEsocial,
   TabelasEsocial,
+  excluir,
+  listarEmissoes,
+  type Emissao,
 } from '@/lib/api';
 import { EscolhaTabela } from '@/components/EscolhaTabela';
 import { ehEmpresa } from '@/lib/sessao';
 import { DimensionamentoCipa } from '@/components/DimensionamentoCipa';
 import { TopoTela } from '@/components/TopoTela';
+import { BotaoExcluir } from '@/components/BotaoExcluir';
 import { CopiarDados } from '@/components/CopiarDados';
 import { FormGhe } from '@/components/FormGhe';
 import { sugestaoParaAgente } from '@/lib/agentesMedicao';
@@ -440,6 +444,8 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
                         {e.periodicidadeMeses ? ` · a cada ${e.periodicidadeMeses} meses` : ''}
                         {' · '}
                         <CodigoExame id={e.id} valor={e.codigoEsocial ?? ''} salvar={(cod) => agir(() => salvarCodigoExame(empresaId, ghe.id, e.id, cod), `Código de ${e.nome} salvo.`)} />
+                        {!cliente && (<>{' · '}<button type="button" className="text-danger hover:underline"
+                          onClick={() => confirm(`Tirar ${e.nome} dos exames de ${ghe.nome}? Os ASOs já feitos continuam na ficha de cada pessoa; só sai do PCMSO a partir da próxima emissão.`) && agir(() => excluir.exameGhe(empresaId, ghe.id, e.id), `${e.nome} saiu dos exames de ${ghe.nome}.`)}>Excluir</button></>)}
                       </li>
                     ))}
                   </ul>
@@ -576,6 +582,7 @@ export default function EmpresaPage({ params }: { params: { id: string } }) {
             }}>Gerar</Botao>
             </div>
           </GrupoDocs>
+          {!cliente && <Emissoes empresaId={empresaId} avisar={(tipo, texto) => setAviso({ tipo, texto })} />}
           <p className="text-xs text-text/60">O PPP e a ordem de serviço de uma pessoa só ficam na ficha do colaborador. Os outros documentos (APR, PT, DDS, CAT, AET...) saem na tela de cada um, ou pelo menu Documentos, em Emitir documento.</p>
         </div>
       </Cartao>
@@ -1044,5 +1051,38 @@ function BotaoDoc({ sigla, nome, principal, onClick }: { sigla: string; nome: st
       <span className={`shrink-0 rounded-md px-2 py-1 text-xs font-bold ${principal ? 'bg-white/20' : 'bg-primary/10 text-primary'}`}>{sigla}</span>
       <span className="text-sm font-semibold leading-tight">{nome}</span>
     </button>
+  );
+}
+
+// Versões já emitidas (o histórico de revisões que sai no próprio PDF). Uma emissão de teste ou feita errado pode sair daqui.
+function Emissoes({ empresaId, avisar }: { empresaId: string; avisar: (tipo: 'ok' | 'erro', texto: string) => void }) {
+  const [lista, setLista] = useState<Emissao[] | null>(null);
+  const [aberto, setAberto] = useState(false);
+  const carregar = useCallback(() => listarEmissoes(empresaId).then(setLista).catch(() => setLista([])), [empresaId]);
+  useEffect(() => { if (aberto) void carregar(); }, [aberto, carregar]);
+  return (
+    <div className="rounded-card border border-border p-3">
+      <button type="button" className="text-sm font-semibold text-primary hover:underline" onClick={() => setAberto(!aberto)}>
+        {aberto ? 'Esconder versões emitidas' : 'Ver versões emitidas (PGR, PCMSO, laudos)'}
+      </button>
+      {aberto && (
+        !lista ? <p className="mt-2 text-sm text-text/60">Carregando…</p>
+        : !lista.length ? <p className="mt-2 text-sm text-text/60">Nenhum programa ou laudo emitido ainda.</p>
+        : (
+          <>
+            <p className="mt-2 text-xs text-text/60">Cada PDF autorizado vira uma versão no histórico de revisões do documento. Excluir uma versão tira ela do histórico das próximas emissões. O PDF que já foi baixado ou guardado no Arquivo não muda.</p>
+            <ul className="mt-2 divide-y divide-border text-sm">
+              {lista.map((d) => (
+                <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span><strong>{d.nome}</strong> · versão {d.versao} · emitida em {new Date(d.geradoEm).toLocaleDateString('pt-BR')}{d.mudancas ? ` · ${d.mudancas}` : ''}</span>
+                  <BotaoExcluir pergunta={`Excluir a versão ${d.versao} do ${d.nome}? Ela sai do histórico de revisões. A próxima emissão continua a numeração a partir da maior versão que ficar.`}
+                    excluir={() => excluir.emissao(empresaId, d.id)} aoTerminar={async () => { avisar('ok', `Versão ${d.versao} do ${d.nome} excluída.`); await carregar(); }} aoErrar={(m) => avisar('erro', m)} />
+                </li>
+              ))}
+            </ul>
+          </>
+        )
+      )}
+    </div>
   );
 }
