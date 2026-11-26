@@ -26,7 +26,8 @@ export class ContextoDocumentoService {
 
     // Emissões anteriores: viram o histórico de revisões no próprio documento.
     const historico = await this.prisma.documento.findMany({ where: { empresaId, tipo }, orderBy: { versao: 'asc' }, select: { versao: true, geradoEm: true, mudancas: true } });
-    const versao = historico.length + 1;
+    // Pela maior versão (e não pela contagem): se uma emissão for apagada, o número não repete o de outra que ficou.
+    const versao = Math.max(0, ...historico.map((h) => h.versao)) + 1;
     // Logos conforme o plano: Grátis sem logos; Start só a da empresa; do Essencial para cima as duas.
     const plano = planoAtual();
     const logoEmpresa = temRecurso(plano, 'logoEmpresa') ? await this.logos.comoDataUri(empresa.logoPath) : null;

@@ -12,8 +12,9 @@ import { nivelDoRisco, PROBABILIDADES, SEVERIDADES } from '@/lib/matriz';
 import {
   guardarFotos,
   AcaoCorretiva, buscarEmpresa, Ghe, Hierarquia, listarGhes, Cat, CATEGORIAS_CAUSA, CategoriaCausa, Empresa, Esforco, ia, Investigacao,
-  listarCats, NovaAcao, prevencao, Prioridade, Relato, salvarArquivo, TIPOS_RELATO,
+  listarCats, NovaAcao, prevencao, Prioridade, Relato, salvarArquivo, TIPOS_RELATO, excluir,
 } from '@/lib/api';
+import { BotaoExcluir } from '@/components/BotaoExcluir';
 import { ehEmpresa } from '@/lib/sessao';
 
 type Aba = 'relatos' | 'acoes' | 'investigacao';
@@ -134,6 +135,8 @@ function AbaRelatos({ empresaId, empresa, consultoria, iaLigada, avisar, irParaI
                   {r.status !== 'ENCERRADO' ? <Botao variante="secundario" onClick={() => encerrar(r)}>Encerrar</Botao>
                     : <Botao variante="secundario" onClick={() => agir(() => prevencao.tratar(empresaId, r.id, { status: 'EM_ANALISE', resposta: r.resposta ?? undefined }))}>Reabrir</Botao>}
                   {r.acoes && <span className="self-center text-xs text-success">✓ tem ação no plano</span>}
+                  {consultoria && <BotaoExcluir pergunta={`Excluir o relato nº ${r.numero}${r.temFoto ? ' e a foto dele' : ''}?${r.acoes ? ' As ações que já estão no plano continuam lá.' : ''}`}
+                    excluir={() => excluir.relato(empresaId, r.id)} aoTerminar={async () => { avisar('ok', `Relato nº ${r.numero} excluído.`); await carregar(); aoMudar(); }} aoErrar={(m) => avisar('erro', m)} />}
                 </div>
               </li>
             ))}

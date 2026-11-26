@@ -24,6 +24,7 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
   const [aberta, setAberta] = useState<(Leitura & { ghesExistentes: string[] }) | null>(null);
   const [ghes, setGhes] = useState<GheEd[]>([]);
   const [enviando, setEnviando] = useState(false);
+  const [excluindo, setExcluindo] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok' | 'info'; texto: string } | null>(null);
 
   const carregar = useCallback(async () => {
@@ -124,8 +125,19 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
                 </div>
                 <div className="flex gap-3">
                   {l.status === 'PRONTO' && <Botao variante="secundario" onClick={() => abrir(l.id)}>Conferir</Botao>}
-                  {l.status !== 'LENDO' && <button className="text-danger underline" onClick={() => confirm('Apagar esta leitura? O PDF continua no arquivo de documentos.') && importarPdf.remover(empresaId, l.id).then(carregar).catch((e: Error) => setAviso({ tipo: 'erro', texto: e.message }))}>Apagar</button>}
+                  {(l.status !== 'LENDO' || Date.now() - new Date(l.createdAt).getTime() > 5 * 60_000) && excluindo !== l.id && <button className="text-danger underline" onClick={() => setExcluindo(l.id)}>Excluir</button>}
                 </div>
+                {excluindo === l.id && (
+                  <ExcluirLeitura leitura={l} cancelar={() => setExcluindo(null)} excluir={async (levarCadastro) => {
+                    try {
+                      const r = await importarPdf.remover(empresaId, l.id, levarCadastro);
+                      setExcluindo(null);
+                      if (aberta?.id === l.id) setAberta(null);
+                      setAviso({ tipo: 'ok', texto: levarCadastro ? `PGR antigo excluído, com ${r.riscos} risco(s) e ${r.ghes} GHE(s) que vieram dele.` : 'PGR antigo excluído. Os GHEs e riscos que já estavam no cadastro continuam.' });
+                      await carregar();
+                    } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+                  }} />
+                )}
               </li>
             ))}
           </ul>
@@ -188,5 +200,39 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
         </div>
       )}
     </main>
+  );
+}
+
+// Excluir o PGR antigo: diz o que sai e deixa escolher se os GHEs e riscos que vieram dele saem junto.
+function ExcluirLeitura({ leitura, cancelar, excluir }: { leitura: Leitura; cancelar: () => void; excluir: (levarCadastro: boolean) => Promise<void> }) {
+  const criados = (leitura.resultado as { criados?: { ghes?: string[]; riscos?: string[] } } | null)?.criados;
+  const nRiscos = criados?.riscos?.length ?? 0;
+  const nGhes = criados?.ghes?.length ?? 0;
+  const [levar, setLevar] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
+  return (
+    <div className="w-full rounded-card border border-danger/40 bg-danger/5 p-3 text-sm">
+      <p className="font-semibold text-danger">Excluir &quot;{leitura.nomeArquivo}&quot;?</p>
+      <ul className="mt-1 list-disc pl-5 text-text/80">
+        <li>Sai a leitura desta lista{leitura.arquivoId ? ' e a cópia do PDF guardada no Arquivo de documentos' : ''}.</li>
+        {leitura.status === 'IMPORTADO' && (nRiscos > 0 || nGhes > 0) ? (
+          <li>Este PGR já foi importado: trouxe {nRiscos} risco(s){nGhes ? ` e criou ${nGhes} GHE(s)` : ''}. Você escolhe abaixo se eles ficam ou saem.</li>
+        ) : leitura.status === 'IMPORTADO' ? (
+          <li>Os GHEs e riscos que ele trouxe continuam no cadastro (foram importados antes desta opção existir). Se quiser tirar, exclua na aba GHEs e riscos da empresa.</li>
+        ) : <li>Nada foi importado dele, então o cadastro da empresa não muda.</li>}
+      </ul>
+      {leitura.status === 'IMPORTADO' && (nRiscos > 0 || nGhes > 0) && (
+        <label className="mt-2 flex items-start gap-2">
+          <input type="checkbox" className="mt-1" checked={levar} onChange={(e) => setLevar(e.target.checked)} />
+          <span>Tirar também os riscos que vieram deste PGR{nGhes ? ' e os GHEs que ele criou (o GHE só sai se ficar sem nenhum outro risco)' : ''}. Riscos que você cadastrou à mão ficam.</span>
+        </label>
+      )}
+      <p className="mt-2 text-xs text-text/60">Isso não tem volta.</p>
+      <div className="mt-2 flex gap-2">
+        <Botao variante="secundario" onClick={cancelar} disabled={ocupado}>Cancelar</Botao>
+        <button type="button" disabled={ocupado} className="rounded-card bg-danger px-3 py-2 font-semibold text-white disabled:opacity-50"
+          onClick={async () => { setOcupado(true); try { await excluir(levar); } finally { setOcupado(false); } }}>{ocupado ? 'Excluindo…' : 'Excluir de vez'}</button>
+      </div>
+    </div>
   );
 }

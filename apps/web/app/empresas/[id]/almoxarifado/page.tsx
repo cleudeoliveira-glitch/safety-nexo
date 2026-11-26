@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao } from '@/components/ui';
-import { buscarEmpresa, Empresa, estoque, ItemEstoque, MovEstoque, TrocasEpi } from '@/lib/api';
+import { buscarEmpresa, Empresa, estoque, excluir, ItemEstoque, MovEstoque, TrocasEpi } from '@/lib/api';
+import { BotaoExcluir } from '@/components/BotaoExcluir';
 
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-');
 const TIPO = { ENTRADA: 'Entrada', SAIDA: 'Entrega', AJUSTE: 'Ajuste' } as const;
@@ -99,6 +100,8 @@ export default function AlmoxarifadoPage({ params }: { params: { id: string } })
                         <Botao variante="secundario" onClick={() => setAberto({ id: i.id, acao: 'entrada' })}>Entrada</Botao>
                         <Botao variante="secundario" onClick={() => setAberto({ id: i.id, acao: 'ajuste' })}>Contagem</Botao>
                         <Botao variante="secundario" onClick={async () => { setMovs(await estoque.movimentos(empresaId, i.id)); setAberto({ id: i.id, acao: 'historico' }); }}>Histórico</Botao>
+                        <BotaoExcluir pergunta={`Excluir ${i.epi} (CA ${i.ca}) do almoxarifado? Sai o item com o histórico de entradas e saídas dele. As entregas já feitas continuam na ficha de EPI de cada pessoa.`}
+                          excluir={() => excluir.itemEstoque(empresaId, i.id)} aoTerminar={async () => { setAviso({ tipo: 'ok', texto: `${i.epi} excluído do almoxarifado.` }); await carregar(); }} aoErrar={(m) => setAviso({ tipo: 'erro', texto: m })} />
                       </span>
                       {aberto?.id === i.id && aberto.acao !== 'historico' && (
                         <form className="mt-2 flex flex-wrap items-end justify-end gap-2 text-left" onSubmit={(ev) => {

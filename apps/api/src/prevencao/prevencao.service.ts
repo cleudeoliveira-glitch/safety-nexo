@@ -103,6 +103,16 @@ export class PrevencaoService {
     return lista.map(({ fotoPath, ...r }) => ({ ...r, temFoto: !!fotoPath, acoes: comAcao.has(r.id) }));
   }
 
+  // Relato apagado (engano, repetido, brincadeira): sai com a foto. As ações do plano que nasceram dele ficam, sem o vínculo.
+  async removerRelato(consultoriaId: string, empresaId: string, id: string) {
+    await this.empresa(consultoriaId, empresaId);
+    const r = await this.prisma.relato.findFirst({ where: { id, empresaId }, select: { fotoPath: true } });
+    if (!r) throw new NotFoundException('Relato não encontrado');
+    await this.prisma.relato.delete({ where: { id } });
+    if (r.fotoPath) await guarda.apagar(r.fotoPath).catch(() => undefined);
+    return { ok: true };
+  }
+
   private async relato(consultoriaId: string, empresaId: string, id: string, ehEmpresa = false) {
     await this.empresa(consultoriaId, empresaId);
     const r = await this.prisma.relato.findFirst({ where: { id, empresaId, ...(ehEmpresa ? { tipo: { not: 'DENUNCIA' } } : {}) } });

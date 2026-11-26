@@ -159,7 +159,9 @@ export class ArquivoService {
     await this.empresa(consultoriaId, empresaId);
     const a = await this.prisma.arquivo.findFirst({ where: { id, empresaId } });
     if (!a) throw new NotFoundException('Documento não encontrado');
-    if (a.origem === 'GERADO') throw new BadRequestException('Documentos gerados pelo sistema ficam guardados como prova. Só os enviados podem ser apagados.');
+    // Gerado ou enviado, pode apagar. Só não apaga o que está no meio de um pedido de assinatura em aberto.
+    const emAssinatura = await this.prisma.pedidoAssinatura.findFirst({ where: { empresaId, status: 'ABERTO', OR: [{ arquivoId: id }, { arquivoFinalId: id }] }, select: { id: true } });
+    if (emAssinatura) throw new BadRequestException('Este documento está em um pedido de assinatura em aberto. Cancele o pedido em Assinaturas e depois apague.');
     await this.prisma.arquivo.delete({ where: { id } });
     await guarda.apagar(a.caminho).catch(() => undefined);
     return { ok: true };

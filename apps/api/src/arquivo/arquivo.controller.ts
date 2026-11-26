@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { SoConsultoria } from '../common/exclusao';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
@@ -36,6 +37,7 @@ export class ArquivoController {
   }
 
   @Delete(':id')
+  @SoConsultoria()
   remover(@ConsultoriaId() c: string, @Param('empresaId') e: string, @Param('id') id: string) {
     return this.arquivo.remover(c, e, id);
   }
