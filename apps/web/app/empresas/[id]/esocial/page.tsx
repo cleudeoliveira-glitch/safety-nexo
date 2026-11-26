@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { Aviso, Botao, Campo, Cartao } from '@/components/ui';
+import { Aviso, Botao, EscolherArquivo, Campo, Cartao } from '@/components/ui';
 import {
   baixarXmlEsocial,
   buscarCertificado,
@@ -126,7 +126,7 @@ export default function EsocialPage({ params }: { params: { id: string } }) {
         }}>
           <label className="block text-sm">
             <span className="mb-1 block font-medium">{cert ? 'Trocar por outro certificado' : 'Arquivo do certificado A1'}</span>
-            <input type="file" accept=".pfx,.p12" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
+            <EscolherArquivo accept=".pfx,.p12" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
           </label>
           <Campo id="senha-cert" rotulo="Senha do certificado" type="password" autoComplete="off" value={senha} onChange={(e) => setSenha(e.target.value)} />
           <Botao type="submit" disabled={ocupado}>Salvar certificado</Botao>

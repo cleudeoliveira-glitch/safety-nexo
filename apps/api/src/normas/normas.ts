@@ -130,7 +130,7 @@ export class NormasController {
   constructor(private readonly normas: NormasService) {}
   @Get('avisos') listar(@ConsultoriaId() c: string) { return this.normas.daConsultoria(c); }
   @Post('avisos/:id/lido') lido(@ConsultoriaId() c: string, @Param('id') id: string) {
-    if (!id) throw new BadRequestException();
+    if (!id) throw new BadRequestException('Aviso não encontrado.');
     return this.normas.marcarLido(c, id);
   }
 }

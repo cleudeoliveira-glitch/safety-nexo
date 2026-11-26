@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
+import { Aviso, Botao, EscolherArquivo, Campo, Cartao, Selecao } from '@/components/ui';
 import { AcessoArquivo, arquivo, buscarEmpresa, Empresa, ItemArquivo, salvarArquivo } from '@/lib/api';
 import { ehEmpresa } from '@/lib/sessao';
 
@@ -157,7 +157,7 @@ export default function ArquivoPage({ params }: { params: { id: string } }) {
           <Campo id="ar-desc" name="descricao" rotulo="Observação" />
           <div className="md:col-span-2">
             <label htmlFor="ar-arquivo" className="mb-1.5 block text-sm font-semibold">Arquivo</label>
-            <input id="ar-arquivo" name="arquivo" type="file" required accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx" className="block text-sm" />
+            <EscolherArquivo id="ar-arquivo" name="arquivo" required accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx" />
           </div>
           <div className="flex items-end justify-end"><Botao type="submit">Guardar</Botao></div>
         </form>

@@ -3,7 +3,7 @@
 import { grau5, SEVERIDADES } from '@/lib/matriz';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { Aviso, Botao, Cartao } from '@/components/ui';
+import { Aviso, Botao, EscolherArquivo, Cartao } from '@/components/ui';
 import { buscarEmpresa, Empresa, importarPdf, Leitura, RiscoImportar, TipoRisco } from '@/lib/api';
 
 const TIPOS: [TipoRisco, string][] = [['FISICO', 'Físico'], ['QUIMICO', 'Químico'], ['BIOLOGICO', 'Biológico'], ['ERGONOMICO', 'Ergonômico'], ['ACIDENTE', 'Acidente']];
@@ -97,7 +97,7 @@ export default function ImportarPdfPage({ params }: { params: { id: string } }) 
             (ev.target as HTMLFormElement).reset(); await carregar();
           } catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); } finally { setEnviando(false); }
         }}>
-          <input name="arquivo" type="file" accept="application/pdf,.pdf" aria-label="PDF" className="text-sm" />
+          <EscolherArquivo name="arquivo" accept="application/pdf,.pdf" aria-label="PDF" />
           <Botao type="submit" value="gratis" disabled={enviando}>{enviando ? 'Enviando…' : 'Ler grátis'}</Botao>
           {iaLigada && <Botao type="submit" value="ia" variante="secundario" disabled={enviando}>Ler com IA</Botao>}
         </form>
