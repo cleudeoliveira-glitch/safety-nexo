@@ -5,6 +5,7 @@ import { CampoAjuda, Ajuda } from './CampoAjuda';
 import { Icone, NomeIcone } from './Icone';
 import { ajudaDoCampo } from '@/lib/ajudaCampos';
 import { VOLTOU_PARA_CORRIGIR } from '@/lib/previa';
+import { emPortugues } from '@/lib/erros-pt';
 
 export function Cartao({ titulo, children, id, acao }: { titulo: string; children: React.ReactNode; id?: string; acao?: React.ReactNode }) {
   return (
@@ -42,6 +43,32 @@ export function Rotulo({ htmlFor, rotulo, ajuda }: { htmlFor: string; rotulo: st
   );
 }
 
+// Escolher arquivo sempre em português do Brasil. O botão nativo do navegador segue a língua do computador
+// (ex.: "Escolher ficheiro" no Chrome de Portugal, "Choose file" no inglês).
+export function EscolherArquivo({ id, className, onChange, ...input }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const [nome, setNome] = useState('');
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    // Quando o formulário é limpo (form.reset()), o nome mostrado também volta ao início.
+    const form = ref.current?.form;
+    if (!form) return;
+    const limpar = () => setNome('');
+    form.addEventListener('reset', limpar);
+    return () => form.removeEventListener('reset', limpar);
+  }, []);
+  return (
+    <span className={`inline-flex max-w-full flex-wrap items-center gap-2 text-sm ${className ?? ''}`}>
+      <input ref={ref} id={id} type="file" className="sr-only" {...input}
+        onChange={(e) => { const f = e.target.files; setNome(f && f.length ? (f.length > 1 ? `${f.length} arquivos escolhidos` : f[0].name) : ''); onChange?.(e); }} />
+      <button type="button" onClick={() => ref.current?.click()} disabled={input.disabled}
+        className="rounded-card border border-primary/40 bg-white px-3 py-2 font-semibold text-primary hover:border-primary disabled:opacity-50">
+        Escolher arquivo
+      </button>
+      <span className="min-w-0 truncate text-text/70">{nome || 'Nenhum arquivo escolhido'}</span>
+    </span>
+  );
+}
+
 // Campo de preencher no padrão do sistema: nome grande em cima, ícone do lado, borda forte e brilho verde ao clicar.
 // Campo de senha ganha o olhinho para mostrar ou esconder o que foi digitado.
 export function Campo({ id, rotulo, ajuda, dica, className, icone, type, ...input }: CampoProps) {
@@ -51,7 +78,7 @@ export function Campo({ id, rotulo, ajuda, dica, className, icone, type, ...inpu
     return (
       <div className={className}>
         <Rotulo htmlFor={id} rotulo={rotulo} />
-        <input id={id} type="file" className="block w-full rounded-card border-2 border-dashed border-primary/40 bg-white p-3 text-sm" {...input} />
+        <div className="rounded-card border-2 border-dashed border-primary/40 bg-white p-3"><EscolherArquivo id={id} {...input} /></div>
         {dica && <p className="mt-1 text-xs text-text/60">{dica}</p>}
       </div>
     );
@@ -158,5 +185,7 @@ export function Aviso({ tipo, children }: { tipo: 'erro' | 'ok' | 'info'; childr
   // Quem voltou da pré-visualização para corrigir não fez nada errado: não mostra como erro.
   if (children === VOLTOU_PARA_CORRIGIR) return null;
   const cor = tipo === 'erro' ? 'border-danger text-danger' : tipo === 'ok' ? 'border-success text-success' : 'border-border text-text/70';
-  return <p className={`rounded-card border bg-white px-4 py-3 text-sm ${cor}`}>{children}</p>;
+  // Erro em texto passa pela troca de mensagens em inglês (navegador, código) por português.
+  const texto = tipo === 'erro' && typeof children === 'string' ? emPortugues(children) : children;
+  return <p className={`rounded-card border bg-white px-4 py-3 text-sm ${cor}`}>{texto}</p>;
 }

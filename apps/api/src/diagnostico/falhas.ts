@@ -4,6 +4,7 @@ import { createHash } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { PushService } from '../push/push';
+import { ERRO_INTERNO, mensagemEmPortugues, rotuloDoErro } from '../common/erros-pt';
 
 // Caderno de falhas do Diagnóstico (Painel ADM).
 // Guarda cada erro que um cliente viu, para o dono do sistema não precisar abrir os registros do Render.
@@ -58,22 +59,33 @@ export function registrarFalha(f: Falha) {
     .catch(() => undefined);
 }
 
-// Pega todo erro inesperado do motor (código 500 ou mais) e anota no caderno. A resposta ao cliente continua a mesma.
+// Pega todo erro do motor: o inesperado (código 500 ou mais) vai para o caderno, e toda resposta de erro
+// sai em português (ver common/erros-pt.ts), mesmo as que o Nest e o Express escrevem em inglês.
 @Catch()
 export class FiltroDeFalhas extends BaseExceptionFilter {
   catch(erro: unknown, host: ArgumentsHost) {
-    const status = erro instanceof HttpException ? erro.getStatus() : 500;
-    if (status >= 500 && host.getType() === 'http') {
-      const req = host.switchToHttp().getRequest<Request & { sessao?: { sub: string; consultoriaId: string } }>();
+    if (host.getType() !== 'http') return super.catch(erro, host);
+    const http = host.switchToHttp();
+    const req = http.getRequest<Request & { sessao?: { sub: string; consultoriaId: string } }>();
+    const res = http.getResponse<Response>();
+    const ehHttp = erro instanceof HttpException;
+    // Erros do envio de arquivos e do Express trazem o código em "status" (ex.: 413 quando o JSON é grande demais).
+    const statusSolto = !ehHttp && typeof (erro as { status?: unknown })?.status === 'number' ? (erro as { status: number }).status : null;
+    const status = ehHttp ? erro.getStatus() : statusSolto && statusSolto >= 400 && statusSolto < 600 ? statusSolto : 500;
+    const resposta = ehHttp ? erro.getResponse() : null;
+    const original = typeof resposta === 'object' && resposta && 'message' in resposta ? (resposta as { message: unknown }).message : typeof resposta === 'string' ? resposta : (erro as Error)?.message;
+    if (status >= 500) {
       const e = erro as Error;
-      const resposta = erro instanceof HttpException ? erro.getResponse() : null;
-      const mensagem = typeof resposta === 'object' && resposta && 'message' in resposta ? String((resposta as { message: unknown }).message) : e?.message ?? String(erro);
       registrarFalha({
-        origem: 'MOTOR', rota: `${req.method} ${req.originalUrl ?? req.url}`, status, mensagem,
+        origem: 'MOTOR', rota: `${req.method} ${req.originalUrl ?? req.url}`, status, mensagem: Array.isArray(original) ? original.join('; ') : String(original ?? e?.message ?? erro),
         detalhe: e?.stack ?? null, consultoriaId: req.sessao?.consultoriaId, usuarioId: req.sessao?.sub,
       });
     }
-    super.catch(erro, host);
+    // Erro que não foi preparado para o cliente (falha de banco, de rede, de código): nunca mostra o texto técnico.
+    const message = ehHttp || statusSolto ? mensagemEmPortugues(status, original) : ERRO_INTERNO;
+    if (res.headersSent) return;
+    const extra = typeof resposta === 'object' && resposta ? Object.fromEntries(Object.entries(resposta).filter(([k]) => !['message', 'error', 'statusCode'].includes(k))) : {};
+    res.status(status).json({ ...extra, statusCode: status, message, error: rotuloDoErro(status) });
   }
 }
 

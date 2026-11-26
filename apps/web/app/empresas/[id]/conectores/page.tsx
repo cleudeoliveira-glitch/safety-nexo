@@ -5,7 +5,7 @@ import { TopoTela } from '@/components/TopoTela';
 import Link from 'next/link';
 import { useAbaDoEndereco } from '@/lib/abaDoEndereco';
 import { useCallback, useEffect, useState } from 'react';
-import { Aviso, Botao, Campo, Cartao, Selecao } from '@/components/ui';
+import { Aviso, Botao, EscolherArquivo, Campo, Cartao, Selecao } from '@/components/ui';
 import {
   Absenteismo, Atestado, atestados, buscarEmpresa, Colaborador, Empresa, importarColaboradores, listarColaboradores,
   previaImportacao, PreviaImportacao, Situacao, Terceiro, terceiros,
@@ -56,8 +56,8 @@ function AbaRh({ empresaId, avisar, recarregar }: { empresaId: string; avisar: A
           A primeira linha precisa ter os títulos. O sistema reconhece: <strong>Nome</strong>, CPF, Cargo ou Função, CBO, Matrícula (ou Chapa), Admissão e Setor ou GHE.
         </p>
         <p className="mb-4 text-sm text-text/70">Quem já está cadastrado (mesmo CPF ou matrícula) é atualizado, e quem é novo entra. Ninguém é apagado. Antes de gravar, você vê o que vai acontecer.</p>
-        <input key={chave} type="file" aria-label="Planilha do RH" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          onChange={(e) => ver(e.target.files?.[0] ?? null)} className="block text-sm" />
+        <EscolherArquivo key={chave} aria-label="Planilha do RH" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          onChange={(e) => ver(e.target.files?.[0] ?? null)} />
         {ocupado && <p className="mt-3 text-sm text-text/60">Lendo a planilha…</p>}
       </Cartao>
 

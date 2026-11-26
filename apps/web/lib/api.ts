@@ -1,4 +1,5 @@
 import { lerToken, sair, type Usuario } from './sessao';
+import { emPortugues } from './erros-pt';
 import { pedirAutorizacao, VOLTOU_PARA_CORRIGIR, type AvisoAntes } from './previa';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3101';
@@ -150,7 +151,7 @@ async function chamar<T>(metodo: string, caminho: string, corpo?: unknown): Prom
   verificarSessao(res);
   if (!res.ok) {
     const erro = await res.json().catch(() => null);
-    const mensagem = Array.isArray(erro?.message) ? erro.message.join('; ') : erro?.message;
+    const mensagem = Array.isArray(erro?.message) ? erro.message.map((m: string) => emPortugues(m)).join('; ') : erro?.message ? emPortugues(erro.message) : undefined;
     // O status vai junto: o vigia de erros da tela ignora os recusados pelo motor (ex.: campo inválido), que não são falha do sistema.
     throw Object.assign(new Error(mensagem ?? `Não foi possível concluir a operação (${res.status}).`), { status: res.status });
   }
@@ -215,7 +216,7 @@ async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
     : Promise.resolve([]);
   const previa = await fetch(`${API_URL}${caminho}`, { method: 'POST', headers: { ...cabecalhos(), 'X-Previa': '1' } });
   verificarSessao(previa);
-  if (!previa.ok) { const erro = await previa.json().catch(() => null); throw new Error(erro?.message ?? `Não foi possível montar o ${nome} (${previa.status}).`); }
+  if (!previa.ok) { const erro = await previa.json().catch(() => null); throw new Error(erro?.message ? emPortugues(erro.message) : `Não foi possível montar o ${nome} (${previa.status}).`); }
   // A API antiga (sem pré-visualização) devolve o PDF direto: nesse caso segue como antes.
   if ((previa.headers.get('Content-Type') ?? '').includes('text/html')) {
     if (!(await pedirAutorizacao(nome, await previa.text(), await avisos))) throw new Error(VOLTOU_PARA_CORRIGIR);
@@ -224,7 +225,7 @@ async function baixarPdf(caminho: string, nome: string): Promise<Blob> {
   }
   const res = await fetch(`${API_URL}${caminho}`, { method: 'POST', headers: cabecalhos() });
   verificarSessao(res);
-  if (!res.ok) { const erro = await res.json().catch(() => null); throw new Error(erro?.message ?? `Não foi possível gerar o ${nome} (${res.status}).`); }
+  if (!res.ok) { const erro = await res.json().catch(() => null); throw new Error(erro?.message ? emPortugues(erro.message) : `Não foi possível gerar o ${nome} (${res.status}).`); }
   return res.blob();
 }
 
@@ -809,7 +810,7 @@ export const arquivo = {
   baixar: async (e: string, id: string): Promise<Blob> => {
     const res = await fetch(`${API_URL}/empresas/${e}/arquivo/${id}/baixar`, { headers: cabecalhos() });
     verificarSessao(res);
-    if (!res.ok) { const erro = await res.json().catch(() => null); throw new Error(erro?.message ?? `Não foi possível abrir o documento (${res.status}).`); }
+    if (!res.ok) { const erro = await res.json().catch(() => null); throw new Error(erro?.message ? emPortugues(erro.message) : `Não foi possível abrir o documento (${res.status}).`); }
     return res.blob();
   },
 };

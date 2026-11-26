@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
-import { ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ServiceUnavailableException, UnprocessableEntityException } from '@nestjs/common';
 import { z } from 'zod';
 import { iaConfigurada } from '../importacao/leitor';
 
@@ -61,7 +61,7 @@ async function perguntar<T>(esquema: z.ZodType<T>, instrucoes: string, texto: st
   const conteudo: Anthropic.Beta.BetaContentBlockParam[] = [];
   const imagens = imagem ? (Array.isArray(imagem) ? imagem : [imagem]) : [];
   imagens.forEach((img, i) => {
-    if (!TIPOS.includes(img.tipo as (typeof TIPOS)[number])) throw new Error('Envie a foto em JPG, PNG ou WEBP.');
+    if (!TIPOS.includes(img.tipo as (typeof TIPOS)[number])) throw new BadRequestException('Envie a foto em JPG, PNG ou WEBP.');
     if (imagens.length > 1) conteudo.push({ type: 'text', text: `Foto ${i + 1}:` });
     conteudo.push({ type: 'image', source: { type: 'base64', media_type: img.tipo as (typeof TIPOS)[number], data: img.dados.toString('base64') } });
   });
@@ -76,10 +76,10 @@ async function perguntar<T>(esquema: z.ZodType<T>, instrucoes: string, texto: st
     system: `${BASE}\n\n${instrucoes}`,
     messages: [{ role: 'user', content: conteudo }],
   }).finalMessage();
-  if (msg.stop_reason === 'refusal') throw new Error('A IA não aceitou analisar este conteúdo.');
+  if (msg.stop_reason === 'refusal') throw new UnprocessableEntityException('A IA não aceitou analisar este conteúdo. Tente outra foto ou descreva com outras palavras.');
   const bruto = msg.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
   const r = esquema.safeParse(JSON.parse(bruto));
-  if (!r.success) throw new Error('A resposta da IA veio fora do formato. Tente de novo.');
+  if (!r.success) throw new ServiceUnavailableException('A resposta da IA veio fora do formato. Tente de novo.');
   return r.data;
 }
 

@@ -1,9 +1,10 @@
 import { grau5 } from '../documentos/nivel-risco';
-import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { ArquivoService } from '../arquivo/arquivo.service';
 import { SessaoUsuario } from '../common/sessao.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { registrarFalha } from '../diagnostico/falhas';
 import { ImportarDto } from './dto';
 import { iaConfigurada, lerPdfComIa } from './leitor';
 import { lerPdfSemIa } from './leitor-gratis';
@@ -33,12 +34,26 @@ export class ImportacaoService implements OnModuleInit {
   async enviar(sessao: SessaoUsuario, e: string, arq: Express.Multer.File | undefined, modo: ModoLeitura = 'gratis') {
     await this.empresa(sessao.consultoriaId, e);
     if (!arq) throw new BadRequestException('Escolha o PDF.');
-    if (arq.mimetype !== 'application/pdf') throw new BadRequestException('Envie o documento em PDF.');
+    // Alguns computadores mandam o PDF como "arquivo genérico". Vale o que está dentro do arquivo, não o rótulo.
+    const ehPdf = arq.buffer.subarray(0, 5).toString('latin1') === '%PDF-';
+    if (!ehPdf) throw new BadRequestException(arq.mimetype === 'application/pdf' ? 'O arquivo não abriu como PDF. Abra no computador, salve de novo como PDF e envie.' : 'Envie o documento em PDF.');
+    arq.mimetype = 'application/pdf';
     if (modo === 'ia' && !iaConfigurada()) throw new BadRequestException(SEM_IA);
     const nome = Buffer.from(arq.originalname, 'latin1').toString('utf8');
-    const guardado = await this.arquivo.enviar(sessao, e, arq, { titulo: `${nome.replace(/\.pdf$/i, '')} (documento antigo)`, categoria: 'Programas e laudos', descricao: modo === 'ia' ? 'Enviado para leitura com IA' : 'Enviado para leitura grátis' });
+    // A cópia no arquivo de documentos é um extra: se o armazenamento falhar, a leitura segue mesmo assim.
+    let arquivoId: string | null = null;
+    let criadoPorNome: string | null = null;
+    try {
+      const guardado = await this.arquivo.enviar(sessao, e, arq, { titulo: `${nome.replace(/\.pdf$/i, '')} (documento antigo)`, categoria: 'Programas e laudos', descricao: modo === 'ia' ? 'Enviado para leitura com IA' : 'Enviado para leitura grátis' });
+      arquivoId = guardado.id; criadoPorNome = guardado.criadoPorNome;
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      this.log.warn(`Cópia do PDF antigo não foi guardada: ${(err as Error).message}`);
+      registrarFalha({ origem: 'MOTOR', rota: `POST /empresas/${e}/importar-pdf (cópia no arquivo)`, status: 500, mensagem: (err as Error).message, detalhe: (err as Error).stack ?? null, consultoriaId: sessao.consultoriaId, usuarioId: sessao.sub });
+    }
+    criadoPorNome ??= (await this.prisma.usuario.findUnique({ where: { id: sessao.sub }, select: { nome: true } }))?.nome ?? '—';
     const imp = await this.prisma.importacaoPdf.create({
-      data: { empresaId: e, arquivoId: guardado.id, nomeArquivo: nome.slice(0, 200), status: 'LENDO', criadoPorNome: guardado.criadoPorNome },
+      data: { empresaId: e, arquivoId, nomeArquivo: nome.slice(0, 200), status: 'LENDO', criadoPorNome },
     });
     void this.ler(imp.id, arq.buffer, modo);
     return imp;
