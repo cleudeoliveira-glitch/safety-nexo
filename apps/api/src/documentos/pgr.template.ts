@@ -259,17 +259,41 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
       ${funcoesTabela}`,
     },
     {
+      // Mesma ordem de um PGR de exemplo que a Cleude usa como referência (o que é, etapas, quem tem acesso, por que importa),
+      // com o texto atualizado para a NR-01 vigente (Portaria MTE nº 1.419/2024, que trouxe os fatores psicossociais).
       titulo: 'Introdução',
-      html: p(
-        `Todo trabalho tem riscos. Alguns são fáceis de ver, como uma máquina sem proteção ou um piso escorregadio. Outros aparecem
-        devagar, como o ruído que vai tirando a audição ao longo dos anos ou a postura que, aos poucos, vira dor nas costas. O Programa
-        de Gerenciamento de Riscos (PGR) existe para que a ${nomeEmpresa} conheça esses riscos, saiba o tamanho de cada um e tenha um
-        plano para controlá-los.`,
-        `Este documento é a parte escrita desse gerenciamento. Ele reúne o inventário de riscos, que mostra o que foi encontrado em cada
-        setor, e o plano de ação, que diz o que vai ser feito, por quem e até quando. Os dois juntos atendem ao que a NR-01 pede no item 1.5.7.`,
-        `O PGR não é um papel para guardar na gaveta. Ele só funciona se as ações saírem do papel, se as pessoas souberem dos riscos do seu
-        trabalho e se o documento for revisto sempre que alguma coisa mudar na empresa.`,
-      ),
+      html: `${p(
+        `Este é o Programa de Gerenciamento de Riscos (PGR) da ${nomeEmpresa}. Ele foi feito conforme a NR-01, já com a redação
+        atualizada pela Portaria MTE nº 1.419/2024, e registra os riscos que existem no trabalho da empresa e o que será feito para
+        controlar cada um deles.`,
+        'O programa está organizado nas etapas abaixo, na mesma ordem em que aparecem neste documento:',
+      )}
+      <ol type="a">
+        <li>identificação da empresa e dos trabalhadores por função;</li>
+        <li>levantamento dos perigos em cada setor e atividade, incluindo os fatores psicossociais;</li>
+        <li>avaliação de cada risco pela gravidade do dano e pela chance de ele acontecer;</li>
+        <li>inventário de riscos, separado por grupo de exposição (GHE);</li>
+        <li>plano de ação, com as medidas de prevenção, os responsáveis e os prazos;</li>
+        <li>cronograma das ações e acompanhamento dos resultados;</li>
+        <li>preparação para emergências;</li>
+        <li>revisão do programa e registro do histórico.</li>
+      </ol>
+      ${p(
+        `A NR-01 atualizada deixou claro que o gerenciamento não fica só nos riscos físicos, químicos, biológicos, ergonômicos e de
+        acidente. Os fatores psicossociais ligados à organização do trabalho, como sobrecarga, metas fora da realidade, falta de apoio
+        e assédio, também precisam ser identificados e avaliados. ${
+          psicossociais.length
+            ? 'Nesta empresa eles foram avaliados e aparecem no inventário e em uma seção própria.'
+            : 'Nesta versão eles ainda não constam do inventário e devem ser avaliados com os trabalhadores e incluídos na próxima revisão.'
+        }`,
+        `Os trabalhadores devem ser ouvidos durante todo o processo, porque conhecem o próprio trabalho melhor do que ninguém. As medidas
+        seguem a ordem que a norma pede: primeiro eliminar o perigo, depois a proteção coletiva, a organização do trabalho e, por último, o EPI.`,
+        `Este documento e o histórico das suas revisões ficam à disposição dos trabalhadores e de seus representantes, da CIPA (ou do
+        representante indicado pela NR-05) e da Inspeção do Trabalho. O histórico deve ser guardado por, no mínimo, 20 anos.`,
+        `Muitos acidentes e doenças do trabalho acontecem porque o risco não foi conhecido a tempo, porque a pessoa não foi treinada ou
+        porque a medida combinada não saiu do papel. Por isso este programa só cumpre o seu papel se o plano de ação for feito nos prazos
+        e se cada trabalhador souber dos riscos da sua função.`,
+      )}`,
     },
     {
       titulo: 'Objetivo',
