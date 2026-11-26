@@ -138,7 +138,9 @@ function conclusaoPgr(nomeEmpresa: string, ghes: GhePdf[], todos: { ghe: string;
     prioritarios.length > 0 && `Tratar primeiro os riscos de nível alto e crítico: ${nomes(prioritarios)}. Enquanto a medida definitiva não fica pronta, a atividade deve seguir com proteção provisória e supervisão.`,
     semMedicao.length > 0 && `Fazer a medição (avaliação quantitativa) de ${nomes(semMedicao)}, para confirmar o tamanho da exposição e dar base ao LTCAT, aos laudos e ao PCMSO.`,
     incompletas.length > 0 && `Definir responsável e prazo para ${incompletas.length === 1 ? 'a ação que ainda está sem' : `as ${incompletas.length} ações que ainda estão sem`}. Ação sem dono e sem data costuma não sair do papel.`,
-    psico && 'Conversar com os trabalhadores sobre os fatores psicossociais apontados e combinar as mudanças com eles, antes de colocar em prática.',
+    psico
+      ? 'Conversar com os trabalhadores sobre os fatores psicossociais apontados e combinar as mudanças com eles, antes de colocar em prática.'
+      : 'Avaliar os fatores psicossociais com os trabalhadores, como pede a NR-01 atualizada, e incluir o resultado no inventário.',
     'Apresentar este PGR aos trabalhadores e à CIPA (ou ao representante da NR-05) e guardar o registro dessa apresentação.',
     'Manter em dia a entrega de EPI com ficha assinada, os treinamentos obrigatórios e os exames do PCMSO.',
     `Rever o inventário sempre que mudar processo, máquina, produto ou setor, depois de qualquer acidente e, no máximo, até ${dataBr(extras.controle.proximaRevisao)}.`,
@@ -158,9 +160,9 @@ function conclusaoPgr(nomeEmpresa: string, ghes: GhePdf[], todos: { ghe: string;
         : 'Nenhum risco ficou em nível alto ou crítico. O trabalho agora é manter as medidas funcionando e não deixar o controle afrouxar com o tempo.',
     )}
     <div class="destaque-conclusao">${p(
-      `Conclui-se que a ${nomeEmpresa} tem seus riscos ocupacionais identificados, avaliados e com medidas de prevenção definidas, como pede a NR-01.
-      Com o plano de ação cumprido nos prazos e o acompanhamento descrito neste programa, os riscos ficam sob controle. Se alguma medida não
-      der o resultado esperado, o risco deve ser reavaliado e o plano, ajustado.`,
+      `Com este levantamento, a ${nomeEmpresa} passa a ter os seus riscos identificados, avaliados e com medidas de prevenção definidas, como pede a NR-01.
+      O controle depende agora de o plano de ação ser cumprido nos prazos e acompanhado como está descrito neste programa. Se alguma medida
+      não der o resultado esperado, o risco deve ser avaliado de novo e o plano, ajustado.`,
     )}</div>
     <h3>Recomendações</h3>
     <ol>${recomendacoes.filter(Boolean).map((r) => `<li>${r}</li>`).join('')}</ol>`;
@@ -299,10 +301,12 @@ export function renderPgrHtml(moldura: Moldura, ghes: GhePdf[], extras: ExtrasPg
       titulo: 'Objetivo',
       html: `${p(`O objetivo deste programa é proteger a saúde e a integridade física de quem trabalha na ${nomeEmpresa}. Para isso, ele busca:`)}
         ${lista([
-          'identificar os perigos presentes nos ambientes e nas atividades de trabalho;',
+          'identificar os perigos presentes nos ambientes e nas atividades de trabalho, incluindo os fatores psicossociais ligados à organização do trabalho;',
           'avaliar cada risco, considerando a gravidade do dano e a chance de ele acontecer;',
-          'definir as medidas de prevenção, dando preferência às que eliminam o perigo ou protegem todos ao mesmo tempo;',
+          'definir as medidas de prevenção ouvindo os trabalhadores, dando preferência às que eliminam o perigo ou protegem todos ao mesmo tempo;',
           'organizar essas medidas em um plano de ação com responsável, prazo e acompanhamento;',
+          'deixar claro o que fazer quando houver acidente ou doença relacionada ao trabalho, incluindo a análise das causas;',
+          'manter as informações de segurança e saúde à disposição dos trabalhadores e da Inspeção do Trabalho;',
           'servir de base para o PCMSO, para os treinamentos e para as informações enviadas ao eSocial.',
         ])}`,
     },
