@@ -41,7 +41,7 @@ export const PLANOS_SITE: PlanoSite[] = [
     codigo: 'ENTERPRISE', nome: 'Ilimitado', precoMensal: 397, limiteEmpresas: null, base: 'Tudo do Profissional',
     resultado: 'Empresas sem limite',
     paraQuem: 'Para quem atende muitas empresas e não quer se preocupar com limite.',
-    inclui: ['Empresas sem limite', 'Pesquisas psicossociais sem limite', 'Equipe sem limite', 'Documentos sem a marca Safety Nexo'],
+    inclui: ['Empresas sem limite', 'Pesquisas psicossociais sem limite', 'Equipe sem limite'],
   },
 ];
 

@@ -7,17 +7,11 @@ import { emPrevia, planoAtual, temRecurso } from '../common/plano';
 import { WEB } from '../common/email';
 import { PrismaService } from '../prisma/prisma.service';
 import { COR, ConfigDocumento, DEGRADE, MARCA_CODIGO, MARCA_QR, escape } from './layout';
-import { SIMBOLO_SN } from './marca';
 
 // Plano Grátis: o PDF sai com a marca "Versão Teste" em todas as páginas.
 const MARCA_TESTE = `<style>.sn-marca-teste{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:9999}
 .sn-marca-teste span{transform:rotate(-35deg);font:700 54px Inter,Arial,sans-serif;color:rgba(14,74,91,.13);text-align:center;line-height:1.2}</style>
 <div class="sn-marca-teste"><span>Feito no Safety Nexo<br/>Versão Teste</span></div>`;
-
-const semMarcaSn = () => {
-  const plano = planoAtual();
-  return !!plano && temRecurso(plano, 'semMarca');
-};
 
 // Ajusta o HTML ao plano de quem pediu: marca d'água no Grátis; sem a marca Safety Nexo no Ilimitado.
 export function htmlDoPlano(html: string): string {
@@ -75,10 +69,8 @@ export function cabecalhoPagina(c: ConfigDocumento): string {
 }
 
 // Rodapé de todas as páginas: logo da consultoria, responsável técnico, paginação e QR de validação.
+// Sem o nome do sistema em nenhum plano (pedido do Rodrigo, 2026-11-26): o documento leva a marca da consultoria.
 export function rodapePagina(c: ConfigDocumento, codigo: string, qr: string): string {
-  const marca = semMarcaSn()
-    ? ''
-    : `<div style="display:flex; align-items:center; justify-content:center; gap:1.2mm; margin-top:0.8mm; color:${COR.suave};"><img src="${SIMBOLO_SN}" style="height:3mm;"/>Safety Nexo · Gestão inteligente de SST</div>`;
   return `<div style="${FONTE} width:100%; padding:0 15mm; font-size:7.2px; color:${COR.suave};">
     <div style="height:0.6mm; background:${DEGRADE}; border-radius:1mm; margin-bottom:2mm;"></div>
     <div style="display:flex; align-items:center; justify-content:space-between; gap:4mm;">
@@ -88,7 +80,6 @@ export function rodapePagina(c: ConfigDocumento, codigo: string, qr: string): st
       </div>
       <div style="flex:0 0 auto; text-align:center;">
         <div style="font-size:9px; font-weight:700; color:${COR.petroleo};">Página <span class="pageNumber"></span> de <span class="totalPages"></span></div>
-        ${marca}
       </div>
       <div style="flex:1; display:flex; align-items:center; justify-content:flex-end; gap:2mm;">
         <div style="text-align:right; line-height:1.35;"><div>Código de validação</div><strong style="color:${COR.texto}; font-family:'Liberation Mono', monospace; font-size:8px;">${escape(codigo)}</strong><div>Aponte a câmera para conferir</div></div>
