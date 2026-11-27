@@ -169,6 +169,7 @@ export class PrevencaoService {
         hierarquia: d.hierarquia ?? null, riscoId: risco?.id ?? null,
         nivelAntes: risco ? `${grau5(risco.severidade)}x${grau5(risco.probabilidade)}` : null,
         empresaId, descricao: d.descricao.trim(), local: d.local?.trim() || null, responsavel: d.responsavel?.trim() || null,
+        responsavelEmail: d.responsavelEmail?.trim().toLowerCase() || null,
         prazo: d.prazo ? new Date(d.prazo) : null, prioridade: d.prioridade ?? 'MEDIA', esforco: d.esforco ?? 'MEDIO',
         origem: d.origem ?? 'MANUAL', origemId: d.origemId ?? null, origemTexto: d.origemTexto?.trim() || null,
       },
@@ -191,7 +192,9 @@ export class PrevencaoService {
       data: {
         ...(d.descricao !== undefined ? { descricao: d.descricao.trim() } : {}),
         ...(d.responsavel !== undefined ? { responsavel: d.responsavel.trim() || null } : {}),
-        ...(d.prazo !== undefined ? { prazo: d.prazo ? new Date(d.prazo) : null } : {}),
+        // E-mail ou prazo novo: o lembrete volta a valer do zero.
+        ...(d.responsavelEmail !== undefined ? { responsavelEmail: d.responsavelEmail.trim().toLowerCase() || null, responsavelAvisadoEm: null } : {}),
+        ...(d.prazo !== undefined ? { prazo: d.prazo ? new Date(d.prazo) : null, responsavelAvisadoEm: null } : {}),
         ...(d.prioridade ? { prioridade: d.prioridade } : {}),
         ...(d.esforco ? { esforco: d.esforco } : {}),
         ...(d.hierarquia ? { hierarquia: d.hierarquia } : {}),

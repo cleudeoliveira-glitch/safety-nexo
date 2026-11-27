@@ -711,6 +711,7 @@ model Historico {
   acao          String   // descrição em português
   metodo        String
   rota          String
+  mudancas      Json?    // antes e depois: [{ tipo, rotulo, campos: [{ campo, antes, depois }] }]
   createdAt     DateTime @default(now())
 
   @@index([consultoriaId, createdAt])
@@ -1275,6 +1276,8 @@ model AcaoCorretiva {
   descricao     String
   local         String?
   responsavel   String?
+  responsavelEmail     String?   // opcional: recebe lembrete 3 dias antes do prazo e, se atrasar, a cada 7 dias
+  responsavelAvisadoEm DateTime?
   prazo         DateTime? @db.Date
   prioridade    String    @default("MEDIA") // ALTA | MEDIA | BAIXA (impacto no risco)
   esforco       String    @default("MEDIO") // RAPIDO | MEDIO | DEMORADO

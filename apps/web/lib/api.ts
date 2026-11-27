@@ -683,7 +683,8 @@ export const criarAfastamento = (empresaId: string, dados: { colaboradorId: stri
 export const encerrarAfastamento = (empresaId: string, id: string, fim: string) => chamar<Afastamento>('PUT', `/empresas/${empresaId}/afastamentos/${id}/fim`, { fim });
 export const removerAfastamento = (empresaId: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${empresaId}/afastamentos/${id}`);
 
-export type ItemHistorico = { id: string; usuarioNome: string; papel: 'CONSULTORIA' | 'EMPRESA'; acao: string; createdAt: string };
+export type MudancaHistorico = { tipo: string; rotulo: string; campos: { campo: string; antes: string; depois: string }[] };
+export type ItemHistorico = { id: string; usuarioNome: string; papel: 'CONSULTORIA' | 'EMPRESA'; acao: string; createdAt: string; mudancas?: MudancaHistorico[] | null };
 export const buscarHistorico = (empresaId: string, antes?: string) =>
   chamar<ItemHistorico[]>('GET', `/empresas/${empresaId}/historico${antes ? `?antes=${encodeURIComponent(antes)}` : ''}`);
 
@@ -1141,7 +1142,7 @@ export type Relato = {
 export type Prioridade = 'ALTA' | 'MEDIA' | 'BAIXA';
 export type Esforco = 'RAPIDO' | 'MEDIO' | 'DEMORADO';
 export type AcaoCorretiva = {
-  id: string; origem: string; origemId: string | null; origemTexto: string | null; descricao: string; local: string | null; responsavel: string | null;
+  id: string; origem: string; origemId: string | null; origemTexto: string | null; descricao: string; local: string | null; responsavel: string | null; responsavelEmail?: string | null;
   prazo: string | null; prioridade: Prioridade; esforco: Esforco; status: 'ABERTA' | 'ANDAMENTO' | 'FEITA'; feitaEm: string | null; feitaPor: string | null;
   observacao: string | null; temEvidencia: boolean; criadoEm: string; somenteLeitura: boolean;
   tema: string | null; hierarquia: Hierarquia | null; riscoId: string | null; nivelAntes: string | null; nivelDepois: string | null; eficaz: boolean | null; verificadaEm: string | null;
@@ -1149,7 +1150,7 @@ export type AcaoCorretiva = {
 };
 // Hierarquia de controle da NR-01: primeiro eliminar o perigo, por último o EPI.
 export type Hierarquia = 'ELIMINAR' | 'SUBSTITUIR' | 'EPC' | 'ADMINISTRATIVA' | 'EPI';
-export type NovaAcao = { descricao: string; local?: string; responsavel?: string; prazo?: string; prioridade?: Prioridade; esforco?: Esforco; origem?: string; origemId?: string; origemTexto?: string; hierarquia?: Hierarquia; riscoId?: string };
+export type NovaAcao = { descricao: string; local?: string; responsavel?: string; responsavelEmail?: string; prazo?: string; prioridade?: Prioridade; esforco?: Esforco; origem?: string; origemId?: string; origemTexto?: string; hierarquia?: Hierarquia; riscoId?: string };
 export type CategoriaCausa = 'METODO' | 'MAQUINA' | 'MATERIAL' | 'PESSOAS' | 'AMBIENTE' | 'GESTAO';
 export const CATEGORIAS_CAUSA: Record<CategoriaCausa, string> = { METODO: 'Método (como o trabalho é feito)', MAQUINA: 'Máquina ou equipamento', MATERIAL: 'Material', PESSOAS: 'Pessoas (treino, cansaço, pressa)', AMBIENTE: 'Ambiente (piso, luz, calor)', GESTAO: 'Gestão (regras, supervisão)' };
 export type Investigacao = { id: string; catId: string | null; relatoId: string | null; titulo: string; dataOcorrencia: string; local: string; descricao: string; equipe: string; porques: string[]; causas: { categoria: CategoriaCausa; texto: string }[]; conclusao: string | null; criadoEm: string };
@@ -1173,7 +1174,7 @@ export const prevencao = {
   analisarRelato: (e: string, id: string) => chamar<AnaliseFotoIa>('POST', `/empresas/${e}/relatos/${id}/ia`),
   acoes: (e: string) => chamar<AcaoCorretiva[]>('GET', `/empresas/${e}/acoes`),
   criarAcao: (e: string, d: NovaAcao) => chamar<AcaoCorretiva>('POST', `/empresas/${e}/acoes`, d),
-  atualizarAcao: (e: string, id: string, d: Partial<Pick<AcaoCorretiva, 'descricao' | 'responsavel' | 'prazo' | 'prioridade' | 'esforco' | 'status' | 'observacao' | 'hierarquia'>>) => chamar<AcaoCorretiva>('PUT', `/empresas/${e}/acoes/${id}`, d),
+  atualizarAcao: (e: string, id: string, d: Partial<Pick<AcaoCorretiva, 'descricao' | 'responsavel' | 'responsavelEmail' | 'prazo' | 'prioridade' | 'esforco' | 'status' | 'observacao' | 'hierarquia'>>) => chamar<AcaoCorretiva>('PUT', `/empresas/${e}/acoes/${id}`, d),
   removerAcao: (e: string, id: string) => chamar<{ ok: boolean }>('DELETE', `/empresas/${e}/acoes/${id}`),
   eficacia: (e: string, id: string, d: { severidade: string; probabilidade: string; observacao?: string }) => chamar<AcaoCorretiva>('PUT', `/empresas/${e}/acoes/${id}/eficacia`, d),
   acoesDosRiscos: (e: string) => chamar<{ criadas: number }>('POST', `/empresas/${e}/acoes/dos-riscos`),

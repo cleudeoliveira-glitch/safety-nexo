@@ -168,7 +168,7 @@ function AbaAcoes({ empresaId, empresa, consultoria, avisar, aoMudar }: { empres
     const v = (k: string) => String(d.get(k) ?? '').trim() || undefined;
     const riscoId = v('riscoId');
     const risco = riscos.find((r) => r.id === riscoId);
-    await agir(async () => { await prevencao.criarAcao(empresaId, { descricao: v('descricao')!, local: v('local') ?? risco?.ghe, responsavel: v('responsavel'), prazo: v('prazo'), prioridade: v('prioridade') as Prioridade, esforco: v('esforco') as Esforco, hierarquia: v('hierarquia') as Hierarquia | undefined, riscoId, ...(risco ? { origem: 'RISCO', origemId: risco.id, origemTexto: `Inventário de riscos · ${risco.ghe}` } : {}) }); form.reset(); }, 'Ação incluída.');
+    await agir(async () => { await prevencao.criarAcao(empresaId, { descricao: v('descricao')!, local: v('local') ?? risco?.ghe, responsavel: v('responsavel'), responsavelEmail: v('responsavelEmail'), prazo: v('prazo'), prioridade: v('prioridade') as Prioridade, esforco: v('esforco') as Esforco, hierarquia: v('hierarquia') as Hierarquia | undefined, riscoId, ...(risco ? { origem: 'RISCO', origemId: risco.id, origemTexto: `Inventário de riscos · ${risco.ghe}` } : {}) }); form.reset(); }, 'Ação incluída.');
   }
 
   function concluir(a: AcaoCorretiva) {
@@ -187,10 +187,12 @@ function AbaAcoes({ empresaId, empresa, consultoria, avisar, aoMudar }: { empres
   function editar(a: AcaoCorretiva) {
     const responsavel = window.prompt('Responsável:', a.responsavel ?? '');
     if (responsavel === null) return;
+    const responsavelEmail = window.prompt('E-mail do responsável (opcional, para ele receber lembrete do prazo):', a.responsavelEmail ?? '');
+    if (responsavelEmail === null) return;
     const prazo = window.prompt('Prazo (dd/mm/aaaa):', a.prazo ? data(a.prazo) : '');
     if (prazo === null) return;
     const m = prazo.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    agir(() => prevencao.atualizarAcao(empresaId, a.id, { responsavel, prazo: m ? `${m[3]}-${m[2]}-${m[1]}` : undefined }), 'Ação atualizada.');
+    agir(() => prevencao.atualizarAcao(empresaId, a.id, { responsavel, responsavelEmail: responsavelEmail.trim(), prazo: m ? `${m[3]}-${m[2]}-${m[1]}` : undefined }), 'Ação atualizada.');
   }
 
   async function avaliar(ev: React.FormEvent<HTMLFormElement>, a: AcaoCorretiva) {
@@ -239,7 +241,7 @@ function AbaAcoes({ empresaId, empresa, consultoria, avisar, aoMudar }: { empres
         {a.hierarquia && <Etiqueta cor={a.hierarquia === 'EPI' ? 'bg-warning/20' : 'bg-primary/10'}>{HIERARQUIA[a.hierarquia]}</Etiqueta>}
       </div>
       <p className="mt-1.5 font-semibold">{a.descricao}</p>
-      <p className="mt-0.5 text-xs text-text/60">{a.local ? `${a.local} · ` : ''}{a.responsavel || 'Sem responsável'} · Prazo {data(a.prazo)}</p>
+      <p className="mt-0.5 text-xs text-text/60">{a.local ? `${a.local} · ` : ''}{a.responsavel || 'Sem responsável'}{a.responsavelEmail ? ' (recebe lembrete por e-mail)' : ''} · Prazo {data(a.prazo)}</p>
       <p className="text-xs text-text/50">{a.origemTexto ?? 'Incluída à mão'}{a.feitaPor ? ` · fechada por ${a.feitaPor}` : ''}</p>
       {a.risco && <p className="mt-1 text-xs text-text/70">Risco: {a.risco.agente} ({a.risco.ghe}) · nível <NivelEtiqueta v={a.nivelAntes ?? `${a.risco.severidade}x${a.risco.probabilidade}`} /></p>}
       {a.nivelDepois && (
@@ -279,6 +281,8 @@ function AbaAcoes({ empresaId, empresa, consultoria, avisar, aoMudar }: { empres
           <Campo id="acao-descricao" name="descricao" rotulo="O que fazer" required className="md:col-span-2" placeholder="Ex.: Trocar a proteção do cilindro de massa" />
           <Campo id="acao-local" name="local" rotulo="Local" placeholder="Ex.: Produção" />
           <Campo id="acao-responsavel" name="responsavel" rotulo="Responsável" placeholder="Ex.: Sr. João (manutenção)" />
+          <Campo id="acao-responsavel-email" name="responsavelEmail" type="email" rotulo="E-mail do responsável (opcional)" placeholder="Ex.: joao@empresa.com.br"
+            dica="Com o e-mail, ele recebe um lembrete 3 dias antes do prazo e, se atrasar, de novo a cada 7 dias." />
           <Campo id="acao-prazo" name="prazo" type="date" rotulo="Prazo" />
           <Selecao id="acao-hierarquia" name="hierarquia" rotulo="Tipo de medida (ordem da NR-01)" defaultValue="">
             <option value="">Escolha</option>

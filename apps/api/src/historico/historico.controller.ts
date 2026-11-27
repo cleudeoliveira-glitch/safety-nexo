@@ -12,7 +12,7 @@ export class HistoricoController {
     return this.prisma.historico.findMany({
       where: { consultoriaId, empresaId, ...(antes ? { createdAt: { lt: new Date(antes) } } : {}) },
       orderBy: { createdAt: 'desc' }, take: 100,
-      select: { id: true, usuarioNome: true, papel: true, acao: true, createdAt: true },
+      select: { id: true, usuarioNome: true, papel: true, acao: true, createdAt: true, mudancas: true },
     });
   }
 }

@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { HIERARQUIA } from './hierarquia';
-import { ArrayMaxSize, IsArray, IsDateString, IsIn, IsOptional, IsString, Length, MaxLength, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsDateString, IsIn, IsOptional, IsString, Length, Matches, MaxLength, ValidateNested } from 'class-validator';
 
 // DENUNCIA: canal de denúncia de assédio e abuso (Lei 14.457/2022 e NR-01). É sempre anônima e só a consultoria vê.
 export const TIPOS_RELATO = ['QUASE_ACIDENTE', 'CONDICAO_INSEGURA', 'ATO_INSEGURO', 'SUGESTAO', 'DENUNCIA'] as const;
@@ -22,6 +22,7 @@ export class AcaoDto {
   @IsString() @Length(3, 2000, { message: 'Descreva a ação.' }) descricao!: string;
   @IsOptional() @IsString() @MaxLength(200) local?: string;
   @IsOptional() @IsString() @MaxLength(120) responsavel?: string;
+  @IsOptional() @IsString() @MaxLength(200) @Matches(/^$|^[^@\s]+@[^@\s]+\.[^@\s]+$/, { message: 'O e-mail do responsável não parece certo.' }) responsavelEmail?: string;
   @IsOptional() @IsDateString() prazo?: string;
   @IsOptional() @IsIn(['ALTA', 'MEDIA', 'BAIXA']) prioridade?: string;
   @IsOptional() @IsIn(['RAPIDO', 'MEDIO', 'DEMORADO']) esforco?: string;
@@ -42,6 +43,7 @@ export class EficaciaDto {
 export class AtualizarAcaoDto {
   @IsOptional() @IsString() @Length(3, 2000) descricao?: string;
   @IsOptional() @IsString() @MaxLength(120) responsavel?: string;
+  @IsOptional() @IsString() @MaxLength(200) @Matches(/^$|^[^@\s]+@[^@\s]+\.[^@\s]+$/, { message: 'O e-mail do responsável não parece certo.' }) responsavelEmail?: string;
   @IsOptional() @IsDateString() prazo?: string;
   @IsOptional() @IsIn(['ALTA', 'MEDIA', 'BAIXA']) prioridade?: string;
   @IsOptional() @IsIn(['RAPIDO', 'MEDIO', 'DEMORADO']) esforco?: string;

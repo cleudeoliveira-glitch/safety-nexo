@@ -7,6 +7,7 @@ import { conferirSegredo } from '../common/segredo';
 import { emailLigado, emailMoldura, enviarEmail } from '../common/email';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push';
+import { avisarResponsaveis } from '../prevencao/aviso-responsavel';
 
 // "Relatar problema": o cliente conta o que aconteceu e o aviso cai no celular do dono da plataforma.
 // O dono responde no Painel ADM > Pedidos dos clientes; a resposta aparece para o cliente e vai por e-mail.
@@ -146,11 +147,14 @@ export class SuporteAdmController {
 @Publica()
 @Controller('tarefas')
 export class ResumoDoDiaController {
-  constructor(private readonly s: SuporteService) {}
+  constructor(private readonly s: SuporteService, private readonly prisma: PrismaService) {}
   @Post('resumo-do-dia')
-  enviar(@Headers('x-tarefa-segredo') segredo?: string) {
+  async enviar(@Headers('x-tarefa-segredo') segredo?: string) {
     conferirSegredo(segredo, process.env.TAREFAS_SEGREDO, 'Falta TAREFAS_SEGREDO no servidor.', 'Segredo da tarefa incorreto.');
-    return this.s.resumoDoDia();
+    const resumo = await this.s.resumoDoDia();
+    // Na mesma passada das 8h: lembrete por e-mail a quem é responsável por ação do plano com prazo chegando.
+    const responsaveis = await avisarResponsaveis(this.prisma).catch((e: Error) => ({ enviados: 0, motivo: e.message }));
+    return { ...(resumo && typeof resumo === 'object' ? resumo : {}), responsaveis };
   }
 }
 
