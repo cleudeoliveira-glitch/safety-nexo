@@ -20,7 +20,9 @@ export class HistoricoInterceptor implements NestInterceptor {
       if (req.headers?.['x-previa'] === '1') return; // pré-visualização não é emissão
       const rota: string = `${req.baseUrl ?? ''}${req.route?.path ?? req.path}`;
       if (!descreverAcao(metodo, rota)) return; // consultas feitas por POST (ex.: prévia da importação)
-      this.gravar(sessao, metodo, rota, /\/empresas\/:empresaId\/excluir$/.test(rota) ? null : req.params?.empresaId ?? null) // empresa excluída não pode ficar ligada ao registro.catch((e) => this.log.warn(`não gravou o histórico: ${e.message}`));
+      // Empresa excluída não pode ficar ligada ao registro. Se a gravação falhar, só avisa no log: nunca derruba o motor.
+      const empresaId = /\/empresas\/:empresaId\/excluir$/.test(rota) ? null : req.params?.empresaId ?? null;
+      this.gravar(sessao, metodo, rota, empresaId).catch((e) => this.log.warn(`não gravou o histórico: ${e.message}`));
     }));
   }
 

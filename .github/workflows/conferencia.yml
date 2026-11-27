@@ -1,0 +1,45 @@
+# Conferência automática: roda a cada mudança proposta (pull request) e a cada envio ao main.
+# Monta o motor, confere o site e roda os testes das regras que não podem quebrar
+# (separação por empresa, planos, CIPA, prazos de ASO e CAT, registro de alterações).
+# A montagem completa do site é feita pelo Netlify, na prévia do próprio PR.
+# Se ficar vermelho, a mudança não deve ser juntada até ser corrigida.
+name: Conferência automática
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conferir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar
+        run: npm ci --no-audit --no-fund
+      - name: Preparar o banco (só o código, sem conectar)
+        run: npx prisma generate
+        working-directory: apps/api
+      - name: Motor - conferir os tipos
+        run: npm run typecheck
+        working-directory: apps/api
+      - name: Motor - testes das regras
+        run: npm test
+        working-directory: apps/api
+      - name: Motor - montar
+        run: npm run build
+        working-directory: apps/api
+      - name: Site - conferir os tipos
+        run: npm run typecheck
+        working-directory: apps/web

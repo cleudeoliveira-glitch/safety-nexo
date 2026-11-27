@@ -4,7 +4,8 @@
   "scripts": {
     "build": "nest build",
     "start": "nest start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "rm -rf .teste && tsc -p tsconfig.test.json && node --test \".teste/api/test/*.test.js\""
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.5",

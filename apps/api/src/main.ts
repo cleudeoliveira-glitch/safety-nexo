@@ -10,6 +10,11 @@ import { FiltroDeFalhas, ligarCadernoDeFalhas, vigiarChamadas } from './diagnost
 import { PrismaService } from './prisma/prisma.service';
 import { PushService } from './push/push';
 
+// Rede de segurança: um erro solto em segundo plano (ex.: o banco piscou) vira aviso no log, não derruba o motor.
+process.on('unhandledRejection', (motivo) => {
+  console.error('[motor] erro solto em segundo plano:', motivo instanceof Error ? motivo.message : motivo);
+});
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   // Cada pedido ganha uma caixa onde o AuthGuard guarda o plano (usada no PDF: marca d'água e logos).
