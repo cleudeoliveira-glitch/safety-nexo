@@ -13,7 +13,7 @@ import { WhatsAppDuvidas } from '@/components/WhatsAppDuvidas';
 import { libera, planoMinimo, usePlano } from '@/lib/plano';
 import { Icone } from '@/components/Icone';
 import type { Empresa } from '@/lib/api';
-import { aoMudarFoco, empresasDaConta, escolherFoco, salvarFoco } from '@/lib/empresaFoco';
+import { aoMudarFoco, empresasDaConta, escolherFoco, lerFoco, salvarFoco } from '@/lib/empresaFoco';
 import { enderecoDoItem, ItemMenu, MENU, TELAS_DO_MENU } from '@/lib/menu';
 import { lerToken, lerUsuario, sair, Usuario } from '@/lib/sessao';
 
@@ -62,7 +62,21 @@ export function Moldura({ children }: { children: React.ReactNode }) {
 function FaixaPlano() {
   const plano = usePlano();
   const [cliente, setCliente] = useState(false);
-  useEffect(() => { setCliente(lerUsuario()?.papel === 'EMPRESA'); }, []);
+  const [foco, setFoco] = useState('');
+  useEffect(() => { setCliente(lerUsuario()?.papel === 'EMPRESA'); setFoco(lerFoco() ?? ''); return aoMudarFoco(setFoco); }, []);
+  // Empresa que passou do limite do plano: só para consulta (vê e baixa, não muda).
+  const caminho = usePathname() ?? '';
+  const empresaAtual = caminho.match(/^\/empresas\/([^/]+)/)?.[1] ?? (cliente ? lerUsuario()?.empresaId ?? '' : foco);
+  const foraDoPlano = !!empresaAtual && !!plano?.foraDoPlano?.includes(empresaAtual);
+  if (foraDoPlano && plano?.situacao !== 'CONSULTA') {
+    return (
+      <div className="bg-warning/15 px-4 py-2.5 text-sm text-[#9a3412]" role="status">
+        {cliente
+          ? <span>Por enquanto este acesso está só para consulta: você pode ver e baixar tudo. Fale com a sua consultoria.</span>
+          : <span><strong>Empresa só para consulta.</strong> Ela passou do limite do seu plano: dá para ver e baixar tudo, mas não mudar. Nada foi apagado. <Link href="/plano" className="font-semibold underline">Escolher as empresas ativas</Link></span>}
+      </div>
+    );
+  }
   if (!plano?.situacao || plano.situacao === 'EM_DIA') return null;
   const dia = (d?: string | null) => (d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '');
   const ultimoDia = plano.consultaDesde ? dia(new Date(new Date(plano.consultaDesde).getTime() - 86400000).toISOString()) : '';

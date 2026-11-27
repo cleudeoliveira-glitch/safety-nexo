@@ -13,6 +13,9 @@ model Consultoria {
   nome      String
   plano     String    @default("FREE")
   limiteEmpresas Int  @default(3)
+  // Plano menor que o nº de empresas: as escolhidas ficam ativas, as outras só para consulta (common/empresas-ativas.ts).
+  empresasAtivas   String[]  @default([])
+  empresasAtivasEm DateTime?
   logoPath  String?   // logo da consultoria: vai no rodapé dos documentos
   // Dados comerciais: aparecem na proposta, no contrato e na cobrança Pix.
   cnpj      String?

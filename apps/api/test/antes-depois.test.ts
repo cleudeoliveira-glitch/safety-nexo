@@ -47,3 +47,14 @@ test('planilha: abre certo no Excel e não deixa fórmula escondida', () => {
 test('busca: acento e maiúscula não importam', () => {
   assert.equal(normalizar('JOÃO Conceição'), 'joao conceicao');
 });
+
+import { liberadoForaDoPlano, proximaTroca } from '../src/common/empresas-ativas';
+
+test('empresas ativas: troca uma vez por mês e excluir a empresa continua liberado', () => {
+  const hoje = new Date('2026-12-10T12:00:00Z');
+  assert.equal(proximaTroca(null, hoje), null);
+  assert.equal(proximaTroca(new Date('2026-11-01T12:00:00Z'), hoje), null);
+  assert.equal(proximaTroca(new Date('2026-12-01T12:00:00Z'), hoje)?.toISOString(), '2026-12-31T12:00:00.000Z');
+  assert.ok(liberadoForaDoPlano('/empresas/abc/excluir'));
+  assert.ok(!liberadoForaDoPlano('/empresas/abc/colaboradores'));
+});

@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Unauthor
 import { Reflector } from '@nestjs/core';
 import { ehAdminPlataforma, SOMENTE_ADMIN } from '../admin/admin-plataforma';
 import { caixaPlano, emPrevia, mensagemConsulta, mensagemUpgrade, planoEfetivo, Recurso, RECURSO, temRecurso, travaConsulta } from '../common/plano';
+import { empresasAtivas, liberadoForaDoPlano, MENSAGEM_FORA_DO_PLANO } from '../common/empresas-ativas';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { PERMITE_EMPRESA } from './permite-empresa.decorator';
@@ -34,7 +35,7 @@ export class AuthGuard implements CanActivate {
     }
 
     // Lê o usuário a cada pedido: um acesso removido para de funcionar na hora.
-    const usuario = await this.prisma.usuario.findUnique({ where: { id: sub }, include: { consultoria: { select: { bloqueada: true, plano: true, testeAte: true, planoPagoAte: true, assinaturaStatus: true, usuarios: { where: { papel: 'CONSULTORIA' }, select: { email: true } } } } } });
+    const usuario = await this.prisma.usuario.findUnique({ where: { id: sub }, include: { consultoria: { select: { id: true, limiteEmpresas: true, empresasAtivas: true, bloqueada: true, plano: true, testeAte: true, planoPagoAte: true, assinaturaStatus: true, usuarios: { where: { papel: 'CONSULTORIA' }, select: { email: true } } } } } });
     if (!usuario) throw new UnauthorizedException('Seu acesso foi removido. Fale com a sua consultoria.');
     // Senha trocada: as sessões abertas em outros aparelhos deixam de valer na hora.
     if (marcaSenha && marcaSenha !== usuario.senhaHash.slice(-12)) throw new UnauthorizedException('Sua senha foi trocada. Entre novamente.');
@@ -61,6 +62,14 @@ export class AuthGuard implements CanActivate {
     // Plano vencido há mais de 5 dias: a conta fica só para consulta (vê e baixa, não cria nem muda). Nada é apagado.
     if (plano.situacao === 'CONSULTA' && !admin && travaConsulta(req.method, String(req.path ?? ''), emPrevia())) {
       throw new ForbiddenException(mensagemConsulta(plano, usuario.papel === 'EMPRESA'));
+    }
+
+    // Plano com menos empresas do que a conta tem: as que ficaram de fora são só para consulta.
+    const caminho = String(req.path ?? '');
+    const empresaAlvo: string | undefined = req.params?.empresaId ?? caminho.match(/^\/empresas\/([^/]+)/)?.[1];
+    if (empresaAlvo && !admin && !plano.dono && travaConsulta(req.method, caminho, emPrevia()) && !liberadoForaDoPlano(caminho)) {
+      const ativas = await empresasAtivas(this.prisma, usuario.consultoria);
+      if (ativas && !ativas.has(empresaAlvo)) throw new ForbiddenException(MENSAGEM_FORA_DO_PLANO(usuario.papel === 'EMPRESA'));
     }
 
     const exige = this.reflector.getAllAndOverride<{ r: Recurso; oQue: string } | undefined>(RECURSO, alvos);
