@@ -51,7 +51,7 @@ function Item({ a, empresaId, cliente, agir, abrir }: { a: ItemArquivo; empresaI
               onChange={(e) => { const f = e.target.files?.[0]; if (f) agir(async () => { await arquivo.enviar(empresaId, f, { versaoDe: a.id }); return `Versão ${a.versao + 1} de "${a.titulo}" guardada.`; }); e.target.value = ''; }} />
           </>)}
           {!cliente && <button className="text-danger underline" onClick={() => confirm(
-            `Apagar a versão ${a.versao} de "${a.titulo}"?${a.anteriores.length ? ` As ${a.anteriores.length} versão(ões) anterior(es) continuam, e a mais nova delas passa a ser a atual.` : ''}${a.origem === 'GERADO' ? '\n\nEste PDF foi gerado pelo sistema. Se ele já foi entregue à empresa ou à fiscalização, baixe uma cópia antes. Para tirar a versão do histórico de revisões, use "Ver versões emitidas" na aba Documentos da empresa.' : ''}\n\nIsso não tem volta.`,
+            `Apagar a versão ${a.versao} de "${a.titulo}"?${a.anteriores.length ? ` As ${a.anteriores.length} versão(ões) anterior(es) continuam, e a mais nova delas passa a ser a atual.` : ''}${a.origem === 'GERADO' ? '\n\nEste PDF foi gerado pelo sistema. Se ele já foi entregue à empresa ou à fiscalização, baixe uma cópia antes. Para tirar a versão do histórico de revisões, use "Ver versões emitidas" na aba Documentos da empresa.' : ''}\n\nFica na Lixeira por 30 dias, onde dá para restaurar.`,
           ) && agir(async () => { await arquivo.remover(empresaId, a.id); return 'Documento apagado.'; })}>Apagar</button>}
         </div>
       </div>

@@ -54,6 +54,7 @@ export const MENU: GrupoMenu[] = [
         { nome: 'Arquivo', rota: '/arquivo' },
         { nome: 'Assinaturas', rota: '/assinaturas', recurso: 'assinatura' },
         { nome: 'Histórico de alterações', rota: '/historico', soConsultoria: true },
+        { nome: 'Lixeira', rota: '/lixeira', geral: true, soConsultoria: true },
       ]),
     ],
   },

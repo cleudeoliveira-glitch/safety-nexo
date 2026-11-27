@@ -104,7 +104,10 @@ export const Recurso = (r: Recurso, oQue: string) => SetMetadata(RECURSO, { r, o
 
 // Plano de quem fez o pedido, para quem não recebe a sessão (PDF com marca d'água, logos).
 // O middleware abre a caixa a cada pedido e o AuthGuard coloca o plano dentro.
-export const caixaPlano = new AsyncLocalStorage<{ plano?: PlanoEfetivo; previa?: boolean }>();
+// lixeira: num pedido de exclusão (DELETE), o que for apagado é guardado antes na Lixeira (ver lixeira/lixeira.ts).
+export type ArquivoGuardado = { prefixo: string; pastaLocal: string; caminho: string };
+export type CaixaLixeira = { arvores: unknown[]; arquivos: ArquivoGuardado[] };
+export const caixaPlano = new AsyncLocalStorage<{ plano?: PlanoEfetivo; previa?: boolean; lixeira?: CaixaLixeira }>();
 export const planoAtual = () => caixaPlano.getStore()?.plano;
 // Pré-visualização: o site pede o documento com o cabeçalho "X-Previa: 1" antes de gerar o PDF.
 // Nesse pedido o documento volta em HTML, com a marca "Pré-visualização", e nada é guardado.

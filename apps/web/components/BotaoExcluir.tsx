@@ -19,7 +19,7 @@ export function BotaoExcluir({ pergunta, excluir, aoTerminar, aoErrar, rotulo = 
     <button type="button" disabled={apagando}
       className="rounded-card px-2 py-2 text-sm font-semibold text-danger hover:underline disabled:opacity-50"
       onClick={async () => {
-        if (!window.confirm(`${pergunta}\n\nIsso não tem volta.`)) return;
+        if (!window.confirm(`${pergunta}\n\nFica na Lixeira por 30 dias, onde dá para restaurar.`)) return;
         setApagando(true);
         try { await excluir(); await aoTerminar(); }
         catch (e) { aoErrar((e as Error).message); }

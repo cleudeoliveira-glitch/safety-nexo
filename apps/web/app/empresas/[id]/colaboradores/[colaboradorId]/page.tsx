@@ -524,7 +524,7 @@ function ExcluirColaborador({ empresaId, colaboradorId, nome }: { empresaId: str
             <p>{nome} tem {info.noEsocial} evento(s) já enviado(s) ao eSocial, então não dá para excluir. Use &quot;Registrar saída&quot;: o histórico fica guardado e a pessoa some dos alertas.</p>
           ) : (
             <>
-              <p>{info.itens.length ? <>Sai junto: {info.itens.join(', ')}.</> : 'Não tem nada registrado além do cadastro.'} Isso não tem volta.</p>
+              <p>{info.itens.length ? <>Sai junto: {info.itens.join(', ')}.</> : 'Não tem nada registrado além do cadastro.'} Fica na Lixeira por 30 dias, onde dá para restaurar.</p>
               <div className="flex gap-2">
                 <Botao variante="secundario" onClick={() => setInfo(null)} disabled={ocupado}>Cancelar</Botao>
                 <button type="button" disabled={ocupado} className="rounded-card bg-danger px-3 py-2 font-semibold text-white disabled:opacity-50"
@@ -532,7 +532,7 @@ function ExcluirColaborador({ empresaId, colaboradorId, nome }: { empresaId: str
                     setOcupado(true);
                     try { await excluir.colaborador(empresaId, colaboradorId); window.location.href = `/empresas/${empresaId}/colaboradores`; }
                     catch (e) { setErro((e as Error).message); setOcupado(false); }
-                  }}>{ocupado ? 'Excluindo…' : 'Excluir de vez'}</button>
+                  }}>{ocupado ? 'Excluindo…' : 'Excluir'}</button>
               </div>
             </>
           )}

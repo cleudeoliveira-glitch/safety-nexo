@@ -684,6 +684,12 @@ export type ItemHistorico = { id: string; usuarioNome: string; papel: 'CONSULTOR
 export const buscarHistorico = (empresaId: string, antes?: string) =>
   chamar<ItemHistorico[]>('GET', `/empresas/${empresaId}/historico${antes ? `?antes=${encodeURIComponent(antes)}` : ''}`);
 
+// ---------- Lixeira (30 dias) ----------
+export type ItemLixeira = { id: string; empresaId: string | null; empresa: string | null; descricao: string; quem: string; itens: number; criadoEm: string; saiDeVezEm: string };
+export const listarLixeira = () => chamar<ItemLixeira[]>('GET', '/lixeira');
+export const restaurarDaLixeira = (id: string) => chamar<{ ok: boolean; descricao: string }>('POST', `/lixeira/${id}/restaurar`);
+export const apagarDaLixeira = (id: string) => chamar<{ ok: boolean }>('DELETE', `/lixeira/${id}`);
+
 // ---------- Comercial (valores em centavos) ----------
 export type ConfigComercial = { nome: string; cnpj: string | null; cidade: string | null; pixChave: string | null; pixNome: string | null };
 export type ItemProposta = { descricao: string; quantidade: number; valorCentavos: number };

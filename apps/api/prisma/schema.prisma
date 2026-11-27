@@ -1458,3 +1458,20 @@ model PedidoSuporte {
   @@index([status, createdAt])
   @@index([consultoriaId])
 }
+
+// Lixeira de 30 dias: o que a consultoria exclui fica guardado aqui (a linha e tudo o que saiu junto) e pode voltar.
+// Depois de 30 dias sai de vez, com os arquivos. Ver src/lixeira.
+model Lixeira {
+  id            String   @id @default(cuid())
+  consultoriaId String
+  empresaId     String?
+  descricao     String   // ex.: "Excluiu colaborador: João da Silva"
+  quem          String   // nome de quem excluiu
+  itens         Int      @default(1) // quantos registros saíram juntos
+  dados         Json     // árvores com as linhas apagadas (ver lixeira/arvore.ts)
+  arquivos      Json     @default("[]") // fotos e PDFs que ficaram guardados até o item sair de vez
+  criadoEm      DateTime @default(now())
+
+  @@index([consultoriaId, criadoEm])
+  @@index([criadoEm])
+}

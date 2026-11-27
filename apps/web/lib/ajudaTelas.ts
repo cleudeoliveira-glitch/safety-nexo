@@ -368,6 +368,14 @@ export const GUIAS: GuiaTela[] = [
     partes: [{ titulo: 'Como usar', passos: ['Leia os avisos novos e marque como lido.', 'Ligue o resumo semanal por e-mail se quiser receber toda segunda-feira.'] }],
   },
   {
+    id: 'lixeira',
+    endereco: /^\/lixeira$/,
+    titulo: 'Lixeira',
+    paraQue: 'Tudo o que você excluiu nos últimos 30 dias, para trazer de volta se foi engano.',
+    partes: [{ titulo: 'Como usar', passos: ['Ache o item pela descrição ou pela empresa.', 'Clique em "Restaurar": ele volta para o mesmo lugar, com tudo o que saiu junto.', 'Use "Apagar de vez" só quando tiver certeza. Depois de 30 dias o item sai sozinho.'] }],
+    dicas: ['Se um item não voltar porque outra coisa ligada a ele também foi excluída, restaure essa outra coisa primeiro.'],
+  },
+  {
     id: 'emitir',
     endereco: /^\/emitir$/,
     titulo: 'Emitir documento',

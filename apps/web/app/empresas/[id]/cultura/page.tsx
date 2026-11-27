@@ -44,7 +44,7 @@ function AbaSipat({ empresaId, colaboradores, agir, baixar }: { empresaId: strin
           <div className="flex flex-wrap gap-2">
             <Botao variante="secundario" onClick={() => baixar(() => sipat.programacao(empresaId, s.id), `SIPAT-${s.ano}-programacao`)}>Programação (PDF)</Botao>
             <Botao variante="secundario" onClick={() => baixar(() => sipat.relatorio(empresaId, s.id), `SIPAT-${s.ano}-relatorio`)}>Relatório (PDF)</Botao>
-            <button className="px-2 text-sm font-semibold text-danger hover:underline" onClick={() => confirm(`Excluir a SIPAT ${s.ano} (${s.tema})? Saem junto as ${s.atividades.length} atividade(s) e as presenças registradas. Isso não tem volta.`) && fazer(async () => { await sipat.remover(empresaId, s.id); return `SIPAT ${s.ano} excluída.`; })}>Excluir</button>
+            <button className="px-2 text-sm font-semibold text-danger hover:underline" onClick={() => confirm(`Excluir a SIPAT ${s.ano} (${s.tema})? Saem junto as ${s.atividades.length} atividade(s) e as presenças registradas. Fica na Lixeira por 30 dias, onde dá para restaurar.`) && fazer(async () => { await sipat.remover(empresaId, s.id); return `SIPAT ${s.ano} excluída.`; })}>Excluir</button>
           </div>}>
           <p className="mb-3 text-sm text-text/60">De {data(s.inicio)} a {data(s.fim)} · {s.atividades.length} atividade(s) · {new Set(s.atividades.flatMap((a) => a.presentes)).size} de {colaboradores.length} funcionário(s) participaram</p>
           {s.atividades.length > 0 && (

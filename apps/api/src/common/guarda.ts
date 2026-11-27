@@ -1,3 +1,4 @@
+import { caixaPlano } from './plano';
 import { mkdir, readFile, unlink, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 
@@ -96,7 +97,15 @@ export class Guarda {
     return readFile(join(this.pastaLocal, caminho));
   }
 
+  // Dentro de uma exclusão feita pelo usuário, o arquivo não sai na hora: fica guardado junto com o item na Lixeira
+  // e só é apagado de vez quando a Lixeira é esvaziada (30 dias) ou quando o item sai dela.
   async apagar(caminho: string) {
+    const lixeira = caixaPlano.getStore()?.lixeira;
+    if (lixeira) { lixeira.arquivos.push({ prefixo: this.prefixo, pastaLocal: this.pastaLocal, caminho }); return; }
+    return this.apagarDeVez(caminho);
+  }
+
+  async apagarDeVez(caminho: string) {
     if (guardaNaNuvem) { await fetch(urlObjeto(`${this.prefixo}/${caminho}`), { method: 'DELETE', headers: cabecalho() }); return; }
     await unlink(join(this.pastaLocal, caminho));
   }

@@ -1,6 +1,10 @@
 // Tradução de cada rota que altera algo (ou gera documento) para uma frase simples.
 // A ordem importa: a primeira regra que casar vence.
 const REGRAS: [string, RegExp, string][] = [
+  ['POST', /^\/lixeira\/:id\/restaurar$/, 'Restaurou um item da Lixeira'],
+  ['DELETE', /^\/lixeira\/:id$/, 'Apagou de vez um item da Lixeira'],
+  ['DELETE', /\/colaboradores\/:id$/, 'Excluiu um colaborador'],
+  ['DELETE', /\/emissoes\/:id$/, 'Excluiu uma versão emitida de documento'],
   ['DELETE', /\/aprs\/:id$/, 'Excluiu uma APR'],
   ['DELETE', /\/permissoes\/:id$/, 'Excluiu uma permissão de trabalho'],
   ['DELETE', /\/dds\/:id$/, 'Excluiu um DDS'],
