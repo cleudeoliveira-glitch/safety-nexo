@@ -47,6 +47,8 @@ export const GUIAS: GuiaTela[] = [
           'Clique numa empresa para abrir o painel dela.',
         ],
       },
+      { titulo: 'Planilha de pendências', passos: ['Toque em Baixar planilha de pendências.', 'Abra no Excel ou no Google Planilhas: tem o que está pendente hoje em cada empresa e o que vence nos próximos 12 meses.'] },
+      { titulo: 'Calendário do mês', passos: ['Cada bolinha é algo que vence ou tem prazo naquele dia: documento, exame (ASO), ação do plano ou reciclagem de treinamento.', 'Toque no dia para ver a lista e em Abrir para ir direto à tela.', 'Use Anterior e Próximo para trocar o mês.'] },
     ],
   },
   {

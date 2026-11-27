@@ -49,6 +49,8 @@ export class AuthGuard implements CanActivate {
     if (caixa) caixa.plano = plano;
     // Exclusão feita pela consultoria: o que sair vai antes para a Lixeira (30 dias), ver lixeira/.
     if (caixa && req.method === 'DELETE' && usuario.papel !== 'EMPRESA') caixa.lixeira = { arvores: [], arquivos: [] };
+    // Mudança feita por alguém logado: o histórico guarda o antes e o depois, ver historico/antes-depois.ts.
+    if (caixa && ['PUT', 'PATCH', 'POST'].includes(req.method)) caixa.mudancas = [];
     req.sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId, papel: usuario.papel, empresaId: usuario.empresaId, dono: usuario.papel === 'CONSULTORIA' && (usuario.dono || admin), admin, plano };
 
     // Último acesso (para o painel ADM), gravado no máximo uma vez por hora.

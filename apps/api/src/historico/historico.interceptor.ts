@@ -1,10 +1,12 @@
 import { CallHandler, ExecutionContext, Injectable, Logger, NestInterceptor } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
+import { caixaPlano } from '../common/plano';
 import { PrismaService } from '../prisma/prisma.service';
 import { descreverAcao } from './acoes';
 
 // Grava no histórico toda alteração feita com sucesso por um usuário logado. Não guarda o conteúdo enviado
-// (pode ter senha ou certificado): só quem, o quê, em qual empresa e quando.
+// (pode ter senha ou certificado): só quem, o quê, em qual empresa e quando. Em risco, GHE, ASO, plano de ação
+// e versão de documento, guarda também o antes e o depois de cada campo mudado (historico/antes-depois.ts).
 @Injectable()
 export class HistoricoInterceptor implements NestInterceptor {
   private readonly log = new Logger('Historico');
@@ -22,14 +24,15 @@ export class HistoricoInterceptor implements NestInterceptor {
       if (!descreverAcao(metodo, rota)) return; // consultas feitas por POST (ex.: prévia da importação)
       // Empresa excluída não pode ficar ligada ao registro. Se a gravação falhar, só avisa no log: nunca derruba o motor.
       const empresaId = /\/empresas\/:empresaId\/excluir$/.test(rota) ? null : req.params?.empresaId ?? null;
-      this.gravar(sessao, metodo, rota, empresaId).catch((e) => this.log.warn(`não gravou o histórico: ${e.message}`));
+      const mudancas = caixaPlano.getStore()?.mudancas;
+      this.gravar(sessao, metodo, rota, empresaId, mudancas?.length ? mudancas.slice(0, 50) : undefined).catch((e) => this.log.warn(`não gravou o histórico: ${e.message}`));
     }));
   }
 
-  private async gravar(sessao: { sub: string; consultoriaId: string; papel: string }, metodo: string, rota: string, empresaId: string | null) {
+  private async gravar(sessao: { sub: string; consultoriaId: string; papel: string }, metodo: string, rota: string, empresaId: string | null, mudancas?: object[]) {
     const usuario = await this.prisma.usuario.findUnique({ where: { id: sessao.sub }, select: { nome: true } });
     await this.prisma.historico.create({
-      data: { consultoriaId: sessao.consultoriaId, empresaId, usuarioId: sessao.sub, usuarioNome: usuario?.nome ?? '—', papel: sessao.papel, acao: descreverAcao(metodo, rota), metodo, rota },
+      data: { consultoriaId: sessao.consultoriaId, empresaId, usuarioId: sessao.sub, usuarioNome: usuario?.nome ?? '—', papel: sessao.papel, acao: descreverAcao(metodo, rota), metodo, rota, ...(mudancas ? { mudancas } : {}) },
     });
   }
 }
