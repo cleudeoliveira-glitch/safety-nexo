@@ -10,6 +10,7 @@ import { SaudeModule } from './saude/saude.module';
 import { LaudosModule } from './laudos/laudos.module';
 import { EsocialModule } from './esocial/esocial.module';
 import { HistoricoModule } from './historico/historico.module';
+import { LixeiraModule } from './lixeira/lixeira';
 import { ComercialModule } from './comercial/comercial.module';
 import { ConectoresModule } from './conectores/conectores.module';
 import { ArquivoModule } from './arquivo/arquivo.module';
@@ -50,7 +51,7 @@ import { SuporteModule } from './suporte/suporte';
 
 import { ExclusoesModule } from './exclusoes/exclusoes';
 @Module({
-  imports: [PushModule, AuthModule, AdminModule, DiagnosticoModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule, PresencaModule, NormasModule, IaModule, PrevencaoModule, PortalModule, AvisosModule, PagamentosModule, ContaModule, CalculosModule, ConferenciaModule, DossieModule, FiscalizacaoModule, RelatorioMensalModule, SuporteModule, ExclusoesModule],
+  imports: [PushModule, AuthModule, AdminModule, DiagnosticoModule, PrismaModule, CnaeModule, EmpresasModule, DocumentosModule, LogosModule, PainelModule, ColaboradoresModule, CipaModule, OperacaoModule, TreinamentosModule, AcessosModule, SaudeModule, LaudosModule, InspecoesModule, EmergenciaModule, EsocialModule, HistoricoModule, ComercialModule, ConectoresModule, ArquivoModule, AssinaturasModule, PsicossocialModule, CulturaModule, FapModule, ImportacaoModule, ProntuarioModule, SsmaModule, RostoModule, EstoqueModule, PresencaModule, NormasModule, IaModule, PrevencaoModule, PortalModule, AvisosModule, PagamentosModule, ContaModule, CalculosModule, ConferenciaModule, DossieModule, FiscalizacaoModule, RelatorioMensalModule, SuporteModule, ExclusoesModule, LixeiraModule],
   controllers: [HealthController],
 })
 export class AppModule {}

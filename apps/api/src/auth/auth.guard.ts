@@ -43,6 +43,8 @@ export class AuthGuard implements CanActivate {
     const plano = planoEfetivo(usuario.consultoria, usuario.consultoria.usuarios.some((u) => ehAdminPlataforma(u.email)));
     const caixa = caixaPlano.getStore();
     if (caixa) caixa.plano = plano;
+    // Exclusão feita pela consultoria: o que sair vai antes para a Lixeira (30 dias), ver lixeira/.
+    if (caixa && req.method === 'DELETE' && usuario.papel !== 'EMPRESA') caixa.lixeira = { arvores: [], arquivos: [] };
     req.sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId, papel: usuario.papel, empresaId: usuario.empresaId, admin, plano };
 
     // Último acesso (para o painel ADM), gravado no máximo uma vez por hora.

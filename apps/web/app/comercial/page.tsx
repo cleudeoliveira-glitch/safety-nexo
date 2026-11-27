@@ -141,7 +141,7 @@ function AbaCobrancas({ empresas, lista, agir, baixar }: { empresas: Empresa[]; 
                       <Botao variante="secundario" onClick={() => agir(async () => { await comercial.pagar(c.id); return 'Pagamento registrado.'; })}>Recebi</Botao>
                       <button className="text-sm text-danger underline" onClick={() => confirm('Cancelar esta cobrança?') && agir(async () => { await comercial.cancelar(c.id); return 'Cobrança cancelada.'; })}>Cancelar</button>
                     </>)}
-                    {c.status !== 'PAGA' && <button className="text-sm text-danger underline" onClick={() => confirm(`Excluir de vez a cobrança de ${reais(c.valorCentavos)} (${c.empresa.razaoSocial})?\n\nIsso não tem volta.`) && agir(async () => { await excluir.cobranca(c.id); return 'Cobrança excluída.'; })}>Excluir</button>}
+                    {c.status !== 'PAGA' && <button className="text-sm text-danger underline" onClick={() => confirm(`Excluir a cobrança de ${reais(c.valorCentavos)} (${c.empresa.razaoSocial})?\n\nFica na Lixeira por 30 dias, onde dá para restaurar.`) && agir(async () => { await excluir.cobranca(c.id); return 'Cobrança excluída.'; })}>Excluir</button>}
                   </div>
                 </div>
                 {pix?.id === c.id && (
@@ -285,7 +285,7 @@ function AbaPropostas({ empresas, lista, agir, baixar, irParaContrato }: { empre
                     <Botao variante="secundario" onClick={irParaContrato}>Aceita: fazer contrato</Botao>
                     <button className="text-sm text-text/60 underline" onClick={() => agir(async () => { await comercial.statusProposta(p.id, 'RECUSADA'); return 'Proposta marcada como recusada.'; })}>Recusada</button>
                   </>}
-                  <button className="text-sm text-danger underline" onClick={() => confirm(`Excluir a proposta nº ${p.numero} (${p.clienteNome})?\n\nIsso não tem volta.`) && agir(async () => { await excluir.proposta(p.id); return 'Proposta excluída.'; })}>Excluir</button>
+                  <button className="text-sm text-danger underline" onClick={() => confirm(`Excluir a proposta nº ${p.numero} (${p.clienteNome})?\n\nFica na Lixeira por 30 dias, onde dá para restaurar.`) && agir(async () => { await excluir.proposta(p.id); return 'Proposta excluída.'; })}>Excluir</button>
                 </div>
               </li>
             ))}
@@ -343,7 +343,7 @@ function AbaContratos({ empresas, propostas, lista, agir, baixar }: { empresas: 
                   {c.status === 'ATIVO' ? <Etiqueta cor="bg-success/15 text-success">Ativo</Etiqueta> : <Etiqueta cor="bg-border text-text/60">Encerrado</Etiqueta>}
                   <button className="text-sm text-primary underline" onClick={() => baixar(() => comercial.pdfContrato(c.id), `Contrato-${c.numero}`)}>PDF</button>
                   {c.status === 'ATIVO' && <button className="text-sm text-danger underline" onClick={() => confirm('Encerrar este contrato hoje?') && agir(async () => { await comercial.encerrarContrato(c.id); return 'Contrato encerrado.'; })}>Encerrar</button>}
-                  <button className="text-sm text-danger underline" onClick={() => confirm(`Excluir de vez o contrato nº ${c.numero} (${c.empresa.razaoSocial})? Se ele só terminou, use "Encerrar": assim fica no histórico. As cobranças já feitas continuam.\n\nIsso não tem volta.`) && agir(async () => { await excluir.contrato(c.id); return 'Contrato excluído.'; })}>Excluir</button>
+                  <button className="text-sm text-danger underline" onClick={() => confirm(`Excluir o contrato nº ${c.numero} (${c.empresa.razaoSocial})? Se ele só terminou, use "Encerrar": assim fica no histórico. As cobranças já feitas continuam.\n\nFica na Lixeira por 30 dias, onde dá para restaurar.`) && agir(async () => { await excluir.contrato(c.id); return 'Contrato excluído.'; })}>Excluir</button>
                 </div>
               </li>
             ))}
@@ -390,7 +390,7 @@ function AbaServicos({ empresas, contratos, lista, agir }: { empresas: Empresa[]
                   {s.status === 'ABERTA'
                     ? <Botao variante="secundario" onClick={() => agir(async () => { const r = await comercial.concluirServico(s.id); return r.cobranca ? 'Concluída. A cobrança já está em Cobranças.' : 'Ordem de serviço concluída.'; })}>Concluir</Botao>
                     : <Etiqueta cor="bg-success/15 text-success">Concluída</Etiqueta>}
-                  <button className="text-sm text-danger underline" onClick={() => confirm(`Excluir a OS nº ${s.numero}?\n\nIsso não tem volta.`) && agir(async () => { await excluir.servico(s.id); return 'Ordem de serviço excluída.'; })}>Excluir</button>
+                  <button className="text-sm text-danger underline" onClick={() => confirm(`Excluir a OS nº ${s.numero}?\n\nFica na Lixeira por 30 dias, onde dá para restaurar.`) && agir(async () => { await excluir.servico(s.id); return 'Ordem de serviço excluída.'; })}>Excluir</button>
                 </div>
               </li>
             ))}

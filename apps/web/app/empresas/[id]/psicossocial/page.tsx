@@ -255,7 +255,7 @@ export default function PsicossocialPage({ params }: { params: { id: string } })
                   {a.status === 'ABERTA'
                     ? <button className="text-danger underline" onClick={() => confirm('Encerrar? O link para de aceitar respostas.') && agir(async () => { await psicossocial.encerrar(empresaId, a.id); return 'Avaliação encerrada.'; })}>Encerrar</button>
                     : <button className="text-primary underline" onClick={() => agir(async () => { await psicossocial.reabrir(empresaId, a.id); return 'Avaliação reaberta.'; })}>Reabrir</button>}
-                  <button className="text-danger underline" onClick={() => confirm(`Excluir a avaliação "${a.titulo}"? As respostas e o plano de ação dela saem junto. O que já foi levado ao PGR continua no PGR.\n\nIsso não tem volta.`)
+                  <button className="text-danger underline" onClick={() => confirm(`Excluir a avaliação "${a.titulo}"? As respostas e o plano de ação dela saem junto. O que já foi levado ao PGR continua no PGR.\n\nFica na Lixeira por 30 dias, onde dá para restaurar.`)
                     && (async () => {
                       try { await excluir.psicossocial(empresaId, a.id); if (aberta === a.id) await verResultado(null); setAviso({ tipo: 'ok', texto: 'Avaliação excluída.' }); await carregar(); }
                       catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }

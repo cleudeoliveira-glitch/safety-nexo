@@ -227,11 +227,11 @@ function ExcluirLeitura({ leitura, cancelar, excluir }: { leitura: Leitura; canc
           <span>Tirar também os riscos que vieram deste PGR{nGhes ? ' e os GHEs que ele criou (o GHE só sai se ficar sem nenhum outro risco)' : ''}. Riscos que você cadastrou à mão ficam.</span>
         </label>
       )}
-      <p className="mt-2 text-xs text-text/60">Isso não tem volta.</p>
+      <p className="mt-2 text-xs text-text/60">Fica na Lixeira por 30 dias, onde dá para restaurar.</p>
       <div className="mt-2 flex gap-2">
         <Botao variante="secundario" onClick={cancelar} disabled={ocupado}>Cancelar</Botao>
         <button type="button" disabled={ocupado} className="rounded-card bg-danger px-3 py-2 font-semibold text-white disabled:opacity-50"
-          onClick={async () => { setOcupado(true); try { await excluir(levar); } finally { setOcupado(false); } }}>{ocupado ? 'Excluindo…' : 'Excluir de vez'}</button>
+          onClick={async () => { setOcupado(true); try { await excluir(levar); } finally { setOcupado(false); } }}>{ocupado ? 'Excluindo…' : 'Excluir'}</button>
       </div>
     </div>
   );
