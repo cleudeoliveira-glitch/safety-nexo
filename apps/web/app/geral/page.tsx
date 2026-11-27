@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Aviso } from '@/components/ui';
-import { carregarPainelGeral, PainelGeral } from '@/lib/api';
+import { CalendarioMes } from '@/components/CalendarioMes';
+import { Aviso, Botao } from '@/components/ui';
+import { baixarPlanilhaPendencias, carregarPainelGeral, PainelGeral } from '@/lib/api';
 import { lerToken } from '@/lib/sessao';
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
@@ -13,6 +14,8 @@ const corSaude = (p: number) => (p >= 80 ? 'text-success' : p >= 50 ? 'text-warn
 export default function VisaoGeralPage() {
   const [painel, setPainel] = useState<PainelGeral | null>(null);
   const [erro, setErro] = useState('');
+  const [baixando, setBaixando] = useState(false);
+  const [erroPlanilha, setErroPlanilha] = useState('');
 
   useEffect(() => {
     if (!lerToken()) {
@@ -31,7 +34,15 @@ export default function VisaoGeralPage() {
       <div>
         <Link href="/" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-primary">← Voltar</Link>
         <h1 className="mt-4 text-3xl font-semibold text-primary">Todas as empresas</h1>
-        <p className="text-text/60">Todas as suas empresas clientes. As que precisam de atenção aparecem primeiro.</p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <p className="text-text/60">Todas as suas empresas clientes. As que precisam de atenção aparecem primeiro.</p>
+          <Botao type="button" variante="secundario" disabled={baixando} onClick={async () => {
+            setBaixando(true); setErroPlanilha('');
+            try { await baixarPlanilhaPendencias(); } catch (e) { setErroPlanilha((e as Error).message); }
+            setBaixando(false);
+          }}>{baixando ? 'Montando a planilha…' : 'Baixar planilha de pendências'}</Botao>
+        </div>
+        {erroPlanilha && <div className="mt-2"><Aviso tipo="erro">{erroPlanilha}</Aviso></div>}
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -78,7 +89,9 @@ export default function VisaoGeralPage() {
         </table>
         {painel.empresas.length === 0 && <p className="p-6 text-sm text-text/60">Nenhuma empresa cadastrada ainda.</p>}
       </section>
+      <CalendarioMes />
       <p className="text-xs text-text/50">O faturamento por empresa entra aqui quando o módulo comercial estiver pronto.</p>
+      <p className="text-xs text-text/50">A planilha abre no Excel ou no Google Planilhas: tem as pendências de hoje de cada empresa e o que vence nos próximos 12 meses.</p>
     </main>
   );
 }

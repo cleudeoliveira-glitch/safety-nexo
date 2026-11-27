@@ -34,3 +34,16 @@ test('lembrete ao responsável: diz o que fazer, marca atraso e escapa o texto',
   assert.match(dois.assunto, /2 ações/);
   assert.match(dois.html, /Prazo vencido em 01\/12\/2026/);
 });
+
+import { paraCsv } from '../src/painel/agenda';
+import { normalizar } from '../src/painel/busca';
+
+test('planilha: abre certo no Excel e não deixa fórmula escondida', () => {
+  const csv = paraCsv([['Empresa', 'O que fazer'], ['Padaria; Pão', '=1+1'], ['Aspas "x"', 'ok']]);
+  assert.ok(csv.startsWith('﻿'));
+  assert.equal(csv.slice(1), 'Empresa;O que fazer\r\n"Padaria; Pão";\'=1+1\r\n"Aspas ""x""";ok\r\n');
+});
+
+test('busca: acento e maiúscula não importam', () => {
+  assert.equal(normalizar('JOÃO Conceição'), 'joao conceicao');
+});

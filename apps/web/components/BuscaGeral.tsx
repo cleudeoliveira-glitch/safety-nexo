@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Colaborador, Empresa, listarColaboradores } from '@/lib/api';
+import { buscarEmTudo, Colaborador, Empresa, listarColaboradores, ResultadoBusca } from '@/lib/api';
 import { DOCUMENTOS } from '@/lib/documentos';
 import { enderecoDoItem, TELAS_DO_MENU } from '@/lib/menu';
 import { salvarFoco } from '@/lib/empresaFoco';
 
 // Lupa no topo: uma busca só para achar telas, documentos, empresas e pessoas.
-// Ex.: "extintor", "João", "NR-35", "CAT". Procura só no que já está no aparelho e nos funcionários da empresa em foco.
+// Ex.: "extintor", "João", "NR-35", "CAT". Na consultoria, procura também funcionários, GHEs e terceirizadas de todas as empresas.
 const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 type Achado = { chave: string; grupo: string; titulo: string; detalhe?: string; href: string; empresa?: string };
 
@@ -16,6 +16,7 @@ export function BuscaGeral({ empresaId, empresas, cliente, claro = false }: { em
   const [aberta, setAberta] = useState(false);
   const [texto, setTexto] = useState('');
   const [pessoas, setPessoas] = useState<Colaborador[]>([]);
+  const [deTodas, setDeTodas] = useState<ResultadoBusca | null>(null);
   const campo = useRef<HTMLInputElement>(null);
 
   // Ctrl+K ou "/" abre a busca no computador (só a lupa do menu lateral escuta, para não abrir duas).
@@ -36,6 +37,13 @@ export function BuscaGeral({ empresaId, empresas, cliente, claro = false }: { em
     if (empresaId) listarColaboradores(empresaId).then(setPessoas).catch(() => setPessoas([]));
   }, [aberta, empresaId]);
 
+  // Busca nas outras empresas depois de uma pausa na digitação (3 letras ou mais).
+  useEffect(() => {
+    if (!aberta || cliente || texto.trim().length < 3) { setDeTodas(null); return; }
+    const t = setTimeout(() => { buscarEmTudo(texto.trim()).then(setDeTodas).catch(() => setDeTodas(null)); }, 350);
+    return () => clearTimeout(t);
+  }, [aberta, cliente, texto]);
+
   const achados = useMemo<Achado[]>(() => {
     const termos = semAcento(texto).split(/\s+/).filter(Boolean);
     if (!termos.length) return [];
@@ -55,10 +63,17 @@ export function BuscaGeral({ empresaId, empresas, cliente, claro = false }: { em
     for (const p of pessoas) {
       if (bate(p.nome, p.cargo, p.matricula, p.cpf)) lista.push({ chave: `p-${p.id}`, grupo: 'Pessoas', titulo: p.nome, detalhe: p.cargo, href: `/empresas/${empresaId}/colaboradores?busca=${encodeURIComponent(p.nome)}` });
     }
-    return lista.slice(0, 30);
-  }, [texto, empresaId, empresas, pessoas, cliente]);
+    const ja = new Set(lista.map((a) => a.chave));
+    for (const p of deTodas?.pessoas ?? []) {
+      if (ja.has(`p-${p.id}`)) continue;
+      lista.push({ chave: `p-${p.id}`, grupo: 'Pessoas', titulo: p.nome, detalhe: `${p.cargo} · ${p.empresa}${p.desligado ? ' · desligado' : ''}`, href: `/empresas/${p.empresaId}/colaboradores?busca=${encodeURIComponent(p.nome)}`, empresa: p.empresaId });
+    }
+    for (const g of deTodas?.ghes ?? []) lista.push({ chave: `g-${g.id}`, grupo: 'GHEs', titulo: g.nome, detalhe: `${g.setor ? `${g.setor} · ` : ''}${g.empresa}`, href: `/empresas/${g.empresaId}#ghes`, empresa: g.empresaId });
+    for (const t of deTodas?.terceiros ?? []) lista.push({ chave: `c-${t.id}`, grupo: 'Terceirizadas', titulo: t.nome, detalhe: t.empresa, href: `/empresas/${t.empresaId}/conectores#terceiros`, empresa: t.empresaId });
+    return lista.slice(0, 50);
+  }, [texto, empresaId, empresas, pessoas, cliente, deTodas]);
 
-  const grupos = ['Telas', 'Documentos', 'Empresas', 'Pessoas'].map((g) => [g, achados.filter((a) => a.grupo === g)] as const).filter(([, l]) => l.length);
+  const grupos = ['Telas', 'Documentos', 'Empresas', 'Pessoas', 'GHEs', 'Terceirizadas'].map((g) => [g, achados.filter((a) => a.grupo === g)] as const).filter(([, l]) => l.length);
   const fechar = () => { setAberta(false); setTexto(''); };
 
   return (
@@ -79,7 +94,7 @@ export function BuscaGeral({ empresaId, empresas, cliente, claro = false }: { em
               <button type="button" onClick={fechar} className="min-h-[48px] px-3 text-sm font-semibold text-primary">Fechar</button>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
-              {!texto.trim() && <p className="p-2 text-sm text-text/60">Procure por tela, documento, empresa ou funcionário{empresaId ? ' da empresa em foco' : ''}.</p>}
+              {!texto.trim() && <p className="p-2 text-sm text-text/60">Procure por tela, documento, empresa{cliente ? ' ou funcionário' : ', funcionário, GHE ou terceirizada de qualquer empresa'}.</p>}
               {texto.trim() && !achados.length && <p className="p-2 text-sm text-text/60">Nada com &quot;{texto}&quot;. Tente outra palavra.</p>}
               {grupos.map(([g, lista]) => (
                 <div key={g} className="mb-3">

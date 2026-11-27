@@ -433,6 +433,24 @@ export type PainelGeral = {
 };
 export const carregarPainelGeral = () => chamar<PainelGeral>('GET', '/painel-geral');
 
+// Calendário do mês e planilha: o que tem data em todas as empresas (documento, ASO, ação do plano, reciclagem).
+export type ItemAgenda = { data: string; tipo: 'Documento' | 'ASO' | 'Ação do plano' | 'Treinamento'; titulo: string; empresaId: string; empresa: string; rota: string };
+export const carregarAgenda = (de: string, ate: string) => chamar<ItemAgenda[]>('GET', `/agenda?de=${de}&ate=${ate}`);
+export async function baixarPlanilhaPendencias() {
+  const res = await fetch(`${API_URL}/agenda/planilha`, { headers: cabecalhos() });
+  verificarSessao(res);
+  if (!res.ok) throw new Error(`Não foi possível montar a planilha (${res.status}).`);
+  salvarArquivo(await res.blob(), `pendencias-${new Date().toISOString().slice(0, 10)}.csv`);
+}
+
+// Lupa do topo: funcionários, GHEs e terceirizadas de todas as empresas.
+export type ResultadoBusca = {
+  pessoas: { id: string; nome: string; cargo: string; desligado: boolean; empresaId: string; empresa: string }[];
+  ghes: { id: string; nome: string; setor: string | null; empresaId: string; empresa: string }[];
+  terceiros: { id: string; nome: string; empresaId: string; empresa: string }[];
+};
+export const buscarEmTudo = (q: string) => chamar<ResultadoBusca>('GET', `/busca?q=${encodeURIComponent(q)}`);
+
 const rotaColaborador = (empresaId: string, colaboradorId: string) => `/empresas/${empresaId}/colaboradores/${colaboradorId}`;
 export const buscarColaborador = (empresaId: string, colaboradorId: string) =>
   chamar<ColaboradorDetalhe>('GET', rotaColaborador(empresaId, colaboradorId));
