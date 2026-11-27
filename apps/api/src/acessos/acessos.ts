@@ -1,7 +1,8 @@
-import { BadRequestException, Body, ConflictException, Controller, Delete, ForbiddenException, Get, Injectable, Module, NotFoundException, Param, Post } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Delete, ForbiddenException, Get, Injectable, Module, NotFoundException, Param, Post, Put } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
-import { IsEmail, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, Length } from 'class-validator';
+import { SoDono } from '../auth/so-dono.decorator';
 import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';
 import { emailLigado, emailMoldura, enviarEmail } from '../common/email';
@@ -124,6 +125,10 @@ class ConvidarEquipeDto {
   email!: string;
 }
 
+class FuncaoEquipeDto {
+  @IsBoolean() dono!: boolean;
+}
+
 @Controller('equipe')
 export class EquipeController {
   constructor(
@@ -133,10 +138,12 @@ export class EquipeController {
 
   @Get()
   async listar(@Sessao() s: SessaoUsuario) {
-    const pessoas = await this.prisma.usuario.findMany({ where: { consultoriaId: s.consultoriaId, papel: 'CONSULTORIA' }, select: { id: true, nome: true, email: true, createdAt: true, ultimoAcesso: true }, orderBy: { createdAt: 'asc' } });
-    return { pessoas, limite: s.plano?.limites.equipe ?? null, eu: s.sub };
+    const pessoas = await this.prisma.usuario.findMany({ where: { consultoriaId: s.consultoriaId, papel: 'CONSULTORIA' }, select: { id: true, nome: true, email: true, createdAt: true, ultimoAcesso: true, dono: true }, orderBy: { createdAt: 'asc' } });
+    return { pessoas, limite: s.plano?.limites.equipe ?? null, eu: s.sub, souDono: !!s.dono };
   }
 
+  // Quem entra pela equipe começa como técnico: faz todo o trabalho de SST, mas não mexe em plano, pagamento nem equipe.
+  @SoDono()
   @Post()
   async convidar(@Sessao() s: SessaoUsuario, @Body() dto: ConvidarEquipeDto) {
     const limite = s.plano?.limites.equipe ?? null;
@@ -161,6 +168,21 @@ export class EquipeController {
     return { id: u.id, nome: u.nome, link, whatsapp: `https://wa.me/?text=${encodeURIComponent(texto)}`, emailEnviado };
   }
 
+  // Dono ou técnico. Pode haver mais de um dono; a conta nunca fica sem nenhum.
+  @SoDono()
+  @Put(':id/dono')
+  async mudarFuncao(@Sessao() s: SessaoUsuario, @Param('id') id: string, @Body() dto: FuncaoEquipeDto) {
+    const pessoa = await this.prisma.usuario.findFirst({ where: { id, consultoriaId: s.consultoriaId, papel: 'CONSULTORIA' }, select: { id: true } });
+    if (!pessoa) throw new NotFoundException('Pessoa não encontrada.');
+    if (!dto.dono) {
+      const donos = await this.prisma.usuario.count({ where: { consultoriaId: s.consultoriaId, papel: 'CONSULTORIA', dono: true, id: { not: id } } });
+      if (!donos) throw new BadRequestException('A conta precisa de pelo menos um dono. Marque outra pessoa como dono antes.');
+    }
+    await this.prisma.usuario.update({ where: { id }, data: { dono: dto.dono } });
+    return { ok: true };
+  }
+
+  @SoDono()
   @Delete(':id')
   async remover(@Sessao() s: SessaoUsuario, @Param('id') id: string) {
     if (id === s.sub) throw new BadRequestException('Você não pode remover o seu próprio acesso.');

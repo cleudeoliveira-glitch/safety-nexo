@@ -395,8 +395,10 @@ export const GUIAS: GuiaTela[] = [
     titulo: 'Meu perfil',
     paraQue: 'Seus dados de acesso e, para a consultoria, os dados e a logo que saem no rodapé de todos os documentos.',
     partes: [
-      { titulo: 'Meus dados e senha', passos: ['Confira o nome e o e-mail de acesso.', 'Para trocar a senha, digite a atual, a nova e repita a nova.'] },
-      { titulo: 'Minha consultoria', passos: ['Preencha o nome da consultoria, o CNPJ e a cidade.', 'Envie a logo da consultoria: ela sai no rodapé dos PDFs.'] },
+      { titulo: 'Meus dados e senha', passos: ['Confira o nome e o e-mail de acesso.', 'Para trocar a senha, digite a atual, a nova e repita a nova. Os outros aparelhos saem na hora e vão pedir a senha nova.'] },
+      { titulo: 'Verificação em duas etapas', passos: ['Digite a sua senha e toque em Ligar.', 'A partir daí, ao entrar, chega um código de 6 números no seu e-mail para completar a entrada.'] },
+      { titulo: 'Minha consultoria', passos: ['Só o dono da conta vê e muda esta parte.', 'Preencha o nome da consultoria, o CNPJ e a cidade.', 'Envie a logo da consultoria: ela sai no rodapé dos PDFs.'] },
+      { titulo: 'Minha equipe', passos: ['O dono cuida do plano, do pagamento, da equipe e pode excluir empresas.', 'O técnico faz todo o trabalho de SST.', 'Use Tornar dono ou Tornar técnico para mudar a função de alguém. A conta sempre fica com pelo menos um dono.'] },
     ],
   },
   {

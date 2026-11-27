@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CadastroDto, EntrarDto, EsqueciDto, RedefinirDto } from './dto';
+import { CadastroDto, CodigoDto, EntrarDto, EsqueciDto, RedefinirDto } from './dto';
 import { Publica } from './publica.decorator';
 
 @Publica()
@@ -17,6 +17,13 @@ export class AuthController {
   @HttpCode(200)
   entrar(@Body() dto: EntrarDto) {
     return this.auth.entrar(dto);
+  }
+
+  // Segunda etapa da entrada: o código de 6 números que chegou por e-mail.
+  @Post('entrar/codigo')
+  @HttpCode(200)
+  entrarComCodigo(@Body() dto: CodigoDto) {
+    return this.auth.entrarComCodigo(dto.desafio, dto.codigo);
   }
 
   @Post('esqueci')

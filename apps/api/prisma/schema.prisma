@@ -294,6 +294,10 @@ model Usuario {
   email         String      @unique
   senhaHash     String
   papel         String      @default("CONSULTORIA") // CONSULTORIA (todas as empresas) | EMPRESA (só a dela)
+  // Na equipe da consultoria: o dono mexe em plano, pagamento e equipe; o técnico só em SST.
+  dono          Boolean     @default(false)
+  // Verificação em duas etapas: depois da senha, um código de 6 números chega por e-mail.
+  doisFatores   Boolean     @default(false)
   empresaId     String?
   empresa       Empresa?    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   ultimoAcesso  DateTime?   // atualizado ao entrar e no uso (no máximo 1 vez por hora)

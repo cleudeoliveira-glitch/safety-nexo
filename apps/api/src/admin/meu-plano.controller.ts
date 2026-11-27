@@ -1,3 +1,4 @@
+import { SoDono } from '../auth/so-dono.decorator';
 import { Body, Controller, Get, NotFoundException, Post } from '@nestjs/common';
 import { IsIn } from 'class-validator';
 import { ConsultoriaId } from '../common/consultoria.decorator';
@@ -63,6 +64,7 @@ export class MeuPlanoController {
     };
   }
 
+  @SoDono()
   @Post('pedido')
   async pedir(@ConsultoriaId() consultoriaId: string, @Body() dto: PedidoPlanoDto, @Sessao() sessao: SessaoUsuario) {
     const c = await this.prisma.consultoria.update({ where: { id: consultoriaId }, data: { pedidoPlano: dto.plano, pedidoPlanoEm: new Date() } });

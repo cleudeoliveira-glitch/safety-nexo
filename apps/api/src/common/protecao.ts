@@ -22,7 +22,7 @@ const HORA = 60 * MIN;
 
 // A primeira regra que combinar vale. A última vale para todo o resto.
 const REGRAS: Regra[] = [
-  { nome: 'entrar', teste: (m, c) => m === 'POST' && c === '/auth/entrar', max: 10, janelaMs: 5 * MIN, mensagem: 'Muitas tentativas de entrar. Espere 5 minutos e tente de novo.' },
+  { nome: 'entrar', teste: (m, c) => m === 'POST' && (c === '/auth/entrar' || c === '/auth/entrar/codigo'), max: 10, janelaMs: 5 * MIN, mensagem: 'Muitas tentativas de entrar. Espere 5 minutos e tente de novo.' },
   { nome: 'cadastro', teste: (m, c) => m === 'POST' && c === '/auth/cadastro', max: 5, janelaMs: HORA, mensagem: 'Muitos cadastros seguidos deste local. Tente de novo daqui a uma hora.' },
   { nome: 'senha', teste: (m, c) => m === 'POST' && (c === '/auth/esqueci' || c === '/auth/redefinir'), max: 5, janelaMs: 15 * MIN, mensagem: 'Muitos pedidos de troca de senha. Espere 15 minutos.' },
   // Páginas abertas (sem login): portal do trabalhador, votação, relato/denúncia, questionário, assinatura, proposta.

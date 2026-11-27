@@ -5,6 +5,7 @@ import {
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
 import { Observable, from, mergeMap } from 'rxjs';
+import { SoDono } from '../auth/so-dono.decorator';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { ArquivoGuardado, caixaPlano } from '../common/plano';
 import { Guarda } from '../common/guarda';
@@ -102,6 +103,7 @@ export class LixeiraController {
     return { ok: true, descricao: item.descricao };
   }
 
+  @SoDono()
   @Delete(':id')
   async apagarDeVez(@ConsultoriaId() c: string, @Param('id') id: string) {
     const item = await this.prisma.lixeira.findFirst({ where: { id, consultoriaId: c }, select: { id: true, arquivos: true } });

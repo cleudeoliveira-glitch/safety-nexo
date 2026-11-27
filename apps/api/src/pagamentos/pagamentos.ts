@@ -1,3 +1,4 @@
+import { SoDono } from '../auth/so-dono.decorator';
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Headers, HttpCode, Injectable, Logger, Module, NotFoundException, Post, ServiceUnavailableException } from '@nestjs/common';
 import { IsIn, IsString, Matches } from 'class-validator';
 import { ehAdminPlataforma, SomenteAdmin } from '../admin/admin-plataforma';
@@ -344,11 +345,11 @@ export class PagamentosService {
 export class PagamentoPlanoController {
   constructor(private readonly s: PagamentosService) {}
   @Get() resumo(@ConsultoriaId() c: string) { return this.s.resumo(c); }
-  @Post('assinar') assinar(@ConsultoriaId() c: string, @Sessao() sessao: SessaoUsuario, @Body() dto: AssinarDto) {
+  @SoDono() @Post('assinar') assinar(@ConsultoriaId() c: string, @Sessao() sessao: SessaoUsuario, @Body() dto: AssinarDto) {
     if (sessao.papel !== 'CONSULTORIA') throw new ForbiddenException('Só a consultoria pode mudar o plano.');
     return this.s.assinar(c, sessao, dto);
   }
-  @Post('cancelar') cancelar(@ConsultoriaId() c: string) { return this.s.cancelar(c); }
+  @SoDono() @Post('cancelar') cancelar(@ConsultoriaId() c: string) { return this.s.cancelar(c); }
 }
 
 // O Asaas avisa aqui cada mudança de pagamento. Configurar no Asaas: Integrações > Webhooks,

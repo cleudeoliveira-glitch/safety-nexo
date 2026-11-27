@@ -478,7 +478,10 @@ export function salvarArquivo(pdf: Blob, nome: string) {
 }
 
 export type Acesso = { token: string; usuario: Usuario };
-export const entrar = (dados: { email: string; senha: string }) => chamar<Acesso>('POST', '/auth/entrar', dados);
+// Com a verificação em duas etapas ligada, a senha certa não entra direto: vai um código para o e-mail.
+export type PedeCodigo = { precisaCodigo: true; desafio: string; email: string };
+export const entrar = (dados: { email: string; senha: string }) => chamar<Acesso | PedeCodigo>('POST', '/auth/entrar', dados);
+export const entrarComCodigo = (desafio: string, codigo: string) => chamar<Acesso>('POST', '/auth/entrar/codigo', { desafio, codigo });
 export const cadastrar = (dados: { nomeConsultoria: string; nome: string; email: string; senha: string; aceiteTermos: boolean; versaoTermos?: string }) =>
   chamar<Acesso>('POST', '/auth/cadastro', dados);
 export const esqueciSenha = (email: string) => chamar<{ ok: true; emailLigado: boolean }>('POST', '/auth/esqueci', { email });
@@ -1260,9 +1263,10 @@ export type PagamentoPlano = {
   faturaAberta: { link: string; valorCentavos: number; vencimento: string; status: string } | null;
   historico: { id: string; plano: string; valorCentavos: number; forma: string | null; vencimento: string; status: string; pagoEm: string | null; linkFatura: string | null }[];
 };
-export type PessoaEquipe = { id: string; nome: string; email: string; createdAt: string; ultimoAcesso: string | null };
+export type PessoaEquipe = { id: string; nome: string; email: string; createdAt: string; ultimoAcesso: string | null; dono: boolean };
 export const equipe = {
-  listar: () => chamar<{ pessoas: PessoaEquipe[]; limite: number | null; eu: string }>('GET', '/equipe'),
+  listar: () => chamar<{ pessoas: PessoaEquipe[]; limite: number | null; eu: string; souDono: boolean }>('GET', '/equipe'),
+  mudarFuncao: (id: string, dono: boolean) => chamar<{ ok: true }>('PUT', `/equipe/${id}/dono`, { dono }),
   convidar: (dados: { nome: string; email: string }) => chamar<{ id: string; nome: string } & LinkSenha>('POST', '/equipe', dados),
   remover: (id: string) => chamar<{ ok: true }>('DELETE', `/equipe/${id}`),
 };
@@ -1285,6 +1289,7 @@ export const buscarEmissoes = (empresaId: string) => chamar<Emissoes>('GET', `/e
 
 export type MinhaConta = {
   nome: string; email: string; papel: 'CONSULTORIA' | 'EMPRESA'; criadoEm: string; adminPlataforma: boolean; empresa: string | null;
+  dono: boolean; doisFatores: boolean; emailLigado: boolean;
   consultoria: { nome: string; cnpj: string | null; cidade: string | null; plano: string | null; logo: string | null };
 };
 export type Integracoes = {
@@ -1297,7 +1302,8 @@ export type Integracoes = {
 export const conta = {
   ver: () => chamar<MinhaConta>('GET', '/conta'),
   salvar: (d: { nome?: string; email?: string; nomeConsultoria?: string; cnpj?: string; cidade?: string }) => chamar<MinhaConta>('PUT', '/conta', d),
-  trocarSenha: (atual: string, nova: string) => chamar<{ ok: boolean }>('PUT', '/conta/senha', { atual, nova }),
+  trocarSenha: (atual: string, nova: string) => chamar<{ ok: boolean } & Acesso>('PUT', '/conta/senha', { atual, nova }),
+  doisFatores: (ligar: boolean, senha: string) => chamar<{ ok: boolean; doisFatores: boolean }>('PUT', '/conta/dois-fatores', { ligar, senha }),
   enviarLogo: (arq: File) => { const f = new FormData(); f.append('arquivo', arq); return chamar<unknown>('PUT', '/consultoria/logo', f); },
   integracoes: () => chamar<Integracoes>('GET', '/integracoes'),
 };
