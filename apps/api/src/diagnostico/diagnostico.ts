@@ -12,6 +12,7 @@ import { situacaoPlano } from '../common/plano';
 import { ambienteDaChave, asaas, asaasAmbienteTrocado, asaasLigado, asaasProducao } from '../pagamentos/asaas';
 import { PrismaService } from '../prisma/prisma.service';
 import { registrarFalha } from './falhas';
+import { BackupTarefaController, itemBackup, itensEspaco } from './backup-espaco';
 
 // Diagnóstico do Painel ADM ("Doutor Nexo").
 // Cada clique faz uma varredura na hora: motor, banco (Supabase), cadastros, pagamentos (Asaas), erros recentes, site e avisos.
@@ -84,6 +85,8 @@ export class DiagnosticoService {
       this.seguro('migracoes', GRUPOS.motor, 'Banco sincronizado com o sistema', () => this.migracoes()),
       this.seguro('configuracoes', GRUPOS.motor, 'Configurações do servidor', () => this.configuracoes()),
       this.seguro('arquivos', GRUPOS.motor, 'Arquivos (logos, PDFs, fotos)', () => this.arquivos()),
+      this.seguro('backup', GRUPOS.motor, 'Backup', async () => [await itemBackup(this.prisma, GRUPOS.motor)]),
+      this.seguro('espaco', GRUPOS.motor, 'Espaço usado no Supabase', () => itensEspaco(this.prisma, GRUPOS.motor)),
       this.seguro('cadastros', GRUPOS.cadastros, 'Cadastros', () => this.cadastros()),
       this.seguro('pagamentos', GRUPOS.pagamentos, 'Pagamentos', () => this.pagamentos()),
       this.seguro('tarefas', GRUPOS.pagamentos, 'Tarefas automáticas', () => this.tarefas()),
@@ -653,5 +656,5 @@ export class FalhaTelaController {
   @Post('falha-tela') @HttpCode(200) falha(@Body() dto: FalhaTelaDto) { return this.s.falhaDaTela(dto); }
 }
 
-@Module({ controllers: [DiagnosticoController, FalhaTelaController], providers: [DiagnosticoService] })
+@Module({ controllers: [DiagnosticoController, FalhaTelaController, BackupTarefaController], providers: [DiagnosticoService] })
 export class DiagnosticoModule {}

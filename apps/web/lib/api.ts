@@ -122,7 +122,8 @@ export const MOTIVOS_DEVOLUCAO = [['TROCA', 'Troca por outro'], ['DANIFICADO', '
 // Situação do exame demissional de quem saiu (NR-07: dispensa se o último exame for recente).
 export type SituacaoDemissional = { feito: boolean; dispensa: boolean; limite: number; dias: number | null };
 export type ColaboradorDetalhe = Colaborador & { ghe: Ghe | null; asos: Aso[]; entregasEpi: EntregaEpi[]; presencasFaciais?: { refId: string; codigo: string }[]; demissional?: SituacaoDemissional | null };
-export type Pendencia = { titulo: string; detalhe: string; nivel: 'vencido' | 'pendente' | 'em-dia' };
+// rota: tela onde a pendência se resolve (botão "Resolver"), no formato do menu (ver resolverEm em lib/menu.ts).
+export type Pendencia = { titulo: string; detalhe: string; nivel: 'vencido' | 'pendente' | 'em-dia'; rota?: string };
 export type Vencimento = { tipo: string; versao: number; vencimento: string; dias: number };
 export type NumerosPainel = { colaboradores: number; acoesAbertas: number; acoesAtrasadas: number; relatosNovos: number; pendenciasVencidas: number; riscosPorTipo: Record<string, number>; riscosAltos: number };
 export type Painel = { empresa: Pick<Empresa, 'id' | 'razaoSocial' | 'cnpj'>; percentual: number; pendencias: Pendencia[]; vencimentos: Vencimento[]; numeros?: NumerosPainel };
