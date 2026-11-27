@@ -48,3 +48,13 @@ export class RedefinirDto {
   @Length(8, 100, { message: 'A senha precisa ter pelo menos 8 caracteres.' })
   senha!: string;
 }
+
+export class CodigoDto {
+  @IsString()
+  @Length(10, 2000)
+  desafio!: string;
+
+  @IsString()
+  @Length(6, 6, { message: 'O código tem 6 números.' })
+  codigo!: string;
+}

@@ -4,13 +4,20 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { JaConectado } from '@/components/JaConectado';
 import { Aviso, Botao, Campo } from '@/components/ui';
-import { entrar } from '@/lib/api';
+import { Acesso, entrar, entrarComCodigo, PedeCodigo } from '@/lib/api';
 import { salvarToken, salvarUsuario } from '@/lib/sessao';
 
 // Entrar: só para quem já tem conta. Quem chega pela primeira vez começa pela página inicial (/).
 export default function Entrar() {
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [codigo, setCodigo] = useState<PedeCodigo | null>(null);
+
+  function dentro(acesso: Acesso) {
+    salvarToken(acesso.token);
+    salvarUsuario(acesso.usuario);
+    window.location.href = '/';
+  }
 
   async function enviar(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -18,10 +25,10 @@ export default function Entrar() {
     setEnviando(true);
     const dados = new FormData(evento.currentTarget);
     try {
-      const acesso = await entrar({ email: String(dados.get('email')), senha: String(dados.get('senha')) });
-      salvarToken(acesso.token);
-      salvarUsuario(acesso.usuario);
-      window.location.href = '/';
+      if (codigo) return dentro(await entrarComCodigo(codigo.desafio, String(dados.get('codigo')).replace(/\D/g, '')));
+      const r = await entrar({ email: String(dados.get('email')), senha: String(dados.get('senha')) });
+      if ('precisaCodigo' in r) { setCodigo(r); setEnviando(false); return; }
+      dentro(r);
     } catch (e) {
       setErro((e as Error).message);
       setEnviando(false);
@@ -37,15 +44,25 @@ export default function Entrar() {
           <p className="text-sm text-text/60">Que bom ter você de volta.</p>
         </div>
         <JaConectado />
-        <Campo id="email" name="email" type="email" rotulo="E-mail" required autoComplete="email" placeholder="Ex.: voce@empresa.com.br" />
-        <div>
-          <Campo id="senha" name="senha" type="password" rotulo="Senha" required autoComplete="current-password" placeholder="Sua senha" />
-          <p className="mt-2 text-right text-sm">
-            <Link href="/esqueci-senha" className="font-semibold text-primary hover:underline">Esqueci minha senha</Link>
-          </p>
-        </div>
+        {codigo ? (
+          <div className="space-y-3">
+            <p className="text-sm">Mandamos um código de 6 números para <strong>{codigo.email}</strong>. Ele vale por 10 minutos.</p>
+            <Campo id="codigo" name="codigo" rotulo="Código" required inputMode="numeric" autoComplete="one-time-code" maxLength={7} placeholder="Ex.: 123456" autoFocus />
+            <button type="button" className="text-sm font-semibold text-primary hover:underline" onClick={() => { setCodigo(null); setErro(null); }}>Voltar e mandar outro código</button>
+          </div>
+        ) : (
+          <>
+            <Campo id="email" name="email" type="email" rotulo="E-mail" required autoComplete="email" placeholder="Ex.: voce@empresa.com.br" />
+            <div>
+              <Campo id="senha" name="senha" type="password" rotulo="Senha" required autoComplete="current-password" placeholder="Sua senha" />
+              <p className="mt-2 text-right text-sm">
+                <Link href="/esqueci-senha" className="font-semibold text-primary hover:underline">Esqueci minha senha</Link>
+              </p>
+            </div>
+          </>
+        )}
         {erro && <Aviso tipo="erro">{erro}</Aviso>}
-        <Botao type="submit" disabled={enviando} className="w-full">{enviando ? 'Entrando…' : 'Entrar'}</Botao>
+        <Botao type="submit" disabled={enviando} className="w-full">{enviando ? 'Entrando…' : codigo ? 'Confirmar código' : 'Entrar'}</Botao>
         <p className="text-center text-sm">
           Ainda não tem conta? <Link href="/#planos" className="font-semibold text-primary">Escolha um plano</Link>
         </p>

@@ -17,7 +17,7 @@ export function salvarToken(token: string) {
 }
 
 // Quem entrou: a consultoria vê todas as empresas; a empresa cliente vê só a dela.
-export type Usuario = { nome: string; papel: 'CONSULTORIA' | 'EMPRESA'; empresaId: string | null; adminPlataforma?: boolean };
+export type Usuario = { nome: string; papel: 'CONSULTORIA' | 'EMPRESA'; empresaId: string | null; adminPlataforma?: boolean; dono?: boolean };
 const CHAVE_USUARIO = 'safety-nexo:usuario';
 
 export function salvarUsuario(usuario: Usuario) {

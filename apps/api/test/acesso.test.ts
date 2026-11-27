@@ -6,16 +6,17 @@ import { AuthGuard } from '../src/auth/auth.guard';
 import { PERMITE_EMPRESA } from '../src/auth/permite-empresa.decorator';
 import { ROTA_PUBLICA } from '../src/auth/publica.decorator';
 import { SOMENTE_ADMIN } from '../src/admin/admin-plataforma';
+import { SO_DONO } from '../src/auth/so-dono.decorator';
 
-type Usuario = { id: string; email: string; papel: string; empresaId: string | null; bloqueada?: boolean };
+type Usuario = { id: string; email: string; papel: string; empresaId: string | null; bloqueada?: boolean; dono?: boolean; senhaHash?: string };
 
-function guarda(usuario: Usuario | null, marcas: Record<string, unknown> = {}) {
-  const auth = { verificar: (t: string) => { if (t !== 'ok') throw new Error('token ruim'); return { sub: 'u1' }; } };
+function guarda(usuario: Usuario | null, marcas: Record<string, unknown> = {}, marcaSenha?: string) {
+  const auth = { verificar: (t: string) => { if (t !== 'ok') throw new Error('token ruim'); return { sub: 'u1', s: marcaSenha }; } };
   const reflector = { getAllAndOverride: (chave: string) => marcas[chave] };
   const prisma = {
     usuario: {
       findUnique: async () => usuario && {
-        ...usuario, consultoriaId: 'c1', ultimoAcesso: new Date(), senhaHash: 'x',
+        senhaHash: 'hash-da-senha-atual-1234', ...usuario, consultoriaId: 'c1', ultimoAcesso: new Date(),
         consultoria: { bloqueada: !!usuario.bloqueada, plano: 'ENTERPRISE', testeAte: null, planoPagoAte: null, assinaturaStatus: null, usuarios: [{ email: 'dono@consultoria.com' }] },
       },
       update: async () => ({}),
@@ -58,4 +59,18 @@ test('Login da empresa cliente não usa telas só da consultoria', async () => {
 
 test('Painel ADM é só da dona da plataforma', async () => {
   await assert.rejects(guarda(consultoria, { [SOMENTE_ADMIN]: true }).canActivate(pedido('/admin')), ForbiddenException);
+});
+
+test('Técnico da equipe não mexe em plano, pagamento nem equipe; o dono mexe', async () => {
+  const tecnico: Usuario = { id: 'u1', email: 'tecnico@consultoria.com', papel: 'CONSULTORIA', empresaId: null, dono: false };
+  await assert.rejects(guarda(tecnico, { [SO_DONO]: true }).canActivate(pedido('/equipe', 'ok', 'POST')), ForbiddenException);
+  assert.equal(await guarda(tecnico).canActivate(pedido('/empresas/e1/ghes', 'ok', 'POST')), true);
+  assert.equal(await guarda({ ...tecnico, dono: true }, { [SO_DONO]: true }).canActivate(pedido('/equipe', 'ok', 'POST')), true);
+});
+
+test('Senha trocada: a sessão aberta em outro aparelho deixa de valer', async () => {
+  const atual = 'hash-da-senha-atual-1234'.slice(-12);
+  assert.equal(await guarda(consultoria, {}, atual).canActivate(pedido('/empresas')), true);
+  await assert.rejects(guarda(consultoria, {}, 'marca-antiga!').canActivate(pedido('/empresas')), UnauthorizedException);
+  assert.equal(await guarda(consultoria, {}, undefined).canActivate(pedido('/empresas')), true); // sessões antigas, sem marca
 });

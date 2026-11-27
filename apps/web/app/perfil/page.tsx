@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Aviso, Botao, Campo, Cartao } from '@/components/ui';
 import { conta, equipe, MinhaConta } from '@/lib/api';
-import { lerToken, lerUsuario, sair, salvarUsuario } from '@/lib/sessao';
+import { lerToken, lerUsuario, sair, salvarToken, salvarUsuario } from '@/lib/sessao';
 import { CampoCnpj, preencherComCnpj } from '@/components/BuscaCepCnpj';
 
 // Meu perfil: nome, e-mail e senha de quem entrou; para a consultoria, também os dados e a logo
@@ -72,7 +72,12 @@ export default function MeuPerfil() {
               const d = new FormData(form);
               const nova = String(d.get('nova'));
               if (nova !== String(d.get('repetir'))) { setAviso({ tipo: 'erro', texto: 'A nova senha e a repetição não estão iguais.' }); return; }
-              fazer('senha', async () => { await conta.trocarSenha(String(d.get('atual')), nova); form.reset(); return 'Senha trocada. Use a nova senha na próxima vez que entrar.'; });
+              fazer('senha', async () => {
+                const r = await conta.trocarSenha(String(d.get('atual')), nova);
+                if (r.token) { salvarToken(r.token); salvarUsuario(r.usuario); }
+                form.reset();
+                return 'Senha trocada. Este aparelho continua dentro; os outros vão pedir a senha nova.';
+              });
             }}>
               <Campo id="atual" name="atual" type="password" rotulo="Senha atual" required autoComplete="current-password" />
               <Campo id="nova" name="nova" type="password" rotulo="Nova senha" required minLength={8} autoComplete="new-password" dica="Pelo menos 8 caracteres." />
@@ -81,7 +86,38 @@ export default function MeuPerfil() {
             </form>
           </Cartao>
 
-          {consultoria && (
+          <Cartao titulo="Verificação em duas etapas">
+            <p className="mb-3 text-sm text-text/70">
+              {dados.doisFatores
+                ? 'Ligada. Ao entrar, além da senha, você digita um código que chega no seu e-mail.'
+                : 'Desligada. Ligando, além da senha, o sistema pede um código que chega no seu e-mail. Assim, quem descobrir a sua senha não entra.'}
+            </p>
+            {!dados.emailLigado && !dados.doisFatores ? (
+              <p className="text-sm text-text/60">O envio de e-mails do sistema está desligado agora. Quando voltar, dá para ligar aqui.</p>
+            ) : (
+              <form className="flex flex-wrap items-end gap-3" onSubmit={(ev) => {
+                ev.preventDefault();
+                const form = ev.currentTarget;
+                const senha = String(new FormData(form).get('senha2f'));
+                const ligar = !dados.doisFatores;
+                fazer('2f', async () => {
+                  await conta.doisFatores(ligar, senha);
+                  setDados({ ...dados, doisFatores: ligar });
+                  form.reset();
+                  return ligar ? 'Verificação em duas etapas ligada. Na próxima vez que entrar, o código chega no seu e-mail.' : 'Verificação em duas etapas desligada.';
+                });
+              }}>
+                <Campo id="senha2f" name="senha2f" type="password" rotulo="Sua senha, para confirmar" required autoComplete="current-password" className="min-w-60 flex-1" />
+                <Botao type="submit" variante={dados.doisFatores ? 'secundario' : 'primario'} disabled={ocupado === '2f'}>{dados.doisFatores ? 'Desligar' : 'Ligar'}</Botao>
+              </form>
+            )}
+          </Cartao>
+
+          {consultoria && !dados.dono && (
+            <p className="card-pendente rounded-card p-3 text-sm">Você entra como <strong>técnico</strong>: faz todo o trabalho de SST, mas plano, pagamento, dados da consultoria, equipe e exclusão de empresa ficam com o dono da conta.</p>
+          )}
+
+          {consultoria && dados.dono && (
             <Cartao titulo="Minha consultoria">
               <form className="grid gap-4 md:grid-cols-2" onSubmit={(ev) => {
                 ev.preventDefault();
@@ -119,7 +155,7 @@ export default function MeuPerfil() {
   );
 }
 
-// Equipe da consultoria: mais pessoas com o mesmo acesso. Convite por link, como o da empresa cliente.
+// Equipe da consultoria: dono e técnicos. Convite por link, como o da empresa cliente.
 function Equipe() {
   const [dados, setDados] = useState<Awaited<ReturnType<typeof equipe.listar>> | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'erro' | 'ok'; texto: string } | null>(null);
@@ -131,24 +167,37 @@ function Equipe() {
   return (
     <Cartao titulo="Minha equipe">
       <p className="mb-4 text-sm text-text/60">
-        Pessoas da consultoria com o mesmo acesso que você.{' '}
+        O <strong>dono</strong> cuida do plano, do pagamento, dos dados da consultoria, da equipe e pode excluir empresas. O <strong>técnico</strong> faz todo o trabalho de SST.{' '}
         {dados.limite == null ? 'Seu plano não tem limite de pessoas.' : `Seu plano permite ${dados.limite} pessoa${dados.limite === 1 ? '' : 's'}.`}
       </p>
       <ul className="mb-4 divide-y divide-border text-sm">
         {dados.pessoas.map((p) => (
           <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-            <span>{p.nome} · <span className="text-text/60">{p.email}</span>{p.id === dados.eu ? <span className="text-text/60"> (você)</span> : null}</span>
-            {p.id !== dados.eu && (
-              <button className="text-xs text-danger hover:underline" onClick={async () => {
-                try { await equipe.remover(p.id); await carregar(); setAviso({ tipo: 'ok', texto: 'Acesso removido.' }); }
-                catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
-              }}>Remover</button>
+            <span>
+              {p.nome} · <span className="text-text/60">{p.email}</span>{p.id === dados.eu ? <span className="text-text/60"> (você)</span> : null}
+              <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${p.dono ? 'bg-primary/10 text-primary' : 'bg-border/60 text-text/70'}`}>{p.dono ? 'Dono' : 'Técnico'}</span>
+            </span>
+            {dados.souDono && (
+              <span className="flex gap-3">
+                <button className="text-xs font-semibold text-primary hover:underline" onClick={async () => {
+                  try { await equipe.mudarFuncao(p.id, !p.dono); await carregar(); setAviso({ tipo: 'ok', texto: p.dono ? `${p.nome} agora é técnico.` : `${p.nome} agora também é dono.` }); }
+                  catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+                }}>{p.dono ? 'Tornar técnico' : 'Tornar dono'}</button>
+                {p.id !== dados.eu && (
+                  <button className="text-xs text-danger hover:underline" onClick={async () => {
+                    try { await equipe.remover(p.id); await carregar(); setAviso({ tipo: 'ok', texto: 'Acesso removido.' }); }
+                    catch (e) { setAviso({ tipo: 'erro', texto: (e as Error).message }); }
+                  }}>Remover</button>
+                )}
+              </span>
             )}
           </li>
         ))}
       </ul>
       {aviso && <div className="mb-3"><Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso></div>}
-      {cheio ? (
+      {!dados.souDono ? (
+        <p className="text-sm text-text/60">Só o dono da conta convida ou remove pessoas da equipe.</p>
+      ) : cheio ? (
         <p className="card-pendente rounded-card p-3 text-sm">
           Para pôr mais pessoas na equipe, <Link href="/plano?recurso=equipe" className="font-semibold text-primary">veja os planos</Link>.
         </p>

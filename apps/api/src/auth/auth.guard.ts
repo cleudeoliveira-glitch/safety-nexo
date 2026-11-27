@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { PERMITE_EMPRESA } from './permite-empresa.decorator';
 import { ROTA_PUBLICA } from './publica.decorator';
+import { MENSAGEM_SO_DONO, SO_DONO } from './so-dono.decorator';
 
 // Toda rota exige o token "Bearer", exceto as marcadas com @Publica().
 // O login da empresa cliente só usa rotas marcadas com @PermiteEmpresa() e só da própria empresa.
@@ -25,8 +26,9 @@ export class AuthGuard implements CanActivate {
     const [tipo, token] = String(req.headers.authorization ?? '').split(' ');
     if (tipo !== 'Bearer' || !token) throw new UnauthorizedException('Entre no sistema para continuar.');
     let sub: string;
+    let marcaSenha: string | undefined;
     try {
-      sub = this.auth.verificar(token).sub;
+      ({ sub, s: marcaSenha } = this.auth.verificar(token));
     } catch {
       throw new UnauthorizedException('Sua sessão expirou. Entre novamente.');
     }
@@ -34,6 +36,8 @@ export class AuthGuard implements CanActivate {
     // Lê o usuário a cada pedido: um acesso removido para de funcionar na hora.
     const usuario = await this.prisma.usuario.findUnique({ where: { id: sub }, include: { consultoria: { select: { bloqueada: true, plano: true, testeAte: true, planoPagoAte: true, assinaturaStatus: true, usuarios: { where: { papel: 'CONSULTORIA' }, select: { email: true } } } } } });
     if (!usuario) throw new UnauthorizedException('Seu acesso foi removido. Fale com a sua consultoria.');
+    // Senha trocada: as sessões abertas em outros aparelhos deixam de valer na hora.
+    if (marcaSenha && marcaSenha !== usuario.senhaHash.slice(-12)) throw new UnauthorizedException('Sua senha foi trocada. Entre novamente.');
     const admin = usuario.papel === 'CONSULTORIA' && ehAdminPlataforma(usuario.email);
     // Consultoria bloqueada pelo painel ADM para de funcionar na hora (inclusive o login das empresas dela).
     if (usuario.consultoria.bloqueada && !admin) {
@@ -45,7 +49,7 @@ export class AuthGuard implements CanActivate {
     if (caixa) caixa.plano = plano;
     // Exclusão feita pela consultoria: o que sair vai antes para a Lixeira (30 dias), ver lixeira/.
     if (caixa && req.method === 'DELETE' && usuario.papel !== 'EMPRESA') caixa.lixeira = { arvores: [], arquivos: [] };
-    req.sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId, papel: usuario.papel, empresaId: usuario.empresaId, admin, plano };
+    req.sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId, papel: usuario.papel, empresaId: usuario.empresaId, dono: usuario.papel === 'CONSULTORIA' && (usuario.dono || admin), admin, plano };
 
     // Último acesso (para o painel ADM), gravado no máximo uma vez por hora.
     if (!usuario.ultimoAcesso || Date.now() - usuario.ultimoAcesso.getTime() > 3600_000) {
@@ -59,6 +63,10 @@ export class AuthGuard implements CanActivate {
 
     const exige = this.reflector.getAllAndOverride<{ r: Recurso; oQue: string } | undefined>(RECURSO, alvos);
     if (exige && !temRecurso(plano, exige.r)) throw new ForbiddenException(mensagemUpgrade(exige.r, exige.oQue));
+
+    if (usuario.papel === 'CONSULTORIA' && !usuario.dono && !admin && this.reflector.getAllAndOverride<boolean>(SO_DONO, alvos)) {
+      throw new ForbiddenException(MENSAGEM_SO_DONO);
+    }
 
     if (this.reflector.getAllAndOverride<boolean>(SOMENTE_ADMIN, alvos)) {
       if (!admin) throw new ForbiddenException('Esta área é só do administrador da plataforma.');

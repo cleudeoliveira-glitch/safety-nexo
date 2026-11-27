@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { createHash, randomInt, timingSafeEqual } from 'crypto';
 import { ehAdminPlataforma } from '../admin/admin-plataforma';
 import { PrismaService } from '../prisma/prisma.service';
 import { emailLigado, emailMoldura, enviarEmail, WEB } from '../common/email';
@@ -15,8 +16,15 @@ const HASH_FALSO = bcrypt.hashSync('senha-que-nao-existe', 10);
 type TokenSenha = { sub: string; uso: 'senha'; v: string };
 const DIAS_TESTE = 14;
 
-export type Sessao = { sub: string; consultoriaId: string };
-type UsuarioEmitido = { id: string; nome: string; email: string; consultoriaId: string; papel: string; empresaId: string | null };
+// s: marca da senha (fim do hash). Quando a senha muda, as sessões abertas em outros aparelhos deixam de valer.
+export type Sessao = { sub: string; consultoriaId: string; s?: string };
+type UsuarioEmitido = { id: string; nome: string; email: string; consultoriaId: string; papel: string; empresaId: string | null; senhaHash: string; dono?: boolean };
+
+// Verificação em duas etapas: o "desafio" é um token de 10 minutos que guarda só o resumo do código mandado por e-mail.
+type Desafio = { sub: string; uso: '2fa'; h: string };
+const resumoCodigo = (sub: string, codigo: string) => createHash('sha256').update(`${sub}:${codigo.trim()}`).digest('hex');
+const tentativasCodigo = new Map<string, number>();
+const mascarar = (email: string) => email.replace(/^(.{2})[^@]*(@.*)$/, '$1•••$2');
 
 @Injectable()
 export class AuthService {
@@ -41,6 +49,7 @@ export class AuthService {
         nome: dto.nome.trim(),
         email,
         senhaHash,
+        dono: true, // quem cria a conta é o dono dela
         consultoria: {
           create: {
             nome: dto.nomeConsultoria.trim(),
@@ -110,8 +119,49 @@ export class AuthService {
     if (usuario.consultoria.bloqueada && !this.ehAdmin(usuario)) {
       throw new ForbiddenException('Este acesso está suspenso. Fale com o suporte do Safety Nexo.');
     }
+    // Verificação em duas etapas ligada: antes de entrar, manda um código por e-mail.
+    if (usuario.doisFatores && emailLigado()) return this.mandarCodigo(usuario);
     await this.prisma.usuario.update({ where: { id: usuario.id }, data: { ultimoAcesso: new Date() } });
     this.avisarEntrada(usuario);
+    return this.emitir(usuario);
+  }
+
+  private async mandarCodigo(usuario: { id: string; nome: string; email: string }) {
+    const codigo = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const corpo = `<p>Olá, ${usuario.nome.split(' ')[0]}.</p><p>Seu código para entrar no Safety Nexo é:</p>
+      <p style="font-size:28px;font-weight:700;letter-spacing:6px;color:#0E4A5B">${codigo}</p>
+      <p style="font-size:13px;color:#6b7280">Ele vale por 10 minutos. Se não foi você que tentou entrar, troque a sua senha.</p>`;
+    await enviarEmail([usuario.email], `Safety Nexo: código ${codigo}`, emailMoldura('Código para entrar', corpo)).catch((e) => {
+      this.log.warn(`código de entrada não saiu: ${(e as Error).message}`);
+      throw new BadRequestException('Não consegui mandar o código por e-mail agora. Tente de novo em alguns minutos.');
+    });
+    const desafio = this.jwt.sign({ sub: usuario.id, uso: '2fa', h: resumoCodigo(usuario.id, codigo) } satisfies Desafio, { expiresIn: '10m' });
+    return { precisaCodigo: true, desafio, email: mascarar(usuario.email) };
+  }
+
+  async entrarComCodigo(desafio: string, codigo: string) {
+    let d: Desafio;
+    try { d = this.jwt.verify<Desafio>(desafio); } catch { throw new UnauthorizedException('O código venceu. Entre de novo para receber outro.'); }
+    if (d.uso !== '2fa') throw new UnauthorizedException('Entre de novo para receber outro código.');
+    const tentativas = (tentativasCodigo.get(desafio) ?? 0) + 1;
+    tentativasCodigo.set(desafio, tentativas);
+    if (tentativasCodigo.size > 5000) tentativasCodigo.clear();
+    if (tentativas > 5) throw new UnauthorizedException('Muitos códigos errados. Entre de novo para receber outro.');
+    const certo = Buffer.from(d.h, 'hex');
+    const veio = Buffer.from(resumoCodigo(d.sub, codigo), 'hex');
+    if (certo.length !== veio.length || !timingSafeEqual(certo, veio)) throw new UnauthorizedException('Código errado. Confira o e-mail e digite de novo.');
+    tentativasCodigo.delete(desafio);
+    const usuario = await this.prisma.usuario.findUnique({ where: { id: d.sub }, include: { consultoria: { select: { bloqueada: true, nome: true } } } });
+    if (!usuario) throw new UnauthorizedException('Seu acesso foi removido. Fale com a sua consultoria.');
+    if (usuario.consultoria.bloqueada && !this.ehAdmin(usuario)) throw new ForbiddenException('Este acesso está suspenso. Fale com o suporte do Safety Nexo.');
+    await this.prisma.usuario.update({ where: { id: usuario.id }, data: { ultimoAcesso: new Date() } });
+    this.avisarEntrada(usuario);
+    return this.emitir(usuario);
+  }
+
+  // Sessão nova para quem acabou de trocar a senha (os outros aparelhos saem, este continua).
+  async novaSessao(usuarioId: string) {
+    const usuario = await this.prisma.usuario.findUniqueOrThrow({ where: { id: usuarioId } });
     return this.emitir(usuario);
   }
 
@@ -135,10 +185,10 @@ export class AuthService {
   }
 
   private emitir(usuario: UsuarioEmitido) {
-    const sessao: Sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId };
+    const sessao: Sessao = { sub: usuario.id, consultoriaId: usuario.consultoriaId, s: usuario.senhaHash.slice(-12) };
     return {
       token: this.jwt.sign(sessao),
-      usuario: { nome: usuario.nome, papel: usuario.papel, empresaId: usuario.empresaId, adminPlataforma: this.ehAdmin(usuario) },
+      usuario: { nome: usuario.nome, papel: usuario.papel, empresaId: usuario.empresaId, adminPlataforma: this.ehAdmin(usuario), dono: usuario.papel === 'CONSULTORIA' && (!!usuario.dono || this.ehAdmin(usuario)) },
     };
   }
 

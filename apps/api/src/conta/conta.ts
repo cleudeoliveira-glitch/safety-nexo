@@ -1,8 +1,11 @@
 import { BadRequestException, Body, Controller, ConflictException, ForbiddenException, Get, Injectable, Module, NotFoundException, Put } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { IsEmail, IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, Length, MaxLength } from 'class-validator';
 import { ehAdminPlataforma } from '../admin/admin-plataforma';
+import { AuthModule } from '../auth/auth.module';
+import { AuthService } from '../auth/auth.service';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
+import { emailLigado } from '../common/email';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { guardaNaNuvem } from '../common/guarda';
 import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
@@ -19,6 +22,11 @@ class ContaDto {
   @IsOptional() @IsString() @MaxLength(120) cidade?: string;
 }
 
+class DoisFatoresDto {
+  @IsBoolean() ligar!: boolean;
+  @IsString() senha!: string;
+}
+
 class SenhaDto {
   @IsString() atual!: string;
   @IsString() @Length(8, 100, { message: 'A nova senha precisa ter pelo menos 8 caracteres.' }) nova!: string;
@@ -27,7 +35,7 @@ class SenhaDto {
 // Meu perfil: dados de quem entrou e, para a consultoria, os dados que vão nos documentos.
 @Injectable()
 export class ContaService {
-  constructor(private readonly prisma: PrismaService, private readonly logos: LogosService) {}
+  constructor(private readonly prisma: PrismaService, private readonly logos: LogosService, private readonly auth: AuthService) {}
 
   private async usuario(id: string) {
     const u = await this.prisma.usuario.findUnique({ where: { id }, include: { consultoria: true, empresa: { select: { razaoSocial: true } } } });
@@ -40,6 +48,7 @@ export class ContaService {
     const c = u.consultoria;
     return {
       nome: u.nome, email: u.email, papel: u.papel, criadoEm: u.createdAt,
+      dono: u.papel === 'CONSULTORIA' && (u.dono || ehAdminPlataforma(u.email)), doisFatores: u.doisFatores, emailLigado: emailLigado(),
       adminPlataforma: u.papel === 'CONSULTORIA' && ehAdminPlataforma(u.email),
       empresa: u.empresa?.razaoSocial ?? null,
       consultoria: u.papel === 'CONSULTORIA'
@@ -64,6 +73,7 @@ export class ContaService {
     const daConsultoria = [dto.nomeConsultoria, dto.cnpj, dto.cidade].some((v) => v !== undefined);
     if (daConsultoria) {
       if (u.papel !== 'CONSULTORIA') throw new ForbiddenException('Os dados da consultoria são mudados pela própria consultoria.');
+      if (!sessao.dono) throw new ForbiddenException('Só o dono da conta muda os dados da consultoria.');
       const limpo = (v?: string) => (v === undefined ? undefined : v.trim() || null);
       const cnpj = dto.cnpj === undefined ? undefined : dto.cnpj.replace(/\D/g, '') || null;
       if (cnpj && cnpj.length !== 14) throw new BadRequestException('O CNPJ precisa ter 14 números.');
@@ -80,7 +90,17 @@ export class ContaService {
     if (!(await bcrypt.compare(dto.atual, u.senhaHash))) throw new BadRequestException('A senha atual não confere.');
     if (dto.atual === dto.nova) throw new BadRequestException('A nova senha precisa ser diferente da atual.');
     await this.prisma.usuario.update({ where: { id: u.id }, data: { senhaHash: await bcrypt.hash(dto.nova, 10) } });
-    return { ok: true };
+    // Os outros aparelhos saem na hora; este recebe uma sessão nova e continua dentro.
+    return { ok: true, ...(await this.auth.novaSessao(u.id)) };
+  }
+
+  // Verificação em duas etapas (código por e-mail). Pede a senha para ligar ou desligar.
+  async doisFatores(sessao: SessaoUsuario, dto: DoisFatoresDto) {
+    const u = await this.usuario(sessao.sub);
+    if (!(await bcrypt.compare(dto.senha, u.senhaHash))) throw new BadRequestException('A senha não confere.');
+    if (dto.ligar && !emailLigado()) throw new BadRequestException('O envio de e-mails do sistema está desligado agora, então não dá para mandar o código. Fale com o suporte.');
+    await this.prisma.usuario.update({ where: { id: u.id }, data: { doisFatores: dto.ligar } });
+    return { ok: true, doisFatores: dto.ligar };
   }
 
   // Tudo o que o Safety Nexo conecta, com o que já está ligado e o que falta.
@@ -114,6 +134,7 @@ export class ContaController {
   @Get() ver(@Sessao() s: SessaoUsuario) { return this.conta.ver(s); }
   @Put() salvar(@Sessao() s: SessaoUsuario, @Body() d: ContaDto) { return this.conta.salvar(s, d); }
   @Put('senha') senha(@Sessao() s: SessaoUsuario, @Body() d: SenhaDto) { return this.conta.trocarSenha(s, d); }
+  @Put('dois-fatores') doisFatores(@Sessao() s: SessaoUsuario, @Body() d: DoisFatoresDto) { return this.conta.doisFatores(s, d); }
 }
 
 // Só a consultoria vê as integrações (o login da empresa cliente não usa).
@@ -123,5 +144,5 @@ export class IntegracoesController {
   @Get() listar(@ConsultoriaId() c: string) { return this.conta.integracoes(c); }
 }
 
-@Module({ imports: [LogosModule], controllers: [ContaController, IntegracoesController], providers: [ContaService] })
+@Module({ imports: [LogosModule, AuthModule], controllers: [ContaController, IntegracoesController], providers: [ContaService] })
 export class ContaModule {}

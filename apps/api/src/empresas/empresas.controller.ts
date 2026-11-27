@@ -1,3 +1,4 @@
+import { SoDono } from '../auth/so-dono.decorator';
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { ExcluirEmpresaDto, CopiarDadosDto, CodigoExameDto, EsocialColaboradorDto, AvaliacaoRiscoDto, PericulosidadeDto, CreateColaboradorDto, CreateEmpresaDto, CreateExameGheDto, CreateGheDto, CreateGheRiscoDto, UpdateGheRiscoDto, MedicoPcmsoDto, UpdateEmpresaDto } from './dto';
@@ -66,6 +67,7 @@ export class EmpresasController {
   }
 
   // Só a consultoria exclui (a empresa cliente não tem acesso). Pede o nome da empresa como confirmação.
+  @SoDono()
   @Post(':empresaId/excluir')
   excluir(@ConsultoriaId() consultoriaId: string, @Param('empresaId') empresaId: string, @Body() dto: ExcluirEmpresaDto) {
     return this.empresas.excluir(consultoriaId, empresaId, dto.confirmacao);
