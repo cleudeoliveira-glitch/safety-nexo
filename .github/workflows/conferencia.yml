@@ -1,6 +1,7 @@
 # Conferência automática: roda a cada mudança proposta (pull request) e a cada envio ao main.
-# Monta o motor e o site e roda os testes das regras que não podem quebrar
+# Monta o motor, confere o site e roda os testes das regras que não podem quebrar
 # (separação por empresa, planos, CIPA, prazos de ASO e CAT, registro de alterações).
+# A montagem completa do site é feita pelo Netlify, na prévia do próprio PR.
 # Se ficar vermelho, a mudança não deve ser juntada até ser corrigida.
 name: Conferência automática
 
@@ -41,7 +42,4 @@ jobs:
         working-directory: apps/api
       - name: Site - conferir os tipos
         run: npm run typecheck
-        working-directory: apps/web
-      - name: Site - montar
-        run: npm run build
         working-directory: apps/web
