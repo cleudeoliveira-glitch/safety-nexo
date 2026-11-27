@@ -89,7 +89,7 @@ export default function MeuPerfil() {
           <Cartao titulo="Verificação em duas etapas">
             <p className="mb-3 text-sm text-text/70">
               {dados.doisFatores
-                ? 'Ligada. Ao entrar, além da senha, você digita um código que chega no seu e-mail.'
+                ? 'Ligada. Na hora de entrar, depois da senha, você digita um código que chega no seu e-mail. Para ver funcionando, saia da conta e entre de novo.'
                 : 'Desligada. Ligando, além da senha, o sistema pede um código que chega no seu e-mail. Assim, quem descobrir a sua senha não entra.'}
             </p>
             {!dados.emailLigado && !dados.doisFatores ? (
@@ -104,7 +104,7 @@ export default function MeuPerfil() {
                   await conta.doisFatores(ligar, senha);
                   setDados({ ...dados, doisFatores: ligar });
                   form.reset();
-                  return ligar ? 'Verificação em duas etapas ligada. Na próxima vez que entrar, o código chega no seu e-mail.' : 'Verificação em duas etapas desligada.';
+                  return ligar ? `Verificação em duas etapas ligada. Mandamos um e-mail de confirmação para ${dados.email} agora. O código de 6 números chega na próxima vez que você entrar.` : 'Verificação em duas etapas desligada.';
                 });
               }}>
                 <Campo id="senha2f" name="senha2f" type="password" rotulo="Sua senha, para confirmar" required autoComplete="current-password" className="min-w-60 flex-1" />
