@@ -5,7 +5,7 @@ import { ehAdminPlataforma } from '../admin/admin-plataforma';
 import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';
 import { PermiteEmpresa } from '../auth/permite-empresa.decorator';
-import { emailLigado } from '../common/email';
+import { emailLigado, emailMoldura, enviarEmail } from '../common/email';
 import { ConsultoriaId } from '../common/consultoria.decorator';
 import { guardaNaNuvem } from '../common/guarda';
 import { Sessao, SessaoUsuario } from '../common/sessao.decorator';
@@ -99,6 +99,16 @@ export class ContaService {
     const u = await this.usuario(sessao.sub);
     if (!(await bcrypt.compare(dto.senha, u.senhaHash))) throw new BadRequestException('A senha não confere.');
     if (dto.ligar && !emailLigado()) throw new BadRequestException('O envio de e-mails do sistema está desligado agora, então não dá para mandar o código. Fale com o suporte.');
+    // Ao ligar, manda um e-mail de confirmação na hora: assim a pessoa vê que o e-mail chega
+    // e não fica presa fora da conta se o endereço estiver errado. Se não sair, não liga.
+    if (dto.ligar && !u.doisFatores) {
+      const corpo = `<p>Olá, ${u.nome.split(' ')[0]}.</p><p>A verificação em duas etapas foi ligada na sua conta do Safety Nexo.</p>
+        <p>A partir de agora, depois da senha, o sistema pede um código de 6 números que chega neste e-mail. O primeiro código vem na próxima vez que você entrar.</p>
+        <p style="font-size:13px;color:#6b7280">Se não foi você, entre no sistema, troque a senha e desligue em Meu perfil.</p>`;
+      await enviarEmail([u.email], 'Safety Nexo: verificação em duas etapas ligada', emailMoldura('Verificação em duas etapas ligada', corpo)).catch((e) => {
+        throw new BadRequestException(`Não consegui mandar e-mail para ${u.email} agora (${(e as Error).message.slice(0, 120)}). A verificação não foi ligada, para você não ficar sem entrar. Confira o e-mail em Meus dados e tente de novo.`);
+      });
+    }
     await this.prisma.usuario.update({ where: { id: u.id }, data: { doisFatores: dto.ligar } });
     return { ok: true, doisFatores: dto.ligar };
   }
