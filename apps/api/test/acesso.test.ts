@@ -17,7 +17,7 @@ function guarda(usuario: Usuario | null, marcas: Record<string, unknown> = {}, m
     usuario: {
       findUnique: async () => usuario && {
         senhaHash: 'hash-da-senha-atual-1234', ...usuario, consultoriaId: 'c1', ultimoAcesso: new Date(),
-        consultoria: { bloqueada: !!usuario.bloqueada, plano: 'ENTERPRISE', testeAte: null, planoPagoAte: null, assinaturaStatus: null, usuarios: [{ email: 'dono@consultoria.com' }] },
+        consultoria: { id: 'c1', limiteEmpresas: 100000, empresasAtivas: [], bloqueada: !!usuario.bloqueada, plano: 'ENTERPRISE', testeAte: null, planoPagoAte: null, assinaturaStatus: null, usuarios: [{ email: 'dono@consultoria.com' }] },
       },
       update: async () => ({}),
     },

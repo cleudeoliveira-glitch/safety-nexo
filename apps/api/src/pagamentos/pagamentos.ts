@@ -77,9 +77,8 @@ export class PagamentosService {
     if (!c) throw new NotFoundException('Consultoria não encontrada.');
     if (c.usuarios.some((u) => ehAdminPlataforma(u.email))) throw new BadRequestException('Esta conta tem acesso total e não paga plano.');
     const plano = planoPorCodigo(dto.plano)!;
-    if (plano.limiteEmpresas !== null && c._count.empresas > plano.limiteEmpresas) {
-      throw new BadRequestException(`Você já tem ${c._count.empresas} empresas e o plano ${plano.nome} aceita ${plano.limiteEmpresas}. Escolha um plano maior.`);
-    }
+    // Plano com menos empresas do que a conta tem: pode assinar. As que passarem do limite ficam só para consulta,
+    // e o dono escolhe as ativas em Meu plano (common/empresas-ativas.ts). Nada é apagado.
     const cpfCnpj = dto.cpfCnpj.replace(/\D/g, '');
     const email = (await this.prisma.usuario.findUnique({ where: { id: sessao.sub }, select: { email: true } }))?.email ?? c.usuarios[0]?.email;
 

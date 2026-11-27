@@ -168,8 +168,9 @@ export const DUVIDAS_PLANOS: Duvida[] = [
       <>
         Dá, para cima ou para baixo, quando quiser. Entre no sistema, abra <strong>Minha conta › Meu plano</strong> no menu e escolha o novo plano. Se o
         mês atual já está pago, a nova mensalidade começa no dia seguinte ao vencimento, sem pagar duas vezes. Se
-        você descer para um plano com menos empresas do que já tem cadastradas, nenhuma é apagada. Você só não consegue cadastrar uma
-        nova até ficar dentro do limite.
+        você descer para um plano com menos empresas do que já tem cadastradas, nenhuma é apagada: você escolhe em Meu plano as que ficam
+        ativas, e as outras ficam só para consulta (dá para ver e baixar tudo, mas não mudar). A escolha pode ser trocada uma vez por mês e,
+        voltando para um plano maior, todas voltam na hora.
       </>
     ),
   },

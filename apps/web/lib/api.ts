@@ -1269,11 +1269,14 @@ export type MeuPlano = {
   situacao?: SituacaoPlano; consultaDesde?: string | null;
   emTeste?: boolean; testeAte?: string | null; recursos?: string[];
   limites?: { funcionarios: number | null; psicossocialMes: number | null; equipe: number | null } | null;
+  // Mais empresas do que o plano permite: as ativas (as outras ficam só para consulta) e quando dá para trocar.
+  ativas?: { acima: boolean; ids: string[]; escolhidas: boolean; proximaTroca: string | null };
 };
 export type SituacaoPlano = 'EM_DIA' | 'TOLERANCIA' | 'CONSULTA';
 export type RecursosPlano = {
   codigo: string; nome: string; emTeste: boolean; testeAte: string | null; recursos: string[]; limites: MeuPlano['limites'];
   situacao?: SituacaoPlano; pagoAte?: string | null; consultaDesde?: string | null;
+  foraDoPlano?: string[]; // empresas só para consulta porque passaram do limite do plano
 };
 export type FormaPagamento = 'CARTAO' | 'PIX' | 'BOLETO';
 export type PagamentoPlano = {
@@ -1293,6 +1296,7 @@ export const meuPlano = {
   recursos: () => chamar<RecursosPlano>('GET', '/meu-plano/recursos'),
   ver: () => chamar<MeuPlano>('GET', '/meu-plano'),
   pedir: (plano: string) => chamar<MeuPlano>('POST', '/meu-plano/pedido', { plano }),
+  escolherAtivas: (ids: string[]) => chamar<MeuPlano>('PUT', '/meu-plano/empresas-ativas', { ids }),
   pagamento: () => chamar<PagamentoPlano>('GET', '/meu-plano/pagamento'),
   assinar: (dados: { plano: string; forma: FormaPagamento; cpfCnpj: string }) =>
     chamar<{ link: string | null; vencimento: string; emDia: boolean }>('POST', '/meu-plano/pagamento/assinar', dados),

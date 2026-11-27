@@ -6,6 +6,7 @@ import { GradePlanos, InclusoEmTodos } from '@/components/Planos';
 import { Aviso, Botao } from '@/components/ui';
 import { VigenciaPlano } from '@/components/VigenciaPlano';
 import { PagamentoDoPlano, usePagamentoPlano } from '@/components/PagamentoPlano';
+import { EmpresasAtivas } from '@/components/EmpresasAtivas';
 import { MeuPlano, meuPlano } from '@/lib/api';
 import { PLANOS_SITE, textoLimite } from '@/lib/planos';
 import { esquecerRecursos, planoMinimo } from '@/lib/plano';
@@ -46,6 +47,11 @@ export default function PaginaMeuPlano() {
     } catch (e) { setErro((e as Error).message); }
     setEnviando('');
   }
+
+  // Plano com menos empresas do que a conta já tem: aviso de que as que passarem ficam só para consulta.
+  const acimaDe = (limite: number | null) => (dados && limite !== null && limite < dados.empresas
+    ? <p className="mt-1 text-center text-xs text-text/60">Você tem {dados.empresas} empresas: {limite} fica{limite === 1 ? '' : 'm'} ativa{limite === 1 ? '' : 's'} e as outras só para consulta. Nada é apagado.</p>
+    : null);
 
   const usoPct = dados && dados.limiteEmpresas ? Math.min(100, Math.round((dados.empresas / dados.limiteEmpresas) * 100)) : 0;
 
@@ -109,6 +115,8 @@ export default function PaginaMeuPlano() {
         </section>
       )}
 
+      {dados && !dados.acessoTotal && <EmpresasAtivas dados={dados} aoSalvar={setDados} />}
+
       {dados && !dados.acessoTotal && pagto && automatico && (
         <PagamentoDoPlano dados={dados} pagto={pagto} setPagto={setPagto} escolhido={escolhido} setEscolhido={setEscolhido} />
       )}
@@ -122,19 +130,23 @@ export default function PaginaMeuPlano() {
             if (p.codigo === dados.plano) return <p className="text-center text-sm font-semibold text-success">Plano atual</p>;
             if (automatico) {
               if (p.precoMensal === 0) return null;
-              if (p.limiteEmpresas !== null && p.limiteEmpresas < dados.empresas) return <p className="text-center text-xs text-text/50">Você já tem mais empresas que este plano permite</p>;
               return (
-                <Botao type="button" variante={p.destaque ? 'primario' : 'secundario'} className="w-full" onClick={() => setEscolhido(p.codigo)}>
-                  {pagto?.assinatura ? `Mudar para o ${p.nome}` : `Assinar o ${p.nome}`}
-                </Botao>
+                <>
+                  <Botao type="button" variante={p.destaque ? 'primario' : 'secundario'} className="w-full" onClick={() => setEscolhido(p.codigo)}>
+                    {pagto?.assinatura ? `Mudar para o ${p.nome}` : `Assinar o ${p.nome}`}
+                  </Botao>
+                  {acimaDe(p.limiteEmpresas)}
+                </>
               );
             }
             if (p.codigo === dados.pedidoPlano) return <p className="text-center text-sm font-semibold text-primary">Pedido enviado</p>;
-            if (p.limiteEmpresas !== null && p.limiteEmpresas < dados.empresas) return <p className="text-center text-xs text-text/50">Você já tem mais empresas que este plano permite</p>;
             return (
-              <Botao type="button" variante={p.destaque ? 'primario' : 'secundario'} className="w-full" disabled={!!enviando} onClick={() => pedir(p.codigo)}>
-                {enviando === p.codigo ? 'Enviando…' : `Quero o ${p.nome}`}
-              </Botao>
+              <>
+                <Botao type="button" variante={p.destaque ? 'primario' : 'secundario'} className="w-full" disabled={!!enviando} onClick={() => pedir(p.codigo)}>
+                  {enviando === p.codigo ? 'Enviando…' : `Quero o ${p.nome}`}
+                </Botao>
+                {acimaDe(p.limiteEmpresas)}
+              </>
             );
           }}
         />
