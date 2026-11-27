@@ -136,3 +136,14 @@ export function enderecoDoItem(item: ItemMenu, empresaId: string): string {
   if (!empresaId) return '/empresas/nova';
   return `/empresas/${empresaId}${item.rota}`;
 }
+
+// Botão "Resolver" das pendências do painel. A rota vem do motor: "/x" e "#x" ficam dentro da empresa,
+// "@/x" é uma tela fora dela. Para o login da empresa cliente, telas só da consultoria não ganham botão.
+export function resolverEm(rota: string | undefined, empresaId: string, cliente: boolean): string | null {
+  if (!rota || !empresaId) return null;
+  const geral = rota.startsWith('@');
+  const caminho = geral ? rota.slice(1) : rota;
+  const tela = TELAS_DO_MENU.find((t) => t.rota === caminho);
+  if (cliente && (tela?.soConsultoria ?? true)) return null;
+  return geral ? caminho : `/empresas/${empresaId}${caminho}`;
+}

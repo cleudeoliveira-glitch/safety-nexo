@@ -12,6 +12,7 @@ import { PassoTour, Tour, useTourPrimeiraVez } from '@/components/Tour';
 import { buscarEmissoes, carregarPainel, Emissoes, Empresa, NumerosPainel, Painel, PainelSsma, ssma } from '@/lib/api';
 import { aoMudarFoco, empresasDaConta, escolherFoco, salvarFoco } from '@/lib/empresaFoco';
 import { ehEmpresa, lerToken, lerUsuario } from '@/lib/sessao';
+import { resolverEm } from '@/lib/menu';
 
 const passosTour: PassoTour[] = [
   { alvo: 'empresa', titulo: 'Escolha a empresa', texto: 'Cada empresa tem seus dados e documentos. Troque aqui para ver outra. Todos os módulos ficam no menu da esquerda.' },
@@ -187,14 +188,20 @@ function PainelInicial() {
               <ul className="mt-3 divide-y divide-border">
                 {painel?.pendencias.map((pendencia) => {
                   const tom = tonsPorNivel[pendencia.nivel];
+                  const resolver = resolverEm(pendencia.rota, empresaId, empresaCliente);
                   return (
-                    <li key={pendencia.titulo} className="flex items-center gap-3 py-3">
+                    <li key={pendencia.titulo} className="flex flex-wrap items-center gap-3 py-3 sm:flex-nowrap">
                       <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tom.ponto}`} />
                       <div className="min-w-0 flex-1">
                         <p className="font-medium">{pendencia.titulo}</p>
                         <p className="text-sm text-text/60">{pendencia.detalhe}</p>
                       </div>
                       <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${tom.selo}`}>{tom.rotulo}</span>
+                      {resolver && (
+                        <Link href={resolver} className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90">
+                          Resolver
+                        </Link>
+                      )}
                     </li>
                   );
                 })}

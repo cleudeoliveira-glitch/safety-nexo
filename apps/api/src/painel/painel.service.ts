@@ -1,3 +1,4 @@
+import { ondeResolver } from './onde-resolver';
 import { trocaPrevista } from '../estoque/vida-util';
 import { grau5 } from '../documentos/nivel-risco';
 import { gatilhosRevisaoPgr } from '../conferencia/revisao';
@@ -10,7 +11,8 @@ import { prazoCat } from '../saude/prazo-cat';
 import { PrismaService } from '../prisma/prisma.service';
 import { validadeDaTurma } from '../treinamentos/treinamentos.service';
 
-export type Pendencia = { titulo: string; detalhe: string; nivel: 'vencido' | 'pendente' | 'em-dia' };
+// rota: tela onde se resolve (botão "Resolver" no painel). Ver onde-resolver.ts.
+export type Pendencia = { titulo: string; detalhe: string; nivel: 'vencido' | 'pendente' | 'em-dia'; rota?: string };
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
@@ -175,8 +177,8 @@ export class PainelService {
       .sort((a, b) => a.dias - b.dias);
 
     for (const v of vencimentos) {
-      if (v.dias < 0) pendencias.unshift({ titulo: `${v.tipo} vencido`, detalhe: `Venceu há ${-v.dias} dia(s)`, nivel: 'vencido' });
-      else if (v.dias <= 30) pendencias.push({ titulo: `${v.tipo} vence em ${v.dias} dia(s)`, detalhe: 'Programe a revisão', nivel: 'pendente' });
+      if (v.dias < 0) pendencias.unshift({ titulo: `${v.tipo} vencido`, detalhe: `Venceu há ${-v.dias} dia(s)`, nivel: 'vencido', rota: '@/emitir' });
+      else if (v.dias <= 30) pendencias.push({ titulo: `${v.tipo} vence em ${v.dias} dia(s)`, detalhe: 'Programe a revisão', nivel: 'pendente', rota: '@/emitir' });
     }
 
     const concluidos = itens.filter((i) => i.ok).length + (pgr && (!pgr.vencimento || pgr.vencimento > hoje) ? 1 : 0);
@@ -185,7 +187,7 @@ export class PainelService {
     return {
       empresa: { id: empresa.id, razaoSocial: empresa.razaoSocial, cnpj: empresa.cnpj },
       percentual,
-      pendencias,
+      pendencias: pendencias.map((p) => ({ ...p, rota: p.rota ?? ondeResolver(p.titulo) })),
       vencimentos,
       // Números grandes do topo do painel e a rosquinha dos riscos por tipo (cores do mapa de risco).
       numeros: {
@@ -268,8 +270,8 @@ export class PainelService {
     for (const c of empresa.controlesEmergencia) {
       const dias = Math.ceil((c.validade!.getTime() - hoje.getTime()) / DIA_MS);
       const nome = `${c.tipo === 'AVCB' || c.tipo === 'CLCB' ? c.tipo : c.descricao}`;
-      if (dias < 0) pendencias.unshift({ titulo: `${nome} vencido`, detalhe: `Venceu há ${-dias} dia(s)`, nivel: 'vencido' });
-      else if (dias <= (c.tipo === 'AVCB' || c.tipo === 'CLCB' ? 90 : 30)) pendencias.push({ titulo: `${nome} vence em ${dias} dia(s)`, detalhe: c.tipo === 'AVCB' || c.tipo === 'CLCB' ? 'Comece a renovação junto ao Corpo de Bombeiros' : 'Programe a recarga ou manutenção', nivel: 'pendente' });
+      if (dias < 0) pendencias.unshift({ titulo: `${nome} vencido`, detalhe: `Venceu há ${-dias} dia(s)`, nivel: 'vencido', rota: '/emergencia' });
+      else if (dias <= (c.tipo === 'AVCB' || c.tipo === 'CLCB' ? 90 : 30)) pendencias.push({ titulo: `${nome} vence em ${dias} dia(s)`, rota: '/emergencia', detalhe: c.tipo === 'AVCB' || c.tipo === 'CLCB' ? 'Comece a renovação junto ao Corpo de Bombeiros' : 'Programe a recarga ou manutenção', nivel: 'pendente' });
     }
     return pendencias;
   }

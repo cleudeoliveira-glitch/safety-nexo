@@ -5,7 +5,10 @@
 #  - guarda a cópia do dia por 90 dias aqui no GitHub (aba Actions > Backup > Artifacts);
 #  - no dia 1º de cada mês, guarda também uma cópia mensal no Supabase, que não é apagada
 #    (os documentos de SST precisam ficar guardados por até 20 anos);
-#  - aos domingos, copia também os arquivos (logos, PDFs de ASO, fotos), trancados do mesmo jeito.
+#  - aos domingos, copia também os arquivos (logos, PDFs de ASO, fotos), trancados do mesmo jeito;
+#  - TESTE DE RESTAURAÇÃO: abre a cópia trancada com a senha, restaura num banco vazio aqui dentro do GitHub
+#    e confere se as tabelas e os colaboradores voltaram. O banco de teste some no fim; a senha não sai do GitHub.
+#  - avisa o Diagnóstico do Painel ADM se deu certo (precisa do segredo TAREFAS_SEGREDO, o mesmo das outras tarefas).
 #
 # Segredos necessários (Settings > Secrets and variables > Actions):
 #  - BACKUP_DATABASE_URL: endereço do banco do Supabase (Connect > Session pooler, porta 5432)
@@ -28,6 +31,15 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Banco vazio só para o teste de restauração (existe apenas durante esta execução).
+    services:
+      teste:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: teste
+          POSTGRES_DB: restaurado
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       SENHA: ${{ secrets.BACKUP_SENHA }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -92,3 +104,45 @@ jobs:
           path: '*.gpg'
           retention-days: 90
           if-no-files-found: error
+
+      - name: Teste de restauração (abre a cópia num banco vazio)
+        id: restaurar
+        continue-on-error: true
+        env:
+          PGPASSWORD: teste
+        run: |
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --decrypt \
+            -o teste.dump "banco-$DIA.dump.gpg" <<< "$SENHA"
+          # Avisos de extensão ou dono que não existem no banco vazio não impedem a conferência abaixo.
+          /usr/lib/postgresql/17/bin/pg_restore --no-owner --no-privileges -h localhost -U postgres -d restaurado teste.dump || true
+          rm -f teste.dump
+          PSQL="/usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d restaurado -tAc"
+          TABELAS=$($PSQL "select count(*) from information_schema.tables where table_schema='public'")
+          COLABORADORES=$($PSQL 'select count(*) from "Colaborador"')
+          EMPRESAS=$($PSQL 'select count(*) from "Empresa"')
+          echo "Tabelas: $TABELAS, empresas: $EMPRESAS, colaboradores: $COLABORADORES"
+          [ "$TABELAS" -gt 10 ] || { echo "::error::A cópia abriu, mas vieram só $TABELAS tabelas."; exit 1; }
+          echo "tabelas=$TABELAS" >> "$GITHUB_OUTPUT"
+          echo "colaboradores=$COLABORADORES" >> "$GITHUB_OUTPUT"
+
+      - name: Avisar o Diagnóstico do Painel ADM
+        if: always()
+        env:
+          SEGREDO: ${{ secrets.TAREFAS_SEGREDO }}
+          RESTAURADO: ${{ steps.restaurar.outcome }}
+          TABELAS: ${{ steps.restaurar.outputs.tabelas }}
+          COLABORADORES: ${{ steps.restaurar.outputs.colaboradores }}
+          JOB: ${{ job.status }}
+        run: |
+          if [ -z "$SEGREDO" ]; then echo "::warning::Sem TAREFAS_SEGREDO: o Diagnóstico não fica sabendo do backup."; exit 0; fi
+          OK=true; [ "$JOB" = "success" ] && [ -f "banco-$DIA.dump.gpg" ] || OK=false
+          REST=false; [ "$RESTAURADO" = "success" ] && REST=true
+          KB=$(( $(stat -c %s "banco-$DIA.dump.gpg" 2>/dev/null || echo 0) / 1024 ))
+          MSG=""; [ "$OK" = false ] && MSG="O backup falhou no GitHub. Veja Actions > Backup."
+          [ "$OK" = true ] && [ "$REST" = false ] && MSG="A cópia foi feita, mas não abriu no teste de restauração. Veja Actions > Backup."
+          BODY=$(printf '{"ok":%s,"restaurado":%s,"tabelas":%s,"colaboradores":%s,"tamanhoKb":%s,"mensagem":"%s"}' \
+            "$OK" "$REST" "${TABELAS:-0}" "${COLABORADORES:-0}" "$KB" "$MSG")
+          curl -s --max-time 120 https://safety-nexo-api.onrender.com/health > /dev/null || true
+          curl -sS --max-time 120 --retry 3 --retry-delay 20 -X POST \
+            -H "x-tarefa-segredo: $SEGREDO" -H 'Content-Type: application/json' \
+            -d "$BODY" https://safety-nexo-api.onrender.com/tarefas/backup || echo "::warning::Não consegui avisar o Diagnóstico."
